@@ -1,0 +1,418 @@
+import os
+import json
+import threading
+import time
+from typing import List
+import yfinance as yf
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from backend.data_fetcher import run_screener_collection, WikipediaNasdaq100Provider, StockDataCollector
+from backend.portfolio_manager import PortfolioManager
+import requests
+
+# Load environment variables manually
+for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'frontend/.env.local']:
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    os.environ.setdefault(k.strip(), v.strip())
+
+def fetch_screener_data_from_supabase():
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY")
+    
+    if not supabase_url or not supabase_key:
+        return None
+        
+    try:
+        url = f"{supabase_url}/rest/v1/screener_data?id=eq.1&select=data"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            rows = response.json()
+            if rows and len(rows) > 0:
+                return rows[0].get("data")
+        print(f"[SUPABASE] Fetch returned status {response.status_code}")
+    except Exception as e:
+        print(f"[SUPABASE] Error fetching from Supabase: {e}")
+    return None
+
+
+class TransactionCreate(BaseModel):
+    symbol: str
+    type: str
+    date: str
+    shares: float
+    price: float
+    currency: str
+    fees: float = 0.0
+    account: str = "Default"
+
+class TransactionItem(BaseModel):
+    id: str
+    symbol: str
+    type: str
+    date: str
+    shares: float
+    price: float
+    currency: str
+    fees: float = 0.0
+    account: str = "Default"
+
+class HoldingsRequest(BaseModel):
+    base_currency: str = "PLN"
+    account: str = "All"
+    transactions: List[TransactionItem]
+
+app = FastAPI(title="Stock Screener API")
+
+# Enable CORS for local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For local usage, allow all. Can restrict to ["http://localhost:5173"] in production.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DETAILS_DIR = os.path.join(DATA_DIR, 'details')
+
+# In-memory lock to prevent concurrent refreshes
+refresh_lock = threading.Lock()
+
+def bg_refresh_task():
+    """Background task runner for the crawler."""
+    global refresh_lock
+    acquired = refresh_lock.acquire(blocking=False)
+    if not acquired:
+        return  # already running
+    try:
+        provider = WikipediaNasdaq100Provider()
+        run_screener_collection(provider)
+    except Exception as e:
+        print(f"Error in background crawler task: {e}")
+        # Update status file with error
+        status_path = os.path.join(DATA_DIR, 'status.json')
+        try:
+            status = {
+                "is_running": False,
+                "message": "Failed to refresh data",
+                "progress": 0,
+                "total": 0,
+                "error": str(e),
+                "last_updated": time.time()
+            }
+            with open(status_path, 'w') as f:
+                json.dump(status, f)
+        except Exception:
+            pass
+    finally:
+        refresh_lock.release()
+
+@app.get("/api/stocks")
+def get_stocks():
+    # 1. Try to load from Supabase cloud
+    cloud_data = fetch_screener_data_from_supabase()
+    if cloud_data:
+        try:
+            # Cache locally
+            file_path = os.path.join(DATA_DIR, 'screener_data.json')
+            with open(file_path, 'w') as f:
+                json.dump(cloud_data, f, indent=2)
+        except Exception as cache_err:
+            print(f"Failed to cache cloud data locally: {cache_err}")
+        return cloud_data
+
+    # 2. Fallback to local cache file if Supabase fails
+    file_path = os.path.join(DATA_DIR, 'screener_data.json')
+    if not os.path.exists(file_path):
+        # Return empty data structure with last updated = 0
+        return {
+            "metadata": {
+                "last_updated": 0,
+                "total_stocks": 0,
+                "indicators": []
+            },
+            "stocks": []
+        }
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading screener data: {str(e)}")
+
+@app.get("/api/stocks/{ticker}")
+def get_stock_detail(ticker: str):
+    # Normalize ticker (e.g. AAPL)
+    clean_ticker = ticker.upper().strip()
+    file_path = os.path.join(DETAILS_DIR, f"{clean_ticker}.json")
+    
+    # Check if we need to fetch/regenerate details (missing or >24 hours old)
+    should_fetch = not os.path.exists(file_path)
+    if not should_fetch:
+        try:
+            file_age = time.time() - os.path.getmtime(file_path)
+            if file_age > 86400:  # 24 hours
+                should_fetch = True
+        except Exception:
+            should_fetch = True
+            
+    if should_fetch:
+        try:
+            print(f"[{clean_ticker}] Detail cache missing or stale. Fetching on-demand...")
+            collector = StockDataCollector()
+            ticker_obj = yf.Ticker(clean_ticker)
+            
+            # Retrieve cached overview metrics from screener_data.json if available
+            overview = None
+            screener_data_path = os.path.join(DATA_DIR, 'screener_data.json')
+            if os.path.exists(screener_data_path):
+                try:
+                    with open(screener_data_path, 'r') as sf:
+                        sd = json.load(sf)
+                        for s in sd.get('stocks', []):
+                            if s.get('symbol') == clean_ticker:
+                                overview = s
+                                break
+                except Exception as cache_err:
+                    print(f"[{clean_ticker}] Error reading overview cache: {cache_err}")
+            
+            # Fetch overview if not found in cache
+            if not overview:
+                overview = collector.fetch_stock_overview(ticker_obj)
+                
+            shares = overview.get("market_cap", 0) / overview.get("price", 1) if overview.get("price") else 1.0
+            history_data = collector.fetch_historical_detail(ticker_obj, shares)
+            
+            if len(history_data) > 0 or not os.path.exists(file_path):
+                payload = {
+                    "symbol": clean_ticker,
+                    "name": overview.get("name"),
+                    "overview": overview,
+                    "history": history_data
+                }
+                with open(file_path, 'w') as f:
+                    json.dump(payload, f, indent=2)
+                print(f"[{clean_ticker}] Details cached successfully on-demand.")
+            else:
+                print(f"[{clean_ticker}] Empty history returned. Reusing stale cached file.")
+        except Exception as e:
+            print(f"[{clean_ticker}] Error during on-demand detail generation: {e}")
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=500, detail=f"Error generating stock details: {str(e)}")
+            else:
+                print(f"[{clean_ticker}] Falling back to stale detail cache.")
+                
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading stock details: {str(e)}")
+
+@app.get("/api/stocks/{ticker}/price")
+def get_stock_price(ticker: str):
+    clean_ticker = ticker.upper().strip()
+    try:
+        ticker_obj = yf.Ticker(clean_ticker)
+        price = ticker_obj.fast_info.get('lastPrice')
+        if price is None:
+            price = ticker_obj.info.get('currentPrice')
+            
+        # Determine if NASDAQ trading session is active (Eastern Time, Mon-Fri 9:30 AM - 4:00 PM)
+        import pytz
+        from datetime import datetime
+        tz = pytz.timezone('US/Eastern')
+        now = datetime.now(tz)
+        
+        is_open = False
+        if now.weekday() < 5:  # Monday to Friday
+            current_time = now.time()
+            market_start = datetime.strptime("09:30:00", "%H:%M:%S").time()
+            market_end = datetime.strptime("16:00:00", "%H:%M:%S").time()
+            is_open = market_start <= current_time <= market_end
+            
+        return {
+            "symbol": clean_ticker,
+            "price": price,
+            "is_market_open": is_open,
+            "timestamp": time.time()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching real-time price: {str(e)}")
+
+@app.get("/api/status")
+def get_status():
+    file_path = os.path.join(DATA_DIR, 'status.json')
+    if not os.path.exists(file_path):
+        return {
+            "is_running": False,
+            "message": "Ready to screen stocks",
+            "progress": 0,
+            "total": 0,
+            "error": None
+        }
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        return {
+            "is_running": False,
+            "message": "Error reading status",
+            "progress": 0,
+            "total": 0,
+            "error": str(e)
+        }
+
+@app.post("/api/refresh")
+def trigger_refresh(background_tasks: BackgroundTasks, force: bool = False):
+    # Check if already running
+    is_locked = refresh_lock.locked()
+    if is_locked:
+        return {"status": "error", "message": "A refresh task is already running."}
+        
+    # Check data freshness if not forced
+    if not force:
+        file_path = os.path.join(DATA_DIR, 'screener_data.json')
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    last_updated = data.get("metadata", {}).get("last_updated", 0)
+                    age = time.time() - last_updated
+                    if age < 3600:  # 1 hour
+                        minutes_ago = int(age // 60)
+                        return {
+                            "status": "fresh",
+                            "message": f"Data is already fresh (updated {minutes_ago}m ago).",
+                            "last_updated": last_updated
+                        }
+            except Exception:
+                pass
+        
+    # Trigger background execution
+    background_tasks.add_task(bg_refresh_task)
+    return {"status": "ok", "message": "Refresh task started in background."}
+
+# ==========================================
+# Portfolio APIs
+# ==========================================
+
+@app.get("/api/portfolio/transactions")
+def get_portfolio_transactions():
+    try:
+        return PortfolioManager.get_transactions()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching transactions: {str(e)}")
+
+@app.post("/api/portfolio/transactions")
+def add_portfolio_transaction(tx: TransactionCreate):
+    try:
+        new_tx = PortfolioManager.add_transaction(
+            symbol=tx.symbol,
+            tx_type=tx.type,
+            date=tx.date,
+            shares=tx.shares,
+            price=tx.price,
+            currency=tx.currency,
+            fees=tx.fees,
+            account=tx.account
+        )
+        return {"status": "ok", "transaction": new_tx}
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding transaction: {str(e)}")
+
+@app.delete("/api/portfolio/transactions/{tx_id}")
+def delete_portfolio_transaction(tx_id: str):
+    try:
+        success = PortfolioManager.delete_transaction(tx_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        return {"status": "ok", "message": "Transaction deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting transaction: {str(e)}")
+
+@app.get("/api/portfolio/holdings")
+def get_portfolio_holdings(base_currency: str = "PLN", account: str = "All"):
+    try:
+        return PortfolioManager.get_holdings(base_currency, account)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching holdings: {str(e)}")
+
+@app.post("/api/portfolio/holdings")
+def calculate_portfolio_holdings(req: HoldingsRequest):
+    try:
+        tx_dicts = []
+        for tx in req.transactions:
+            tx_dicts.append({
+                "id": tx.id,
+                "symbol": tx.symbol,
+                "type": tx.type,
+                "date": tx.date,
+                "shares": tx.shares,
+                "price": tx.price,
+                "currency": tx.currency,
+                "fees": tx.fees,
+                "account": tx.account
+            })
+        return PortfolioManager.calculate_holdings(tx_dicts, req.base_currency, req.account)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating holdings: {str(e)}")
+
+@app.get("/api/portfolio/search")
+def search_portfolio_assets(q: str):
+    if not q or len(q.strip()) < 2:
+        return []
+    clean_q = q.strip()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    url = f"https://query2.finance.yahoo.com/v1/finance/search?q={clean_q}&quotesCount=8&newsCount=0"
+    try:
+        import requests
+        response = requests.get(url, headers=headers, verify=False)
+        if response.status_code != 200:
+            return []
+        data = response.json()
+        quotes = data.get("quotes", [])
+        
+        results = []
+        for quote in quotes:
+            # Keep equities, ETFs, mutual funds
+            q_type = quote.get("quoteType", "")
+            if q_type not in ["EQUITY", "ETF", "MUTUALFUND"]:
+                continue
+                
+            results.append({
+                "symbol": quote.get("symbol", ""),
+                "name": quote.get("longname") or quote.get("shortname") or quote.get("symbol", ""),
+                "exchange": quote.get("exchange", ""),
+                "exchDisp": quote.get("exchDisp", "")
+            })
+        return results
+    except Exception as e:
+        print(f"Error querying search suggestions: {e}")
+        return []
+
+# Serve Frontend static assets if compiled in production
+frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+if os.path.exists(frontend_dist_path):
+    app.mount("/", StaticFiles(directory=frontend_dist_path, html=True), name="frontend")
+    
+    # Catch-all for React routing (HTML5 History API)
+    @app.exception_handler(404)
+    async def custom_404_handler(request, exc):
+        return FileResponse(os.path.join(frontend_dist_path, "index.html"))

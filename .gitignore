@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+backend/data/screener_data.json
+backend/data/status.json
+backend/data/details/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env
+
+# IDEs
+.idea/
+.vscode/
+.DS_Store

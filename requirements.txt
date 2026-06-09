@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+yfinance
+pandas
+numpy
+beautifulsoup4
+requests
+curl_cffi
+pytz
+lxml

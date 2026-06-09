@@ -1,0 +1,37 @@
+{
+  "transactions": [
+    {
+      "id": "tx_1781027786299",
+      "symbol": "AAPL",
+      "type": "BUY",
+      "date": "2026-06-01",
+      "shares": 5.0,
+      "price": 180.0,
+      "currency": "USD",
+      "fees": 2.0,
+      "account": "mBank"
+    },
+    {
+      "id": "tx_1781027786306",
+      "symbol": "AAPL",
+      "type": "BUY",
+      "date": "2026-06-02",
+      "shares": 3.0,
+      "price": 185.0,
+      "currency": "USD",
+      "fees": 1.5,
+      "account": "Interactive Brokers"
+    },
+    {
+      "id": "tx_1781027786314",
+      "symbol": "CDR.WA",
+      "type": "BUY",
+      "date": "2026-06-03",
+      "shares": 10.0,
+      "price": 120.0,
+      "currency": "PLN",
+      "fees": 5.0,
+      "account": "mBank"
+    }
+  ]
+}
