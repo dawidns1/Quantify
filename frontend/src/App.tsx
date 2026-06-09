@@ -5,7 +5,9 @@ import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
-const API_BASE_URL = window.location.port === '5173' ? 'http://localhost:8000' : '';
+const API_BASE_URL = window.location.port === '5173' 
+  ? 'http://localhost:8000' 
+  : 'https://quantify-d9r8.onrender.com';
 
 function App() {
   const { user, loading: authLoading, signOut } = useAuth();
