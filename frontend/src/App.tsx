@@ -10,7 +10,7 @@ const API_BASE_URL = window.location.port === '5173'
   : 'https://quantify-d9r8.onrender.com';
 
 function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, recoveryMode, signOut } = useAuth();
 
   const [settings, setSettings] = useState<{
     lowPerformanceMode: boolean;
@@ -39,7 +39,7 @@ function App() {
     );
   }
 
-  if (!user) {
+  if (!user || recoveryMode) {
     return <AuthView />;
   }
 
