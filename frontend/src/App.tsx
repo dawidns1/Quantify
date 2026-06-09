@@ -47,11 +47,24 @@ function App() {
     <div className="app-container">
       {/* Header Widget */}
       <header className="glass-panel header">
-        <div className="logo-section">
-          <h1>
-            Quant<span className="gradient-text">ify</span>
-          </h1>
-          <p>Multi-Currency Collaborative Portfolio Tracker</p>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img 
+            src="/favicon.png" 
+            alt="Quantify Logo" 
+            style={{ 
+              width: '36px', 
+              height: '36px', 
+              borderRadius: '8px', 
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 0 12px rgba(6, 182, 212, 0.3)' 
+            }} 
+          />
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.6rem', lineHeight: '1.1' }}>
+              Quant<span className="gradient-text">ify</span>
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>Multi-Currency Collaborative Portfolio Tracker</p>
+          </div>
         </div>
 
         {/* Controls / User Stats */}

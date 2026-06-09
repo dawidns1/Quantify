@@ -153,19 +153,32 @@ export function AuthView() {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: '1rem' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         
-        <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
-            Quant<span className="gradient-text">ify</span>
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
-            {recoveryMode 
-              ? 'Set your new secure password below' 
-              : isForgotPassword 
-                ? 'Enter your email to receive a password reset link' 
-                : isSignUp 
-                  ? 'Create a secure account to track portfolios' 
-                  : 'Sign in to access your portfolios across devices'}
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
+          <img 
+            src="/favicon.png" 
+            alt="Quantify Logo" 
+            style={{ 
+              width: '48px', 
+              height: '48px', 
+              borderRadius: '10px', 
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)' 
+            }} 
+          />
+          <div>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 0.25rem 0' }}>
+              Quant<span className="gradient-text">ify</span>
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+              {recoveryMode 
+                ? 'Set your new secure password below' 
+                : isForgotPassword 
+                  ? 'Enter your email to receive a password reset link' 
+                  : isSignUp 
+                    ? 'Create a secure account to track portfolios' 
+                    : 'Sign in to access your portfolios across devices'}
+            </p>
+          </div>
         </div>
 
         {error && (
