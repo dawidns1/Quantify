@@ -121,8 +121,8 @@ export function AuthView() {
     setSubmitting(true);
 
     const token = otpToken.trim();
-    if (token.length !== 6) {
-      setError("Please enter a valid 6-digit code.");
+    if (token.length < 6) {
+      setError("Please enter a valid verification code.");
       setSubmitting(false);
       return;
     }
@@ -292,9 +292,9 @@ export function AuthView() {
                     id="otp-token-input"
                     type="text"
                     className="input-field"
-                    style={{ paddingLeft: '38px', width: '100%', letterSpacing: '4px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 700 }}
-                    placeholder="123456"
-                    maxLength={6}
+                    style={{ paddingLeft: '38px', width: '100%', letterSpacing: '3px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 700 }}
+                    placeholder="12345678"
+                    maxLength={10}
                     value={otpToken}
                     onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
                     required
