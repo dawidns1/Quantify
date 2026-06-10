@@ -4,7 +4,7 @@ import threading
 import time
 from typing import List
 import yfinance as yf
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -390,6 +390,71 @@ def calculate_historical_portfolio_nav(req: HoldingsRequest):
                 "account": tx.account
             })
         return PortfolioManager.calculate_historical_performance(tx_dicts, req.base_currency, req.account, req.link_cash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
+
+def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
+    supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+    
+    if not supabase_url or not supabase_key:
+        raise HTTPException(status_code=500, detail="Supabase environment variables not configured on backend.")
+        
+    url = f"{supabase_url}/rest/v1/transactions"
+    if portfolio_id != 'all':
+        url += f"?portfolio_id=eq.{portfolio_id}"
+        
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": jwt_token
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code, 
+                detail=f"Failed to fetch transactions from Supabase: {response.text}"
+            )
+        return response.json()
+    except requests.exceptions.RequestException as req_err:
+        raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
+
+@app.get("/api/portfolio/{portfolio_id}/holdings")
+def get_portfolio_holdings_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    authorization: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    try:
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        return PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating holdings: {str(e)}")
+
+@app.get("/api/portfolio/{portfolio_id}/historical")
+def get_historical_portfolio_nav_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    authorization: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    try:
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
 

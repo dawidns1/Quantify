@@ -51,7 +51,7 @@ export function PortfolioView({
   lowPerformanceMode, 
   setLowPerformanceMode 
 }: PortfolioViewProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   
   const [subTab, setSubTabState] = useState<'overview' | 'ledger'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
@@ -302,27 +302,20 @@ export function PortfolioView({
     loadPortfolios();
   }, [user]);
 
-  // Fetch holdings (POST transactions to backend calculator in-memory)
+  // Fetch holdings (GET from backend calculator using JWT)
   const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
     if (!activePortfolioId) return;
     setLoadingHoldings(true);
     try {
-      const txs = portfolioTransactions;
-
-      if (!txs || txs.length === 0) {
-        setHoldings([]);
-        setSummary({
-          total_cost_base: 0,
-          total_value_base: 0,
-          total_gain_base: 0,
-          total_gain_percent: 0,
-          base_currency: curr
-        });
-        setLoadingHoldings(false);
-        return;
-      }
-
-      const result = await fetchHoldingsService(apiBaseUrl, curr, accountFilter, txs, linkCash);
+      const jwtToken = session?.access_token || null;
+      const result = await fetchHoldingsService(
+        apiBaseUrl,
+        jwtToken,
+        activePortfolioId,
+        curr,
+        accountFilter,
+        linkCash
+      );
       setHoldings(result.holdings);
       setSummary(result.summary);
     } catch (err) {
@@ -353,13 +346,21 @@ export function PortfolioView({
 
   // Fetch historical performance data for the chart
   const fetchHistoricalPerformance = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
-    if (!activePortfolioId || portfolioTransactions.length === 0) {
+    if (!activePortfolioId) {
       setChartData(null);
       return;
     }
     setLoadingChart(true);
     try {
-      const data = await fetchHistoricalPerformanceService(apiBaseUrl, curr, accountFilter, portfolioTransactions, linkCash);
+      const jwtToken = session?.access_token || null;
+      const data = await fetchHistoricalPerformanceService(
+        apiBaseUrl,
+        jwtToken,
+        activePortfolioId,
+        curr,
+        accountFilter,
+        linkCash
+      );
       setChartData(data);
     } catch (err) {
       console.error('Error fetching historical performance:', err);

@@ -1,21 +1,27 @@
-import type { Transaction, Holding, Summary } from '../types/portfolio';
+import type { Holding, Summary } from '../types/portfolio';
 
 export async function fetchHoldings(
   apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
   baseCurrency: string,
   account: string,
-  transactions: Transaction[],
   linkCash: boolean
 ): Promise<{ holdings: Holding[]; summary: Summary }> {
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/holdings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      base_currency: baseCurrency,
-      account,
-      transactions,
-      link_cash: linkCash
-    })
+  const headers: Record<string, string> = {};
+  if (jwtToken) {
+    headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash)
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
+    method: 'GET',
+    headers
   });
 
   if (!response.ok) throw new Error('Failed to calculate holdings');
@@ -34,25 +40,32 @@ export async function fetchHoldings(
 
 export async function fetchHistoricalPerformance(
   apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
   baseCurrency: string,
   account: string,
-  transactions: Transaction[],
   linkCash: boolean
 ): Promise<{ dates: string[]; nav: number[]; cost_basis: number[] }> {
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/historical`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      base_currency: baseCurrency,
-      account,
-      transactions,
-      link_cash: linkCash
-    })
+  const headers: Record<string, string> = {};
+  if (jwtToken) {
+    headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash)
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`, {
+    method: 'GET',
+    headers
   });
 
   if (!response.ok) throw new Error('Failed to fetch historical performance');
   return response.json();
 }
+
 
 export async function searchAssets(
   apiBaseUrl: string,
