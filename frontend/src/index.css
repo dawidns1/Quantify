@@ -24,7 +24,13 @@
   --color-red: hsl(350, 70%, 50%);
   --color-red-glow: rgba(239, 68, 68, 0.15);
   
-  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       color 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                       filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   
   background-color: var(--bg-color);
   color: var(--text-primary);
@@ -60,6 +66,10 @@ body::before {
     radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.03) 0px, transparent 50%);
   pointer-events: none;
+  
+  /* Promote background to its own GPU layer to prevent repaints on page scroll */
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 /* ==========================================
@@ -86,6 +96,11 @@ body::before {
   padding: 1.5rem;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   transition: border-color 0.2s ease;
+  
+  /* NOTE: Removed 'transform: translate3d(0, 0, 0)' and 'will-change: transform'
+     from here. Promoting multiple backdrop-filter elements to their own composite
+     layers in Chromium forces expensive backdrop texture copy-backs to the GPU on 
+     every scroll frame, severely dragging down scroll frame rates. */
 }
 
 .glass-panel.interactive:hover {
@@ -271,6 +286,10 @@ body::before {
   border-radius: 12px;
   border: 1px solid var(--panel-border);
   min-height: 450px;
+  
+  /* Skip rendering the table off-screen to improve scrolling performance */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 450px;
 }
 
 .screener-table {
@@ -859,7 +878,9 @@ body.low-perf .glass-panel,
 body.low-perf header,
 body.low-perf .settings-panel,
 body.low-perf .header-filter-popover,
-body.low-perf .tooltip-text {
+body.low-perf .tooltip-text,
+body.low-perf .modal-backdrop,
+body.low-perf .modal-content {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   background: rgba(13, 17, 28, 0.98) !important;
