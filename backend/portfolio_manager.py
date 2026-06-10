@@ -17,6 +17,211 @@ FALLBACK_RATES = {
 }
 
 class PortfolioManager:
+    # In-memory caches for live/historical prices (to avoid heavy yfinance hits)
+    _live_ticker_cache = {}  # symbol -> (timestamp, data)
+    _live_fx_cache = {}      # pair -> (timestamp, rate)
+    _historical_stock_cache = {}  # symbol -> {start_date, end_date, last_updated, prices}
+    _historical_fx_cache = {}     # pair -> {start_date, end_date, last_updated, prices}
+    
+    STOCK_CACHE_TTL = 300  # 5 minutes
+    FX_CACHE_TTL = 600     # 10 minutes
+    HISTORICAL_CACHE_TTL = 3600  # 1 hour
+
+    @classmethod
+    def get_cached_live_ticker(cls, symbol: str) -> dict:
+        symbol = symbol.upper().strip()
+        now = time.time()
+        
+        if symbol in cls._live_ticker_cache:
+            ts, data = cls._live_ticker_cache[symbol]
+            if now - ts < cls.STOCK_CACHE_TTL:
+                return data
+                
+        live_price = 0.0
+        company_name = symbol
+        native_currency = None
+        try:
+            stock_ticker = yf.Ticker(symbol)
+            live_price = stock_ticker.fast_info.get("lastPrice")
+            if live_price is None:
+                live_price = stock_ticker.info.get("currentPrice") or 0.0
+            company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName") or symbol
+            native_currency = stock_ticker.fast_info.get("currency") or stock_ticker.info.get("currency")
+        except Exception as e:
+            print(f"Error fetching live data for {symbol}: {e}")
+            
+        if not native_currency:
+            native_currency = "USD"
+            
+        data = {
+            "live_price": float(live_price) if live_price else 0.0,
+            "company_name": company_name,
+            "native_currency": native_currency.upper().strip()
+        }
+        
+        cls._live_ticker_cache[symbol] = (now, data)
+        return data
+
+    @classmethod
+    def get_cached_live_fx(cls, pair: str) -> float:
+        pair = pair.upper().strip()
+        now = time.time()
+        
+        if pair in cls._live_fx_cache:
+            ts, rate = cls._live_fx_cache[pair]
+            if now - ts < cls.FX_CACHE_TTL:
+                return rate
+                
+        rate = None
+        try:
+            rate_ticker = yf.Ticker(pair)
+            rate = rate_ticker.fast_info.get("lastPrice")
+            if rate is None:
+                rate = rate_ticker.info.get("currentPrice")
+        except Exception as e:
+            print(f"Error fetching FX rate for {pair}: {e}")
+            
+        if rate is None:
+            base_pair = pair.replace("=X", "")
+            rate = FALLBACK_RATES.get(base_pair, 1.0)
+            
+        cls._live_fx_cache[pair] = (now, float(rate))
+        return float(rate)
+
+    @classmethod
+    def get_cached_historical_stock(cls, symbol: str, start_dt: date, end_dt: date) -> dict:
+        symbol = symbol.upper().strip()
+        now = time.time()
+        
+        cache_entry = cls._historical_stock_cache.get(symbol)
+        
+        if cache_entry and cache_entry["start_date"] <= start_dt:
+            if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+                sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
+                if sliced_prices:
+                    return sliced_prices
+                    
+        fetch_start = start_dt
+        if cache_entry and cache_entry["start_date"] < fetch_start:
+            fetch_start = cache_entry["start_date"]
+            
+        start_str = fetch_start.strftime("%Y-%m-%d")
+        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        prices_dict = {}
+        try:
+            df = yf.download(symbol, start=start_str, end=end_str, progress=False)
+            prices_series = df['Close'] if 'Close' in df.columns else pd.Series(dtype=float)
+            if not prices_series.empty:
+                prices_series.index = pd.to_datetime(prices_series.index).date
+                for d, val in prices_series.items():
+                    if pd.notna(val):
+                        prices_dict[d] = float(val)
+        except Exception as e:
+            print(f"Error downloading historical stock prices for {symbol}: {e}")
+            
+        if not prices_dict and cache_entry:
+            prices_dict = cache_entry["prices"]
+            fetch_start = cache_entry["start_date"]
+            
+        if prices_dict:
+            actual_start = min(prices_dict.keys())
+            actual_end = max(prices_dict.keys())
+            
+            if cache_entry:
+                merged_prices = {**cache_entry["prices"], **prices_dict}
+                actual_start = min(merged_prices.keys())
+                actual_end = max(merged_prices.keys())
+                prices_dict = merged_prices
+                
+            cls._historical_stock_cache[symbol] = {
+                "start_date": actual_start,
+                "end_date": actual_end,
+                "last_updated": now,
+                "prices": prices_dict
+            }
+            
+        return {d: val for d, val in prices_dict.items() if start_dt <= d <= end_dt}
+
+    @classmethod
+    def get_cached_historical_fx(cls, pair: str, start_dt: date, end_dt: date) -> dict:
+        pair = pair.upper().strip()
+        now = time.time()
+        
+        cache_entry = cls._historical_fx_cache.get(pair)
+        
+        if cache_entry and cache_entry["start_date"] <= start_dt:
+            if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+                sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
+                if sliced_prices:
+                    return sliced_prices
+                    
+        fetch_start = start_dt
+        if cache_entry and cache_entry["start_date"] < fetch_start:
+            fetch_start = cache_entry["start_date"]
+            
+        start_str = fetch_start.strftime("%Y-%m-%d")
+        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        prices_dict = {}
+        try:
+            df_fx = yf.download(pair, start=start_str, end=end_str, progress=False)
+            prices_series = df_fx['Close'] if 'Close' in df_fx.columns else pd.Series(dtype=float)
+            if not prices_series.empty:
+                prices_series.index = pd.to_datetime(prices_series.index).date
+                for d, val in prices_series.items():
+                    if pd.notna(val):
+                        prices_dict[d] = float(val)
+        except Exception as e:
+            print(f"Error downloading historical FX for {pair}: {e}")
+            
+        if not prices_dict and cache_entry:
+            prices_dict = cache_entry["prices"]
+            fetch_start = cache_entry["start_date"]
+            
+        fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
+        
+        if prices_dict or cache_entry:
+            actual_prices = prices_dict if prices_dict else cache_entry["prices"]
+            actual_start = min(actual_prices.keys()) if actual_prices else fetch_start
+            actual_end = max(actual_prices.keys()) if actual_prices else date.today()
+            
+            if cache_entry:
+                merged_prices = {**cache_entry["prices"], **actual_prices}
+                actual_start = min(merged_prices.keys())
+                actual_end = max(merged_prices.keys())
+                actual_prices = merged_prices
+                
+            cls._historical_fx_cache[pair] = {
+                "start_date": actual_start,
+                "end_date": actual_end,
+                "last_updated": now,
+                "prices": actual_prices
+            }
+            
+        res = {}
+        delta = end_dt - start_dt
+        cached_prices = cls._historical_fx_cache.get(pair, {}).get("prices", {})
+        
+        last_known_val = None
+        for i in range(delta.days + 1):
+            d = start_dt + timedelta(days=i)
+            val = cached_prices.get(d)
+            if val is not None:
+                last_known_val = val
+                res[d] = val
+            else:
+                if last_known_val is not None:
+                    res[d] = last_known_val
+                else:
+                    bfill_val = None
+                    future_dates = sorted([k for k in cached_prices.keys() if k > d])
+                    if future_dates:
+                        bfill_val = cached_prices[future_dates[0]]
+                    res[d] = bfill_val if bfill_val is not None else fallback
+                    
+        return res
+
     @staticmethod
     def _load_data() -> dict:
         if not os.path.exists(PORTFOLIO_FILE):
@@ -162,29 +367,20 @@ class PortfolioManager:
                 "holdings": []
             }
             
-        # Gather live ticker info for stocks
+        # Gather live ticker info for stocks (cached)
         ticker_info = {}
         for symbol in symbol_txs.keys():
-            live_price = 0.0
-            company_name = symbol
-            native_currency = None
-            try:
-                stock_ticker = yf.Ticker(symbol)
-                live_price = stock_ticker.fast_info.get("lastPrice")
-                if live_price is None:
-                    live_price = stock_ticker.info.get("currentPrice") or 0.0
-                company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName") or symbol
-                native_currency = stock_ticker.fast_info.get("currency") or stock_ticker.info.get("currency")
-            except Exception as e:
-                print(f"Error fetching live data for {symbol}: {e}")
-                
-            if not native_currency:
+            info = cls.get_cached_live_ticker(symbol)
+            
+            # If native_currency wasn't resolved, use first transaction currency as fallback
+            native_currency = info["native_currency"]
+            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
                 
             ticker_info[symbol] = {
-                "live_price": live_price,
-                "company_name": company_name,
+                "live_price": info["live_price"],
+                "company_name": info["company_name"],
                 "native_currency": native_currency.upper().strip()
             }
             
@@ -197,25 +393,13 @@ class PortfolioManager:
         for curr in final_cash.keys():
             unique_currencies.add(curr)
             
-        # Fetch live exchange rates
+        # Fetch live exchange rates (cached)
         fx_rates = {base_currency: 1.0}
         for curr in unique_currencies:
             if curr == base_currency:
                 continue
             pair = f"{curr}{base_currency}=X"
-            rate = None
-            try:
-                rate_ticker = yf.Ticker(pair)
-                rate = rate_ticker.fast_info.get("lastPrice")
-                if rate is None:
-                    rate = rate_ticker.info.get("currentPrice")
-            except Exception as e:
-                print(f"Error fetching FX rate for {pair}: {e}")
-                
-            if rate is None:
-                rate = FALLBACK_RATES.get(f"{curr}{base_currency}", 1.0)
-                
-            fx_rates[curr] = rate
+            fx_rates[curr] = cls.get_cached_live_fx(pair)
             
         holdings_list = []
         total_cost_base = 0.0
@@ -368,34 +552,27 @@ class PortfolioManager:
         # 4. Gather unique stock symbols (exclude CASH_ symbols)
         stock_symbols = list({tx["symbol"].upper().strip() for tx in sorted_txs if not tx["symbol"].upper().strip().startswith("CASH_")})
         
-        # 5. Fetch daily close prices for all stocks
+        # 5. Fetch daily close prices for all stocks (cached)
         stock_prices = {}
-        if stock_symbols:
-            try:
-                start_str = start_dt.strftime("%Y-%m-%d")
-                end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-                
-                # Fetch Close prices in batch
-                df = yf.download(stock_symbols, start=start_str, end=end_str, group_by='ticker', progress=False)
-                
-                for sym in stock_symbols:
-                    stock_prices[sym] = {}
-                    if len(stock_symbols) > 1:
-                        if sym in df.columns.levels[0]:
-                            prices_series = df[sym]['Close']
-                        else:
-                            prices_series = pd.Series(dtype=float)
+        for sym in stock_symbols:
+            stock_prices[sym] = {}
+            prices_dict = cls.get_cached_historical_stock(sym, start_dt, end_dt)
+            # Fill dates_list with cached daily close, applying ffill & bfill if gaps exist
+            last_val = None
+            for d in dates_list:
+                val = prices_dict.get(d)
+                if val is not None:
+                    last_val = val
+                    stock_prices[sym][d] = val
+                else:
+                    if last_val is not None:
+                        stock_prices[sym][d] = last_val
                     else:
-                        prices_series = df['Close'] if 'Close' in df.columns else pd.Series(dtype=float)
-                        
-                    if not prices_series.empty:
-                        prices_series.index = pd.to_datetime(prices_series.index).date
-                        prices_series = prices_series.reindex(dates_list).ffill().bfill()
-                        for d, val in prices_series.items():
-                            if pd.notna(val):
-                                stock_prices[sym][d] = float(val)
-            except Exception as e:
-                print(f"Error fetching historical stock prices: {e}")
+                        bfill_val = None
+                        future_dates = sorted([k for k in prices_dict.keys() if k > d])
+                        if future_dates:
+                            bfill_val = prices_dict[future_dates[0]]
+                        stock_prices[sym][d] = bfill_val if bfill_val is not None else 0.0
                 
         # 6. Gather all unique currencies needing FX to base_currency
         unique_currencies = {base_currency}
@@ -411,7 +588,7 @@ class PortfolioManager:
         for curr in symbol_currencies.values():
             unique_currencies.add(curr)
             
-        # Fetch historical exchange rates
+        # Fetch historical exchange rates (cached)
         fx_rates_hist = {}
         for curr in unique_currencies:
             fx_rates_hist[curr] = {}
@@ -421,25 +598,7 @@ class PortfolioManager:
                 continue
                 
             pair = f"{curr}{base_currency}=X"
-            try:
-                start_str = start_dt.strftime("%Y-%m-%d")
-                end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-                df_fx = yf.download(pair, start=start_str, end=end_str, progress=False)
-                
-                prices_series = df_fx['Close'] if 'Close' in df_fx.columns else pd.Series(dtype=float)
-                if not prices_series.empty:
-                    prices_series.index = pd.to_datetime(prices_series.index).date
-                    prices_series = prices_series.reindex(dates_list).ffill().bfill()
-                    for d, val in prices_series.items():
-                        if pd.notna(val):
-                            fx_rates_hist[curr][d] = float(val)
-            except Exception as e:
-                print(f"Error fetching historical FX for {pair}: {e}")
-                
-            fallback = FALLBACK_RATES.get(f"{curr}{base_currency}", 1.0)
-            for d in dates_list:
-                if d not in fx_rates_hist[curr]:
-                    fx_rates_hist[curr][d] = fallback
+            fx_rates_hist[curr] = cls.get_cached_historical_fx(pair, start_dt, end_dt)
                     
         # 7. Compute NAV and Cost Basis for each calendar day
         dates_res = []
