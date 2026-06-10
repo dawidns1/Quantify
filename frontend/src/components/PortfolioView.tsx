@@ -1055,26 +1055,108 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         </div>
       </div>
 
-      {/* Loading state indicator */}
-      {(loadingPortfolios || loadingHoldings || loadingTransactions) && (
-        <div className="glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-          <div className="pulse" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
-            {loadingPortfolios ? 'Connecting to cloud database...' : 'Refreshing portfolio metrics...'}
+      {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
+      {(loadingPortfolios || (loadingHoldings && holdings.length === 0) || (loadingTransactions && transactions.length === 0)) ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Consolidated Premium Metrics Banner Skeleton */}
+          <div className="glass-panel" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '1.25rem 1.75rem',
+            background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.65) 0%, rgba(13, 17, 28, 0.8) 100%)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+            marginBottom: '0.5rem'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '120px' }}>
+              <div className="shimmer-placeholder" style={{ width: '120px', height: '12px' }}></div>
+              <div className="shimmer-placeholder" style={{ width: '180px', height: '24px' }}></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '120px' }}>
+              <div className="shimmer-placeholder" style={{ width: '100px', height: '12px' }}></div>
+              <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '120px' }}>
+              <div className="shimmer-placeholder" style={{ width: '120px', height: '12px' }}></div>
+              <div className="shimmer-placeholder" style={{ width: '160px', height: '20px' }}></div>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Main tab sections */}
-      {!loadingPortfolios && !loadingHoldings && !loadingTransactions && (
+          {subTab === 'overview' ? (
+            <>
+              {/* Chart skeleton */}
+              <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '0.5rem', height: '260px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="shimmer-placeholder" style={{ width: '220px', height: '18px' }}></div>
+                <div className="shimmer-placeholder" style={{ width: '100%', flex: 1 }}></div>
+              </div>
+
+              {/* Grid skeleton */}
+              <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="shimmer-placeholder" style={{ width: '180px', height: '22px' }}></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.5rem' }}>
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} style={{ display: 'flex', gap: '1rem' }}>
+                        <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
+                        <div className="shimmer-placeholder" style={{ flex: 3, height: '20px' }}></div>
+                        <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                        <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div className="shimmer-placeholder" style={{ width: '60px', height: '14px' }}></div>
+                        <div className="shimmer-placeholder" style={{ width: '40px', height: '14px' }}></div>
+                      </div>
+                      <div className="shimmer-placeholder" style={{ width: '100%', height: '8px' }}></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Ledger tab skeleton */
+            <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="shimmer-placeholder" style={{ width: '220px', height: '24px' }}></div>
+                <div className="shimmer-placeholder" style={{ width: '150px', height: '18px' }}></div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem' }}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                  <div key={i} style={{ display: 'flex', gap: '1rem' }}>
+                    <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
+                    <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                    <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                    <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
+                    <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                    <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
         <>
           {/* Viewer Lock Warning Banner */}
           {activePortfolioRole === 'viewer' && (
-            <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '8px', fontSize: '0.85rem' }}>
+            <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
               <Lock size={16} style={{ flexShrink: 0 }} />
               <span>You have <strong>Read-Only (Viewer)</strong> access to this portfolio. Adding, editing, or deleting transactions is disabled.</span>
             </div>
           )}
-          {subTab === 'overview' ? (
+
+          <div style={{ display: subTab === 'overview' ? 'block' : 'none' }}>
             <>
               {/* Consolidated Premium Metrics Banner */}
               <div className="glass-panel" style={{
@@ -1538,8 +1620,11 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                 </div>
               </div>
             </>
-          ) : (
-            /* LEDGER VIEW: TRANSACTION HISTORY */
+          </div>
+
+          {/* Ledger Tab Container */}
+          <div style={{ display: subTab === 'ledger' ? 'block' : 'none' }}>
+            {/* LEDGER VIEW: TRANSACTION HISTORY */}
             <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="portfolio-section-title">Recorded Transactions Ledger</h3>
@@ -1632,7 +1717,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                 </div>
               )}
             </div>
-          )}
+          </div>
         </>
       )}
 

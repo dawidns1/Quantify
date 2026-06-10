@@ -523,6 +523,22 @@ body::before {
   animation: pulse 1.5s infinite ease-in-out;
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-placeholder {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 37%, rgba(255, 255, 255, 0.03) 63%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 4px;
+}
+
 .column-picker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
