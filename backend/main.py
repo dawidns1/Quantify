@@ -72,6 +72,7 @@ class HoldingsRequest(BaseModel):
     base_currency: str = "PLN"
     account: str = "All"
     transactions: List[TransactionItem]
+    link_cash: bool = False
 
 app = FastAPI(title="Stock Screener API")
 
@@ -368,9 +369,29 @@ def calculate_portfolio_holdings(req: HoldingsRequest):
                 "fees": tx.fees,
                 "account": tx.account
             })
-        return PortfolioManager.calculate_holdings(tx_dicts, req.base_currency, req.account)
+        return PortfolioManager.calculate_holdings(tx_dicts, req.base_currency, req.account, req.link_cash)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating holdings: {str(e)}")
+
+@app.post("/api/portfolio/historical")
+def calculate_historical_portfolio_nav(req: HoldingsRequest):
+    try:
+        tx_dicts = []
+        for tx in req.transactions:
+            tx_dicts.append({
+                "id": tx.id,
+                "symbol": tx.symbol,
+                "type": tx.type,
+                "date": tx.date,
+                "shares": tx.shares,
+                "price": tx.price,
+                "currency": tx.currency,
+                "fees": tx.fees,
+                "account": tx.account
+            })
+        return PortfolioManager.calculate_historical_performance(tx_dicts, req.base_currency, req.account, req.link_cash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
 
 @app.get("/api/portfolio/search")
 def search_portfolio_assets(q: str):

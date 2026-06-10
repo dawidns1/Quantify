@@ -17,10 +17,35 @@ import {
   Shield,
   Users,
   Lock,
-  Edit2
+  Edit2,
+  Activity
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register ChartJS elements
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface PortfolioViewProps {
   apiBaseUrl: string;
@@ -98,6 +123,18 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
+  
+  const [linkCash, setLinkCashState] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_link_cash') !== 'false';
+  });
+
+  const setLinkCash = (val: boolean) => {
+    setLinkCashState(val);
+    localStorage.setItem('portfolio_link_cash', String(val));
+  };
+
+  const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(null);
+  const [loadingChart, setLoadingChart] = useState<boolean>(false);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
 
   // Filtering states
@@ -523,7 +560,8 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         body: JSON.stringify({
           base_currency: curr,
           account: accountFilter,
-          transactions: txs
+          transactions: txs,
+          link_cash: linkCash
         })
       });
 
@@ -560,12 +598,48 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   };
 
+  // Fetch historical performance data for the chart
+  const fetchHistoricalPerformance = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
+    if (!activePortfolioId || transactions.length === 0) {
+      setChartData(null);
+      return;
+    }
+    setLoadingChart(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/portfolio/historical`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_currency: curr,
+          account: accountFilter,
+          transactions: transactions,
+          link_cash: linkCash
+        })
+      });
+      if (!response.ok) throw new Error('Failed to fetch historical performance');
+      const data = await response.json();
+      setChartData(data);
+    } catch (err) {
+      console.error('Error fetching historical performance:', err);
+    } finally {
+      setLoadingChart(false);
+    }
+  };
+
   useEffect(() => {
     if (activePortfolioId) {
       fetchHoldings(baseCurrency, selectedAccount);
       fetchTransactions();
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, linkCash]);
+
+  useEffect(() => {
+    if (activePortfolioId && transactions.length > 0) {
+      fetchHistoricalPerformance(baseCurrency, selectedAccount);
+    } else {
+      setChartData(null);
+    }
+  }, [baseCurrency, selectedAccount, activePortfolioId, transactions, linkCash]);
 
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
@@ -1002,36 +1076,162 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
           )}
           {subTab === 'overview' ? (
             <>
-              {/* Summary Dashboard Row */}
-              <div className="portfolio-summary-row">
-                {/* NAV Card */}
-                <div className="glass-panel portfolio-card" style={{ borderLeft: '3px solid var(--color-primary)' }}>
-                  <div className="metric-title">Net Asset Value (NAV)</div>
-                  <div className="metric-value">{formatCurrency(summary.total_value_base, summary.base_currency)}</div>
-                  <div className="metric-subtext">Current value at live exchange rates</div>
+              {/* Consolidated Premium Metrics Banner */}
+              <div className="glass-panel" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1.25rem 1.75rem',
+                background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.65) 0%, rgba(13, 17, 28, 0.8) 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+                gap: '1.5rem',
+                flexWrap: 'wrap',
+                marginBottom: '1rem'
+              }}>
+                {/* Left: NAV / Value */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                    Net Asset Value (NAV)
+                  </span>
+                  <span className="metric-value" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'system-ui, sans-serif' }}>
+                    {formatCurrency(summary.total_value_base, summary.base_currency)}
+                  </span>
                 </div>
 
-                {/* Cost Basis Card */}
-                <div className="glass-panel portfolio-card" style={{ borderLeft: '3px solid var(--text-muted)' }}>
-                  <div className="metric-title">Total Cost Basis</div>
-                  <div className="metric-value">{formatCurrency(summary.total_cost_base, summary.base_currency)}</div>
-                  <div className="metric-subtext">Total invested capital (incl. fees)</div>
+                {/* Middle: Returns */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '150px' }}>
+                  <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                    Total Return
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className={`metric-value ${isProfit ? 'text-green' : 'text-red'}`} style={{ fontSize: '1.3rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      {isProfit ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                      {formatCurrency(summary.total_gain_base, summary.base_currency)}
+                    </span>
+                    <span className={`badge ${isProfit ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                      {isProfit ? '+' : ''}{summary.total_gain_percent.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
 
-                {/* Total Return Card */}
-                <div className="glass-panel portfolio-card" style={{ 
-                  borderLeft: isProfit ? '3px solid var(--color-green)' : '3px solid var(--color-red)' 
+                {/* Right: Cost Basis */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                    Total Cost Basis
+                  </span>
+                  <span className="metric-value" style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    {formatCurrency(summary.total_cost_base, summary.base_currency)}
+                  </span>
+                </div>
+
+                {/* Settings: Link Cash Balancing Toggle */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.6rem', 
+                  borderLeft: '1px solid var(--panel-border)', 
+                  paddingLeft: '1.5rem',
+                  marginLeft: '0.5rem'
                 }}>
-                  <div className="metric-title">Total Return</div>
-                  <div className={`metric-value ${isProfit ? 'text-green' : 'text-red'}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    {isProfit ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
-                    {formatCurrency(summary.total_gain_base, summary.base_currency)}
+                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Link Cash Balance</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Auto-deduct transactions</span>
                   </div>
-                  <div className={`metric-change ${isProfit ? 'badge-green' : 'badge-red'}`} style={{ display: 'inline-block', marginTop: '0.25rem' }}>
-                    {isProfit ? '+' : ''}{summary.total_gain_percent.toFixed(2)}%
-                  </div>
+                  <label className="switch">
+                    <input 
+                      type="checkbox" 
+                      checked={linkCash}
+                      onChange={(e) => setLinkCash(e.target.checked)}
+                    />
+                    <span className="slider"></span>
+                  </label>
                 </div>
               </div>
+
+              {/* Historical Performance Chart Card */}
+              {(loadingChart || (chartData && chartData.dates && chartData.dates.length > 0)) && (
+                <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Activity size={16} className="gradient-text" /> Portfolio Performance History
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Showing NAV vs. Total Cost Basis in {summary.base_currency}
+                    </span>
+                  </div>
+                  <div style={{ height: '220px', position: 'relative' }}>
+                    {loadingChart ? (
+                      <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }} className="pulse">
+                        Computing historical performance data...
+                      </div>
+                    ) : chartData && chartData.dates && chartData.dates.length > 0 ? (
+                      <Line 
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            x: {
+                              grid: { display: false },
+                              ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 10 } }
+                            },
+                            y: {
+                              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                              ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 10 } }
+                            }
+                          },
+                          plugins: {
+                            legend: {
+                              display: true,
+                              position: 'top',
+                              labels: { color: 'rgba(255, 255, 255, 0.7)', font: { size: 11 }, boxWidth: 12, padding: 10 }
+                            },
+                            tooltip: {
+                              mode: 'index',
+                              intersect: false,
+                              backgroundColor: 'rgba(13, 17, 28, 0.95)',
+                              titleColor: 'var(--text-primary)',
+                              bodyColor: 'var(--text-secondary)',
+                              borderColor: 'rgba(255, 255, 255, 0.1)',
+                              borderWidth: 1,
+                              padding: 10,
+                              cornerRadius: 6
+                            }
+                          }
+                        }}
+                        data={{
+                          labels: chartData.dates,
+                          datasets: [
+                            {
+                              label: 'Net Asset Value (NAV)',
+                              data: chartData.nav,
+                              fill: true,
+                              backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                              borderColor: 'var(--color-primary)',
+                              borderWidth: 2,
+                              pointRadius: 2,
+                              pointHoverRadius: 4,
+                              tension: 0.2
+                            },
+                            {
+                              label: 'Invested Capital (Cost Basis)',
+                              data: chartData.cost_basis,
+                              fill: false,
+                              borderColor: 'rgba(255, 255, 255, 0.35)',
+                              borderWidth: 1.5,
+                              borderDash: [5, 5],
+                              pointRadius: 0,
+                              pointHoverRadius: 3,
+                              tension: 0.05
+                            }
+                          ]
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              )}
 
               {/* Main Content Layout */}
               <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
@@ -1220,14 +1420,14 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                                       <button 
                                         className="holding-action-btn buy"
                                         onClick={() => handleQuickAction(h.symbol, 'BUY')}
-                                        title={`Buy more ${h.symbol}`}
+                                        title={h.symbol.startsWith('CASH_') ? `Deposit ${h.currency}` : `Buy more ${h.symbol}`}
                                       >
                                         +
                                       </button>
                                       <button 
                                         className="holding-action-btn sell"
                                         onClick={() => handleQuickAction(h.symbol, 'SELL')}
-                                        title={`Sell ${h.symbol}`}
+                                        title={h.symbol.startsWith('CASH_') ? `Withdraw ${h.currency}` : `Sell ${h.symbol}`}
                                       >
                                         -
                                       </button>
@@ -1450,6 +1650,8 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         activePortfolioRole={activePortfolioRole}
         apiBaseUrl={apiBaseUrl}
         uniqueAccounts={uniqueAccounts}
+        transactions={transactions}
+        linkCash={linkCash}
         onSaveSuccess={() => {
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
@@ -1879,6 +2081,8 @@ interface AddTransactionModalProps {
   activePortfolioRole: string;
   apiBaseUrl: string;
   uniqueAccounts: string[];
+  transactions: Transaction[];
+  linkCash: boolean;
   onSaveSuccess: () => void;
 }
 
@@ -1891,6 +2095,8 @@ function AddTransactionModal({
   activePortfolioRole,
   apiBaseUrl,
   uniqueAccounts,
+  transactions,
+  linkCash,
   onSaveSuccess
 }: AddTransactionModalProps) {
   const [formSymbol, setFormSymbol] = useState('');
@@ -1901,22 +2107,61 @@ function AddTransactionModal({
   const [formCurrency, setFormCurrency] = useState<'PLN' | 'USD' | 'EUR'>('USD');
   const [formFees, setFormFees] = useState('');
   const [formAccount, setFormAccount] = useState('Default');
-  const [priceInputMode, setPriceInputMode] = useState<'per_share' | 'total'>('per_share');
+  const [priceInputMode, setPriceInputMode] = useState<'per_share' | 'total' | 'adjust'>('per_share');
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
   const [showAccountSuggestions, setShowAccountSuggestions] = useState(false);
+  const [isAccountInputDirty, setIsAccountInputDirty] = useState(false);
   
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Helper to calculate historical cash balance for a currency and account matching the backend zero floor rule
+  const getCurrentCashBalance = (curr: string, acc: string) => {
+    let balance = 0.0;
+    
+    // Sort transactions chronologically
+    const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    
+    for (const tx of sorted) {
+      const tx_acc = tx.account || 'Default';
+      if (tx_acc.toLowerCase() !== acc.toLowerCase()) continue;
+      
+      const tx_curr = tx.currency ? tx.currency.toUpperCase() : 'USD';
+      const sym = tx.symbol.toUpperCase();
+      
+      if (sym === `CASH_${curr.toUpperCase()}`) {
+        const amount = tx.shares * tx.price;
+        if (tx.type === 'BUY') balance += amount;
+        else if (tx.type === 'SELL') balance -= amount;
+      } else if (!sym.startsWith('CASH_')) {
+        if (linkCash && tx_curr === curr.toUpperCase()) {
+          const amount = tx.shares * tx.price;
+          if (tx.type === 'BUY') balance -= (amount + tx.fees);
+          else if (tx.type === 'SELL') balance += (amount - tx.fees);
+        }
+      }
+      
+      // Apply zero floor rule
+      if (balance < 0.0) {
+        balance = 0.0;
+      }
+    }
+    return balance;
+  };
+
   // Filter accounts dynamically as user types
-  const filteredAccounts = useMemo(() => {
-    return uniqueAccounts.filter(acc => 
+  const accountsToShow = useMemo(() => {
+    const validAccounts = uniqueAccounts.filter(acc => acc && acc.trim() !== "");
+    if (!isAccountInputDirty) {
+      return validAccounts;
+    }
+    return validAccounts.filter(acc => 
       acc.toLowerCase().includes(formAccount.toLowerCase())
     );
-  }, [uniqueAccounts, formAccount]);
+  }, [uniqueAccounts, formAccount, isAccountInputDirty]);
 
   // Debounced search for suggestions
   useEffect(() => {
@@ -2049,26 +2294,50 @@ function AddTransactionModal({
     setFormError(null);
     
     const symbol = formSymbol.toUpperCase().trim();
-    const shares = parseFloat(formShares);
-    const priceInput = parseFloat(formPrice);
-    const fees = parseFloat(formFees) || 0;
+    let shares = parseFloat(formShares);
+    let priceInput = parseFloat(formPrice);
+    let fees = parseFloat(formFees) || 0;
+    let type = formType;
 
     if (!symbol) {
       setFormError('Please enter a stock ticker symbol.');
       return;
     }
-    if (isNaN(shares) || shares <= 0) {
-      setFormError('Shares must be a positive number.');
-      return;
+
+    if (symbol.startsWith('CASH_') && priceInputMode === 'adjust') {
+      const targetVal = parseFloat(formPrice);
+      if (isNaN(targetVal) || targetVal < 0) {
+        setFormError('Target balance must be a valid non-negative number.');
+        return;
+      }
+      const cashCurr = symbol.split('_')[1] || formCurrency;
+      const currentBal = getCurrentCashBalance(cashCurr, formAccount);
+      const diff = targetVal - currentBal;
+      
+      if (Math.abs(diff) < 0.001) {
+        setFormError('Target balance matches current balance. No adjustment needed.');
+        return;
+      }
+      
+      shares = Math.abs(diff);
+      priceInput = 1.0;
+      fees = 0.0;
+      type = diff > 0 ? 'BUY' : 'SELL';
+    } else {
+      if (isNaN(shares) || shares <= 0) {
+        setFormError('Shares must be a positive number.');
+        return;
+      }
+      if (isNaN(priceInput) || priceInput < 0) {
+        setFormError('Price cannot be negative.');
+        return;
+      }
+      if (isNaN(fees) || fees < 0) {
+        setFormError('Fees cannot be negative.');
+        return;
+      }
     }
-    if (isNaN(priceInput) || priceInput < 0) {
-      setFormError('Price cannot be negative.');
-      return;
-    }
-    if (isNaN(fees) || fees < 0) {
-      setFormError('Fees cannot be negative.');
-      return;
-    }
+
     if (!formDate) {
       setFormError('Please select a date.');
       return;
@@ -2080,7 +2349,7 @@ function AddTransactionModal({
     const payload = {
       portfolio_id: activePortfolioId,
       symbol,
-      type: formType,
+      type,
       date: formDate,
       shares,
       price,
@@ -2195,9 +2464,7 @@ function AddTransactionModal({
                 SELL
               </button>
             </div>
-          </div>
-
-          {/* Ticker Input */}
+              {/* Ticker Input */}
           <div className="form-group" style={{ position: 'relative' }}>
             <label className="form-label" htmlFor="form-ticker">Stock Symbol / Ticker</label>
             <input 
@@ -2210,6 +2477,38 @@ function AddTransactionModal({
               autoComplete="off"
               required
             />
+            
+            {/* Quick Cash Buttons */}
+            {(!formSymbol || formSymbol.toUpperCase().startsWith('CASH')) && (
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                {['CASH_USD', 'CASH_PLN', 'CASH_EUR'].map((cashSym) => (
+                  <button
+                    key={cashSym}
+                    type="button"
+                    onClick={() => {
+                      setFormSymbol(cashSym);
+                      setIsSuggestionSelected(true);
+                      setShowSuggestions(false);
+                      const curr = cashSym.split('_')[1] as 'PLN' | 'USD' | 'EUR';
+                      setFormCurrency(curr);
+                      setFormPrice('1.0');
+                    }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '4px',
+                      padding: '0.2rem 0.5rem',
+                      fontSize: '0.72rem',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      transition: 'var(--transition-smooth)'
+                    }}
+                  >
+                    + {cashSym.split('_')[1]} Cash
+                  </button>
+                ))}
+              </div>
+            )}
             
             {/* Autocomplete Dropdown List */}
             {showSuggestions && (
@@ -2274,9 +2573,13 @@ function AddTransactionModal({
                 className="input-field"
                 style={{ width: '100%' }}
                 value={formAccount}
-                onChange={(e) => setFormAccount(e.target.value)}
+                onChange={(e) => {
+                  setFormAccount(e.target.value);
+                  setIsAccountInputDirty(true);
+                }}
                 onFocus={(e) => {
                   e.target.select();
+                  setIsAccountInputDirty(false);
                   setShowAccountSuggestions(true);
                 }}
                 onBlur={() => setShowAccountSuggestions(false)}
@@ -2284,9 +2587,9 @@ function AddTransactionModal({
                 required
               />
               
-              {showAccountSuggestions && filteredAccounts.length > 0 && (
+              {showAccountSuggestions && accountsToShow.length > 0 && (
                 <div className="search-suggestions-dropdown" style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                  {filteredAccounts.map((acc) => (
+                  {accountsToShow.map((acc) => (
                     <div 
                       key={acc} 
                       className="suggestion-item"
@@ -2347,56 +2650,102 @@ function AddTransactionModal({
               >
                 Total Value
               </button>
+              {formSymbol.toUpperCase().startsWith('CASH_') && (
+                <button
+                  type="button"
+                  className={`form-type-btn ${priceInputMode === 'adjust' ? 'active-buy' : ''}`}
+                  onClick={() => setPriceInputMode('adjust')}
+                  style={{
+                    flex: 1,
+                    border: 'none',
+                    background: priceInputMode === 'adjust' ? 'var(--color-primary)' : 'transparent',
+                    color: 'white',
+                    padding: '0.4rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                >
+                  Adjust Balance
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Grid: Shares, Price & Fees */}
-          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          {/* Grid: Shares, Price & Fees OR Target Cash Balance */}
+          {formSymbol.toUpperCase().startsWith('CASH_') && priceInputMode === 'adjust' ? (
             <div className="form-group">
-              <label className="form-label" htmlFor="form-shares">Shares</label>
-              <input 
-                id="form-shares"
-                type="number" 
-                step="any"
-                placeholder="0.00" 
-                className="input-field"
-                style={{ width: '100%' }}
-                value={formShares}
-                onChange={(e) => setFormShares(e.target.value)}
-                required
-              />
+              <label className="form-label" htmlFor="form-target-bal">Target Cash Balance ({formCurrency})</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  id="form-target-bal"
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  value={formPrice}
+                  onChange={(e) => setFormPrice(e.target.value)}
+                  required
+                />
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem', lineHeight: '1.4' }}>
+                  Current Balance in <strong>{formAccount}</strong>: {formatCurrency(getCurrentCashBalance(formSymbol.split('_')[1] || formCurrency, formAccount), formCurrency)}.
+                  <br />
+                  Saving will automatically create a transaction for the difference.
+                </div>
+              </div>
             </div>
+          ) : (
+            <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-shares">Shares</label>
+                <input 
+                  id="form-shares"
+                  type="number" 
+                  step="any"
+                  placeholder="0.00" 
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  value={formShares}
+                  onChange={(e) => setFormShares(e.target.value)}
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="form-price">
-                {priceInputMode === 'per_share' ? 'Price (per share)' : 'Total Price (excl. fees)'}
-              </label>
-              <input 
-                id="form-price"
-                type="number" 
-                step="0.01" 
-                placeholder="0.00" 
-                className="input-field"
-                style={{ width: '100%' }}
-                value={formPrice}
-                onChange={(e) => setFormPrice(e.target.value)}
-                required
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-price">
+                  {priceInputMode === 'per_share' ? 'Price (per share)' : 'Total Price (excl. fees)'}
+                </label>
+                <input 
+                  id="form-price"
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  value={formPrice}
+                  onChange={(e) => setFormPrice(e.target.value)}
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="form-fees">Transaction Fees</label>
-              <input 
-                id="form-fees"
-                type="number" 
-                step="0.01" 
-                placeholder="0.00" 
-                className="input-field"
-                style={{ width: '100%' }}
-                value={formFees}
-                onChange={(e) => setFormFees(e.target.value)}
-              />
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-fees">Transaction Fees</label>
+                <input 
+                  id="form-fees"
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  value={formFees}
+                  onChange={(e) => setFormFees(e.target.value)}
+                />
+              </div>
             </div>
+          )}
           </div>
 
           {/* Cost Basis / Share calculation preview */}
