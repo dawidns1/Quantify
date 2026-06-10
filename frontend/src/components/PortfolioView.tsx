@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Briefcase, 
   History, 
@@ -116,6 +116,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+  const [showAccountSuggestions, setShowAccountSuggestions] = useState(false);
 
   // Filtering states
   const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
@@ -817,12 +818,23 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     return { assets, currencies, countries };
   };
 
-  const { assets, currencies, countries } = calculateAllocations();
+  const { assets, currencies, countries } = useMemo(() => {
+    return calculateAllocations();
+  }, [holdings, summary.total_value_base]);
 
   // Extract unique accounts dynamically
-  const uniqueAccounts = Array.from(
-    new Set(transactions.map((tx) => tx.account || 'Default'))
-  ).sort();
+  const uniqueAccounts = useMemo(() => {
+    return Array.from(
+      new Set(transactions.map((tx) => tx.account || 'Default'))
+    ).sort();
+  }, [transactions]);
+
+  // Filter accounts dynamically as user types
+  const filteredAccounts = useMemo(() => {
+    return uniqueAccounts.filter(acc => 
+      acc.toLowerCase().includes(formAccount.toLowerCase())
+    );
+  }, [uniqueAccounts, formAccount]);
 
   // Currency Formatter
   const formatCurrency = (val: number, currency: string) => {
@@ -1632,7 +1644,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   </select>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ position: 'relative' }}>
                   <label className="form-label" htmlFor="form-account">Brokerage Account</label>
                   <input 
                     id="form-account"
@@ -1642,8 +1654,33 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                     style={{ width: '100%' }}
                     value={formAccount}
                     onChange={(e) => setFormAccount(e.target.value)}
+                    onFocus={(e) => {
+                      e.target.select();
+                      setShowAccountSuggestions(true);
+                    }}
+                    onBlur={() => setShowAccountSuggestions(false)}
+                    autoComplete="off"
                     required
                   />
+                  
+                  {showAccountSuggestions && filteredAccounts.length > 0 && (
+                    <div className="search-suggestions-dropdown" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                      {filteredAccounts.map((acc) => (
+                        <div 
+                          key={acc} 
+                          className="suggestion-item"
+                          style={{ padding: '0.45rem 0.75rem', fontSize: '0.82rem' }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setFormAccount(acc);
+                            setShowAccountSuggestions(false);
+                          }}
+                        >
+                          {acc}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
