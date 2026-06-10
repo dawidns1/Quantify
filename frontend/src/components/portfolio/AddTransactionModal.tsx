@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Edit2, X, AlertCircle, Info } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
 import type { Transaction } from '../../types/portfolio';
+import { searchAssets } from '../../services/calculationService';
+import { saveTransaction } from '../../services/transactionService';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -109,11 +110,7 @@ export function AddTransactionModal({
     }
 
     const delayDebounce = setTimeout(() => {
-      fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(formSymbol)}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Search failed');
-          return res.json();
-        })
+      searchAssets(apiBaseUrl, formSymbol)
         .then((data) => {
           if (formSymbol.trim().length < 2) {
             setSuggestions([]);
@@ -292,20 +289,7 @@ export function AddTransactionModal({
     };
 
     try {
-      if (editingTransaction) {
-        const { error } = await supabase
-          .from('transactions')
-          .update(payload)
-          .eq('id', editingTransaction.id);
-        
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('transactions')
-          .insert(payload);
-        
-        if (error) throw error;
-      }
+      await saveTransaction(payload, editingTransaction?.id);
       
       onSaveSuccess();
       onClose();

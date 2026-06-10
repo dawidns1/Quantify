@@ -10,7 +10,6 @@ import {
   Lock, 
   Share2
 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
 
 import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
@@ -22,6 +21,22 @@ import { HoldingsTable } from './portfolio/HoldingsTable';
 import { LedgerTable } from './portfolio/LedgerTable';
 import { AddTransactionModal } from './portfolio/AddTransactionModal';
 import { ShareModal } from './portfolio/ShareModal';
+
+import { 
+  fetchHoldings as fetchHoldingsService, 
+  fetchHistoricalPerformance as fetchHistoricalPerformanceService 
+} from '../services/calculationService';
+import { 
+  fetchUserPortfolios, 
+  createPortfolio, 
+  renamePortfolio, 
+  deletePortfolio 
+} from '../services/supabaseService';
+import { 
+  fetchTransactions as fetchTransactionsService, 
+  deleteTransaction as deleteTransactionService 
+} from '../services/transactionService';
+
 
 interface PortfolioViewProps {
   apiBaseUrl: string;
@@ -157,56 +172,19 @@ export function PortfolioView({
     if (!user) return;
     setLoadingPortfolios(true);
     try {
-      const { data: membersList, error } = await supabase
-        .from('portfolio_members')
-        .select(`
-          portfolio_id,
-          role,
-          portfolios (
-            id,
-            name
-          )
-        `)
-        .eq('user_id', user.id);
+      let formatted = await fetchUserPortfolios(user.id);
 
-      if (error) throw error;
-
-      if (!membersList || membersList.length === 0) {
-        // Create default portfolio if none exists
-        const { data: newPortfolio, error: createError } = await supabase
-          .from('portfolios')
-          .insert({ name: 'My Portfolio' })
-          .select()
-          .single();
-
-        if (createError) throw createError;
-
-        const { error: memberError } = await supabase
-          .from('portfolio_members')
-          .insert({
-            portfolio_id: newPortfolio.id,
-            user_id: user.id,
-            role: 'owner'
-          });
-
-        if (memberError) throw memberError;
-
-        await loadPortfolios();
-        return;
+      if (formatted.length === 0) {
+        const defaultPortfolio = await createPortfolio(user.id, 'My Portfolio');
+        formatted = [defaultPortfolio];
       }
-
-      const formatted = membersList.map((m: any) => ({
-        id: m.portfolio_id,
-        name: m.portfolios?.name || 'Unnamed Portfolio',
-        role: m.role as 'owner' | 'editor' | 'viewer'
-      }));
 
       setPortfolios(formatted);
 
       const cachedId = localStorage.getItem('portfolio_active_id');
       if (cachedId === 'all') {
         setActivePortfolioId('all');
-        setActivePortfolioRole('viewer'); // aggregation is read-only
+        setActivePortfolioRole('viewer');
       } else {
         const found = formatted.find(p => p.id === cachedId);
         if (found) {
@@ -257,24 +235,7 @@ export function PortfolioView({
       async (name) => {
         if (!name || !name.trim()) return;
         try {
-          const { data: newPortfolio, error: createError } = await supabase
-            .from('portfolios')
-            .insert({ name: name.trim() })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-
-          const { error: memberError } = await supabase
-            .from('portfolio_members')
-            .insert({
-              portfolio_id: newPortfolio.id,
-              user_id: user?.id,
-              role: 'owner'
-            });
-
-          if (memberError) throw memberError;
-
+          const newPortfolio = await createPortfolio(user!.id, name.trim());
           await loadPortfolios();
           
           // Switch to the new portfolio
@@ -303,12 +264,7 @@ export function PortfolioView({
         if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
         
         try {
-          const { error } = await supabase
-            .from('portfolios')
-            .update({ name: newName.trim() })
-            .eq('id', id);
-
-          if (error) throw error;
+          await renamePortfolio(id, newName.trim());
           await loadPortfolios();
         } catch (err: any) {
           console.error('Error renaming portfolio:', err);
@@ -329,13 +285,7 @@ export function PortfolioView({
       `Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`,
       async () => {
         try {
-          const { error } = await supabase
-            .from('portfolios')
-            .delete()
-            .eq('id', id);
-
-          if (error) throw error;
-
+          await deletePortfolio(id);
           // Clear localStorage active ID so loadPortfolios selects the first remaining one
           localStorage.removeItem('portfolio_active_id');
           await loadPortfolios();
@@ -372,23 +322,9 @@ export function PortfolioView({
         return;
       }
 
-      const response = await fetch(`${apiBaseUrl}/api/portfolio/holdings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base_currency: curr,
-          account: accountFilter,
-          transactions: txs,
-          link_cash: linkCash
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to calculate holdings');
-      const data = await response.json();
-      setHoldings(data.holdings || []);
-      if (data.summary) {
-        setSummary(data.summary);
-      }
+      const result = await fetchHoldingsService(apiBaseUrl, curr, accountFilter, txs, linkCash);
+      setHoldings(result.holdings);
+      setSummary(result.summary);
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
@@ -406,14 +342,8 @@ export function PortfolioView({
     setLoadingTransactions(true);
     try {
       const portfolioIds = portfolios.map(p => p.id);
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .in('portfolio_id', portfolioIds)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-      setAllTransactions(data || []);
+      const data = await fetchTransactionsService(portfolioIds);
+      setAllTransactions(data);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -429,18 +359,7 @@ export function PortfolioView({
     }
     setLoadingChart(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/portfolio/historical`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base_currency: curr,
-          account: accountFilter,
-          transactions: portfolioTransactions,
-          link_cash: linkCash
-        })
-      });
-      if (!response.ok) throw new Error('Failed to fetch historical performance');
-      const data = await response.json();
+      const data = await fetchHistoricalPerformanceService(apiBaseUrl, curr, accountFilter, portfolioTransactions, linkCash);
       setChartData(data);
     } catch (err) {
       console.error('Error fetching historical performance:', err);
@@ -488,12 +407,7 @@ export function PortfolioView({
       "Are you sure you want to delete this transaction from your ledger?",
       async () => {
         try {
-          const { error } = await supabase
-            .from('transactions')
-            .delete()
-            .eq('id', id);
-
-          if (error) throw error;
+          await deleteTransactionService(id);
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
         } catch (err: any) {

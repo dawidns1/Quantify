@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Share2, X, AlertCircle, Users, Shield } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import type { Member } from '../../types/portfolio';
+import { 
+  fetchPortfolioMembers, 
+  inviteMemberByEmail, 
+  removeMember, 
+  updateMemberRole 
+} from '../../services/supabaseService';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -30,25 +35,7 @@ export function ShareModal({
     if (!activePortfolioId) return;
     setLoadingMembers(true);
     try {
-      const { data, error } = await supabase
-        .from('portfolio_members')
-        .select(`
-          user_id,
-          role,
-          profiles (
-            email
-          )
-        `)
-        .eq('portfolio_id', activePortfolioId);
-
-      if (error) throw error;
-      
-      const formatted = data.map((m: any) => ({
-        user_id: m.user_id,
-        role: m.role,
-        email: m.profiles?.email || 'Unknown user'
-      }));
-
+      const formatted = await fetchPortfolioMembers(activePortfolioId);
       setMembers(formatted);
     } catch (err) {
       console.error('Error loading members:', err);
@@ -80,36 +67,7 @@ export function ShareModal({
     }
 
     try {
-      // Find user profile by email
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .single();
-
-      if (profileError || !profile) {
-        setInviteError("No user found with this email. They must log in to Quantify at least once first.");
-        return;
-      }
-
-      // Check if user is already a member
-      const isMember = members.some(m => m.user_id === profile.id);
-      if (isMember) {
-        setInviteError("This user is already a member of this portfolio.");
-        return;
-      }
-
-      // Insert member
-      const { error: insertError } = await supabase
-        .from('portfolio_members')
-        .insert({
-          portfolio_id: activePortfolioId,
-          user_id: profile.id,
-          role: inviteRole
-        });
-
-      if (insertError) throw insertError;
-
+      await inviteMemberByEmail(activePortfolioId!, email, inviteRole, members);
       setInviteSuccess(`Successfully shared with ${email}!`);
       setInviteEmail('');
       loadMembers();
@@ -131,13 +89,7 @@ export function ShareModal({
       "Are you sure you want to remove this member from this portfolio?",
       async () => {
         try {
-          const { error } = await supabase
-            .from('portfolio_members')
-            .delete()
-            .eq('portfolio_id', activePortfolioId)
-            .eq('user_id', userId);
-
-          if (error) throw error;
+          await removeMember(activePortfolioId!, userId);
           loadMembers();
         } catch (err: any) {
           console.error('Error removing member:', err);
@@ -148,16 +100,9 @@ export function ShareModal({
     );
   };
 
-  // Change member role
   const handleChangeMemberRole = async (userId: string, newRole: 'editor' | 'viewer') => {
     try {
-      const { error } = await supabase
-        .from('portfolio_members')
-        .update({ role: newRole })
-        .eq('portfolio_id', activePortfolioId)
-        .eq('user_id', userId);
-
-      if (error) throw error;
+      await updateMemberRole(activePortfolioId!, userId, newRole);
       loadMembers();
     } catch (err: any) {
       console.error('Error updating member role:', err);
