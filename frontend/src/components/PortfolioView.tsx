@@ -20,7 +20,9 @@ import {
   X, 
   AlertCircle,
   Shield,
-  Users
+  Users,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
@@ -53,6 +55,9 @@ ChartJS.register(
 
 interface PortfolioViewProps {
   apiBaseUrl: string;
+  signOut: () => Promise<void>;
+  lowPerformanceMode: boolean;
+  setLowPerformanceMode: (val: boolean) => void;
 }
 
 interface Holding {
@@ -90,9 +95,15 @@ interface Transaction {
   portfolio_id: string;
 }
 
-export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
+export function PortfolioView({ 
+  apiBaseUrl, 
+  signOut, 
+  lowPerformanceMode, 
+  setLowPerformanceMode 
+}: PortfolioViewProps) {
   const { user } = useAuth();
   const chartRef = useRef<any>(null);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [subTab, setSubTabState] = useState<'overview' | 'ledger'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
     return (cached === 'overview' || cached === 'ledger') ? cached : 'overview';
@@ -997,11 +1008,111 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         </div>
 
         {/* User Context */}
-        <div style={{ padding: '0.55rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '0.2rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Logged in as:</span>
-          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
-            {user?.email}
-          </span>
+        <div style={{ 
+          padding: '0.55rem 0.75rem', 
+          background: 'rgba(255,255,255,0.02)', 
+          borderRadius: '8px', 
+          border: '1px solid rgba(255,255,255,0.04)', 
+          margin: '0 0.5rem 0.5rem 0.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.4rem',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Logged in as</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
+                {user?.email}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', flexShrink: 0 }}>
+              <button 
+                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: showSettingsDropdown ? 'var(--color-primary)' : 'var(--text-secondary)',
+                  borderRadius: '4px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+                title="Settings"
+              >
+                <Settings size={13} />
+              </button>
+              <button 
+                onClick={signOut}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.06)',
+                  border: '1px solid rgba(239, 68, 68, 0.15)',
+                  color: 'var(--color-red)',
+                  borderRadius: '4px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+                title="Sign Out"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          </div>
+
+          {showSettingsDropdown && (
+            <div className="glass-panel" style={{
+              marginTop: '0.5rem',
+              padding: '0.75rem',
+              background: 'rgba(15, 23, 42, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              zIndex: 50
+            }}>
+              <h5 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.25rem' }}>Settings</h5>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Performance Mode</span>
+                  <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>Disable animations/blurs</span>
+                </div>
+                <label className="switch" style={{ width: '28px', height: '16px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={lowPerformanceMode}
+                    onChange={(e) => setLowPerformanceMode(e.target.checked)}
+                  />
+                  <span className="slider" style={{ borderRadius: '16px' }}></span>
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Link Cash Balance</span>
+                  <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)' }}>Auto-deduct transactions</span>
+                </div>
+                <label className="switch" style={{ width: '28px', height: '16px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={linkCash}
+                    onChange={(e) => setLinkCash(e.target.checked)}
+                  />
+                  <span className="slider" style={{ borderRadius: '16px' }}></span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation Tree Root */}
@@ -1461,28 +1572,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   </span>
                 </div>
 
-                {/* Settings: Link Cash Balancing Toggle */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.6rem', 
-                  borderLeft: '1px solid var(--panel-border)', 
-                  paddingLeft: '1.5rem',
-                  marginLeft: '0.5rem'
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>Link Cash Balance</span>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Auto-deduct transactions</span>
-                  </div>
-                  <label className="switch">
-                    <input 
-                      type="checkbox" 
-                      checked={linkCash}
-                      onChange={(e) => setLinkCash(e.target.checked)}
-                    />
-                    <span className="slider"></span>
-                  </label>
-                </div>
               </div>
 
               {/* Historical Performance Chart Card */}
@@ -1961,6 +2050,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         uniqueAccounts={uniqueAccounts}
         transactions={transactions}
         linkCash={linkCash}
+        setLinkCash={setLinkCash}
         onSaveSuccess={() => {
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
@@ -2394,6 +2484,7 @@ interface AddTransactionModalProps {
   uniqueAccounts: string[];
   transactions: Transaction[];
   linkCash: boolean;
+  setLinkCash: (val: boolean) => void;
   onSaveSuccess: () => void;
 }
 
@@ -2408,6 +2499,7 @@ function AddTransactionModal({
   uniqueAccounts,
   transactions,
   linkCash,
+  setLinkCash,
   onSaveSuccess
 }: AddTransactionModalProps) {
   const [formSymbol, setFormSymbol] = useState('');
@@ -3111,6 +3203,22 @@ function AddTransactionModal({
                   );
                 }
               })()}
+            </div>
+          )}
+
+          {/* Link Cash Balance checkbox inside the transaction form (only for non-cash transactions) */}
+          {!formSymbol.toUpperCase().startsWith('CASH_') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.75rem', padding: '0 0.25rem' }}>
+              <input 
+                id="form-link-cash"
+                type="checkbox" 
+                checked={linkCash}
+                onChange={(e) => setLinkCash(e.target.checked)}
+                style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+              />
+              <label htmlFor="form-link-cash" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
+                Link cash balance (auto-adjust cash position for stock transactions)
+              </label>
             </div>
           )}
 
