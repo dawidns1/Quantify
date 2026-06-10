@@ -99,6 +99,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [submitting, setSubmitting] = useState(false);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
 
   // Form states
   const [formSymbol, setFormSymbol] = useState('');
@@ -869,6 +870,12 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     );
   }, [uniqueAccounts, formAccount]);
 
+  // Filter transactions for the selected holding position modal
+  const positionTransactions = useMemo(() => {
+    if (!selectedPositionSymbol) return [];
+    return transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
+  }, [transactions, selectedPositionSymbol]);
+
   // Currency Formatter
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -1275,7 +1282,15 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                           {holdings.map((h) => {
                             const valIsProfit = h.gain_base >= 0;
                             return (
-                              <tr key={h.symbol} className="interactive-row">
+                              <tr 
+                                key={h.symbol} 
+                                className="interactive-row"
+                                onClick={(e) => {
+                                  if ((e.target as HTMLElement).closest('button')) return;
+                                  setSelectedPositionSymbol(h.symbol);
+                                }}
+                                style={{ cursor: 'pointer' }}
+                              >
                                 <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                   {h.symbol}
                                   <span style={{ 
@@ -2039,6 +2054,121 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POSITION TRANSACTIONS HISTORY MODAL */}
+      {selectedPositionSymbol && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel" style={{ maxWidth: '650px', width: '90%' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <History size={20} className="gradient-text" /> {selectedPositionSymbol} Transaction History
+              </h3>
+              <button 
+                onClick={() => setSelectedPositionSymbol(null)}
+                className="modal-close-btn"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {positionTransactions.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem 0' }}>
+                  No transactions found for {selectedPositionSymbol}.
+                </p>
+              ) : (
+                <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                  <table className="screener-table" style={{ fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th style={{ textAlign: 'right' }}>Shares</th>
+                        <th style={{ textAlign: 'right' }}>Price</th>
+                        <th style={{ textAlign: 'right' }}>Fees</th>
+                        <th style={{ textAlign: 'right' }}>Total</th>
+                        {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center' }}>Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {positionTransactions.map((tx) => {
+                        const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+                        return (
+                          <tr key={tx.id}>
+                            <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                              {tx.date}
+                            </td>
+                            <td>
+                              <span className={`ledger-type-badge ${tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'}`}>
+                                {tx.type}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                              {tx.shares}
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                              {formatCurrency(tx.price, tx.currency)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                              {tx.fees > 0 ? formatCurrency(tx.fees, tx.currency) : '—'}
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                              {formatCurrency(totalLocal, tx.currency)}
+                            </td>
+                            {activePortfolioRole !== 'viewer' && (
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedPositionSymbol(null); // Close history modal first
+                                      handleStartEditTransaction(tx);
+                                    }}
+                                    className="ledger-delete-btn"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                    title="Edit Transaction"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteTransaction(tx.id)}
+                                    className="ledger-delete-btn"
+                                    title="Delete Transaction"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => setSelectedPositionSymbol(null)}
+                  className="glow-btn"
+                  style={{
+                    padding: '0.45rem 1.25rem',
+                    background: 'var(--color-primary)',
+                    color: 'white',
+                    borderColor: 'var(--color-primary)',
+                    boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
