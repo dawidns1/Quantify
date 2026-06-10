@@ -97,6 +97,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [customModal, setCustomModal] = useState<any | null>(null);
 
   // Form states
   const [formSymbol, setFormSymbol] = useState('');
@@ -233,103 +234,136 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   };
 
+  // Custom modal helpers
+  const showCustomPrompt = (title: string, message: string, defaultValue: string, onConfirm: (val: string) => void) => {
+    setCustomModal({
+      isOpen: true,
+      type: 'prompt',
+      title,
+      message,
+      defaultValue,
+      onConfirm: (val: any) => onConfirm(val || ''),
+    });
+  };
+
+  const showCustomConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false) => {
+    setCustomModal({
+      isOpen: true,
+      type: 'confirm',
+      title,
+      message,
+      onConfirm: () => onConfirm(),
+      isDestructive
+    });
+  };
+
   // Create Portfolio
-  const handleCreatePortfolio = async () => {
-    const name = prompt("Enter new portfolio name:");
-    if (!name || !name.trim()) return;
-    try {
-      setSubmitting(true);
-      const { data: newPortfolio, error: createError } = await supabase
-        .from('portfolios')
-        .insert({ name: name.trim() })
-        .select()
-        .single();
+  const handleCreatePortfolio = () => {
+    showCustomPrompt(
+      "Create Portfolio",
+      "Enter a name for your new portfolio:",
+      "",
+      async (name) => {
+        if (!name || !name.trim()) return;
+        try {
+          setSubmitting(true);
+          const { data: newPortfolio, error: createError } = await supabase
+            .from('portfolios')
+            .insert({ name: name.trim() })
+            .select()
+            .single();
 
-      if (createError) throw createError;
+          if (createError) throw createError;
 
-      const { error: memberError } = await supabase
-        .from('portfolio_members')
-        .insert({
-          portfolio_id: newPortfolio.id,
-          user_id: user?.id,
-          role: 'owner'
-        });
+          const { error: memberError } = await supabase
+            .from('portfolio_members')
+            .insert({
+              portfolio_id: newPortfolio.id,
+              user_id: user?.id,
+              role: 'owner'
+            });
 
-      if (memberError) throw memberError;
+          if (memberError) throw memberError;
 
-      alert(`Portfolio "${name}" created!`);
-      await loadPortfolios();
-      
-      // Switch to the new portfolio
-      setActivePortfolioId(newPortfolio.id);
-      setActivePortfolioRole('owner');
-      localStorage.setItem('portfolio_active_id', newPortfolio.id);
-    } catch (err: any) {
-      console.error('Error creating portfolio:', err);
-      alert('Failed to create portfolio: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
+          await loadPortfolios();
+          
+          // Switch to the new portfolio
+          setActivePortfolioId(newPortfolio.id);
+          setActivePortfolioRole('owner');
+          localStorage.setItem('portfolio_active_id', newPortfolio.id);
+        } catch (err: any) {
+          console.error('Error creating portfolio:', err);
+          alert('Failed to create portfolio: ' + err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    );
   };
 
   // Rename Portfolio
-  const handleRenamePortfolio = async () => {
+  const handleRenamePortfolio = () => {
     if (!activePortfolioId) return;
     const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
     if (!currentPortfolio) return;
     
-    const newName = prompt("Enter new name for this portfolio:", currentPortfolio.name);
-    if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
-    
-    try {
-      setSubmitting(true);
-      const { error } = await supabase
-        .from('portfolios')
-        .update({ name: newName.trim() })
-        .eq('id', activePortfolioId);
+    showCustomPrompt(
+      "Rename Portfolio",
+      `Enter a new name for "${currentPortfolio.name}":`,
+      currentPortfolio.name,
+      async (newName) => {
+        if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
+        
+        try {
+          setSubmitting(true);
+          const { error } = await supabase
+            .from('portfolios')
+            .update({ name: newName.trim() })
+            .eq('id', activePortfolioId);
 
-      if (error) throw error;
-
-      alert("Portfolio renamed!");
-      await loadPortfolios();
-    } catch (err: any) {
-      console.error('Error renaming portfolio:', err);
-      alert('Failed to rename portfolio: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
+          if (error) throw error;
+          await loadPortfolios();
+        } catch (err: any) {
+          console.error('Error renaming portfolio:', err);
+          alert('Failed to rename portfolio: ' + err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    );
   };
 
   // Delete Portfolio
-  const handleDeletePortfolio = async () => {
+  const handleDeletePortfolio = () => {
     if (!activePortfolioId) return;
     const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
     if (!currentPortfolio) return;
     
-    if (!window.confirm(`Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`)) {
-      return;
-    }
-    
-    try {
-      setSubmitting(true);
-      const { error } = await supabase
-        .from('portfolios')
-        .delete()
-        .eq('id', activePortfolioId);
+    showCustomConfirm(
+      "Delete Portfolio",
+      `Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`,
+      async () => {
+        try {
+          setSubmitting(true);
+          const { error } = await supabase
+            .from('portfolios')
+            .delete()
+            .eq('id', activePortfolioId);
 
-      if (error) throw error;
+          if (error) throw error;
 
-      alert("Portfolio deleted!");
-      
-      // Clear localStorage active ID so loadPortfolios selects the first remaining one
-      localStorage.removeItem('portfolio_active_id');
-      await loadPortfolios();
-    } catch (err: any) {
-      console.error('Error deleting portfolio:', err);
-      alert('Failed to delete portfolio: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
+          // Clear localStorage active ID so loadPortfolios selects the first remaining one
+          localStorage.removeItem('portfolio_active_id');
+          await loadPortfolios();
+        } catch (err: any) {
+          console.error('Error deleting portfolio:', err);
+          alert('Failed to delete portfolio: ' + err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      true
+    );
   };
 
   useEffect(() => {
@@ -427,26 +461,32 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   };
 
   // Remove member from portfolio
-  const handleRemoveMember = async (userId: string) => {
+  const handleRemoveMember = (userId: string) => {
     if (userId === user?.id) {
       alert("You cannot remove yourself from your own portfolio.");
       return;
     }
-    if (!window.confirm("Are you sure you want to remove this member?")) return;
+    
+    showCustomConfirm(
+      "Remove Member",
+      "Are you sure you want to remove this member from this portfolio?",
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('portfolio_members')
+            .delete()
+            .eq('portfolio_id', activePortfolioId)
+            .eq('user_id', userId);
 
-    try {
-      const { error } = await supabase
-        .from('portfolio_members')
-        .delete()
-        .eq('portfolio_id', activePortfolioId)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      loadMembers();
-    } catch (err: any) {
-      console.error('Error removing member:', err);
-      alert('Failed to remove member: ' + err.message);
-    }
+          if (error) throw error;
+          loadMembers();
+        } catch (err: any) {
+          console.error('Error removing member:', err);
+          alert('Failed to remove member: ' + err.message);
+        }
+      },
+      true
+    );
   };
 
   // Change member role
@@ -640,23 +680,29 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   };
 
   // Handle delete transaction
-  const handleDeleteTransaction = async (id: string) => {
+  const handleDeleteTransaction = (id: string) => {
     if (activePortfolioRole === 'viewer') return;
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
     
-    try {
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', id);
+    showCustomConfirm(
+      "Delete Transaction",
+      "Are you sure you want to delete this transaction from your ledger?",
+      async () => {
+        try {
+          const { error } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', id);
 
-      if (error) throw error;
-      fetchHoldings(baseCurrency, selectedAccount);
-      fetchTransactions();
-    } catch (err: any) {
-      console.error('Error deleting transaction:', err);
-      alert('Failed to delete transaction: ' + err.message);
-    }
+          if (error) throw error;
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchTransactions();
+        } catch (err: any) {
+          console.error('Error deleting transaction:', err);
+          alert('Failed to delete transaction: ' + err.message);
+        }
+      },
+      true
+    );
   };
 
   // Handle form submission
@@ -1863,6 +1909,94 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM PROMPT/CONFIRM DIALOG MODAL */}
+      {customModal && customModal.isOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel" style={{ maxWidth: '400px' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
+                {customModal.title}
+              </h3>
+              <button 
+                onClick={() => setCustomModal(null)}
+                className="modal-close-btn"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                {customModal.message}
+              </p>
+
+              {customModal.type === 'prompt' && (
+                <div className="form-group">
+                  <input
+                    type="text"
+                    className="input-field"
+                    style={{ width: '100%' }}
+                    defaultValue={customModal.defaultValue}
+                    id="custom-modal-input"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = (e.target as HTMLInputElement).value;
+                        customModal.onConfirm(val);
+                        setCustomModal(null);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => setCustomModal(null)}
+                  className="input-field"
+                  style={{
+                    padding: '0.45rem 1rem',
+                    background: 'transparent',
+                    borderColor: 'var(--panel-border)',
+                    color: 'var(--text-secondary)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    height: 'auto',
+                    width: 'auto'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    let val = undefined;
+                    if (customModal.type === 'prompt') {
+                      val = (document.getElementById('custom-modal-input') as HTMLInputElement)?.value;
+                    }
+                    customModal.onConfirm(val);
+                    setCustomModal(null);
+                  }}
+                  className="glow-btn"
+                  style={{
+                    padding: '0.45rem 1rem',
+                    background: customModal.isDestructive ? 'var(--color-red)' : 'var(--color-primary)',
+                    color: 'white',
+                    borderColor: customModal.isDestructive ? 'var(--color-red)' : 'var(--color-primary)',
+                    boxShadow: customModal.isDestructive ? '0 0 10px rgba(239, 68, 68, 0.3)' : '0 0 10px rgba(59, 130, 246, 0.3)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    height: 'auto'
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
         </div>
