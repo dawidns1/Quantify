@@ -1072,7 +1072,22 @@ body.low-perf .modal-content {
   background: var(--color-red-glow);
 }
 
-/* Dialog Overlay Modal Backdrop */
+/* Dialog Overlay Container */
+.modal-overlay-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  pointer-events: none; /* Let clicks pass through to sibling elements like backdrop */
+}
+
+/* Dialog Overlay Modal Backdrop (rendered as a sibling behind content) */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -1082,11 +1097,11 @@ body.low-perf .modal-content {
   background: rgba(5, 7, 13, 0.75);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
+  z-index: 999;
+  
+  /* Promote to GPU graphics layer to isolate repaints on typing from triggering re-blurs */
+  will-change: opacity;
+  transform: translate3d(0, 0, 0);
   
   /* Animate background color instead of opacity to avoid Chromium repaint/re-blur stutter */
   animation: fadeInBackdrop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1098,6 +1113,7 @@ body.low-perf .modal-content {
 }
 
 .modal-content {
+  pointer-events: auto; /* Re-enable pointer events for modal content */
   width: 100%;
   max-width: 500px;
   background: rgba(18, 24, 38, 0.96);
@@ -1105,6 +1121,7 @@ body.low-perf .modal-content {
   border-radius: 16px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
   padding: 1.75rem;
+  z-index: 1001;
   
   /* Disable backdrop-filter on the moving card to ensure butter-smooth 60fps opening animations.
      Since the background (.modal-backdrop) is already blurred, a blur on the card is visually redundant anyway. */
@@ -1112,7 +1129,10 @@ body.low-perf .modal-content {
   -webkit-backdrop-filter: none !important;
   
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  
+  /* Promote to GPU graphics layer to isolate repaints completely */
   will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
 }
 
 .modal-close-btn {

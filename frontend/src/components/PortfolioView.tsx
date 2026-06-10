@@ -95,30 +95,10 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
-  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
-
-  // Form states
-  const [formSymbol, setFormSymbol] = useState('');
-  const [formType, setFormType] = useState<'BUY' | 'SELL'>('BUY');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formShares, setFormShares] = useState('');
-  const [formPrice, setFormPrice] = useState('');
-  const [formCurrency, setFormCurrency] = useState<'PLN' | 'USD' | 'EUR'>('USD');
-  const [formFees, setFormFees] = useState('');
-  const [formAccount, setFormAccount] = useState('Default');
-
-  // Price Input Mode Toggle
-  const [priceInputMode, setPriceInputMode] = useState<'per_share' | 'total'>('per_share');
-
-  // Autocomplete suggestions states
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
-  const [showAccountSuggestions, setShowAccountSuggestions] = useState(false);
 
   // Filtering states
   const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
@@ -278,7 +258,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       async (name) => {
         if (!name || !name.trim()) return;
         try {
-          setSubmitting(true);
           const { data: newPortfolio, error: createError } = await supabase
             .from('portfolios')
             .insert({ name: name.trim() })
@@ -306,8 +285,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         } catch (err: any) {
           console.error('Error creating portfolio:', err);
           alert('Failed to create portfolio: ' + err.message);
-        } finally {
-          setSubmitting(false);
         }
       }
     );
@@ -327,7 +304,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
         
         try {
-          setSubmitting(true);
           const { error } = await supabase
             .from('portfolios')
             .update({ name: newName.trim() })
@@ -338,8 +314,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         } catch (err: any) {
           console.error('Error renaming portfolio:', err);
           alert('Failed to rename portfolio: ' + err.message);
-        } finally {
-          setSubmitting(false);
         }
       }
     );
@@ -356,7 +330,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       `Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`,
       async () => {
         try {
-          setSubmitting(true);
           const { error } = await supabase
             .from('portfolios')
             .delete()
@@ -370,8 +343,6 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         } catch (err: any) {
           console.error('Error deleting portfolio:', err);
           alert('Failed to delete portfolio: ' + err.message);
-        } finally {
-          setSubmitting(false);
         }
       },
       true
@@ -518,78 +489,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   };
 
-  // Reset modal form states on close
-  useEffect(() => {
-    if (!showAddModal) {
-      setFormSymbol('');
-      setFormShares('');
-      setFormPrice('');
-      setFormFees('');
-      setFormAccount('Default');
-      setFormType('BUY');
-      setFormDate(new Date().toISOString().split('T')[0]);
-      setPriceInputMode('per_share');
-      setSuggestions([]);
-      setShowSuggestions(false);
-      setEditingTransactionId(null);
-    }
-  }, [showAddModal]);
 
-  // Debounced search for suggestions
-  useEffect(() => {
-    if (isSuggestionSelected) {
-      return;
-    }
-
-    if (formSymbol.trim().length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(formSymbol)}`)
-        .then((res) => {
-          if (!res.ok) throw new Error('Search failed');
-          return res.json();
-        })
-        .then((data) => {
-          if (formSymbol.trim().length < 2) {
-            setSuggestions([]);
-            setShowSuggestions(false);
-            return;
-          }
-          setSuggestions(data || []);
-          setShowSuggestions(data && data.length > 0);
-        })
-        .catch((err) => {
-          console.error('Error fetching suggestions:', err);
-        });
-    }, 300);
-
-    return () => clearTimeout(delayDebounce);
-  }, [formSymbol, apiBaseUrl, isSuggestionSelected]);
-
-  // Handle clicking a search suggestion
-  const handleSelectSuggestion = (s: any) => {
-    setFormSymbol(s.symbol);
-    setIsSuggestionSelected(true);
-    setShowSuggestions(false);
-    
-    const sym = s.symbol.toUpperCase().trim();
-    if (sym.endsWith('.WA') || s.exchange === 'WSE') {
-      setFormCurrency('PLN');
-    } else if (
-      sym.endsWith('.DE') || 
-      sym.endsWith('.F') || 
-      sym.endsWith('.SG') || 
-      ['FRA', 'GER', 'DUS', 'MUN', 'XETRA', 'STU'].includes(s.exchange)
-    ) {
-      setFormCurrency('EUR');
-    } else {
-      setFormCurrency('USD');
-    }
-  };
 
   // Fetch holdings (POST transactions to backend calculator in-memory)
   const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
@@ -667,36 +567,11 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   }, [baseCurrency, selectedAccount, activePortfolioId]);
 
-  // Handle ticker change to auto-set currency defaults
-  const handleTickerChange = (val: string) => {
-    setFormSymbol(val);
-    setIsSuggestionSelected(false);
-    const upperVal = val.toUpperCase().trim();
-    if (upperVal.endsWith('.WA')) {
-      setFormCurrency('PLN');
-    } else if (upperVal.endsWith('.DE')) {
-      setFormCurrency('EUR');
-    } else {
-      setFormCurrency('USD');
-    }
-  };
-
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
     if (activePortfolioRole === 'viewer') return;
+    setQuickActionData({ symbol, type });
     setShowAddModal(true);
-    setFormSymbol(symbol);
-    setIsSuggestionSelected(true);
-    setFormType(type);
-    
-    const sym = symbol.toUpperCase().trim();
-    if (sym.endsWith('.WA')) {
-      setFormCurrency('PLN');
-    } else if (sym.endsWith('.DE') || sym.endsWith('.F')) {
-      setFormCurrency('EUR');
-    } else {
-      setFormCurrency('USD');
-    }
   };
 
   // Handle delete transaction
@@ -727,97 +602,8 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
 
   // Populate form fields to start editing transaction
   const handleStartEditTransaction = (tx: Transaction) => {
-    setEditingTransactionId(tx.id);
-    setFormSymbol(tx.symbol);
-    setFormType(tx.type);
-    setFormDate(tx.date);
-    setFormShares(tx.shares.toString());
-    
-    // In total price input mode, we show the total price (shares * price)
-    const priceToShow = priceInputMode === 'total' 
-      ? (tx.shares * tx.price) 
-      : tx.price;
-    setFormPrice(priceToShow.toString());
-    
-    setFormCurrency(tx.currency as 'PLN' | 'USD' | 'EUR');
-    setFormFees(tx.fees ? tx.fees.toString() : '');
-    setFormAccount(tx.account || 'Default');
-    setIsSuggestionSelected(true); // Treat as selected so suggestion list doesn't pop open
+    setEditingTransaction(tx);
     setShowAddModal(true);
-  };
-
-  // Handle form submission
-  const handleSubmitTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activePortfolioRole === 'viewer') return;
-    setFormError(null);
-    
-    const symbol = formSymbol.toUpperCase().trim();
-    const shares = parseFloat(formShares);
-    const priceInput = parseFloat(formPrice);
-    const fees = parseFloat(formFees) || 0;
-
-    if (!symbol) {
-      setFormError('Please enter a stock ticker symbol.');
-      return;
-    }
-    if (isNaN(shares) || shares <= 0) {
-      setFormError('Shares must be a positive number.');
-      return;
-    }
-    if (isNaN(priceInput) || priceInput < 0) {
-      setFormError('Price cannot be negative.');
-      return;
-    }
-    if (isNaN(fees) || fees < 0) {
-      setFormError('Fees cannot be negative.');
-      return;
-    }
-    if (!formDate) {
-      setFormError('Please select a date.');
-      return;
-    }
-
-    const price = priceInputMode === 'total' ? (priceInput / shares) : priceInput;
-    setSubmitting(true);
-
-    const payload = {
-      portfolio_id: activePortfolioId,
-      symbol,
-      type: formType,
-      date: formDate,
-      shares,
-      price,
-      currency: formCurrency,
-      fees,
-      account: formAccount || 'Default'
-    };
-
-    try {
-      if (editingTransactionId) {
-        const { error } = await supabase
-          .from('transactions')
-          .update(payload)
-          .eq('id', editingTransactionId);
-        
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('transactions')
-          .insert(payload);
-        
-        if (error) throw error;
-      }
-      
-      setShowAddModal(false);
-      fetchHoldings(baseCurrency, selectedAccount);
-      fetchTransactions();
-    } catch (err: any) {
-      console.error('Error saving transaction:', err);
-      setFormError(err.message || 'Error occurred while saving transaction.');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   // Client-side calculations for allocations
@@ -871,12 +657,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     ).sort();
   }, [transactions]);
 
-  // Filter accounts dynamically as user types
-  const filteredAccounts = useMemo(() => {
-    return uniqueAccounts.filter(acc => 
-      acc.toLowerCase().includes(formAccount.toLowerCase())
-    );
-  }, [uniqueAccounts, formAccount]);
+
 
   // Filter transactions for the selected holding position modal
   const positionTransactions = useMemo(() => {
@@ -1656,368 +1437,30 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       )}
 
       {/* ADD TRANSACTION DIALOG MODAL */}
-      {showAddModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-panel">
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                {editingTransactionId ? (
-                  <>
-                    <Edit2 size={20} className="gradient-text" /> Edit Transaction
-                  </>
-                ) : (
-                  <>
-                    <Plus size={20} className="gradient-text" /> Add New Transaction
-                  </>
-                )}
-              </h3>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="modal-close-btn"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'var(--color-red-glow)', border: '1px solid var(--color-red)', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                <AlertCircle size={16} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmitTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              {/* Type selector */}
-              <div className="form-group">
-                <label className="form-label">Action Type</label>
-                <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
-                  <button
-                    type="button"
-                    className={`form-type-btn ${formType === 'BUY' ? 'active-buy' : ''}`}
-                    onClick={() => setFormType('BUY')}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      background: formType === 'BUY' ? 'var(--color-green)' : 'transparent',
-                      color: 'white',
-                      padding: '0.5rem',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    BUY
-                  </button>
-                  <button
-                    type="button"
-                    className={`form-type-btn ${formType === 'SELL' ? 'active-sell' : ''}`}
-                    onClick={() => setFormType('SELL')}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      background: formType === 'SELL' ? 'var(--color-red)' : 'transparent',
-                      color: 'white',
-                      padding: '0.5rem',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    SELL
-                  </button>
-                </div>
-              </div>
-
-              {/* Ticker Input */}
-              <div className="form-group" style={{ position: 'relative' }}>
-                <label className="form-label" htmlFor="form-ticker">Stock Symbol / Ticker</label>
-                <input 
-                  id="form-ticker"
-                  type="text" 
-                  placeholder="e.g. AAPL, CDR.WA, SXR8.DE" 
-                  className="input-field" 
-                  value={formSymbol}
-                  onChange={(e) => handleTickerChange(e.target.value)}
-                  autoComplete="off"
-                  required
-                />
-                
-                {/* Autocomplete Dropdown List */}
-                {showSuggestions && (
-                  <div className="search-suggestions-dropdown">
-                    {suggestions.map((s) => (
-                      <div 
-                        key={s.symbol} 
-                        className="suggestion-item" 
-                        onClick={() => handleSelectSuggestion(s)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span className="suggestion-symbol">{s.symbol}</span>
-                          <span className="suggestion-badge">{s.exchange}</span>
-                        </div>
-                        <span className="suggestion-name" title={s.name}>{s.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Info size={12} /> Suffixes: USA (no suffix), Poland GPW (<code>.WA</code>), Germany Xetra (<code>.DE</code>).
-                </small>
-              </div>
-
-              {/* Grid: Date, Currency, and Account */}
-              <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-date">Date</label>
-                  <input 
-                    id="form-date"
-                    type="date" 
-                    className="input-field"
-                    style={{ width: '100%' }}
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-currency">Currency (Local)</label>
-                  <select 
-                    id="form-currency"
-                    className="input-field"
-                    style={{ width: '100%', cursor: 'pointer' }}
-                    value={formCurrency}
-                    onChange={(e) => setFormCurrency(e.target.value as 'PLN' | 'USD' | 'EUR')}
-                  >
-                    <option value="USD">USD ($)</option>
-                    <option value="PLN">PLN (zł)</option>
-                    <option value="EUR">EUR (€)</option>
-                  </select>
-                </div>
-
-                <div className="form-group" style={{ position: 'relative' }}>
-                  <label className="form-label" htmlFor="form-account">Brokerage Account</label>
-                  <input 
-                    id="form-account"
-                    type="text" 
-                    placeholder="e.g. mBank, IBKR" 
-                    className="input-field"
-                    style={{ width: '100%' }}
-                    value={formAccount}
-                    onChange={(e) => setFormAccount(e.target.value)}
-                    onFocus={(e) => {
-                      e.target.select();
-                      setShowAccountSuggestions(true);
-                    }}
-                    onBlur={() => setShowAccountSuggestions(false)}
-                    autoComplete="off"
-                    required
-                  />
-                  
-                  {showAccountSuggestions && filteredAccounts.length > 0 && (
-                    <div className="search-suggestions-dropdown" style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                      {filteredAccounts.map((acc) => (
-                        <div 
-                          key={acc} 
-                          className="suggestion-item"
-                          style={{ padding: '0.45rem 0.75rem', fontSize: '0.82rem' }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setFormAccount(acc);
-                            setShowAccountSuggestions(false);
-                          }}
-                        >
-                          {acc}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Price Input Mode Selector */}
-              <div className="form-group">
-                <label className="form-label">Price Input Mode</label>
-                <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
-                  <button
-                    type="button"
-                    className={`form-type-btn ${priceInputMode === 'per_share' ? 'active-buy' : ''}`}
-                    onClick={() => setPriceInputMode('per_share')}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      background: priceInputMode === 'per_share' ? 'var(--color-primary)' : 'transparent',
-                      color: 'white',
-                      padding: '0.4rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    Per Share
-                  </button>
-                  <button
-                    type="button"
-                    className={`form-type-btn ${priceInputMode === 'total' ? 'active-buy' : ''}`}
-                    onClick={() => setPriceInputMode('total')}
-                    style={{
-                      flex: 1,
-                      border: 'none',
-                      background: priceInputMode === 'total' ? 'var(--color-primary)' : 'transparent',
-                      color: 'white',
-                      padding: '0.4rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    Total Value
-                  </button>
-                </div>
-              </div>
-
-              {/* Grid: Shares, Price & Fees */}
-              <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-shares">Shares</label>
-                  <input 
-                    id="form-shares"
-                    type="number" 
-                    step="any"
-                    placeholder="0.00" 
-                    className="input-field"
-                    style={{ width: '100%' }}
-                    value={formShares}
-                    onChange={(e) => setFormShares(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-price">
-                    {priceInputMode === 'per_share' ? 'Price (per share)' : 'Total Price (excl. fees)'}
-                  </label>
-                  <input 
-                    id="form-price"
-                    type="number" 
-                    step="0.01" 
-                    placeholder="0.00" 
-                    className="input-field"
-                    style={{ width: '100%' }}
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="form-fees">Transaction Fees</label>
-                  <input 
-                    id="form-fees"
-                    type="number" 
-                    step="0.01" 
-                    placeholder="0.00" 
-                    className="input-field"
-                    style={{ width: '100%' }}
-                    value={formFees}
-                    onChange={(e) => setFormFees(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Cost Basis / Share calculation preview */}
-              {formShares && formPrice && !isNaN(parseFloat(formShares)) && !isNaN(parseFloat(formPrice)) && parseFloat(formShares) > 0 && (
-                <div style={{ 
-                  fontSize: '0.8rem', 
-                  color: 'var(--color-primary)', 
-                  background: 'rgba(59, 130, 246, 0.05)', 
-                  border: '1px dashed rgba(59, 130, 246, 0.2)',
-                  borderRadius: '6px', 
-                  padding: '0.5rem 0.75rem',
-                  marginTop: '0.1rem'
-                }}>
-                  {(() => {
-                    const shares = parseFloat(formShares);
-                    const price = parseFloat(formPrice);
-                    const fees = parseFloat(formFees) || 0;
-                    
-                    if (priceInputMode === 'per_share') {
-                      const grossTotal = shares * price;
-                      const netTotal = formType === 'BUY' ? grossTotal + fees : grossTotal - fees;
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                          <div>
-                            Gross Total: <strong>{formatCurrency(grossTotal, formCurrency)}</strong>
-                          </div>
-                          {fees > 0 && (
-                            <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
-                              {formType === 'BUY' ? 'Total Cash Outlay (incl. fees):' : 'Net Cash Proceeds (after fees):'}{' '}
-                              <strong>{formatCurrency(netTotal, formCurrency)}</strong>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else {
-                      const calculatedPricePerShare = price / shares;
-                      const adjustedPrice = formType === 'BUY' 
-                        ? (price + fees) / shares 
-                        : (price - fees) / shares;
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                          <div>
-                            Calculated Price Per Share: <strong>{formatCurrency(calculatedPricePerShare, formCurrency)}</strong>
-                          </div>
-                          {fees > 0 && (
-                            <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
-                              {formType === 'BUY' ? 'Effective Buy Cost Per Share (incl. fees):' : 'Effective Sell Proceeds Per Share (after fees):'}{' '}
-                              <strong>{formatCurrency(adjustedPrice, formCurrency)}</strong>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              )}
-
-              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="input-field"
-                  style={{ cursor: 'pointer', background: 'transparent' }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="glow-btn"
-                  disabled={submitting}
-                >
-                  {submitting 
-                    ? (editingTransactionId ? 'Updating...' : 'Adding...') 
-                    : (editingTransactionId ? 'Update Transaction' : 'Save Transaction')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddTransactionModal 
+        isOpen={showAddModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingTransaction(null);
+          setQuickActionData(null);
+        }}
+        editingTransaction={editingTransaction}
+        quickActionData={quickActionData}
+        activePortfolioId={activePortfolioId}
+        activePortfolioRole={activePortfolioRole}
+        apiBaseUrl={apiBaseUrl}
+        uniqueAccounts={uniqueAccounts}
+        onSaveSuccess={() => {
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchTransactions();
+        }}
+      />
       {/* COLLABORATIVE SHARING DIALOG MODAL */}
       {showShareModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-panel" style={{ maxWidth: '480px' }}>
+        <>
+          <div className="modal-backdrop" onClick={() => setShowShareModal(false)} style={{ cursor: 'pointer' }} />
+          <div className="modal-overlay-container">
+            <div className="modal-content glass-panel" style={{ maxWidth: '480px' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                 <Share2 size={20} className="gradient-text" /> Share Portfolio
@@ -2148,12 +1591,15 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
             </div>
           </div>
         </div>
-      )}
+      </>
+    )}
 
       {/* POSITION TRANSACTIONS HISTORY MODAL */}
       {selectedPositionSymbol && (
-        <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: '850px', width: '95%' }}>
+        <>
+          <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
+          <div className="modal-overlay-container">
+            <div className="modal-content" style={{ maxWidth: '850px', width: '95%' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
                 <History size={22} className="gradient-text" /> 
@@ -2323,12 +1769,15 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
             </div>
           </div>
         </div>
-      )}
+      </>
+    )}
 
       {/* CUSTOM PROMPT/CONFIRM DIALOG MODAL */}
       {customModal && customModal.isOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-panel" style={{ maxWidth: '400px' }}>
+        <>
+          <div className="modal-backdrop" />
+          <div className="modal-overlay-container">
+            <div className="modal-content glass-panel" style={{ maxWidth: '400px' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
                 {customModal.title}
@@ -2411,8 +1860,623 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
             </div>
           </div>
         </div>
-      )}
+      </>
+    )}
 
     </div>
   );
+}
+
+// ==========================================
+// Isolated Add / Edit Transaction Modal
+// ==========================================
+interface AddTransactionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editingTransaction: Transaction | null;
+  quickActionData: { symbol: string; type: 'BUY' | 'SELL' } | null;
+  activePortfolioId: string | null;
+  activePortfolioRole: string;
+  apiBaseUrl: string;
+  uniqueAccounts: string[];
+  onSaveSuccess: () => void;
+}
+
+function AddTransactionModal({
+  isOpen,
+  onClose,
+  editingTransaction,
+  quickActionData,
+  activePortfolioId,
+  activePortfolioRole,
+  apiBaseUrl,
+  uniqueAccounts,
+  onSaveSuccess
+}: AddTransactionModalProps) {
+  const [formSymbol, setFormSymbol] = useState('');
+  const [formType, setFormType] = useState<'BUY' | 'SELL'>('BUY');
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formShares, setFormShares] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formCurrency, setFormCurrency] = useState<'PLN' | 'USD' | 'EUR'>('USD');
+  const [formFees, setFormFees] = useState('');
+  const [formAccount, setFormAccount] = useState('Default');
+  const [priceInputMode, setPriceInputMode] = useState<'per_share' | 'total'>('per_share');
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+  const [showAccountSuggestions, setShowAccountSuggestions] = useState(false);
+  
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Filter accounts dynamically as user types
+  const filteredAccounts = useMemo(() => {
+    return uniqueAccounts.filter(acc => 
+      acc.toLowerCase().includes(formAccount.toLowerCase())
+    );
+  }, [uniqueAccounts, formAccount]);
+
+  // Debounced search for suggestions
+  useEffect(() => {
+    if (isSuggestionSelected) {
+      return;
+    }
+
+    if (formSymbol.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(formSymbol)}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Search failed');
+          return res.json();
+        })
+        .then((data) => {
+          if (formSymbol.trim().length < 2) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+          }
+          setSuggestions(data || []);
+          setShowSuggestions(data && data.length > 0);
+        })
+        .catch((err) => {
+          console.error('Error fetching suggestions:', err);
+        });
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [formSymbol, apiBaseUrl, isSuggestionSelected]);
+
+  // Initialize and Reset Form fields
+  useEffect(() => {
+    if (editingTransaction) {
+      setFormSymbol(editingTransaction.symbol);
+      setFormType(editingTransaction.type);
+      setFormDate(editingTransaction.date);
+      setFormShares(editingTransaction.shares.toString());
+      setFormPrice(editingTransaction.price.toString());
+      setFormCurrency(editingTransaction.currency as 'PLN' | 'USD' | 'EUR');
+      setFormFees(editingTransaction.fees ? editingTransaction.fees.toString() : '');
+      setFormAccount(editingTransaction.account || 'Default');
+      setIsSuggestionSelected(true);
+      setPriceInputMode('per_share');
+    } else if (quickActionData) {
+      setFormSymbol(quickActionData.symbol);
+      setFormType(quickActionData.type);
+      setFormDate(new Date().toISOString().split('T')[0]);
+      setFormShares('');
+      setFormPrice('');
+      
+      const upperSymbol = quickActionData.symbol.toUpperCase().trim();
+      if (upperSymbol.endsWith('.WA')) {
+        setFormCurrency('PLN');
+      } else if (upperSymbol.endsWith('.DE') || upperSymbol.endsWith('.F')) {
+        setFormCurrency('EUR');
+      } else {
+        setFormCurrency('USD');
+      }
+      
+      setFormFees('');
+      setFormAccount('Default');
+      setIsSuggestionSelected(true);
+      setPriceInputMode('per_share');
+    } else {
+      setFormSymbol('');
+      setFormType('BUY');
+      setFormDate(new Date().toISOString().split('T')[0]);
+      setFormShares('');
+      setFormPrice('');
+      setFormCurrency('USD');
+      setFormFees('');
+      setFormAccount('Default');
+      setIsSuggestionSelected(false);
+      setPriceInputMode('per_share');
+    }
+    setFormError(null);
+  }, [editingTransaction, quickActionData, isOpen]);
+
+  const handleTickerChange = (val: string) => {
+    setFormSymbol(val);
+    setIsSuggestionSelected(false);
+    const upperVal = val.toUpperCase().trim();
+    if (upperVal.endsWith('.WA')) {
+      setFormCurrency('PLN');
+    } else if (upperVal.endsWith('.DE')) {
+      setFormCurrency('EUR');
+    } else {
+      setFormCurrency('USD');
+    }
+  };
+
+  const handleSelectSuggestion = (s: any) => {
+    setFormSymbol(s.symbol);
+    setIsSuggestionSelected(true);
+    setShowSuggestions(false);
+    
+    const sym = s.symbol.toUpperCase().trim();
+    if (sym.endsWith('.WA') || s.exchange === 'WSE') {
+      setFormCurrency('PLN');
+    } else if (
+      sym.endsWith('.DE') || 
+      sym.endsWith('.F') || 
+      sym.endsWith('.SG') || 
+      ['FRA', 'GER', 'DUS', 'MUN', 'XETRA', 'STU'].includes(s.exchange)
+    ) {
+      setFormCurrency('EUR');
+    } else {
+      setFormCurrency('USD');
+    }
+  };
+
+  const formatCurrency = (val: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(val);
+  };
+
+  const handleSubmitTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activePortfolioRole === 'viewer') return;
+    setFormError(null);
+    
+    const symbol = formSymbol.toUpperCase().trim();
+    const shares = parseFloat(formShares);
+    const priceInput = parseFloat(formPrice);
+    const fees = parseFloat(formFees) || 0;
+
+    if (!symbol) {
+      setFormError('Please enter a stock ticker symbol.');
+      return;
+    }
+    if (isNaN(shares) || shares <= 0) {
+      setFormError('Shares must be a positive number.');
+      return;
+    }
+    if (isNaN(priceInput) || priceInput < 0) {
+      setFormError('Price cannot be negative.');
+      return;
+    }
+    if (isNaN(fees) || fees < 0) {
+      setFormError('Fees cannot be negative.');
+      return;
+    }
+    if (!formDate) {
+      setFormError('Please select a date.');
+      return;
+    }
+
+    const price = priceInputMode === 'total' ? (priceInput / shares) : priceInput;
+    setSubmitting(true);
+
+    const payload = {
+      portfolio_id: activePortfolioId,
+      symbol,
+      type: formType,
+      date: formDate,
+      shares,
+      price,
+      currency: formCurrency,
+      fees,
+      account: formAccount || 'Default'
+    };
+
+    try {
+      if (editingTransaction) {
+        const { error } = await supabase
+          .from('transactions')
+          .update(payload)
+          .eq('id', editingTransaction.id);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('transactions')
+          .insert(payload);
+        
+        if (error) throw error;
+      }
+      
+      onSaveSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error('Error saving transaction:', err);
+      setFormError(err.message || 'Error occurred while saving transaction.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} style={{ cursor: 'pointer' }} />
+      <div className="modal-overlay-container">
+        <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            {editingTransaction ? (
+              <>
+                <Edit2 size={20} className="gradient-text" /> Edit Transaction
+              </>
+            ) : (
+              <>
+                <Plus size={20} className="gradient-text" /> Add New Transaction
+              </>
+            )}
+          </h3>
+          <button 
+            onClick={onClose}
+            className="modal-close-btn"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {formError && (
+          <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'var(--color-red-glow)', border: '1px solid var(--color-red)', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            <AlertCircle size={16} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmitTransaction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          
+          {/* Type selector */}
+          <div className="form-group">
+            <label className="form-label">Action Type</label>
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
+              <button
+                type="button"
+                className={`form-type-btn ${formType === 'BUY' ? 'active-buy' : ''}`}
+                onClick={() => setFormType('BUY')}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: formType === 'BUY' ? 'var(--color-green)' : 'transparent',
+                  color: 'white',
+                  padding: '0.5rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                BUY
+              </button>
+              <button
+                type="button"
+                className={`form-type-btn ${formType === 'SELL' ? 'active-sell' : ''}`}
+                onClick={() => setFormType('SELL')}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: formType === 'SELL' ? 'var(--color-red)' : 'transparent',
+                  color: 'white',
+                  padding: '0.5rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                SELL
+              </button>
+            </div>
+          </div>
+
+          {/* Ticker Input */}
+          <div className="form-group" style={{ position: 'relative' }}>
+            <label className="form-label" htmlFor="form-ticker">Stock Symbol / Ticker</label>
+            <input 
+              id="form-ticker"
+              type="text" 
+              placeholder="e.g. AAPL, CDR.WA, SXR8.DE" 
+              className="input-field" 
+              value={formSymbol}
+              onChange={(e) => handleTickerChange(e.target.value)}
+              autoComplete="off"
+              required
+            />
+            
+            {/* Autocomplete Dropdown List */}
+            {showSuggestions && (
+              <div className="search-suggestions-dropdown">
+                {suggestions.map((s) => (
+                  <div 
+                    key={s.symbol} 
+                    className="suggestion-item" 
+                    onClick={() => handleSelectSuggestion(s)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span className="suggestion-symbol">{s.symbol}</span>
+                      <span className="suggestion-badge">{s.exchange}</span>
+                    </div>
+                    <span className="suggestion-name" title={s.name}>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Info size={12} /> Suffixes: USA (no suffix), Poland GPW (<code>.WA</code>), Germany Xetra (<code>.DE</code>).
+            </small>
+          </div>
+
+          {/* Grid: Date, Currency, and Account */}
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="form-date">Date</label>
+              <input 
+                id="form-date"
+                type="date" 
+                className="input-field"
+                style={{ width: '100%' }}
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label" htmlFor="form-currency">Currency (Local)</label>
+              <select 
+                id="form-currency"
+                className="input-field"
+                style={{ width: '100%', cursor: 'pointer' }}
+                value={formCurrency}
+                onChange={(e) => setFormCurrency(e.target.value as 'PLN' | 'USD' | 'EUR')}
+              >
+                <option value="USD">USD ($)</option>
+                <option value="PLN">PLN (zł)</option>
+                <option value="EUR">EUR (€)</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ position: 'relative' }}>
+              <label className="form-label" htmlFor="form-account">Brokerage Account</label>
+              <input 
+                id="form-account"
+                type="text" 
+                placeholder="e.g. mBank, IBKR" 
+                className="input-field"
+                style={{ width: '100%' }}
+                value={formAccount}
+                onChange={(e) => setFormAccount(e.target.value)}
+                onFocus={(e) => {
+                  e.target.select();
+                  setShowAccountSuggestions(true);
+                }}
+                onBlur={() => setShowAccountSuggestions(false)}
+                autoComplete="off"
+                required
+              />
+              
+              {showAccountSuggestions && filteredAccounts.length > 0 && (
+                <div className="search-suggestions-dropdown" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                  {filteredAccounts.map((acc) => (
+                    <div 
+                      key={acc} 
+                      className="suggestion-item"
+                      style={{ padding: '0.45rem 0.75rem', fontSize: '0.82rem' }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setFormAccount(acc);
+                        setShowAccountSuggestions(false);
+                      }}
+                    >
+                      {acc}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Price Input Mode Selector */}
+          <div className="form-group">
+            <label className="form-label">Price Input Mode</label>
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
+              <button
+                type="button"
+                className={`form-type-btn ${priceInputMode === 'per_share' ? 'active-buy' : ''}`}
+                onClick={() => setPriceInputMode('per_share')}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: priceInputMode === 'per_share' ? 'var(--color-primary)' : 'transparent',
+                  color: 'white',
+                  padding: '0.4rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                Per Share
+              </button>
+              <button
+                type="button"
+                className={`form-type-btn ${priceInputMode === 'total' ? 'active-buy' : ''}`}
+                onClick={() => setPriceInputMode('total')}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: priceInputMode === 'total' ? 'var(--color-primary)' : 'transparent',
+                  color: 'white',
+                  padding: '0.4rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                Total Value
+              </button>
+            </div>
+          </div>
+
+          {/* Grid: Shares, Price & Fees */}
+          <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="form-shares">Shares</label>
+              <input 
+                id="form-shares"
+                type="number" 
+                step="any"
+                placeholder="0.00" 
+                className="input-field"
+                style={{ width: '100%' }}
+                value={formShares}
+                onChange={(e) => setFormShares(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="form-price">
+                {priceInputMode === 'per_share' ? 'Price (per share)' : 'Total Price (excl. fees)'}
+              </label>
+              <input 
+                id="form-price"
+                type="number" 
+                step="0.01" 
+                placeholder="0.00" 
+                className="input-field"
+                style={{ width: '100%' }}
+                value={formPrice}
+                onChange={(e) => setFormPrice(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="form-fees">Transaction Fees</label>
+              <input 
+                id="form-fees"
+                type="number" 
+                step="0.01" 
+                placeholder="0.00" 
+                className="input-field"
+                style={{ width: '100%' }}
+                value={formFees}
+                onChange={(e) => setFormFees(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Cost Basis / Share calculation preview */}
+          {formShares && formPrice && !isNaN(parseFloat(formShares)) && !isNaN(parseFloat(formPrice)) && parseFloat(formShares) > 0 && (
+            <div style={{ 
+              fontSize: '0.8rem', 
+              color: 'var(--color-primary)', 
+              background: 'rgba(59, 130, 246, 0.05)', 
+              border: '1px dashed rgba(59, 130, 246, 0.2)',
+              borderRadius: '6px', 
+              padding: '0.5rem 0.75rem',
+              marginTop: '0.1rem'
+            }}>
+              {(() => {
+                const shares = parseFloat(formShares);
+                const price = parseFloat(formPrice);
+                const fees = parseFloat(formFees) || 0;
+                
+                if (priceInputMode === 'per_share') {
+                  const grossTotal = shares * price;
+                  const netTotal = formType === 'BUY' ? grossTotal + fees : grossTotal - fees;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div>
+                        Gross Total: <strong>{formatCurrency(grossTotal, formCurrency)}</strong>
+                      </div>
+                      {fees > 0 && (
+                        <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
+                          {formType === 'BUY' ? 'Total Cash Outlay (incl. fees):' : 'Net Cash Proceeds (after fees):'}{' '}
+                          <strong>{formatCurrency(netTotal, formCurrency)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  const calculatedPricePerShare = price / shares;
+                  const adjustedPrice = formType === 'BUY' 
+                    ? (price + fees) / shares 
+                    : (price - fees) / shares;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <div>
+                        Calculated Price Per Share: <strong>{formatCurrency(calculatedPricePerShare, formCurrency)}</strong>
+                      </div>
+                      {fees > 0 && (
+                        <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
+                          {formType === 'BUY' ? 'Effective Buy Cost Per Share (incl. fees):' : 'Effective Sell Proceeds Per Share (after fees):'}{' '}
+                          <strong>{formatCurrency(adjustedPrice, formCurrency)}</strong>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          )}
+
+          <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="input-field"
+              style={{ cursor: 'pointer', background: 'transparent' }}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="glow-btn"
+              disabled={submitting}
+            >
+              {submitting 
+                ? (editingTransaction ? 'Updating...' : 'Adding...') 
+                : (editingTransaction ? 'Update Transaction' : 'Save Transaction')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </>
+);
 }
