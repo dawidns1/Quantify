@@ -16,7 +16,8 @@ import {
   Share2,
   Shield,
   Users,
-  Lock
+  Lock,
+  Edit2
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
@@ -229,6 +230,105 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       console.error('Error loading portfolios:', err);
     } finally {
       setLoadingPortfolios(false);
+    }
+  };
+
+  // Create Portfolio
+  const handleCreatePortfolio = async () => {
+    const name = prompt("Enter new portfolio name:");
+    if (!name || !name.trim()) return;
+    try {
+      setSubmitting(true);
+      const { data: newPortfolio, error: createError } = await supabase
+        .from('portfolios')
+        .insert({ name: name.trim() })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      const { error: memberError } = await supabase
+        .from('portfolio_members')
+        .insert({
+          portfolio_id: newPortfolio.id,
+          user_id: user?.id,
+          role: 'owner'
+        });
+
+      if (memberError) throw memberError;
+
+      alert(`Portfolio "${name}" created!`);
+      await loadPortfolios();
+      
+      // Switch to the new portfolio
+      setActivePortfolioId(newPortfolio.id);
+      setActivePortfolioRole('owner');
+      localStorage.setItem('portfolio_active_id', newPortfolio.id);
+    } catch (err: any) {
+      console.error('Error creating portfolio:', err);
+      alert('Failed to create portfolio: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Rename Portfolio
+  const handleRenamePortfolio = async () => {
+    if (!activePortfolioId) return;
+    const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
+    if (!currentPortfolio) return;
+    
+    const newName = prompt("Enter new name for this portfolio:", currentPortfolio.name);
+    if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
+    
+    try {
+      setSubmitting(true);
+      const { error } = await supabase
+        .from('portfolios')
+        .update({ name: newName.trim() })
+        .eq('id', activePortfolioId);
+
+      if (error) throw error;
+
+      alert("Portfolio renamed!");
+      await loadPortfolios();
+    } catch (err: any) {
+      console.error('Error renaming portfolio:', err);
+      alert('Failed to rename portfolio: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete Portfolio
+  const handleDeletePortfolio = async () => {
+    if (!activePortfolioId) return;
+    const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
+    if (!currentPortfolio) return;
+    
+    if (!window.confirm(`Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      const { error } = await supabase
+        .from('portfolios')
+        .delete()
+        .eq('id', activePortfolioId);
+
+      if (error) throw error;
+
+      alert("Portfolio deleted!");
+      
+      // Clear localStorage active ID so loadPortfolios selects the first remaining one
+      localStorage.removeItem('portfolio_active_id');
+      await loadPortfolios();
+    } catch (err: any) {
+      console.error('Error deleting portfolio:', err);
+      alert('Failed to delete portfolio: ' + err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -740,36 +840,102 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
           {/* Portfolio Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Portfolio:</span>
-            <select
-              className="input-field"
-              style={{
-                padding: '0.3rem 0.65rem',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderColor: 'var(--panel-border)',
-                outline: 'none',
-                height: 'auto'
-              }}
-              value={activePortfolioId || ''}
-              onChange={(e) => {
-                const pId = e.target.value;
-                const found = portfolios.find(p => p.id === pId);
-                if (found) {
-                  setActivePortfolioId(pId);
-                  setActivePortfolioRole(found.role);
-                  localStorage.setItem('portfolio_active_id', pId);
-                }
-              }}
-            >
-              {portfolios.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.role})
-                </option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <select
+                className="input-field"
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderColor: 'var(--panel-border)',
+                  outline: 'none',
+                  height: 'auto'
+                }}
+                value={activePortfolioId || ''}
+                onChange={(e) => {
+                  const pId = e.target.value;
+                  const found = portfolios.find(p => p.id === pId);
+                  if (found) {
+                    setActivePortfolioId(pId);
+                    setActivePortfolioRole(found.role);
+                    localStorage.setItem('portfolio_active_id', pId);
+                  }
+                }}
+              >
+                {portfolios.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.role})
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleCreatePortfolio}
+                title="Create New Portfolio"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '6px',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Plus size={13} />
+              </button>
+
+              {activePortfolioRole === 'owner' && (
+                <>
+                  <button
+                    onClick={handleRenamePortfolio}
+                    title="Rename Portfolio"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '6px',
+                      width: '28px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-secondary)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Edit2 size={13} />
+                  </button>
+
+                  <button
+                    onClick={handleDeletePortfolio}
+                    title="Delete Portfolio"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '6px',
+                      width: '28px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--color-red)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Share Portfolio Button (Only if owner) */}
