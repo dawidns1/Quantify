@@ -130,6 +130,14 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     localStorage.setItem('portfolio_selected_account', account);
   };
 
+  // Holdings Sorting states
+  const [holdingsSortField, setHoldingsSortField] = useState<string>(() => {
+    return localStorage.getItem('portfolio_holdings_sort_field') || 'symbol';
+  });
+  const [holdingsSortAsc, setHoldingsSortAsc] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_holdings_sort_asc') !== 'false';
+  });
+
   // Customizable Columns states
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
@@ -882,6 +890,55 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     return holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()) || null;
   }, [holdings, selectedPositionSymbol]);
 
+  // Sort holdings according to selected field & direction
+  const sortedHoldings = useMemo(() => {
+    const sorted = [...holdings];
+    sorted.sort((a, b) => {
+      const field = holdingsSortField as keyof Holding;
+      const valA = a[field];
+      const valB = b[field];
+
+      if (valA === undefined || valA === null) return holdingsSortAsc ? 1 : -1;
+      if (valB === undefined || valB === null) return holdingsSortAsc ? -1 : 1;
+
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comp = valA.localeCompare(valB, undefined, { sensitivity: 'base' });
+        return holdingsSortAsc ? comp : -comp;
+      }
+
+      return holdingsSortAsc 
+        ? (valA as number) - (valB as number)
+        : (valB as number) - (valA as number);
+    });
+    return sorted;
+  }, [holdings, holdingsSortField, holdingsSortAsc]);
+
+  const handleHoldingsSort = (field: string) => {
+    if (holdingsSortField === field) {
+      const nextAsc = !holdingsSortAsc;
+      setHoldingsSortAsc(nextAsc);
+      localStorage.setItem('portfolio_holdings_sort_asc', String(nextAsc));
+    } else {
+      setHoldingsSortField(field);
+      // Default to ascending for text (symbol, name), descending for numbers/returns
+      const defaultAsc = ['symbol', 'name'].includes(field);
+      setHoldingsSortAsc(defaultAsc);
+      localStorage.setItem('portfolio_holdings_sort_field', field);
+      localStorage.setItem('portfolio_holdings_sort_asc', String(defaultAsc));
+    }
+  };
+
+  const renderSortArrow = (field: string) => {
+    if (holdingsSortField !== field) {
+      return <span style={{ opacity: 0.25, marginLeft: '6px', fontSize: '0.8rem' }}>↕</span>;
+    }
+    return holdingsSortAsc ? (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '6px', fontSize: '0.8rem' }}>▲</span>
+    ) : (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '6px', fontSize: '0.8rem' }}>▼</span>
+    );
+  };
+
   // Currency Formatter
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -1273,19 +1330,47 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                       <table className="screener-table">
                         <thead>
                           <tr>
-                            <th>Ticker</th>
-                            {visibleColumns.includes('name') && <th>Company Name</th>}
-                            {visibleColumns.includes('shares') && <th style={{ textAlign: 'right' }}>Shares</th>}
-                            {visibleColumns.includes('avg_cost') && <th style={{ textAlign: 'right' }}>Avg Cost</th>}
-                            {visibleColumns.includes('price') && <th style={{ textAlign: 'right' }}>Price</th>}
-                            {visibleColumns.includes('cost') && <th style={{ textAlign: 'right' }}>Cost ({summary.base_currency})</th>}
-                            <th style={{ textAlign: 'right' }}>Current ({summary.base_currency})</th>
-                            <th style={{ textAlign: 'right' }}>Gain/Loss</th>
-                            <th style={{ textAlign: 'center' }}>Actions</th>
+                            <th onClick={() => handleHoldingsSort('symbol')} style={{ userSelect: 'none' }}>
+                              Ticker {renderSortArrow('symbol')}
+                            </th>
+                            {visibleColumns.includes('name') && (
+                              <th onClick={() => handleHoldingsSort('name')} style={{ userSelect: 'none' }}>
+                                Company Name {renderSortArrow('name')}
+                              </th>
+                            )}
+                            {visibleColumns.includes('shares') && (
+                              <th onClick={() => handleHoldingsSort('shares')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                                Shares {renderSortArrow('shares')}
+                              </th>
+                            )}
+                            {visibleColumns.includes('avg_cost') && (
+                              <th onClick={() => handleHoldingsSort('avg_cost_local')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                                Avg Cost {renderSortArrow('avg_cost_local')}
+                              </th>
+                            )}
+                            {visibleColumns.includes('price') && (
+                              <th onClick={() => handleHoldingsSort('current_price_local')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                                Price {renderSortArrow('current_price_local')}
+                              </th>
+                            )}
+                            {visibleColumns.includes('cost') && (
+                              <th onClick={() => handleHoldingsSort('cost_basis_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                                Cost ({summary.base_currency}) {renderSortArrow('cost_basis_base')}
+                              </th>
+                            )}
+                            <th onClick={() => handleHoldingsSort('current_value_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                              Current ({summary.base_currency}) {renderSortArrow('current_value_base')}
+                            </th>
+                            <th onClick={() => handleHoldingsSort('gain_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                              Gain/Loss {renderSortArrow('gain_base')}
+                            </th>
+                            <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
+                              Actions
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {holdings.map((h) => {
+                          {sortedHoldings.map((h) => {
                             const valIsProfit = h.gain_base >= 0;
                             return (
                               <tr 
