@@ -876,6 +876,12 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     return transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
   }, [transactions, selectedPositionSymbol]);
 
+  // Find holding details for the selected position modal
+  const holdingDetails = useMemo(() => {
+    if (!selectedPositionSymbol) return null;
+    return holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()) || null;
+  }, [holdings, selectedPositionSymbol]);
+
   // Currency Formatter
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -2062,30 +2068,88 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       {/* POSITION TRANSACTIONS HISTORY MODAL */}
       {selectedPositionSymbol && (
         <div className="modal-backdrop">
-          <div className="modal-content glass-panel" style={{ maxWidth: '650px', width: '90%' }}>
+          <div className="modal-content" style={{ maxWidth: '850px', width: '95%' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <History size={20} className="gradient-text" /> {selectedPositionSymbol} Transaction History
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
+                <History size={22} className="gradient-text" /> 
+                <span style={{ fontWeight: 700 }}>{selectedPositionSymbol}</span>
+                {holdingDetails?.name && (
+                  <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.85 }}>
+                    ({holdingDetails.name})
+                  </span>
+                )}
               </h3>
               <button 
                 onClick={() => setSelectedPositionSymbol(null)}
                 className="modal-close-btn"
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Quick Summary Dashboard */}
+              {holdingDetails && (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                  gap: '1rem', 
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  padding: '1rem 1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Shares Owned</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                      {holdingDetails.shares}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avg Cost (Local)</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                      {formatCurrency(holdingDetails.avg_cost_local, holdingDetails.currency)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Value</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                      {formatCurrency(holdingDetails.current_value_base, summary.base_currency)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Return</span>
+                    <span style={{ 
+                      fontSize: '1.2rem', 
+                      fontWeight: 700, 
+                      fontFamily: 'monospace',
+                      color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)'
+                    }}>
+                      {holdingDetails.gain_base >= 0 ? '+' : ''}{formatCurrency(holdingDetails.gain_base, summary.base_currency)}
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, marginLeft: '4px' }}>
+                        ({holdingDetails.gain_base >= 0 ? '+' : ''}{holdingDetails.gain_percent.toFixed(2)}%)
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {positionTransactions.length === 0 ? (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem 0' }}>
+                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
                   No transactions found for {selectedPositionSymbol}.
                 </p>
               ) : (
-                <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                <div style={{ 
+                  maxHeight: '320px', 
+                  overflowY: 'auto',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '10px',
+                  background: 'rgba(0, 0, 0, 0.15)'
+                }}>
                   <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                     <thead>
-                      <tr>
+                      <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
                         <th>Date</th>
                         <th>Type</th>
                         <th style={{ textAlign: 'right' }}>Shares</th>
@@ -2099,7 +2163,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                       {positionTransactions.map((tx) => {
                         const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
                         return (
-                          <tr key={tx.id}>
+                          <tr key={tx.id} className="interactive-row-modal">
                             <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
                               {tx.date}
                             </td>
@@ -2129,17 +2193,18 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                                       handleStartEditTransaction(tx);
                                     }}
                                     className="ledger-delete-btn"
-                                    style={{ color: 'var(--text-secondary)' }}
+                                    style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
                                     title="Edit Transaction"
                                   >
-                                    <Edit2 size={14} />
+                                    <Edit2 size={13} />
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteTransaction(tx.id)}
                                     className="ledger-delete-btn"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
                                     title="Delete Transaction"
                                   >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={13} />
                                   </button>
                                 </div>
                               </td>
@@ -2152,18 +2217,19 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
                 <button
                   onClick={() => setSelectedPositionSymbol(null)}
                   className="glow-btn"
                   style={{
-                    padding: '0.45rem 1.25rem',
-                    background: 'var(--color-primary)',
-                    color: 'white',
-                    borderColor: 'var(--color-primary)',
-                    boxShadow: '0 0 10px rgba(59, 130, 246, 0.3)',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
+                    padding: '0.55rem 1.5rem',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: 'var(--text-primary)',
+                    borderColor: 'var(--panel-border)',
+                    boxShadow: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
                   }}
                 >
                   Close

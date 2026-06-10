@@ -1080,24 +1080,39 @@ body.low-perf .modal-content {
   width: 100vw;
   height: 100vh;
   background: rgba(5, 7, 13, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
-  animation: fadeIn 0.2s ease-out;
+  
+  /* Animate background color instead of opacity to avoid Chromium repaint/re-blur stutter */
+  animation: fadeInBackdrop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInBackdrop {
+  from { background-color: rgba(5, 7, 13, 0); }
+  to { background-color: rgba(5, 7, 13, 0.75); }
 }
 
 .modal-content {
   width: 100%;
   max-width: 500px;
-  background: rgba(18, 24, 38, 0.95);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 1.75rem;
+  background: rgba(18, 24, 38, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+  padding: 1.75rem;
+  
+  /* Disable backdrop-filter on the moving card to ensure butter-smooth 60fps opening animations.
+     Since the background (.modal-backdrop) is already blurred, a blur on the card is visually redundant anyway. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .modal-close-btn {
