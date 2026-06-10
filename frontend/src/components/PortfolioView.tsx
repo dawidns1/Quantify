@@ -98,6 +98,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [customModal, setCustomModal] = useState<any | null>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   // Form states
   const [formSymbol, setFormSymbol] = useState('');
@@ -521,6 +522,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       setPriceInputMode('per_share');
       setSuggestions([]);
       setShowSuggestions(false);
+      setEditingTransactionId(null);
     }
   }, [showAddModal]);
 
@@ -714,6 +716,27 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     );
   };
 
+  // Populate form fields to start editing transaction
+  const handleStartEditTransaction = (tx: Transaction) => {
+    setEditingTransactionId(tx.id);
+    setFormSymbol(tx.symbol);
+    setFormType(tx.type);
+    setFormDate(tx.date);
+    setFormShares(tx.shares.toString());
+    
+    // In total price input mode, we show the total price (shares * price)
+    const priceToShow = priceInputMode === 'total' 
+      ? (tx.shares * tx.price) 
+      : tx.price;
+    setFormPrice(priceToShow.toString());
+    
+    setFormCurrency(tx.currency as 'PLN' | 'USD' | 'EUR');
+    setFormFees(tx.fees ? tx.fees.toString() : '');
+    setFormAccount(tx.account || 'Default');
+    setIsSuggestionSelected(true); // Treat as selected so suggestion list doesn't pop open
+    setShowAddModal(true);
+  };
+
   // Handle form submission
   const handleSubmitTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -762,16 +785,26 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     };
 
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .insert(payload);
+      if (editingTransactionId) {
+        const { error } = await supabase
+          .from('transactions')
+          .update(payload)
+          .eq('id', editingTransactionId);
+        
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('transactions')
+          .insert(payload);
+        
+        if (error) throw error;
+      }
       
-      if (error) throw error;
       setShowAddModal(false);
       fetchHoldings(baseCurrency, selectedAccount);
       fetchTransactions();
     } catch (err: any) {
-      console.error('Error adding transaction:', err);
+      console.error('Error saving transaction:', err);
       setFormError(err.message || 'Error occurred while saving transaction.');
     } finally {
       setSubmitting(false);
@@ -1485,13 +1518,23 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                               {activePortfolioRole === 'viewer' ? (
                                 <span style={{ color: 'var(--text-muted)' }}>—</span>
                               ) : (
-                                <button 
-                                  onClick={() => handleDeleteTransaction(tx.id)}
-                                  className="ledger-delete-btn"
-                                  title="Delete Transaction"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                                  <button 
+                                    onClick={() => handleStartEditTransaction(tx)}
+                                    className="ledger-delete-btn"
+                                    style={{ color: 'var(--text-secondary)' }}
+                                    title="Edit Transaction"
+                                  >
+                                    <Edit2 size={15} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteTransaction(tx.id)}
+                                    className="ledger-delete-btn"
+                                    title="Delete Transaction"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -1512,7 +1555,15 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
           <div className="modal-content glass-panel">
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <Plus size={20} className="gradient-text" /> Add New Transaction
+                {editingTransactionId ? (
+                  <>
+                    <Edit2 size={20} className="gradient-text" /> Edit Transaction
+                  </>
+                ) : (
+                  <>
+                    <Plus size={20} className="gradient-text" /> Add New Transaction
+                  </>
+                )}
               </h3>
               <button 
                 onClick={() => setShowAddModal(false)}
@@ -1848,7 +1899,9 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   className="glow-btn"
                   disabled={submitting}
                 >
-                  {submitting ? 'Adding...' : 'Save Transaction'}
+                  {submitting 
+                    ? (editingTransactionId ? 'Updating...' : 'Adding...') 
+                    : (editingTransactionId ? 'Update Transaction' : 'Save Transaction')}
                 </button>
               </div>
             </form>
