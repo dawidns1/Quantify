@@ -13,6 +13,8 @@ export function AuthView() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpToken, setOtpToken] = useState('');
 
   // Validate password strength according to rules
   const validatePasswordStrength = (pw: string): boolean => {
@@ -101,8 +103,42 @@ export function AuthView() {
       if (error) {
         setError(error.message);
       } else {
-        setMessage("Password reset email sent! Check your inbox.");
-        setEmail('');
+        setMessage("Check your email for the recovery link or 6-digit code.");
+        setShowOtpInput(true);
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Verify OTP for password recovery
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    setSubmitting(true);
+
+    const token = otpToken.trim();
+    if (token.length !== 6) {
+      setError("Please enter a valid 6-digit code.");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token,
+        type: 'recovery',
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setMessage("Code verified! Set your new password below.");
+        setRecoveryMode(true);
       }
     } catch (err: any) {
       setError(err.message || "An error occurred.");
@@ -242,49 +278,108 @@ export function AuthView() {
             </button>
           </form>
         ) : isForgotPassword ? (
-          /* 2. REQUEST FORGOT PASSWORD RESET EMAIL FORM */
-          <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="forgot-email-input">Email Address</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  id="forgot-email-input"
-                  type="email"
-                  className="input-field"
-                  style={{ paddingLeft: '38px', width: '100%' }}
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+          showOtpInput ? (
+            /* 2a. VERIFY OTP CODE FORM */
+            <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="form-group">
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', lineHeight: '1.4' }}>
+                  We sent a recovery email to <strong>{email}</strong>. Enter the 6-digit verification code below:
+                </p>
+                <label className="form-label" htmlFor="otp-token-input">Verification Code (6-digit)</label>
+                <div style={{ position: 'relative' }}>
+                  <KeyRound size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="otp-token-input"
+                    type="text"
+                    className="input-field"
+                    style={{ paddingLeft: '38px', width: '100%', letterSpacing: '4px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 700 }}
+                    placeholder="123456"
+                    maxLength={6}
+                    value={otpToken}
+                    onChange={(e) => setOtpToken(e.target.value.replace(/\D/g, ''))}
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              className="glow-btn"
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
-              disabled={submitting}
-            >
-              <Mail size={18} />
-              {submitting ? 'Sending...' : 'Send Reset Link'}
-            </button>
-
-            <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', textAlign: 'center', fontSize: '0.85rem' }}>
               <button
-                type="button"
-                onClick={() => {
-                  setIsForgotPassword(false);
-                  setError(null);
-                  setMessage(null);
-                }}
-                style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
+                type="submit"
+                className="glow-btn"
+                style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                disabled={submitting}
               >
-                Back to Sign In
+                <KeyRound size={18} />
+                {submitting ? 'Verifying...' : 'Verify Code'}
               </button>
-            </div>
-          </form>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', fontSize: '0.85rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowOtpInput(false);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleRequestReset(e)}
+                  disabled={submitting}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  Resend Code
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* 2b. REQUEST FORGOT PASSWORD RESET EMAIL FORM */
+            <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="form-group">
+                <label className="form-label" htmlFor="forgot-email-input">Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="forgot-email-input"
+                    type="email"
+                    className="input-field"
+                    style={{ paddingLeft: '38px', width: '100%' }}
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="glow-btn"
+                style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                disabled={submitting}
+              >
+                <Mail size={18} />
+                {submitting ? 'Sending...' : 'Send Reset Link'}
+              </button>
+
+              <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', textAlign: 'center', fontSize: '0.85rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setShowOtpInput(false);
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          )
         ) : (
           /* 3. STANDARD SIGN IN / SIGN UP FORM */
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
