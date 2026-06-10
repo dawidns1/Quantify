@@ -1,24 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Share2, 
   Briefcase, 
   History, 
-  Plus, 
-  Trash2, 
+  Lock, 
+  Eye, 
   TrendingUp, 
   TrendingDown, 
-  Globe, 
-  Coins, 
+  Activity, 
   PieChart, 
+  Info, 
+  Globe, 
+  ChevronDown, 
+  CreditCard,
+  Coins, 
   X, 
-  Info,
   AlertCircle,
-  Eye,
-  Share2,
   Shield,
-  Users,
-  Lock,
-  Edit2,
-  Activity
+  Users
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../AuthContext';
@@ -83,6 +85,7 @@ interface Transaction {
   currency: string;
   fees: number;
   account: string;
+  portfolio_id: string;
 }
 
 export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
@@ -116,7 +119,8 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     base_currency: 'PLN'
   });
   
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -186,6 +190,53 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   const [activePortfolioRole, setActivePortfolioRole] = useState<'owner' | 'editor' | 'viewer'>('viewer');
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
 
+  // 1. Transactions filtered by portfolio (used for fetching holdings & historical charting)
+  const portfolioTransactions = useMemo(() => {
+    if (activePortfolioId && activePortfolioId !== 'all') {
+      return allTransactions.filter(tx => tx.portfolio_id === activePortfolioId);
+    }
+    return allTransactions;
+  }, [allTransactions, activePortfolioId]);
+
+  // 2. Transactions filtered by both portfolio and account (used for ledger, Cash Modal, etc.)
+  const transactions = useMemo(() => {
+    let list = allTransactions;
+    if (activePortfolioId && activePortfolioId !== 'all') {
+      list = list.filter(tx => tx.portfolio_id === activePortfolioId);
+    }
+    if (selectedAccount && selectedAccount !== 'All') {
+      list = list.filter(tx => (tx.account || 'Default').toLowerCase() === selectedAccount.toLowerCase());
+    }
+    return list;
+  }, [allTransactions, activePortfolioId, selectedAccount]);
+
+  // 3. Dynamic map of unique accounts per portfolio ID for sidebar tree list
+  const portfolioAccountsMap = useMemo(() => {
+    const mapping: Record<string, string[]> = {};
+    for (const tx of allTransactions) {
+      const pId = tx.portfolio_id;
+      if (!pId) continue;
+      const acc = tx.account || 'Default';
+      if (!mapping[pId]) {
+        mapping[pId] = [];
+      }
+      if (!mapping[pId].includes(acc)) {
+        mapping[pId].push(acc);
+      }
+    }
+    for (const pId in mapping) {
+      mapping[pId].sort();
+    }
+    return mapping;
+  }, [allTransactions]);
+
+  // 4. Extract unique accounts dynamically for the active portfolio scope
+  const uniqueAccounts = useMemo(() => {
+    return Array.from(
+      new Set(portfolioTransactions.map((tx) => tx.account || 'Default'))
+    ).sort();
+  }, [portfolioTransactions]);
+
   // Sharing controls state
   const [members, setMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -247,14 +298,19 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
       setPortfolios(formatted);
 
       const cachedId = localStorage.getItem('portfolio_active_id');
-      const found = formatted.find(p => p.id === cachedId);
-      if (found) {
-        setActivePortfolioId(found.id);
-        setActivePortfolioRole(found.role);
+      if (cachedId === 'all') {
+        setActivePortfolioId('all');
+        setActivePortfolioRole('viewer'); // aggregation is read-only
       } else {
-        setActivePortfolioId(formatted[0].id);
-        setActivePortfolioRole(formatted[0].role);
-        localStorage.setItem('portfolio_active_id', formatted[0].id);
+        const found = formatted.find(p => p.id === cachedId);
+        if (found) {
+          setActivePortfolioId(found.id);
+          setActivePortfolioRole(found.role);
+        } else {
+          setActivePortfolioId(formatted[0].id);
+          setActivePortfolioRole(formatted[0].role);
+          localStorage.setItem('portfolio_active_id', formatted[0].id);
+        }
       }
     } catch (err) {
       console.error('Error loading portfolios:', err);
@@ -328,9 +384,9 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   };
 
   // Rename Portfolio
-  const handleRenamePortfolio = () => {
-    if (!activePortfolioId) return;
-    const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
+  const handleRenamePortfolio = (id: string = activePortfolioId || '') => {
+    if (!id) return;
+    const currentPortfolio = portfolios.find(p => p.id === id);
     if (!currentPortfolio) return;
     
     showCustomPrompt(
@@ -344,7 +400,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
           const { error } = await supabase
             .from('portfolios')
             .update({ name: newName.trim() })
-            .eq('id', activePortfolioId);
+            .eq('id', id);
 
           if (error) throw error;
           await loadPortfolios();
@@ -357,9 +413,9 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   };
 
   // Delete Portfolio
-  const handleDeletePortfolio = () => {
-    if (!activePortfolioId) return;
-    const currentPortfolio = portfolios.find(p => p.id === activePortfolioId);
+  const handleDeletePortfolio = (id: string = activePortfolioId || '') => {
+    if (!id) return;
+    const currentPortfolio = portfolios.find(p => p.id === id);
     if (!currentPortfolio) return;
     
     showCustomConfirm(
@@ -370,7 +426,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
           const { error } = await supabase
             .from('portfolios')
             .delete()
-            .eq('id', activePortfolioId);
+            .eq('id', id);
 
           if (error) throw error;
 
@@ -533,13 +589,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     if (!activePortfolioId) return;
     setLoadingHoldings(true);
     try {
-      const { data: txs, error: txError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('portfolio_id', activePortfolioId)
-        .order('date', { ascending: true });
-
-      if (txError) throw txError;
+      const txs = portfolioTransactions;
 
       if (!txs || txs.length === 0) {
         setHoldings([]);
@@ -578,19 +628,24 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   };
 
-  // Fetch transactions from Supabase
+  // Fetch transactions from Supabase for all loaded portfolios
   const fetchTransactions = async () => {
-    if (!activePortfolioId) return;
+    if (!portfolios || portfolios.length === 0) {
+      setAllTransactions([]);
+      setLoadingTransactions(false);
+      return;
+    }
     setLoadingTransactions(true);
     try {
+      const portfolioIds = portfolios.map(p => p.id);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('portfolio_id', activePortfolioId)
+        .in('portfolio_id', portfolioIds)
         .order('date', { ascending: false });
 
       if (error) throw error;
-      setTransactions(data || []);
+      setAllTransactions(data || []);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -600,7 +655,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
 
   // Fetch historical performance data for the chart
   const fetchHistoricalPerformance = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
-    if (!activePortfolioId || transactions.length === 0) {
+    if (!activePortfolioId || portfolioTransactions.length === 0) {
       setChartData(null);
       return;
     }
@@ -612,7 +667,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
         body: JSON.stringify({
           base_currency: curr,
           account: accountFilter,
-          transactions: transactions,
+          transactions: portfolioTransactions,
           link_cash: linkCash
         })
       });
@@ -626,20 +681,28 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }
   };
 
+  // Fetch transactions when the list of portfolios updates
   useEffect(() => {
-    if (activePortfolioId) {
-      fetchHoldings(baseCurrency, selectedAccount);
+    if (portfolios.length > 0) {
       fetchTransactions();
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, linkCash]);
+  }, [portfolios]);
 
+  // Recalculate holdings when active portfolio, filters, or transactions update
   useEffect(() => {
-    if (activePortfolioId && transactions.length > 0) {
+    if (activePortfolioId && portfolios.length > 0) {
+      fetchHoldings(baseCurrency, selectedAccount);
+    }
+  }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
+
+  // Recalculate chart when active portfolio, filters, or transactions update
+  useEffect(() => {
+    if (activePortfolioId && portfolioTransactions.length > 0) {
       fetchHistoricalPerformance(baseCurrency, selectedAccount);
     } else {
       setChartData(null);
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, transactions, linkCash]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
 
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
@@ -724,12 +787,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     return calculateAllocations();
   }, [holdings, summary.total_value_base]);
 
-  // Extract unique accounts dynamically
-  const uniqueAccounts = useMemo(() => {
-    return Array.from(
-      new Set(transactions.map((tx) => tx.account || 'Default'))
-    ).sort();
-  }, [transactions]);
+
 
 
 
@@ -806,254 +864,360 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
 
   const isProfit = summary.total_gain_base >= 0;
 
+  const togglePortfolioExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedPortfolios(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const activePortfolioName = activePortfolioId === 'all'
+    ? 'All Assets'
+    : portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio';
+
   return (
-    <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      
-      {/* Portfolio Header Switcher Bar */}
-      <div className="portfolio-header-bar glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        
-        {/* Sub-tabs buttons */}
-        <div className="sub-tabs-container" style={{ display: 'flex', gap: '0.5rem' }}>
-          <button 
-            className={`sub-tab-btn ${subTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setSubTab('overview')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              background: subTab === 'overview' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-              color: subTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: subTab === 'overview' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
-              padding: '0.5rem 1rem',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            <Briefcase size={16} />
-            Portfolio Overview
-          </button>
-          <button 
-            className={`sub-tab-btn ${subTab === 'ledger' ? 'active' : ''}`}
-            onClick={() => setSubTab('ledger')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              background: subTab === 'ledger' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-              color: subTab === 'ledger' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: subTab === 'ledger' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
-              padding: '0.5rem 1rem',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            <History size={16} />
-            Transaction Ledger ({transactions.length})
-          </button>
+    <div className="app-layout">
+      {/* LEFT SIDEBAR */}
+      <aside className="sidebar">
+        {/* Branding */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 800,
+            fontSize: '1.1rem',
+            color: 'white',
+            boxShadow: '0 0 12px rgba(6, 182, 212, 0.4)'
+          }}>
+            Q
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.03em', background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              QUANTIFY
+            </span>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Portfolio Intelligence
+            </span>
+          </div>
         </div>
 
-        {/* Base Currency, Portfolio & Account Selectors */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+        {/* User Context */}
+        <div style={{ padding: '0.55rem 0.75rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '0.2rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Logged in as:</span>
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
+            {user?.email}
+          </span>
+        </div>
+
+        {/* Navigation Tree Root */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.5rem' }}>
+          <div 
+            className={`tree-node ${activePortfolioId === 'all' ? 'active' : ''}`}
+            onClick={() => {
+              setActivePortfolioId('all');
+              setSelectedAccount('All');
+              localStorage.setItem('portfolio_active_id', 'all');
+            }}
+          >
+            <Globe size={15} />
+            <span>All Assets</span>
+          </div>
+        </div>
+
+        {/* Portfolios Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '0 0.5rem' }}>
+          <div className="tree-section-header">
+            <span>Portfolios</span>
+            <button 
+              onClick={handleCreatePortfolio}
+              title="Create New Portfolio"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <Plus size={13} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '0.25rem' }}>
+            {portfolios.map((portfolio) => {
+              const isActive = activePortfolioId === portfolio.id;
+              const isExpanded = !!expandedPortfolios[portfolio.id];
+              const accounts = portfolioAccountsMap[portfolio.id] || [];
+              
+              return (
+                <div key={portfolio.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  {/* Portfolio Folder Node */}
+                  <div 
+                    className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActivePortfolioId(portfolio.id);
+                      setActivePortfolioRole(portfolio.role);
+                      setSelectedAccount('All');
+                      localStorage.setItem('portfolio_active_id', portfolio.id);
+                    }}
+                  >
+                    <div 
+                      className={`tree-caret ${isExpanded ? '' : 'collapsed'}`}
+                      onClick={(e) => togglePortfolioExpand(portfolio.id, e)}
+                    >
+                      <ChevronDown size={13} />
+                    </div>
+                    <Briefcase size={14} style={{ flexShrink: 0 }} />
+                    <span style={{ 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap', 
+                      paddingRight: portfolio.role === 'owner' ? '2.5rem' : '0.5rem',
+                      fontSize: '0.82rem'
+                    }}>
+                      {portfolio.name}
+                    </span>
+                    
+                    {/* Hover CRUD icons */}
+                    {portfolio.role === 'owner' && (
+                      <div className="tree-node-actions" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenamePortfolio(portfolio.id);
+                          }}
+                          title="Rename Portfolio"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                        >
+                          <Edit2 size={11} />
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePortfolio(portfolio.id);
+                          }}
+                          title="Delete Portfolio"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px' }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nested Accounts Sub-list */}
+                  {isExpanded && (
+                    <div className="tree-sub-list">
+                      <div 
+                        className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
+                        style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                        onClick={() => {
+                          setActivePortfolioId(portfolio.id);
+                          setActivePortfolioRole(portfolio.role);
+                          setSelectedAccount('All');
+                          localStorage.setItem('portfolio_active_id', portfolio.id);
+                        }}
+                      >
+                        <History size={12} />
+                        <span>All Accounts</span>
+                      </div>
+                      
+                      {accounts.map((accName) => {
+                        const isAccActive = isActive && selectedAccount === accName;
+                        return (
+                          <div 
+                            key={accName}
+                            className={`tree-node ${isAccActive ? 'active' : ''}`}
+                            style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                            onClick={() => {
+                              setActivePortfolioId(portfolio.id);
+                              setActivePortfolioRole(portfolio.role);
+                              setSelectedAccount(accName);
+                              localStorage.setItem('portfolio_active_id', portfolio.id);
+                            }}
+                          >
+                            <CreditCard size={12} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {accName}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="main-content">
+        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           
-          {/* Portfolio Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Portfolio:</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <select
-                className="input-field"
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  borderColor: 'var(--panel-border)',
-                  outline: 'none',
-                  height: 'auto'
-                }}
-                value={activePortfolioId || ''}
-                onChange={(e) => {
-                  const pId = e.target.value;
-                  const found = portfolios.find(p => p.id === pId);
-                  if (found) {
-                    setActivePortfolioId(pId);
-                    setActivePortfolioRole(found.role);
-                    localStorage.setItem('portfolio_active_id', pId);
-                  }
-                }}
-              >
-                {portfolios.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.role})
-                  </option>
-                ))}
-              </select>
-
-              <button
-                onClick={handleCreatePortfolio}
-                title="Create New Portfolio"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '6px',
-                  width: '28px',
-                  height: '28px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Plus size={13} />
-              </button>
-
-              {activePortfolioRole === 'owner' && (
+          {/* Top navigation Header Switcher Bar */}
+          <div className="portfolio-header-bar glass-panel" style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '1rem',
+            padding: '0.75rem 1.25rem',
+            background: 'rgba(13, 20, 35, 0.45)',
+            border: '1px solid var(--panel-border)',
+            borderRadius: '10px'
+          }}>
+            {/* Breadcrumb Trail */}
+            <div className="breadcrumb-trail">
+              <Globe size={14} style={{ color: 'var(--color-primary)' }} />
+              <span className="breadcrumb-item">All Assets</span>
+              {activePortfolioId && activePortfolioId !== 'all' && (
                 <>
-                  <button
-                    onClick={handleRenamePortfolio}
-                    title="Rename Portfolio"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '6px',
-                      width: '28px',
-                      height: '28px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: 'var(--text-secondary)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Edit2 size={13} />
-                  </button>
-
-                  <button
-                    onClick={handleDeletePortfolio}
-                    title="Delete Portfolio"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '6px',
-                      width: '28px',
-                      height: '28px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: 'var(--color-red)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>/</span>
+                  <span className={`breadcrumb-item ${selectedAccount === 'All' ? 'active' : ''}`}>
+                    {activePortfolioName}
+                  </span>
+                </>
+              )}
+              {selectedAccount && selectedAccount !== 'All' && (
+                <>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>/</span>
+                  <span className="breadcrumb-item active">
+                    {selectedAccount}
+                  </span>
                 </>
               )}
             </div>
-          </div>
 
-          {/* Share Portfolio Button (Only if owner) */}
-          {activePortfolioRole === 'owner' && (
-            <button
-              className="glow-btn"
-              onClick={() => {
-                setInviteSuccess(null);
-                setInviteError(null);
-                setInviteEmail('');
-                setShowShareModal(true);
-                loadMembers();
-              }}
-              style={{
-                padding: '0.3rem 0.65rem',
-                fontSize: '0.78rem',
-                borderRadius: '6px',
-                boxShadow: 'none',
-                background: 'rgba(59, 130, 246, 0.06)',
-                color: 'var(--color-primary)',
-                borderColor: 'rgba(59, 130, 246, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.2rem'
-              }}
-            >
-              <Share2 size={12} /> Share
-            </button>
-          )}
-
-          {/* Account Filter Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Account:</span>
-            <select
-              className="input-field"
-              style={{
-                padding: '0.3rem 0.65rem',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                background: 'rgba(255, 255, 255, 0.03)',
-                borderColor: 'var(--panel-border)',
-                outline: 'none',
-                height: 'auto'
-              }}
-              value={selectedAccount}
-              onChange={(e) => setSelectedAccount(e.target.value)}
-            >
-              <option value="All">All Accounts</option>
-              {uniqueAccounts.map((acc) => (
-                <option key={acc} value={acc}>
-                  {acc}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Base Currency:</span>
-            <div className="currency-selector-pills" style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-              {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
-                <button
-                  key={curr}
-                  onClick={() => setBaseCurrency(curr)}
+            {/* Utility selectors & action buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+              
+              {/* Sub-tabs buttons */}
+              <div className="sub-tabs-container" style={{ display: 'flex', gap: '0.35rem' }}>
+                <button 
+                  className={`sub-tab-btn ${subTab === 'overview' ? 'active' : ''}`}
+                  onClick={() => setSubTab('overview')}
                   style={{
-                    background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
-                    color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
-                    border: 'none',
-                    padding: '0.25rem 0.65rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: subTab === 'overview' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+                    color: subTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    border: subTab === 'overview' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
+                    padding: '0.4rem 0.85rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    borderRadius: '6px',
                     cursor: 'pointer',
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  {curr}
+                  <Briefcase size={14} />
+                  Overview
                 </button>
-              ))}
+                <button 
+                  className={`sub-tab-btn ${subTab === 'ledger' ? 'active' : ''}`}
+                  onClick={() => setSubTab('ledger')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    background: subTab === 'ledger' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+                    color: subTab === 'ledger' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    border: subTab === 'ledger' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
+                    padding: '0.4rem 0.85rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                >
+                  <History size={14} />
+                  Ledger ({transactions.length})
+                </button>
+              </div>
+
+              {/* Base Currency Selector pills */}
+              <div className="currency-selector-pills" style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+                {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
+                  <button
+                    key={curr}
+                    onClick={() => setBaseCurrency(curr)}
+                    style={{
+                      background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
+                      color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
+                      border: 'none',
+                      padding: '0.2rem 0.55rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'var(--transition-smooth)'
+                    }}
+                  >
+                    {curr}
+                  </button>
+                ))}
+              </div>
+
+              {/* Share button */}
+              {activePortfolioId !== 'all' && activePortfolioRole === 'owner' && (
+                <button
+                  className="glow-btn"
+                  onClick={() => {
+                    setInviteSuccess(null);
+                    setInviteError(null);
+                    setInviteEmail('');
+                    setShowShareModal(true);
+                    loadMembers();
+                  }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    fontSize: '0.8rem',
+                    borderRadius: '6px',
+                    boxShadow: 'none',
+                    background: 'rgba(59, 130, 246, 0.06)',
+                    color: 'var(--color-primary)',
+                    borderColor: 'rgba(59, 130, 246, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}
+                >
+                  <Share2 size={13} /> Share
+                </button>
+              )}
+
+              {/* Add Transaction Button */}
+              {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
+                <button 
+                  className="glow-btn"
+                  onClick={() => setShowAddModal(true)}
+                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', borderRadius: '6px' }}
+                >
+                  <Plus size={14} /> Add Transaction
+                </button>
+              )}
             </div>
           </div>
-
-          {activePortfolioRole !== 'viewer' && (
-            <button 
-              className="glow-btn"
-              onClick={() => setShowAddModal(true)}
-              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: '8px' }}
-            >
-              <Plus size={16} /> Add Transaction
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
       {(loadingPortfolios || (loadingHoldings && holdings.length === 0) || (loadingTransactions && transactions.length === 0)) ? (
@@ -2151,6 +2315,8 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     )}
 
     </div>
+  </main>
+</div>
   );
 }
 
