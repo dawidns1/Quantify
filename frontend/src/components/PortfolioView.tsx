@@ -115,6 +115,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   // Autocomplete suggestions states
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
 
   // Filtering states
   const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
@@ -524,6 +525,10 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
 
   // Debounced search for suggestions
   useEffect(() => {
+    if (isSuggestionSelected) {
+      return;
+    }
+
     if (formSymbol.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -551,11 +556,12 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     }, 300);
 
     return () => clearTimeout(delayDebounce);
-  }, [formSymbol, apiBaseUrl]);
+  }, [formSymbol, apiBaseUrl, isSuggestionSelected]);
 
   // Handle clicking a search suggestion
   const handleSelectSuggestion = (s: any) => {
     setFormSymbol(s.symbol);
+    setIsSuggestionSelected(true);
     setShowSuggestions(false);
     
     const sym = s.symbol.toUpperCase().trim();
@@ -652,6 +658,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
   // Handle ticker change to auto-set currency defaults
   const handleTickerChange = (val: string) => {
     setFormSymbol(val);
+    setIsSuggestionSelected(false);
     const upperVal = val.toUpperCase().trim();
     if (upperVal.endsWith('.WA')) {
       setFormCurrency('PLN');
@@ -667,6 +674,7 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
     if (activePortfolioRole === 'viewer') return;
     setShowAddModal(true);
     setFormSymbol(symbol);
+    setIsSuggestionSelected(true);
     setFormType(type);
     
     const sym = symbol.toUpperCase().trim();
@@ -1744,15 +1752,47 @@ export function PortfolioView({ apiBaseUrl }: PortfolioViewProps) {
                   padding: '0.5rem 0.75rem',
                   marginTop: '0.1rem'
                 }}>
-                  {priceInputMode === 'per_share' ? (
-                    <span>
-                      Calculated Total Cost: <strong>{formatCurrency(parseFloat(formShares) * parseFloat(formPrice), formCurrency)}</strong> (excl. fees)
-                    </span>
-                  ) : (
-                    <span>
-                      Calculated Price Per Share: <strong>{formatCurrency(parseFloat(formPrice) / parseFloat(formShares), formCurrency)}</strong>
-                    </span>
-                  )}
+                  {(() => {
+                    const shares = parseFloat(formShares);
+                    const price = parseFloat(formPrice);
+                    const fees = parseFloat(formFees) || 0;
+                    
+                    if (priceInputMode === 'per_share') {
+                      const grossTotal = shares * price;
+                      const netTotal = formType === 'BUY' ? grossTotal + fees : grossTotal - fees;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div>
+                            Gross Total: <strong>{formatCurrency(grossTotal, formCurrency)}</strong>
+                          </div>
+                          {fees > 0 && (
+                            <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
+                              {formType === 'BUY' ? 'Total Cash Outlay (incl. fees):' : 'Net Cash Proceeds (after fees):'}{' '}
+                              <strong>{formatCurrency(netTotal, formCurrency)}</strong>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      const calculatedPricePerShare = price / shares;
+                      const adjustedPrice = formType === 'BUY' 
+                        ? (price + fees) / shares 
+                        : (price - fees) / shares;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <div>
+                            Calculated Price Per Share: <strong>{formatCurrency(calculatedPricePerShare, formCurrency)}</strong>
+                          </div>
+                          {fees > 0 && (
+                            <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
+                              {formType === 'BUY' ? 'Effective Buy Cost Per Share (incl. fees):' : 'Effective Sell Proceeds Per Share (after fees):'}{' '}
+                              <strong>{formatCurrency(adjustedPrice, formCurrency)}</strong>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               )}
 
