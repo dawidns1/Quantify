@@ -28,6 +28,151 @@ class PortfolioManager:
     HISTORICAL_CACHE_TTL = 3600  # 1 hour
 
     @classmethod
+    def prefetch_live_prices(cls, symbols: list, fx_pairs: list):
+        now = time.time()
+        missing_symbols = []
+        missing_fx = []
+        
+        for sym in symbols:
+            sym = sym.upper().strip()
+            cache_entry = cls._live_ticker_cache.get(sym)
+            if not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
+                missing_symbols.append(sym)
+                
+        for pair in fx_pairs:
+            pair = pair.upper().strip()
+            cache_entry = cls._live_fx_cache.get(pair)
+            if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
+                missing_fx.append(pair)
+                
+        if not missing_symbols and not missing_fx:
+            return
+            
+        all_missing = missing_symbols + missing_fx
+        print(f"[DEBUG] Prefetching live prices for {len(all_missing)} items: {all_missing}")
+        
+        symbols_str = " ".join(all_missing)
+        try:
+            df = yf.download(symbols_str, period="5d", progress=False, group_by='ticker')
+            
+            for sym in missing_symbols:
+                live_price = 0.0
+                try:
+                    if len(all_missing) == 1:
+                        ticker_df = df
+                        if isinstance(ticker_df.columns, pd.MultiIndex):
+                            ticker_df.columns = ticker_df.columns.get_level_values(0)
+                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                    else:
+                        if sym in df.columns.levels[0]:
+                            ticker_df = df[sym]
+                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                        else:
+                            prices_series = pd.Series(dtype=float)
+                            
+                    non_nan_series = prices_series.dropna()
+                    if not non_nan_series.empty:
+                        live_price = float(non_nan_series.iloc[-1])
+                except Exception as sym_err:
+                    print(f"Error parsing live bulk data for {sym}: {sym_err}")
+                    
+                cls._live_ticker_cache[sym] = (now, {
+                    "live_price": live_price,
+                    "company_name": sym,
+                    "native_currency": "USD"
+                })
+                
+            for pair in missing_fx:
+                rate = 1.0
+                try:
+                    if len(all_missing) == 1:
+                        ticker_df = df
+                        if isinstance(ticker_df.columns, pd.MultiIndex):
+                            ticker_df.columns = ticker_df.columns.get_level_values(0)
+                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                    else:
+                        if pair in df.columns.levels[0]:
+                            ticker_df = df[pair]
+                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                        else:
+                            prices_series = pd.Series(dtype=float)
+                            
+                    non_nan_series = prices_series.dropna()
+                    if not non_nan_series.empty:
+                        rate = float(non_nan_series.iloc[-1])
+                except Exception as pair_err:
+                    print(f"Error parsing live FX bulk data for {pair}: {pair_err}")
+                    
+                cls._live_fx_cache[pair] = (now, rate)
+        except Exception as e:
+            print(f"Error prefetching live prices in bulk: {e}")
+
+    @classmethod
+    def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
+        now = time.time()
+        missing_symbols = []
+        
+        for sym in symbols:
+            sym = sym.upper().strip()
+            cache_entry = cls._historical_stock_cache.get(sym)
+            if not cache_entry or cache_entry["start_date"] > start_dt or (now - cache_entry["last_updated"] > cls.HISTORICAL_CACHE_TTL):
+                missing_symbols.append(sym)
+                
+        if not missing_symbols:
+            return
+            
+        start_str = start_dt.strftime("%Y-%m-%d")
+        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        try:
+            print(f"[DEBUG] Prefetching historical stock prices for {len(missing_symbols)} symbols: {missing_symbols}")
+            symbols_str = " ".join(missing_symbols)
+            df = yf.download(symbols_str, start=start_str, end=end_str, progress=False, group_by='ticker')
+            
+            for sym in missing_symbols:
+                prices_dict = {}
+                try:
+                    if len(missing_symbols) == 1:
+                        ticker_df = df
+                        if isinstance(ticker_df.columns, pd.MultiIndex):
+                            ticker_df.columns = ticker_df.columns.get_level_values(0)
+                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                    else:
+                        if sym in df.columns.levels[0]:
+                            ticker_df = df[sym]
+                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                        else:
+                            prices_series = pd.Series(dtype=float)
+                            
+                    if not prices_series.empty:
+                        prices_series.index = pd.to_datetime(prices_series.index).date
+                        for d, val in prices_series.items():
+                            if pd.notna(val):
+                                prices_dict[d] = float(val)
+                except Exception as sym_err:
+                    print(f"Error parsing bulk data for {sym}: {sym_err}")
+                    
+                cache_entry = cls._historical_stock_cache.get(sym)
+                if prices_dict:
+                    actual_start = min(prices_dict.keys())
+                    actual_end = max(prices_dict.keys())
+                    
+                    if cache_entry:
+                        merged_prices = {**cache_entry["prices"], **prices_dict}
+                        actual_start = min(merged_prices.keys())
+                        actual_end = max(merged_prices.keys())
+                        prices_dict = merged_prices
+                        
+                    cls._historical_stock_cache[sym] = {
+                        "start_date": actual_start,
+                        "end_date": actual_end,
+                        "last_updated": now,
+                        "prices": prices_dict
+                    }
+        except Exception as e:
+            print(f"Error prefetching historical stock prices in bulk: {e}")
+
+    @classmethod
     def get_cached_live_ticker(cls, symbol: str) -> dict:
         symbol = symbol.upper().strip()
         now = time.time()
@@ -111,6 +256,8 @@ class PortfolioManager:
         prices_dict = {}
         try:
             df = yf.download(symbol, start=start_str, end=end_str, progress=False)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
             prices_series = df['Close'] if 'Close' in df.columns else pd.Series(dtype=float)
             if not prices_series.empty:
                 prices_series.index = pd.to_datetime(prices_series.index).date
@@ -166,6 +313,8 @@ class PortfolioManager:
         prices_dict = {}
         try:
             df_fx = yf.download(pair, start=start_str, end=end_str, progress=False)
+            if isinstance(df_fx.columns, pd.MultiIndex):
+                df_fx.columns = df_fx.columns.get_level_values(0)
             prices_series = df_fx['Close'] if 'Close' in df_fx.columns else pd.Series(dtype=float)
             if not prices_series.empty:
                 prices_series.index = pd.to_datetime(prices_series.index).date
@@ -367,6 +516,18 @@ class PortfolioManager:
                 "holdings": []
             }
             
+        # Prefetch live prices and FX rates in bulk to speed up loading and bypass yfinance crumb limitations
+        symbols_to_prefetch = list(symbol_txs.keys())
+        fx_pairs_to_prefetch = []
+        unique_currencies_to_check = {base_currency}
+        for tx in transactions:
+            unique_currencies_to_check.add(tx["currency"].upper().strip())
+        for curr in unique_currencies_to_check:
+            if curr != base_currency:
+                fx_pairs_to_prefetch.append(f"{curr}{base_currency}=X")
+        
+        cls.prefetch_live_prices(symbols_to_prefetch, fx_pairs_to_prefetch)
+
         # Gather live ticker info for stocks (cached)
         ticker_info = {}
         for symbol in symbol_txs.keys():
@@ -552,6 +713,9 @@ class PortfolioManager:
         # 4. Gather unique stock symbols (exclude CASH_ symbols)
         stock_symbols = list({tx["symbol"].upper().strip() for tx in sorted_txs if not tx["symbol"].upper().strip().startswith("CASH_")})
         
+        # Prefetch historical prices in bulk to speed up loading
+        cls.prefetch_historical_stock_prices(stock_symbols, start_dt, end_dt)
+
         # 5. Fetch daily close prices for all stocks (cached)
         stock_prices = {}
         for sym in stock_symbols:

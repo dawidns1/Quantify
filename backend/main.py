@@ -397,7 +397,11 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
     supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
     
+    print(f"[DEBUG] fetch_transactions_from_supabase url={supabase_url} portfolio={portfolio_id}")
+    print(f"[DEBUG] Authorization: {jwt_token[:30]}..." if jwt_token else "[DEBUG] Authorization: None")
+    
     if not supabase_url or not supabase_key:
+        print("[DEBUG] Supabase env variables missing!")
         raise HTTPException(status_code=500, detail="Supabase environment variables not configured on backend.")
         
     url = f"{supabase_url}/rest/v1/transactions"
@@ -411,13 +415,21 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
+        print(f"[DEBUG] Supabase response code: {response.status_code}")
         if response.status_code != 200:
+            print(f"[DEBUG] Supabase error response: {response.text}")
             raise HTTPException(
                 status_code=response.status_code, 
                 detail=f"Failed to fetch transactions from Supabase: {response.text}"
             )
-        return response.json()
+        data = response.json()
+        print(f"[DEBUG] Fetched {len(data)} transactions from Supabase")
+        if data:
+            print(f"[DEBUG] First transaction structure: {data[0]}")
+            print(f"[DEBUG] Types: symbol={type(data[0].get('symbol'))}, shares={type(data[0].get('shares'))}, price={type(data[0].get('price'))}")
+        return data
     except requests.exceptions.RequestException as req_err:
+        print(f"[DEBUG] Network error contacting Supabase: {req_err}")
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
 @app.get("/api/portfolio/{portfolio_id}/holdings")
@@ -433,7 +445,12 @@ def get_portfolio_holdings_jwt(
         
     try:
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
-        return PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash)
+        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash)
+        print(f"[DEBUG] Holdings response summary: {res.get('summary')}")
+        print(f"[DEBUG] Holdings count: {len(res.get('holdings', []))}")
+        if res.get('holdings'):
+            print(f"[DEBUG] First holding position: {res.get('holdings')[0]}")
+        return res
     except HTTPException:
         raise
     except Exception as e:

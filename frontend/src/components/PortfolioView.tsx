@@ -300,7 +300,7 @@ export function PortfolioView({
 
   useEffect(() => {
     loadPortfolios();
-  }, [user]);
+  }, [user?.id]);
 
   // Fetch holdings (GET from backend calculator using JWT)
   const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
