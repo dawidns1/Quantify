@@ -618,7 +618,7 @@ export function PortfolioView({
           </div>
 
           {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
-          {(loadingPortfolios || (loadingHoldings && holdings.length === 0) || (loadingTransactions && transactions.length === 0)) ? (
+          {((loadingPortfolios && portfolios.length === 0) || (loadingHoldings && holdings.length === 0) || (loadingTransactions && allTransactions.length === 0)) ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* Consolidated Premium Metrics Banner Skeleton */}
               <div className="glass-panel" style={{

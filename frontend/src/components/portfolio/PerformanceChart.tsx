@@ -51,29 +51,31 @@ export function PerformanceChart({
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 10 } }
+          ticks: { color: 'rgba(255, 255, 255, 0.75)', font: { size: 10, weight: 'normal' as const } }
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: 'rgba(255, 255, 255, 0.4)', font: { size: 10 } }
+          grid: { color: 'rgba(255, 255, 255, 0.12)' },
+          ticks: { color: 'rgba(255, 255, 255, 0.75)', font: { size: 10, weight: 'normal' as const } }
         }
       },
       plugins: {
         legend: {
           display: true,
           position: 'top' as const,
-          labels: { color: 'rgba(255, 255, 255, 0.7)', font: { size: 11 }, boxWidth: 12, padding: 10 }
+          labels: { color: 'rgba(255, 255, 255, 0.95)', font: { size: 11, weight: 'bold' as const }, boxWidth: 12, padding: 10 }
         },
         tooltip: {
           mode: 'index' as const,
           intersect: false,
-          backgroundColor: 'rgba(13, 17, 28, 0.95)',
-          titleColor: 'var(--text-primary)',
-          bodyColor: 'var(--text-secondary)',
-          borderColor: 'rgba(255, 255, 255, 0.1)',
+          backgroundColor: 'rgba(20, 26, 42, 0.95)',
+          titleColor: '#ffffff',
+          bodyColor: '#e2e8f0',
+          borderColor: 'rgba(255, 255, 255, 0.18)',
           borderWidth: 1,
-          padding: 10,
-          cornerRadius: 6
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { size: 12, weight: 'bold' as const },
+          bodyFont: { size: 12 }
         },
         zoom: {
           zoom: {
@@ -104,8 +106,8 @@ export function PerformanceChart({
           label: 'Net Asset Value (NAV)',
           data: chartData.nav,
           fill: true,
-          backgroundColor: 'rgba(6, 182, 212, 0.08)',
-          borderColor: 'var(--color-primary)',
+          backgroundColor: 'rgba(6, 182, 212, 0.06)',
+          borderColor: '#06b6d4', // Premium glowing cyan
           borderWidth: 2,
           pointRadius: 2,
           pointHoverRadius: 4,
@@ -115,7 +117,7 @@ export function PerformanceChart({
           label: 'Invested Capital (Cost Basis)',
           data: chartData.cost_basis,
           fill: false,
-          borderColor: 'rgba(255, 255, 255, 0.35)',
+          borderColor: 'rgba(255, 255, 255, 0.75)', // Bright dashed white line
           borderWidth: 1.5,
           borderDash: [5, 5],
           pointRadius: 0,
@@ -163,7 +165,7 @@ export function PerformanceChart({
             </button>
           )}
         </h4>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
           Showing NAV vs. Total Cost Basis in {baseCurrency} (Scroll to Zoom, Drag to Pan)
         </span>
       </div>
