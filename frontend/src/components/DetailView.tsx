@@ -464,6 +464,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
           borderDash: c.borderDash,
           pointRadius: 0,
           pointHoverRadius: 4,
+          pointHitRadius: 10, // Increase hit area for easier mouse snapping
           yAxisID: axisId,
           spanGaps: true,
         };
@@ -477,6 +478,13 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
       maintainAspectRatio: false,
       animation: {
         duration: 150
+      },
+      transitions: {
+        active: {
+          animation: {
+            duration: 0 // Disable hover active state animations for zero lag
+          }
+        }
       },
       interaction: {
         mode: 'index' as const,
@@ -559,6 +567,9 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
           bodyFont: { family: 'Outfit' },
           padding: 10,
           boxPadding: 4,
+          animation: {
+            duration: 0 // Snap tooltip instantly
+          },
           callbacks: {
             title: (context: any) => ensureYYYYMMDD(context[0].label),
             label: (context: any) => {

@@ -29,9 +29,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      setSession(currentSession => {
+        if (currentSession?.access_token === newSession?.access_token && 
+            currentSession?.user?.id === newSession?.user?.id) {
+          return currentSession;
+        }
+        return newSession;
+      });
+
+      setUser(currentUser => {
+        const newUser = newSession?.user ?? null;
+        if (currentUser?.id === newUser?.id) {
+          return currentUser;
+        }
+        return newUser;
+      });
+
       setLoading(false);
       
       if (event === 'PASSWORD_RECOVERY') {

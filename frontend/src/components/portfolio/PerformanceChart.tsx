@@ -48,34 +48,55 @@ export function PerformanceChart({
       animation: {
         duration: 250 // smooth, fast animation when toggled or updated
       },
+      transitions: {
+        active: {
+          animation: {
+            duration: 0 // Disable active hover transition animation for instant snap
+          }
+        }
+      },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: 'rgba(255, 255, 255, 0.75)', font: { size: 10, weight: 'normal' as const } }
+          ticks: { 
+            color: 'rgba(255, 255, 255, 0.85)', 
+            font: { family: 'Outfit', size: 10, weight: 'normal' as const } 
+          }
         },
         y: {
           grid: { color: 'rgba(255, 255, 255, 0.12)' },
-          ticks: { color: 'rgba(255, 255, 255, 0.75)', font: { size: 10, weight: 'normal' as const } }
+          ticks: { 
+            color: 'rgba(255, 255, 255, 0.85)', 
+            font: { family: 'Outfit', size: 10, weight: 'normal' as const } 
+          }
         }
       },
       plugins: {
         legend: {
           display: true,
           position: 'top' as const,
-          labels: { color: 'rgba(255, 255, 255, 0.95)', font: { size: 11, weight: 'bold' as const }, boxWidth: 12, padding: 10 }
+          labels: { 
+            color: 'rgba(255, 255, 255, 0.95)', 
+            font: { family: 'Outfit', size: 11, weight: 'bold' as const }, 
+            boxWidth: 12, 
+            padding: 10 
+          }
         },
         tooltip: {
           mode: 'index' as const,
           intersect: false,
-          backgroundColor: 'rgba(20, 26, 42, 0.95)',
+          backgroundColor: 'rgba(15, 23, 42, 0.96)',
           titleColor: '#ffffff',
-          bodyColor: '#e2e8f0',
+          bodyColor: '#f1f5f9',
           borderColor: 'rgba(255, 255, 255, 0.18)',
           borderWidth: 1,
           padding: 12,
           cornerRadius: 8,
-          titleFont: { size: 12, weight: 'bold' as const },
-          bodyFont: { size: 12 }
+          titleFont: { family: 'Outfit', size: 12, weight: 'bold' as const },
+          bodyFont: { family: 'Outfit', size: 12 },
+          animation: {
+            duration: 0 // Disable tooltip animation for instant snapping
+          }
         },
         zoom: {
           zoom: {
@@ -109,19 +130,21 @@ export function PerformanceChart({
           backgroundColor: 'rgba(6, 182, 212, 0.06)',
           borderColor: '#06b6d4', // Premium glowing cyan
           borderWidth: 2,
-          pointRadius: 2,
+          pointRadius: 0, // Set to 0 to prevent initial draw lag
           pointHoverRadius: 4,
+          pointHitRadius: 10, // Increase interaction hit area
           tension: 0.15
         },
         {
           label: 'Invested Capital (Cost Basis)',
           data: chartData.cost_basis,
           fill: false,
-          borderColor: 'rgba(255, 255, 255, 0.75)', // Bright dashed white line
+          borderColor: 'rgba(255, 255, 255, 0.85)', // Brighter dashed white line
           borderWidth: 1.5,
           borderDash: [5, 5],
-          pointRadius: 0,
+          pointRadius: 0, // Set to 0 to prevent initial draw lag
           pointHoverRadius: 3,
+          pointHitRadius: 8, // Increase interaction hit area
           tension: 0.05
         }
       ]
@@ -144,9 +167,9 @@ export function PerformanceChart({
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: '4px',
-                padding: '0.15rem 0.45rem',
+                padding: '0.2rem 0.55rem',
                 color: 'var(--text-secondary)',
-                fontSize: '0.65rem',
+                fontSize: '0.7rem',
                 cursor: 'pointer',
                 transition: 'var(--transition-smooth)',
                 marginLeft: '0.5rem',
@@ -165,21 +188,44 @@ export function PerformanceChart({
             </button>
           )}
         </h4>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+        <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>
           Showing NAV vs. Total Cost Basis in {baseCurrency} (Scroll to Zoom, Drag to Pan)
         </span>
       </div>
       <div style={{ height: '220px', position: 'relative' }}>
-        {loadingChart ? (
-          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)' }} className="pulse">
+        {loadingChart && !chartDataFormatted ? (
+          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)' }} className="pulse">
             Computing historical performance data...
           </div>
         ) : chartDataFormatted ? (
-          <Line 
-            ref={chartRef}
-            options={chartOptions}
-            data={chartDataFormatted}
-          />
+          <>
+            <Line 
+              ref={chartRef}
+              options={chartOptions}
+              data={chartDataFormatted}
+            />
+            {loadingChart && (
+              <div style={{
+                position: 'absolute',
+                top: '0.5rem',
+                right: '0.5rem',
+                background: 'rgba(15, 23, 42, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                padding: '0.25rem 0.6rem',
+                borderRadius: '6px',
+                fontSize: '0.7rem',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                pointerEvents: 'none',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                fontWeight: 600
+              }} className="pulse">
+                Refetching...
+              </div>
+            )}
+          </>
         ) : null}
       </div>
     </div>

@@ -88,19 +88,22 @@ body::before {
 }
 
 .glass-panel {
-  background: var(--panel-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(13, 20, 35, 0.82); /* Opaque dark background for high contrast & performance */
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   transition: border-color 0.2s ease;
-  
-  /* NOTE: Removed 'transform: translate3d(0, 0, 0)' and 'will-change: transform'
-     from here. Promoting multiple backdrop-filter elements to their own composite
-     layers in Chromium forces expensive backdrop texture copy-backs to the GPU on 
-     every scroll frame, severely dragging down scroll frame rates. */
+}
+
+/* For overlays, popovers, and floating menus that scroll OVER content */
+.glass-panel-floating {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
 }
 
 .glass-panel.interactive:hover {
@@ -1325,13 +1328,12 @@ select option {
 
 .sidebar {
   width: 270px;
-  background: linear-gradient(180deg, rgba(13, 20, 35, 0.92) 0%, rgba(8, 12, 22, 0.97) 100%);
+  background: linear-gradient(180deg, rgba(10, 15, 30, 0.97) 0%, rgba(5, 8, 15, 0.99) 100%);
   border-right: 1px solid var(--panel-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
   box-shadow: 6px 0 24px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(25px);
   z-index: 10;
   height: 100vh;
   overflow-y: auto;
