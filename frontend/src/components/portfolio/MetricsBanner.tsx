@@ -40,6 +40,21 @@ export function MetricsBanner({ summary }: MetricsBannerProps) {
           {formatCurrency(summary.total_value_base, summary.base_currency)}
         </span>
       </div>
+      
+      {/* Day Return */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '130px' }}>
+        <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+          Day Return
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span className={`metric-value ${(summary.total_day_change_base || 0) >= 0 ? 'text-green' : 'text-red'}`} style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+            {(summary.total_day_change_base || 0) >= 0 ? '+' : ''}{formatCurrency(summary.total_day_change_base || 0, summary.base_currency)}
+          </span>
+          <span className={`badge ${(summary.total_day_change_base || 0) >= 0 ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+            {(summary.total_day_change_base || 0) >= 0 ? '+' : ''}{(summary.total_day_change_percent || 0).toFixed(2)}%
+          </span>
+        </div>
+      </div>
 
       {/* Middle: Returns */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: '150px' }}>
@@ -65,6 +80,25 @@ export function MetricsBanner({ summary }: MetricsBannerProps) {
         <span className="metric-value" style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
           {formatCurrency(summary.total_cost_base, summary.base_currency)}
         </span>
+      </div>
+
+      {/* Far Right: Dividends Received */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+        <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+          Dividends Received
+        </span>
+        <span className="metric-value text-green" style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+          {formatCurrency(summary.total_dividends_net_base || 0, summary.base_currency)}
+        </span>
+        {summary.total_dividends_base !== undefined && summary.total_dividends_base > 0 ? (
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+            Gross: {formatCurrency(summary.total_dividends_base, summary.base_currency)}
+          </span>
+        ) : (
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+            No payouts yet
+          </span>
+        )}
       </div>
     </div>
   );

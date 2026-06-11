@@ -1,9 +1,11 @@
 import os
 import json
 import time
-import yfinance as yf
 import pandas as pd
 from datetime import datetime, date, timedelta
+from data_provider import get_provider
+
+provider = get_provider()
 
 # Ensure data directory exists
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -23,9 +25,37 @@ class PortfolioManager:
     _historical_stock_cache = {}  # symbol -> {start_date, end_date, last_updated, prices}
     _historical_fx_cache = {}     # pair -> {start_date, end_date, last_updated, prices}
     
-    STOCK_CACHE_TTL = 300  # 5 minutes
+    STOCK_CACHE_TTL = 60  # 1 minute
     FX_CACHE_TTL = 600     # 10 minutes
     HISTORICAL_CACHE_TTL = 3600  # 1 hour
+
+    @staticmethod
+    def is_market_open(timezone_str: str, exchange_str: str) -> bool:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime
+        try:
+            tz = ZoneInfo(timezone_str)
+            now_tz = datetime.now(tz)
+        except Exception:
+            now_tz = datetime.now()
+            
+        if now_tz.weekday() >= 5:
+            return False
+            
+        hour = now_tz.hour
+        minute = now_tz.minute
+        time_float = hour + minute / 60.0
+        
+        if "WSE" in exchange_str or "WAR" in exchange_str or "Europe/Warsaw" in timezone_str:
+            # GPW: 09:00 - 17:00
+            return 9.0 <= time_float < 17.0
+        elif "America/New_York" in timezone_str or exchange_str in ["NMS", "NYQ", "ASE"]:
+            # US: 09:30 - 16:00
+            return 9.5 <= time_float < 16.0
+        elif "CCY" in exchange_str or "forex" in exchange_str.lower() or timezone_str == "UTC":
+            return True
+        else:
+            return 9.0 <= time_float < 17.5
 
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list):
@@ -48,64 +78,19 @@ class PortfolioManager:
         if not missing_symbols and not missing_fx:
             return
             
-        all_missing = missing_symbols + missing_fx
-        print(f"[DEBUG] Prefetching live prices for {len(all_missing)} items: {all_missing}")
+        print(f"[DEBUG] Prefetching live prices for stocks {missing_symbols} and FX {missing_fx}")
         
-        symbols_str = " ".join(all_missing)
         try:
-            df = yf.download(symbols_str, period="5d", progress=False, group_by='ticker')
-            
+            res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
             for sym in missing_symbols:
-                live_price = 0.0
-                try:
-                    if len(all_missing) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if sym in df.columns.levels[0]:
-                            ticker_df = df[sym]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                        else:
-                            prices_series = pd.Series(dtype=float)
-                            
-                    non_nan_series = prices_series.dropna()
-                    if not non_nan_series.empty:
-                        live_price = float(non_nan_series.iloc[-1])
-                except Exception as sym_err:
-                    print(f"Error parsing live bulk data for {sym}: {sym_err}")
-                    
-                cls._live_ticker_cache[sym] = (now, {
-                    "live_price": live_price,
-                    "company_name": sym,
-                    "native_currency": "USD"
-                })
+                stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
+                cls._live_ticker_cache[sym] = (now, stock_data)
                 
             for pair in missing_fx:
-                rate = 1.0
-                try:
-                    if len(all_missing) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if pair in df.columns.levels[0]:
-                            ticker_df = df[pair]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                        else:
-                            prices_series = pd.Series(dtype=float)
-                            
-                    non_nan_series = prices_series.dropna()
-                    if not non_nan_series.empty:
-                        rate = float(non_nan_series.iloc[-1])
-                except Exception as pair_err:
-                    print(f"Error parsing live FX bulk data for {pair}: {pair_err}")
-                    
+                rate = res["fx"].get(pair, 1.0)
                 cls._live_fx_cache[pair] = (now, rate)
         except Exception as e:
-            print(f"Error prefetching live prices in bulk: {e}")
+            print(f"Error prefetching live prices: {e}")
 
     @classmethod
     def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
@@ -121,37 +106,14 @@ class PortfolioManager:
         if not missing_symbols:
             return
             
-        start_str = start_dt.strftime("%Y-%m-%d")
-        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-        
         try:
             print(f"[DEBUG] Prefetching historical stock prices for {len(missing_symbols)} symbols: {missing_symbols}")
-            symbols_str = " ".join(missing_symbols)
-            df = yf.download(symbols_str, start=start_str, end=end_str, progress=False, group_by='ticker')
+            prices_by_symbol, dividends_by_symbol = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
             
             for sym in missing_symbols:
-                prices_dict = {}
-                try:
-                    if len(missing_symbols) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if sym in df.columns.levels[0]:
-                            ticker_df = df[sym]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                        else:
-                            prices_series = pd.Series(dtype=float)
-                            
-                    if not prices_series.empty:
-                        prices_series.index = pd.to_datetime(prices_series.index).date
-                        for d, val in prices_series.items():
-                            if pd.notna(val):
-                                prices_dict[d] = float(val)
-                except Exception as sym_err:
-                    print(f"Error parsing bulk data for {sym}: {sym_err}")
-                    
+                prices_dict = prices_by_symbol.get(sym, {})
+                dividends_dict = dividends_by_symbol.get(sym, {})
+                
                 cache_entry = cls._historical_stock_cache.get(sym)
                 if prices_dict:
                     actual_start = min(prices_dict.keys())
@@ -159,15 +121,18 @@ class PortfolioManager:
                     
                     if cache_entry:
                         merged_prices = {**cache_entry["prices"], **prices_dict}
+                        merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
                         actual_start = min(merged_prices.keys())
                         actual_end = max(merged_prices.keys())
                         prices_dict = merged_prices
+                        dividends_dict = merged_dividends
                         
                     cls._historical_stock_cache[sym] = {
                         "start_date": actual_start,
                         "end_date": actual_end,
                         "last_updated": now,
-                        "prices": prices_dict
+                        "prices": prices_dict,
+                        "dividends": dividends_dict
                     }
         except Exception as e:
             print(f"Error prefetching historical stock prices in bulk: {e}")
@@ -182,26 +147,48 @@ class PortfolioManager:
             if now - ts < cls.STOCK_CACHE_TTL:
                 return data
                 
-        live_price = 0.0
-        company_name = symbol
-        native_currency = None
         try:
-            stock_ticker = yf.Ticker(symbol)
-            live_price = stock_ticker.fast_info.get("lastPrice")
-            if live_price is None:
-                live_price = stock_ticker.info.get("currentPrice") or 0.0
-            company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName") or symbol
-            native_currency = stock_ticker.fast_info.get("currency") or stock_ticker.info.get("currency")
+            res = provider.download_live_ticker(symbol)
+            live_price = res.get("live_price", 0.0)
+            company_name = res.get("company_name", symbol)
+            native_currency = res.get("native_currency", "USD")
+            quote_type = res.get("quote_type")
+            previous_close = res.get("previous_close", live_price)
+            timezone = res.get("timezone", "UTC")
+            exchange = res.get("exchange", "")
         except Exception as e:
             print(f"Error fetching live data for {symbol}: {e}")
-            
-        if not native_currency:
+            live_price = 0.0
+            company_name = symbol
             native_currency = "USD"
+            quote_type = None
+            previous_close = 0.0
+            timezone = "UTC"
+            exchange = ""
             
+        # Determine asset class friendly name
+        if symbol.startswith("CASH_"):
+            asset_class = "Cash"
+        else:
+            if quote_type == "ETF":
+                asset_class = "ETF"
+            elif quote_type == "EQUITY":
+                asset_class = "Equity"
+            elif quote_type == "MUTUALFUND":
+                asset_class = "Mutual Fund"
+            elif quote_type == "CURRENCY":
+                asset_class = "Currency"
+            else:
+                asset_class = "Equity"
+                
         data = {
             "live_price": float(live_price) if live_price else 0.0,
             "company_name": company_name,
-            "native_currency": native_currency.upper().strip()
+            "native_currency": native_currency.upper().strip(),
+            "asset_class": asset_class,
+            "previous_close": float(previous_close) if previous_close else 0.0,
+            "timezone": timezone,
+            "exchange": exchange
         }
         
         cls._live_ticker_cache[symbol] = (now, data)
@@ -219,14 +206,11 @@ class PortfolioManager:
                 
         rate = None
         try:
-            rate_ticker = yf.Ticker(pair)
-            rate = rate_ticker.fast_info.get("lastPrice")
-            if rate is None:
-                rate = rate_ticker.info.get("currentPrice")
+            rate = provider.download_live_fx(pair)
         except Exception as e:
             print(f"Error fetching FX rate for {pair}: {e}")
             
-        if rate is None:
+        if rate is None or rate == 1.0:
             base_pair = pair.replace("=X", "")
             rate = FALLBACK_RATES.get(base_pair, 1.0)
             
@@ -250,25 +234,16 @@ class PortfolioManager:
         if cache_entry and cache_entry["start_date"] < fetch_start:
             fetch_start = cache_entry["start_date"]
             
-        start_str = fetch_start.strftime("%Y-%m-%d")
-        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-        
         prices_dict = {}
+        dividends_dict = {}
         try:
-            df = yf.download(symbol, start=start_str, end=end_str, progress=False)
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            prices_series = df['Close'] if 'Close' in df.columns else pd.Series(dtype=float)
-            if not prices_series.empty:
-                prices_series.index = pd.to_datetime(prices_series.index).date
-                for d, val in prices_series.items():
-                    if pd.notna(val):
-                        prices_dict[d] = float(val)
+            prices_dict, dividends_dict = provider.download_historical_stock(symbol, fetch_start, end_dt)
         except Exception as e:
             print(f"Error downloading historical stock prices for {symbol}: {e}")
             
         if not prices_dict and cache_entry:
             prices_dict = cache_entry["prices"]
+            dividends_dict = cache_entry.get("dividends", {})
             fetch_start = cache_entry["start_date"]
             
         if prices_dict:
@@ -277,15 +252,18 @@ class PortfolioManager:
             
             if cache_entry:
                 merged_prices = {**cache_entry["prices"], **prices_dict}
+                merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
                 actual_start = min(merged_prices.keys())
                 actual_end = max(merged_prices.keys())
                 prices_dict = merged_prices
+                dividends_dict = merged_dividends
                 
             cls._historical_stock_cache[symbol] = {
                 "start_date": actual_start,
                 "end_date": actual_end,
                 "last_updated": now,
-                "prices": prices_dict
+                "prices": prices_dict,
+                "dividends": dividends_dict
             }
             
         return {d: val for d, val in prices_dict.items() if start_dt <= d <= end_dt}
@@ -307,20 +285,9 @@ class PortfolioManager:
         if cache_entry and cache_entry["start_date"] < fetch_start:
             fetch_start = cache_entry["start_date"]
             
-        start_str = fetch_start.strftime("%Y-%m-%d")
-        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
-        
         prices_dict = {}
         try:
-            df_fx = yf.download(pair, start=start_str, end=end_str, progress=False)
-            if isinstance(df_fx.columns, pd.MultiIndex):
-                df_fx.columns = df_fx.columns.get_level_values(0)
-            prices_series = df_fx['Close'] if 'Close' in df_fx.columns else pd.Series(dtype=float)
-            if not prices_series.empty:
-                prices_series.index = pd.to_datetime(prices_series.index).date
-                for d, val in prices_series.items():
-                    if pd.notna(val):
-                        prices_dict[d] = float(val)
+            prices_dict = provider.download_historical_fx(pair, fetch_start, end_dt)
         except Exception as e:
             print(f"Error downloading historical FX for {pair}: {e}")
             
@@ -448,16 +415,156 @@ class PortfolioManager:
         return cls.calculate_holdings(cls.get_transactions(), base_currency, account, link_cash)
 
     @classmethod
-    def calculate_holdings(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False) -> dict:
+    def calculate_holdings(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
         base_currency = base_currency.upper().strip()
         
         if account and account.lower() != "all":
             transactions = [tx for tx in transactions if tx.get("account", "Default").lower() == account.lower()]
-        
-        # Calculate cash balances per account and currency
-        cash_balances = {}
+            
         sorted_txs = sorted(transactions, key=lambda x: x.get("date", ""))
         
+        # Group stock transactions by ticker (exclude CASH_ tickers from symbol_txs)
+        symbol_txs = {}
+        for tx in sorted_txs:
+            sym = tx["symbol"].upper().strip()
+            if not sym.startswith("CASH_"):
+                symbol_txs.setdefault(sym, []).append(tx)
+                
+        # Prefetch live prices and FX rates in bulk
+        symbols_to_prefetch = list(symbol_txs.keys())
+        fx_pairs_to_prefetch = []
+        unique_currencies_to_check = {base_currency}
+        for tx in transactions:
+            unique_currencies_to_check.add(tx["currency"].upper().strip())
+        for curr in unique_currencies_to_check:
+            if curr != base_currency:
+                fx_pairs_to_prefetch.append(f"{curr}{base_currency}=X")
+        
+        cls.prefetch_live_prices(symbols_to_prefetch, fx_pairs_to_prefetch)
+        
+        # Gather live ticker info for stocks (cached)
+        ticker_info = {}
+        for symbol in symbol_txs.keys():
+            info = cls.get_cached_live_ticker(symbol)
+            native_currency = info["native_currency"]
+            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
+                first_tx = symbol_txs[symbol][0]
+                native_currency = first_tx.get("currency", "USD")
+                
+            ticker_info[symbol] = {
+                "live_price": info["live_price"],
+                "company_name": info["company_name"],
+                "native_currency": native_currency.upper().strip(),
+                "asset_class": info.get("asset_class", "Equity")
+            }
+            
+        # Collect unique currencies for FX
+        unique_currencies = {base_currency}
+        for tx in transactions:
+            unique_currencies.add(tx["currency"].upper().strip())
+        for info in ticker_info.values():
+            unique_currencies.add(info["native_currency"])
+            
+        # Fetch live exchange rates (cached)
+        fx_rates = {base_currency: 1.0}
+        for curr in unique_currencies:
+            if curr == base_currency:
+                continue
+            pair = f"{curr}{base_currency}=X"
+            fx_rates[curr] = cls.get_cached_live_fx(pair)
+            
+        # Calculate ex-dividend payouts and cache them
+        earliest_date = date.today() - timedelta(days=365)
+        for tx in sorted_txs:
+            tx_date_str = tx.get("date", "")
+            if tx_date_str:
+                try:
+                    tx_dt = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                    if tx_dt < earliest_date:
+                        earliest_date = tx_dt
+                except:
+                    pass
+                    
+        if symbols_to_prefetch:
+            cls.prefetch_historical_stock_prices(symbols_to_prefetch, earliest_date, date.today())
+            
+        # Get portfolio settings tax rates
+        account_tax_rates = portfolio_settings.get("accountTaxRates", {}) if portfolio_settings else {}
+        
+        def get_tax_rate(acc):
+            if not acc:
+                acc = "Default"
+            rate = account_tax_rates.get(acc)
+            if rate is not None:
+                return float(rate)
+            # Try case-insensitive
+            for k, v in account_tax_rates.items():
+                if k.lower() == acc.lower():
+                    return float(v)
+            if "ike" in acc.lower() or "ikze" in acc.lower():
+                return 0.0
+            return 0.19
+
+        dividends_by_symbol_acc = {} # (symbol, acc) -> {"gross_base": 0.0, "net_base": 0.0, "net_native": 0.0}
+        
+        for symbol, txs in symbol_txs.items():
+            # Trigger get_cached_historical_stock to force cache population
+            cls.get_cached_historical_stock(symbol, earliest_date, date.today())
+            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
+            native_curr = ticker_info[symbol]["native_currency"]
+            
+            accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
+            
+            for acc in accounts:
+                div_gross_base = 0.0
+                div_net_base = 0.0
+                div_net_native = 0.0
+                
+                for ex_date, payout in sorted(dividends_data.items()):
+                    # Calculate shares owned in this account on ex_date
+                    shares_on_ex_date = 0.0
+                    for tx in txs:
+                        tx_acc = tx.get("account", "Default") or "Default"
+                        if tx_acc != acc:
+                            continue
+                        tx_date_str = tx.get("date", "")
+                        if not tx_date_str:
+                            continue
+                        try:
+                            tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                            if tx_date < ex_date:
+                                if tx["type"] == "BUY":
+                                    shares_on_ex_date += tx["shares"]
+                                elif tx["type"] == "SELL":
+                                    shares_on_ex_date -= tx["shares"]
+                        except:
+                            pass
+                            
+                    if shares_on_ex_date > 0.0001:
+                        tax_rate = get_tax_rate(acc)
+                        gross_payout_native = shares_on_ex_date * payout
+                        net_payout_native = gross_payout_native * (1.0 - tax_rate)
+                        
+                        if native_curr == base_currency:
+                            fx_rate_ex = 1.0
+                        else:
+                            fx_ex_dict = cls.get_cached_historical_fx(f"{native_curr}{base_currency}=X", ex_date, ex_date)
+                            fx_rate_ex = fx_ex_dict.get(ex_date) if fx_ex_dict else None
+                            if fx_rate_ex is None:
+                                fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                                
+                        div_gross_base += gross_payout_native * fx_rate_ex
+                        div_net_base += net_payout_native * fx_rate_ex
+                        div_net_native += net_payout_native
+                        
+                dividends_by_symbol_acc[(symbol, acc)] = {
+                    "gross_base": div_gross_base,
+                    "net_base": div_net_base,
+                    "net_native": div_net_native
+                }
+                
+        # Calculate cash balances per account and currency
+        cash_balances = {}
         for tx in sorted_txs:
             tx_account = tx.get("account", "Default") or "Default"
             tx_curr = tx.get("currency", "USD").upper().strip()
@@ -485,6 +592,14 @@ class PortfolioManager:
                     elif tx_type == "SELL":
                         cash_balances[tx_account][tx_curr] += (amount - fees)
                         
+        # Add net dividends to cash balances
+        if link_cash:
+            for (symbol, acc), div_data in dividends_by_symbol_acc.items():
+                if div_data["net_native"] > 0.0:
+                    native_curr = ticker_info[symbol]["native_currency"]
+                    cash_balances.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                    cash_balances[acc][native_curr] += div_data["net_native"]
+                    
         # Apply zero floor rule per account and currency
         for acc in cash_balances:
             for curr in cash_balances[acc]:
@@ -497,74 +612,20 @@ class PortfolioManager:
             for curr in cash_balances[acc]:
                 final_cash[curr] = final_cash.get(curr, 0.0) + cash_balances[acc][curr]
                 
-        # Group stock transactions by ticker (exclude CASH_ tickers from symbol_txs)
-        symbol_txs = {}
-        for tx in sorted_txs:
-            sym = tx["symbol"].upper().strip()
-            if not sym.startswith("CASH_"):
-                symbol_txs.setdefault(sym, []).append(tx)
-                
-        if not symbol_txs and not any(bal > 0.001 for bal in final_cash.values()):
-            return {
-                "summary": {
-                    "total_cost_base": 0.0,
-                    "total_value_base": 0.0,
-                    "total_gain_base": 0.0,
-                    "total_gain_percent": 0.0,
-                    "base_currency": base_currency
-                },
-                "holdings": []
-            }
-            
-        # Prefetch live prices and FX rates in bulk to speed up loading and bypass yfinance crumb limitations
-        symbols_to_prefetch = list(symbol_txs.keys())
-        fx_pairs_to_prefetch = []
-        unique_currencies_to_check = {base_currency}
-        for tx in transactions:
-            unique_currencies_to_check.add(tx["currency"].upper().strip())
-        for curr in unique_currencies_to_check:
-            if curr != base_currency:
-                fx_pairs_to_prefetch.append(f"{curr}{base_currency}=X")
-        
-        cls.prefetch_live_prices(symbols_to_prefetch, fx_pairs_to_prefetch)
-
-        # Gather live ticker info for stocks (cached)
-        ticker_info = {}
-        for symbol in symbol_txs.keys():
-            info = cls.get_cached_live_ticker(symbol)
-            
-            # If native_currency wasn't resolved, use first transaction currency as fallback
-            native_currency = info["native_currency"]
-            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
-                first_tx = symbol_txs[symbol][0]
-                native_currency = first_tx.get("currency", "USD")
-                
-            ticker_info[symbol] = {
-                "live_price": info["live_price"],
-                "company_name": info["company_name"],
-                "native_currency": native_currency.upper().strip()
-            }
-            
-        # Collect unique currencies for FX
-        unique_currencies = {base_currency}
-        for tx in transactions:
-            unique_currencies.add(tx["currency"].upper().strip())
-        for info in ticker_info.values():
-            unique_currencies.add(info["native_currency"])
         for curr in final_cash.keys():
             unique_currencies.add(curr)
             
-        # Fetch live exchange rates (cached)
-        fx_rates = {base_currency: 1.0}
+        # Re-fetch exchange rates to ensure all cash currencies are covered
         for curr in unique_currencies:
-            if curr == base_currency:
-                continue
-            pair = f"{curr}{base_currency}=X"
-            fx_rates[curr] = cls.get_cached_live_fx(pair)
-            
+            if curr not in fx_rates:
+                pair = f"{curr}{base_currency}=X"
+                fx_rates[curr] = cls.get_cached_live_fx(pair)
+                
         holdings_list = []
         total_cost_base = 0.0
         total_value_base = 0.0
+        total_dividends_base = 0.0
+        total_dividends_net_base = 0.0
         
         # Calculate stock holdings
         for symbol, txs in symbol_txs.items():
@@ -602,7 +663,26 @@ class PortfolioManager:
                     live_price_native = avg_cost_native
                     
                 current_value_base = shares_owned * live_price_native * fx_native_to_base
-                gain_base = current_value_base - cost_basis_base
+                
+                # Day change calculations
+                prev_close_native = info.get("previous_close", live_price_native)
+                if prev_close_native == 0.0 or prev_close_native is None:
+                    prev_close_native = live_price_native
+                
+                day_change_native = live_price_native - prev_close_native
+                day_change_percent = (day_change_native / prev_close_native * 100) if prev_close_native > 0.0 else 0.0
+                day_change_value_base = shares_owned * day_change_native * fx_native_to_base
+                
+                is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""))
+                
+                # Retrieve accumulated dividends for this stock
+                div_gross = sum(dividends_by_symbol_acc.get((symbol, acc), {}).get("gross_base", 0.0) for acc in accounts)
+                div_net = sum(dividends_by_symbol_acc.get((symbol, acc), {}).get("net_base", 0.0) for acc in accounts)
+                total_dividends_base += div_gross
+                total_dividends_net_base += div_net
+                
+                # Gain base includes Net Dividends received
+                gain_base = (current_value_base - cost_basis_base) + div_net
                 gain_percent = (gain_base / cost_basis_base * 100) if cost_basis_base > 0 else 0.0
                 
                 holdings_list.append({
@@ -616,7 +696,13 @@ class PortfolioManager:
                     "cost_basis_base": round(cost_basis_base, 2),
                     "current_value_base": round(current_value_base, 2),
                     "gain_base": round(gain_base, 2),
-                    "gain_percent": round(gain_percent, 2)
+                    "gain_percent": round(gain_percent, 2),
+                    "dividends_base": round(div_gross, 2),
+                    "dividends_net_base": round(div_net, 2),
+                    "day_change_percent": round(day_change_percent, 2),
+                    "day_change_value_base": round(day_change_value_base, 2),
+                    "is_live": is_live,
+                    "asset_class": info.get("asset_class", "Equity")
                 })
                 
                 total_cost_base += cost_basis_base
@@ -647,7 +733,13 @@ class PortfolioManager:
                     "cost_basis_base": round(val_base, 2),
                     "current_value_base": round(val_base, 2),
                     "gain_base": 0.0,
-                    "gain_percent": 0.0
+                    "gain_percent": 0.0,
+                    "dividends_base": 0.0,
+                    "dividends_net_base": 0.0,
+                    "day_change_percent": 0.0,
+                    "day_change_value_base": 0.0,
+                    "is_live": False,
+                    "asset_class": "Cash"
                 })
                 
                 total_cost_base += val_base
@@ -660,13 +752,22 @@ class PortfolioManager:
                     "total_value_base": 0.0,
                     "total_gain_base": 0.0,
                     "total_gain_percent": 0.0,
+                    "total_dividends_base": 0.0,
+                    "total_dividends_net_base": 0.0,
+                    "total_day_change_base": 0.0,
+                    "total_day_change_percent": 0.0,
                     "base_currency": base_currency
                 },
                 "holdings": []
             }
             
-        total_gain_base = total_value_base - total_cost_base
+        total_gain_base = (total_value_base - total_cost_base)
         total_gain_percent = (total_gain_base / total_cost_base * 100) if total_cost_base > 0 else 0.0
+        
+        # Calculate daily change totals
+        total_day_change_base = sum(h.get("day_change_value_base", 0.0) for h in holdings_list)
+        prev_day_value = total_value_base - total_day_change_base
+        total_day_change_percent = (total_day_change_base / prev_day_value * 100) if prev_day_value > 0.0 else 0.0
         
         return {
             "summary": {
@@ -674,13 +775,17 @@ class PortfolioManager:
                 "total_value_base": round(total_value_base, 2),
                 "total_gain_base": round(total_gain_base, 2),
                 "total_gain_percent": round(total_gain_percent, 2),
+                "total_dividends_base": round(total_dividends_base, 2),
+                "total_dividends_net_base": round(total_dividends_net_base, 2),
+                "total_day_change_base": round(total_day_change_base, 2),
+                "total_day_change_percent": round(total_day_change_percent, 2),
                 "base_currency": base_currency
             },
             "holdings": holdings_list
         }
 
     @classmethod
-    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False) -> dict:
+    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
         base_currency = base_currency.upper().strip()
         
         # 1. Filter transactions by account if not "All"
@@ -782,7 +887,54 @@ class PortfolioManager:
         stock_cost_base = {}
         cash_balances_running = {}
         
+        realized_gains_running_base = 0.0
+        dividends_running_base = 0.0
+        
+        # Get portfolio settings tax rates
+        account_tax_rates = portfolio_settings.get("accountTaxRates", {}) if portfolio_settings else {}
+        
+        def get_tax_rate(acc):
+            if not acc:
+                acc = "Default"
+            rate = account_tax_rates.get(acc)
+            if rate is not None:
+                return float(rate)
+            for k, v in account_tax_rates.items():
+                if k.lower() == acc.lower():
+                    return float(v)
+            if "ike" in acc.lower() or "ikze" in acc.lower():
+                return 0.0
+            return 0.19
+            
+        # Pre-cache dividends data
+        dividends_data_by_sym = {}
+        for sym in stock_symbols:
+            dividends_data_by_sym[sym] = cls._historical_stock_cache.get(sym, {}).get("dividends", {})
+        
         for d in dates_list:
+            # 7a. Process Dividends on day d (ex-dividend dates)
+            for sym in stock_symbols:
+                divs = dividends_data_by_sym.get(sym, {})
+                payout = divs.get(d)
+                if payout is not None and payout > 0:
+                    if sym in stock_shares:
+                        for acc, shares_owned in stock_shares[sym].items():
+                            if shares_owned > 0.0001:
+                                tax_rate = get_tax_rate(acc)
+                                gross_div = shares_owned * payout
+                                net_div = gross_div * (1.0 - tax_rate)
+                                
+                                native_curr = symbol_currencies.get(sym, "USD")
+                                fx_rate_d = fx_rates_hist.get(native_curr, {}).get(d, 1.0)
+                                net_div_base = net_div * fx_rate_d
+                                
+                                dividends_running_base += net_div_base
+                                
+                                if link_cash:
+                                    cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                                    cash_balances_running[acc][native_curr] += net_div
+                                    
+            # 7b. Process transactions on day d
             day_txs = txs_by_date.get(d, [])
             for tx in day_txs:
                 tx_account = tx.get("account", "Default") or "Default"
@@ -816,6 +968,12 @@ class PortfolioManager:
                     elif tx_type == "SELL":
                         curr_shares = stock_shares[sym][tx_account]
                         if curr_shares > 0:
+                            shares_to_sell = min(curr_shares, shares)
+                            cost_of_sold_shares = (stock_cost_base[sym][tx_account] / curr_shares) * shares_to_sell
+                            sale_value_base = (shares * price - fees) * fx_tx_to_base
+                            realized_gain = sale_value_base - cost_of_sold_shares
+                            realized_gains_running_base += realized_gain
+                            
                             stock_cost_base[sym][tx_account] = stock_cost_base[sym][tx_account] * max(0.0, (curr_shares - shares)) / curr_shares
                         stock_shares[sym][tx_account] = max(0.0, curr_shares - shares)
                         if stock_shares[sym][tx_account] == 0.0:
@@ -848,6 +1006,7 @@ class PortfolioManager:
                         day_cost += stock_cost_base[sym][acc]
                         
             # Valuate cash on day d
+            day_cash_value_base = 0.0
             for acc in cash_balances_running.keys():
                 for curr, balance in cash_balances_running[acc].items():
                     effective_bal = balance
@@ -857,12 +1016,18 @@ class PortfolioManager:
                     if effective_bal > 0.001:
                         fx_rate = fx_rates_hist.get(curr, {}).get(d, 1.0)
                         val_base = effective_bal * fx_rate
-                        day_nav += val_base
-                        day_cost += val_base
+                        day_cash_value_base += val_base
                         
+            if link_cash:
+                day_nav += day_cash_value_base
+                day_cost += day_cash_value_base - realized_gains_running_base - dividends_running_base
+            else:
+                day_nav += dividends_running_base
+                # day_cost is just sum of active stock cost bases
+                
             dates_res.append(d.strftime("%Y-%m-%d"))
             nav_res.append(round(day_nav, 2))
-            cost_basis_res.append(round(day_cost, 2))
+            cost_basis_res.append(round(max(0.0, day_cost), 2))
             
         # 8. Downsample data if > 90 days to maintain snappy rendering
         total_days = len(dates_res)

@@ -17,6 +17,8 @@ interface AddTransactionModalProps {
   linkCash: boolean;
   setLinkCash: (val: boolean) => void;
   onSaveSuccess: () => void;
+  tier: 'free' | 'premium';
+  onLimitReached: (reason: 'portfolio' | 'account') => void;
 }
 
 export function AddTransactionModal({
@@ -31,7 +33,9 @@ export function AddTransactionModal({
   transactions,
   linkCash,
   setLinkCash,
-  onSaveSuccess
+  onSaveSuccess,
+  tier,
+  onLimitReached
 }: AddTransactionModalProps) {
   const [formSymbol, setFormSymbol] = useState('');
   const [formType, setFormType] = useState<'BUY' | 'SELL'>('BUY');
@@ -271,6 +275,15 @@ export function AddTransactionModal({
     if (!formDate) {
       setFormError('Please select a date.');
       return;
+    }
+
+    const accountName = (formAccount || 'Default').trim();
+    if (tier === 'free' && (!editingTransaction || editingTransaction.account !== accountName)) {
+      const isNewAccount = !uniqueAccounts.some(acc => acc.toLowerCase() === accountName.toLowerCase());
+      if (isNewAccount && uniqueAccounts.length >= 2) {
+        onLimitReached('account');
+        return;
+      }
     }
 
     const price = priceInputMode === 'total' ? (priceInput / shares) : priceInput;

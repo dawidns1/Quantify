@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Eye, Briefcase, PieChart, Coins, Globe } from 'lucide-react';
+import { Eye, Briefcase, PieChart, Coins, Globe, Layers } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 
 interface HoldingsTableProps {
@@ -39,7 +39,7 @@ export function HoldingsTable({
         console.error('Error parsing visible columns from localStorage', e);
       }
     }
-    return ['name', 'shares', 'avg_cost', 'price', 'cost'];
+    return ['name', 'shares', 'price', 'day_change', 'cost'];
   });
 
   const toggleColumn = (id: string) => {
@@ -51,12 +51,13 @@ export function HoldingsTable({
   };
 
   // Client-side calculations for allocations
-  const { assets, currencies, countries } = useMemo(() => {
+  const { assets, currencies, countries, assetClasses } = useMemo(() => {
     const totalValue = summary.total_value_base || 1; // avoid division by zero
     
     const assetAllocMap: { [key: string]: number } = {};
     const currencyAllocMap: { [key: string]: number } = {};
     const countryAllocMap: { [key: string]: number } = {};
+    const assetClassAllocMap: { [key: string]: number } = {};
 
     holdings.forEach((h) => {
       const val = h.current_value_base;
@@ -73,6 +74,10 @@ export function HoldingsTable({
       else if (h.symbol.endsWith('.DE')) country = 'Germany';
       
       countryAllocMap[country] = (countryAllocMap[country] || 0) + val;
+      
+      // 4. Asset Class
+      const cls = h.asset_class || 'Equity';
+      assetClassAllocMap[cls] = (assetClassAllocMap[cls] || 0) + val;
     });
 
     const assetsList = Object.entries(assetAllocMap)
@@ -87,7 +92,16 @@ export function HoldingsTable({
       .map(([name, val]) => ({ name, percentage: (val / totalValue) * 100, val }))
       .sort((a, b) => b.percentage - a.percentage);
 
-    return { assets: assetsList, currencies: currenciesList, countries: countriesList };
+    const assetClassesList = Object.entries(assetClassAllocMap)
+      .map(([name, val]) => ({ name, percentage: (val / totalValue) * 100, val }))
+      .sort((a, b) => b.percentage - a.percentage);
+
+    return { 
+      assets: assetsList, 
+      currencies: currenciesList, 
+      countries: countriesList,
+      assetClasses: assetClassesList 
+    };
   }, [holdings, summary.total_value_base]);
 
   // Sort holdings according to selected field & direction
@@ -192,7 +206,10 @@ export function HoldingsTable({
                 { id: 'shares', label: 'Shares Owned' },
                 { id: 'avg_cost', label: 'Average Cost' },
                 { id: 'price', label: 'Local Price' },
-                { id: 'cost', label: 'Cost Basis' }
+                { id: 'cost', label: 'Cost Basis' },
+                { id: 'dividends', label: 'Dividends Net' },
+                { id: 'day_change', label: 'Day Change' },
+                { id: 'asset_class', label: 'Asset Class' }
               ].map((col) => {
                 const isChecked = visibleColumns.includes(col.id);
                 return (
@@ -253,6 +270,21 @@ export function HoldingsTable({
                       Cost ({summary.base_currency}) {renderSortArrow('cost_basis_base')}
                     </th>
                   )}
+                  {visibleColumns.includes('dividends') && (
+                    <th onClick={() => handleHoldingsSort('dividends_net_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                      Dividends {renderSortArrow('dividends_net_base')}
+                    </th>
+                  )}
+                  {visibleColumns.includes('day_change') && (
+                    <th onClick={() => handleHoldingsSort('day_change_percent')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                      Day Change {renderSortArrow('day_change_percent')}
+                    </th>
+                  )}
+                  {visibleColumns.includes('asset_class') && (
+                    <th onClick={() => handleHoldingsSort('asset_class')} style={{ textAlign: 'left', userSelect: 'none' }}>
+                      Class {renderSortArrow('asset_class')}
+                    </th>
+                  )}
                   <th onClick={() => handleHoldingsSort('current_value_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
                     Current ({summary.base_currency}) {renderSortArrow('current_value_base')}
                   </th>
@@ -277,15 +309,30 @@ export function HoldingsTable({
                       }}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {h.symbol}
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {h.is_live && (
+                          <span 
+                            title="Market Session is Live"
+                            style={{ 
+                              display: 'inline-block',
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#10b981',
+                              boxShadow: '0 0 8px #10b981',
+                              animation: 'pulse 1.8s infinite',
+                              flexShrink: 0
+                            }} 
+                          />
+                        )}
+                        <span>{h.symbol}</span>
                         <span style={{ 
                           fontSize: '0.65rem', 
                           color: 'var(--text-muted)', 
                           background: 'rgba(255, 255, 255, 0.04)', 
                           padding: '1px 4px', 
                           borderRadius: '4px',
-                          marginLeft: '6px'
+                          marginLeft: '2px'
                         }}>
                           {h.currency}
                         </span>
@@ -313,6 +360,35 @@ export function HoldingsTable({
                       {visibleColumns.includes('cost') && (
                         <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
                           {formatCurrency(h.cost_basis_base, summary.base_currency)}
+                        </td>
+                      )}
+                      {visibleColumns.includes('dividends') && (
+                        <td 
+                          style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--color-green)' }}
+                          title={`Gross: ${formatCurrency(h.dividends_base || 0, summary.base_currency)} (based on account tax settings)`}
+                        >
+                          {formatCurrency(h.dividends_net_base || 0, summary.base_currency)}
+                        </td>
+                      )}
+                      {visibleColumns.includes('day_change') && (
+                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                          {h.day_change_percent !== undefined ? (
+                            <>
+                              <div className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+                                {h.day_change_percent >= 0 ? '+' : ''}{h.day_change_percent.toFixed(2)}%
+                              </div>
+                              <div style={{ fontSize: '0.72rem' }} className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'}>
+                                {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(h.day_change_value_base || 0, summary.base_currency)}
+                              </div>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes('asset_class') && (
+                        <td style={{ textAlign: 'left', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          {h.asset_class || 'Equity'}
                         </td>
                       )}
                       <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
@@ -368,6 +444,32 @@ export function HoldingsTable({
           </div>
         ) : (
           <>
+            {/* Asset Classes Allocation */}
+            <div>
+              <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Layers size={14} /> By Asset Class
+              </h4>
+              <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginTop: '0.5rem' }}>
+                {assetClasses.map((item) => (
+                  <div key={item.name} className="allocation-item">
+                    <div className="allocation-label">
+                      <span>{item.name}</span>
+                      <span className="percentage-val">{item.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="allocation-track">
+                      <div 
+                        className="allocation-fill asset-class-color" 
+                        style={{ 
+                          width: `${item.percentage}%`,
+                          background: item.name === 'Equity' ? 'hsl(217, 91%, 60%)' : item.name === 'ETF' ? 'hsl(263, 90%, 65%)' : item.name === 'Cash' ? 'hsl(142, 70%, 45%)' : 'hsl(45, 90%, 60%)'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Asset Tickers Allocation */}
             <div>
               <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

@@ -9,7 +9,8 @@ export async function fetchUserPortfolios(userId: string): Promise<Portfolio[]> 
       role,
       portfolios (
         id,
-        name
+        name,
+        settings
       )
     `)
     .eq('user_id', userId);
@@ -24,7 +25,8 @@ export async function fetchUserPortfolios(userId: string): Promise<Portfolio[]> 
   return membersList.map((m: any) => ({
     id: m.portfolio_id,
     name: m.portfolios?.name || 'Unnamed Portfolio',
-    role: m.role as 'owner' | 'editor' | 'viewer'
+    role: m.role as 'owner' | 'editor' | 'viewer',
+    settings: m.portfolios?.settings || {}
   }));
 }
 
@@ -148,6 +150,15 @@ export async function removeMember(portfolioId: string, userId: string): Promise
     .delete()
     .eq('portfolio_id', portfolioId)
     .eq('user_id', userId);
+
+  if (error) throw error;
+}
+
+export async function updatePortfolioSettings(portfolioId: string, settings: any): Promise<void> {
+  const { error } = await supabase
+    .from('portfolios')
+    .update({ settings })
+    .eq('id', portfolioId);
 
   if (error) throw error;
 }

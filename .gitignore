@@ -16,3 +16,7 @@ frontend/.env
 .idea/
 .vscode/
 .DS_Store
+
+# Temporary scratch files
+scratch/
+

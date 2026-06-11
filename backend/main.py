@@ -432,6 +432,29 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
         print(f"[DEBUG] Network error contacting Supabase: {req_err}")
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
+def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str) -> dict:
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY")
+    if not supabase_url or not supabase_key or portfolio_id == 'all':
+        return {}
+        
+    url = f"{supabase_url}/rest/v1/portfolios?id=eq.{portfolio_id}&select=settings"
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": jwt_token
+    }
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0:
+                return data[0].get("settings") or {}
+        elif response.status_code == 400:
+            print(f"[DEBUG] settings column missing or other bad request. Falling back. Code: {response.status_code}")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching portfolio settings from Supabase: {e}")
+    return {}
+
 @app.get("/api/portfolio/{portfolio_id}/holdings")
 def get_portfolio_holdings_jwt(
     portfolio_id: str,
@@ -445,7 +468,8 @@ def get_portfolio_holdings_jwt(
         
     try:
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
-        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
+        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
         print(f"[DEBUG] Holdings response summary: {res.get('summary')}")
         print(f"[DEBUG] Holdings count: {len(res.get('holdings', []))}")
         if res.get('holdings'):
@@ -469,7 +493,8 @@ def get_historical_portfolio_nav_jwt(
         
     try:
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
-        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
+        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings)
     except HTTPException:
         raise
     except Exception as e:

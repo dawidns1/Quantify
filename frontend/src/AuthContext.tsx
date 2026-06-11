@@ -10,6 +10,8 @@ interface AuthContextType {
   recoveryMode: boolean;
   setRecoveryMode: (val: boolean) => void;
   signOut: () => Promise<void>;
+  tier: 'free' | 'premium';
+  setTier: (val: 'free' | 'premium') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,13 +21,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const [tier, setTierState] = useState<'free' | 'premium'>('free');
+
+  const fetchProfile = async (uid: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('tier')
+        .eq('id', uid)
+        .single();
+      if (!error && data && data.tier) {
+        setTierState(data.tier === 'premium' ? 'premium' : 'free');
+      } else {
+        setTierState('free');
+      }
+    } catch (err) {
+      setTierState('free');
+    }
+  };
 
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      const usr = session?.user ?? null;
+      setUser(usr);
+      if (usr) {
+        fetchProfile(usr.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     // Listen for auth state changes
@@ -43,6 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentUser?.id === newUser?.id) {
           return currentUser;
         }
+        if (newUser) {
+          fetchProfile(newUser.id);
+        } else {
+          setTierState('free');
+        }
         return newUser;
       });
 
@@ -58,13 +88,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Set loading to false once tier state is resolved (if user is present)
+  useEffect(() => {
+    if (user) {
+      setLoading(false);
+    }
+  }, [tier, user]);
+
+  const setTier = async (newTier: 'free' | 'premium') => {
+    setTierState(newTier);
+    if (user) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ tier: newTier })
+          .eq('id', user.id);
+      } catch (err) {
+        console.error('Error updating tier in database:', err);
+      }
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setRecoveryMode(false);
+    setTierState('free');
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, recoveryMode, setRecoveryMode, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, recoveryMode, setRecoveryMode, signOut, tier, setTier }}>
       {children}
     </AuthContext.Provider>
   );

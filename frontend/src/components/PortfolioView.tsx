@@ -9,7 +9,8 @@ import {
   Trash2, 
   Lock, 
   Share2,
-  Menu
+  Menu,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 
@@ -22,6 +23,8 @@ import { HoldingsTable } from './portfolio/HoldingsTable';
 import { LedgerTable } from './portfolio/LedgerTable';
 import { AddTransactionModal } from './portfolio/AddTransactionModal';
 import { ShareModal } from './portfolio/ShareModal';
+import { SettingsModal } from './portfolio/SettingsModal';
+import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 
 import { 
   fetchHoldings as fetchHoldingsService, 
@@ -52,7 +55,7 @@ export function PortfolioView({
   lowPerformanceMode, 
   setLowPerformanceMode 
 }: PortfolioViewProps) {
-  const { user, session } = useAuth();
+  const { user, session, tier } = useAuth();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subTab, setSubTabState] = useState<'overview' | 'ledger'>(() => {
@@ -61,6 +64,7 @@ export function PortfolioView({
   });
 
   const setSubTab = (tab: 'overview' | 'ledger') => {
+    triggerRandomUpsell();
     setSubTabState(tab);
     localStorage.setItem('portfolio_sub_tab', tab);
   };
@@ -71,6 +75,7 @@ export function PortfolioView({
   });
 
   const setBaseCurrency = (currency: 'PLN' | 'USD' | 'EUR') => {
+    triggerRandomUpsell();
     setBaseCurrencyState(currency);
     localStorage.setItem('portfolio_base_currency', currency);
   };
@@ -92,12 +97,16 @@ export function PortfolioView({
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [upsellModalOpen, setUpsellModalOpen] = useState(false);
+  const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
   const [linkCash, setLinkCashState] = useState<boolean>(() => {
     return localStorage.getItem('portfolio_link_cash') !== 'false';
   });
 
   const setLinkCash = (val: boolean) => {
+    triggerRandomUpsell();
     setLinkCashState(val);
     localStorage.setItem('portfolio_link_cash', String(val));
   };
@@ -112,6 +121,7 @@ export function PortfolioView({
   });
 
   const setSelectedAccount = (account: string) => {
+    triggerRandomUpsell();
     setSelectedAccountState(account);
     localStorage.setItem('portfolio_selected_account', account);
   };
@@ -121,6 +131,18 @@ export function PortfolioView({
   const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
   const [activePortfolioRole, setActivePortfolioRole] = useState<'owner' | 'editor' | 'viewer'>('viewer');
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
+
+  // Trigger a random upsell modal (e.g. 10% chance) on general user actions when on the Free plan
+  const triggerRandomUpsell = () => {
+    if (tier === 'free') {
+      if (Math.random() < 0.10) {
+        setUpsellReason('general');
+        setUpsellModalOpen(true);
+        return true;
+      }
+    }
+    return false;
+  };
 
   // 1. Transactions filtered by portfolio (used for fetching holdings & historical charting)
   const portfolioTransactions = useMemo(() => {
@@ -230,6 +252,11 @@ export function PortfolioView({
 
   // Create Portfolio
   const handleCreatePortfolio = () => {
+    if (tier === 'free' && portfolios.length >= 1) {
+      setUpsellReason('portfolio');
+      setUpsellModalOpen(true);
+      return;
+    }
     showCustomPrompt(
       "Create Portfolio",
       "Enter a name for your new portfolio:",
@@ -305,9 +332,9 @@ export function PortfolioView({
   }, [user?.id]);
 
   // Fetch holdings (GET from backend calculator using JWT)
-  const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
+  const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount, silent = false) => {
     if (!activePortfolioId) return;
-    setLoadingHoldings(true);
+    if (!silent) setLoadingHoldings(true);
     try {
       const jwtToken = session?.access_token || null;
       const result = await fetchHoldingsService(
@@ -323,7 +350,7 @@ export function PortfolioView({
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
-      setLoadingHoldings(false);
+      if (!silent) setLoadingHoldings(false);
     }
   };
 
@@ -378,12 +405,33 @@ export function PortfolioView({
     }
   }, [portfolios]);
 
+  // Reset holdings and chart data on portfolio or account change to show skeleton loader
+  useEffect(() => {
+    setHoldings([]);
+    setChartData(null);
+  }, [activePortfolioId, selectedAccount]);
+
   // Recalculate holdings when active portfolio, filters, or transactions update
   useEffect(() => {
     if (activePortfolioId && portfolios.length > 0) {
-      fetchHoldings(baseCurrency, selectedAccount);
+      fetchHoldings(baseCurrency, selectedAccount, false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
+
+  // Set up live polling (every 60 seconds) for real-time price updates when active portfolios exist and markets are open
+  useEffect(() => {
+    if (!activePortfolioId || portfolios.length === 0) return;
+    
+    // We only poll if at least one holding is currently in a live trading session
+    const hasLiveInstruments = holdings.some(h => h.is_live);
+    if (!hasLiveInstruments) return;
+    
+    const interval = setInterval(() => {
+      fetchHoldings(baseCurrency, selectedAccount, true);
+    }, 60000); // Poll every 60 seconds (1 minute)
+    
+    return () => clearInterval(interval);
+  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, holdings]);
 
   // Recalculate chart when active portfolio, filters, or transactions update
   useEffect(() => {
@@ -397,6 +445,7 @@ export function PortfolioView({
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
     if (activePortfolioRole === 'viewer') return;
+    if (triggerRandomUpsell()) return;
     setQuickActionData({ symbol, type });
     setShowAddModal(true);
   };
@@ -483,7 +532,23 @@ export function PortfolioView({
 
       {/* MAIN CONTENT AREA */}
       <main className="main-content">
-        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+          
+          {/* Glowing Neon Top Progress Bar */}
+          {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.5s infinite linear',
+              zIndex: 10,
+              borderRadius: '3px 3px 0 0'
+            }} />
+          )}
           
           {/* Top navigation Header Switcher Bar */}
           <div className="portfolio-header-bar glass-panel" style={{ 
@@ -602,7 +667,11 @@ export function PortfolioView({
               {activePortfolioId !== 'all' && activePortfolioRole === 'owner' && (
                 <button
                   className="glow-btn"
-                  onClick={() => setShowShareModal(true)}
+                  onClick={() => {
+                    if (!triggerRandomUpsell()) {
+                      setShowShareModal(true);
+                    }
+                  }}
                   style={{
                     padding: '0.35rem 0.85rem',
                     fontSize: '0.8rem',
@@ -620,11 +689,50 @@ export function PortfolioView({
                 </button>
               )}
 
+              {/* Settings button */}
+              {activePortfolioId !== 'all' && activePortfolioRole === 'owner' && (
+                <button
+                  className="glow-btn"
+                  onClick={() => {
+                    if (!triggerRandomUpsell()) {
+                      setShowSettingsModal(true);
+                    }
+                  }}
+                  style={{
+                    padding: '0.35rem 0.85rem',
+                    fontSize: '0.8rem',
+                    borderRadius: '6px',
+                    boxShadow: 'none',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    color: 'var(--text-secondary)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    marginLeft: '0.5rem'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                >
+                  <Settings size={13} /> Settings
+                </button>
+              )}
+
               {/* Add Transaction Button */}
               {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
                 <button 
                   className="glow-btn"
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => {
+                    if (!triggerRandomUpsell()) {
+                      setShowAddModal(true);
+                    }
+                  }}
                   style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', borderRadius: '6px' }}
                 >
                   <Plus size={14} /> Add Transaction
@@ -765,6 +873,27 @@ export function PortfolioView({
             </>
           )}
 
+          {/* Legal Compliance & Market Data Disclaimer Footer */}
+          <footer style={{ 
+            marginTop: '2.5rem', 
+            padding: '1.25rem 0', 
+            borderTop: '1px solid var(--panel-border)', 
+            textAlign: 'center', 
+            fontSize: '0.72rem', 
+            color: 'var(--text-muted)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.35rem',
+            lineHeight: '1.45'
+          }}>
+            <div>
+              <strong>Disclaimer:</strong> Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.
+            </div>
+            <div>
+              Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.
+            </div>
+          </footer>
+
         </div>
       </main>
 
@@ -789,6 +918,11 @@ export function PortfolioView({
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
         }}
+        tier={tier}
+        onLimitReached={(reason) => {
+          setUpsellReason(reason);
+          setUpsellModalOpen(true);
+        }}
       />
 
       {/* COLLABORATIVE SHARING DIALOG MODAL */}
@@ -797,6 +931,19 @@ export function PortfolioView({
         onClose={() => setShowShareModal(false)}
         activePortfolioId={activePortfolioId}
         showCustomConfirm={showCustomConfirm}
+      />
+
+      {/* PORTFOLIO SETTINGS MODAL */}
+      <SettingsModal 
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        portfolio={portfolios.find(p => p.id === activePortfolioId) || null}
+        portfolioAccounts={uniqueAccounts}
+        onSaveSuccess={(updatedSettings) => {
+          setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchHistoricalPerformance(baseCurrency, selectedAccount);
+        }}
       />
 
       {/* POSITION TRANSACTIONS HISTORY MODAL */}
@@ -1067,6 +1214,12 @@ export function PortfolioView({
           </div>
         </>
       )}
+      {/* PREMIUM UPSELL MODAL */}
+      <PremiumUpsellModal 
+        isOpen={upsellModalOpen}
+        onClose={() => setUpsellModalOpen(false)}
+        reason={upsellReason}
+      />
 
     </div>
   );

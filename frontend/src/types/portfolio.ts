@@ -2,6 +2,9 @@ export interface Portfolio {
   id: string;
   name: string;
   role: 'owner' | 'editor' | 'viewer';
+  settings?: {
+    accountTaxRates?: Record<string, number>;
+  };
 }
 
 export interface Member {
@@ -35,6 +38,12 @@ export interface Holding {
   current_value_base: number;
   gain_base: number;
   gain_percent: number;
+  dividends_base?: number;
+  dividends_net_base?: number;
+  day_change_percent?: number;
+  day_change_value_base?: number;
+  is_live?: boolean;
+  asset_class?: string;
 }
 
 export interface Summary {
@@ -42,5 +51,9 @@ export interface Summary {
   total_value_base: number;
   total_gain_base: number;
   total_gain_percent: number;
+  total_dividends_base?: number;
+  total_dividends_net_base?: number;
+  total_day_change_base?: number;
+  total_day_change_percent?: number;
   base_currency: string;
 }
