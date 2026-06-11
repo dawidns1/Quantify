@@ -89,7 +89,8 @@ export function PerformanceChart({
           grid: { display: false },
           ticks: { 
             color: 'rgba(255, 255, 255, 0.75)', 
-            font: { family: 'Outfit', size: 9 } 
+            font: { family: 'Outfit', size: 9 },
+            maxTicksLimit: 6
           }
         },
         y: {

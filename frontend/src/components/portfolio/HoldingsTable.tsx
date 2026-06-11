@@ -50,13 +50,204 @@ export function HoldingsTable({
     });
   };
 
+  const moveColumn = (id: string, direction: 'left' | 'right') => {
+    const idx = visibleColumns.indexOf(id);
+    if (idx === -1) return;
+    const nextIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= visibleColumns.length) return;
+
+    const next = [...visibleColumns];
+    const temp = next[idx];
+    next[idx] = next[nextIdx];
+    next[nextIdx] = temp;
+
+    setVisibleColumns(next);
+    localStorage.setItem('portfolio_visible_columns', JSON.stringify(next));
+  };
+
+  const formatCurrency = (val: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(val);
+  };
+
+  const formatShares = (shares: number) => {
+    return (Math.round(shares * 10000) / 10000).toString();
+  };
+
+  // Metadata definition for customizable columns
+  const columnsMeta: Record<string, {
+    label: string;
+    sortField: string;
+    align: 'left' | 'right' | 'center';
+    renderHeader: (baseCurrency: string) => React.ReactNode;
+    renderCell: (h: Holding, baseCurrency: string) => React.ReactNode;
+  }> = {
+    name: {
+      label: 'Company Name',
+      sortField: 'name',
+      align: 'left',
+      renderHeader: () => 'Company Name',
+      renderCell: (h) => (
+        <span style={{ color: 'var(--text-secondary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={h.name}>
+          {h.name}
+        </span>
+      )
+    },
+    shares: {
+      label: 'Shares Owned',
+      sortField: 'shares',
+      align: 'right',
+      renderHeader: () => 'Shares',
+      renderCell: (h) => formatShares(h.shares)
+    },
+    avg_cost: {
+      label: 'Average Cost',
+      sortField: 'avg_cost_local',
+      align: 'right',
+      renderHeader: () => 'Avg Cost',
+      renderCell: (h) => formatCurrency(h.avg_cost_local, h.currency)
+    },
+    price: {
+      label: 'Local Price',
+      sortField: 'current_price_local',
+      align: 'right',
+      renderHeader: () => 'Price',
+      renderCell: (h) => formatCurrency(h.current_price_local, h.currency)
+    },
+    cost: {
+      label: 'Cost Basis',
+      sortField: 'cost_basis_base',
+      align: 'right',
+      renderHeader: (baseCurrency) => `Cost (${baseCurrency})`,
+      renderCell: (h, baseCurrency) => formatCurrency(h.cost_basis_base, baseCurrency)
+    },
+    dividends: {
+      label: 'Dividends Net',
+      sortField: 'dividends_net_base',
+      align: 'right',
+      renderHeader: () => 'Dividends',
+      renderCell: (h, baseCurrency) => (
+        <span title={`Gross: ${formatCurrency(h.dividends_base || 0, baseCurrency)} (based on settings tax)`} style={{ color: 'var(--color-green)' }}>
+          {formatCurrency(h.dividends_net_base || 0, baseCurrency)}
+        </span>
+      )
+    },
+    day_change: {
+      label: 'Day Change',
+      sortField: 'day_change_percent',
+      align: 'right',
+      renderHeader: () => 'Day Change',
+      renderCell: (h, baseCurrency) => {
+        return h.day_change_percent !== undefined ? (
+          <>
+            <div className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+              {h.day_change_percent >= 0 ? '+' : ''}{h.day_change_percent.toFixed(2)}%
+            </div>
+            <div style={{ fontSize: '0.72rem' }} className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'}>
+              {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(h.day_change_value_base || 0, baseCurrency)}
+            </div>
+          </>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>—</span>
+        );
+      }
+    },
+    asset_class: {
+      label: 'Asset Class',
+      sortField: 'asset_class',
+      align: 'left',
+      renderHeader: () => 'Class',
+      renderCell: (h) => (
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+          {h.asset_class || 'Equity'}
+        </span>
+      )
+    },
+    weight: {
+      label: 'Weight',
+      sortField: 'current_value_base',
+      align: 'right',
+      renderHeader: () => 'Weight',
+      renderCell: (h) => {
+        const total = summary.total_value_base || 1;
+        const wt = (h.current_value_base / total) * 100;
+        return <span style={{ fontFamily: 'monospace' }}>{wt.toFixed(2)}%</span>;
+      }
+    },
+    fx_rate: {
+      label: 'FX Rate',
+      sortField: 'fx_rate',
+      align: 'right',
+      renderHeader: () => 'FX Rate',
+      renderCell: (h) => <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{h.fx_rate?.toFixed(4) || '1.0000'}</span>
+    }
+  };
+
+  // Logical Grouping
+  const columnGroups = [
+    {
+      name: 'Basic Info',
+      items: [
+        { id: 'name', label: 'Company Name' },
+        { id: 'asset_class', label: 'Asset Class' }
+      ]
+    },
+    {
+      name: 'Position Info',
+      items: [
+        { id: 'shares', label: 'Shares Owned' },
+        { id: 'weight', label: 'Weight' }
+      ]
+    },
+    {
+      name: 'Valuation',
+      items: [
+        { id: 'price', label: 'Local Price' },
+        { id: 'avg_cost', label: 'Average Cost' },
+        { id: 'cost', label: 'Cost Basis' },
+        { id: 'fx_rate', label: 'FX Rate' }
+      ]
+    },
+    {
+      name: 'Returns',
+      items: [
+        { id: 'day_change', label: 'Day Change' },
+        { id: 'dividends', label: 'Dividends Net' }
+      ]
+    }
+  ];
+
   // Sort holdings according to selected field & direction
   const sortedHoldings = useMemo(() => {
     const sorted = [...holdings];
     sorted.sort((a, b) => {
-      const field = holdingsSortField as keyof Holding;
-      const valA = a[field];
-      const valB = b[field];
+      const field = holdingsSortField;
+      
+      let valA: any;
+      let valB: any;
+
+      if (field === 'symbol') {
+        valA = a.symbol;
+        valB = b.symbol;
+      } else if (field === 'current_value_base') {
+        valA = a.current_value_base;
+        valB = b.current_value_base;
+      } else if (field === 'gain_base') {
+        valA = a.gain_base;
+        valB = b.gain_base;
+      } else if (columnsMeta[field]) {
+        // Resolve based on sortField in meta
+        const sf = columnsMeta[field].sortField as keyof Holding;
+        valA = a[sf];
+        valB = b[sf];
+      } else {
+        valA = a.symbol;
+        valB = b.symbol;
+      }
 
       if (valA === undefined || valA === null) return holdingsSortAsc ? 1 : -1;
       if (valB === undefined || valB === null) return holdingsSortAsc ? -1 : 1;
@@ -80,7 +271,7 @@ export function HoldingsTable({
       localStorage.setItem('portfolio_holdings_sort_asc', String(nextAsc));
     } else {
       setHoldingsSortField(field);
-      const defaultAsc = ['symbol', 'name'].includes(field);
+      const defaultAsc = ['symbol', 'name', 'asset_class'].includes(field);
       setHoldingsSortAsc(defaultAsc);
       localStorage.setItem('portfolio_holdings_sort_field', field);
       localStorage.setItem('portfolio_holdings_sort_asc', String(defaultAsc));
@@ -96,19 +287,6 @@ export function HoldingsTable({
     ) : (
       <span style={{ color: 'var(--color-primary)', marginLeft: '6px', fontSize: '0.8rem' }}>▼</span>
     );
-  };
-
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val);
-  };
-
-  const formatShares = (shares: number) => {
-    return (Math.round(shares * 10000) / 10000).toString();
   };
 
   return (
@@ -137,44 +315,121 @@ export function HoldingsTable({
       {showColumnPicker && (
         <div style={{ 
           background: 'rgba(0,0,0,0.2)', 
-          padding: '1rem', 
+          padding: '1.25rem', 
           borderRadius: '8px', 
           border: '1px solid var(--panel-border)', 
           display: 'flex', 
           flexDirection: 'column', 
-          gap: '0.5rem' 
+          gap: '1rem' 
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Configure Portfolio Columns</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ticker, Price, Current, Gain/Loss & Actions are core</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ticker, Current Value, Gain/Loss & Actions are always visible</span>
           </div>
-          <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-            {[
-              { id: 'name', label: 'Company Name' },
-              { id: 'shares', label: 'Shares Owned' },
-              { id: 'avg_cost', label: 'Average Cost' },
-              { id: 'price', label: 'Local Price' },
-              { id: 'cost', label: 'Cost Basis' },
-              { id: 'dividends', label: 'Dividends Net' },
-              { id: 'day_change', label: 'Day Change' },
-              { id: 'asset_class', label: 'Asset Class' }
-            ].map((col) => {
-              const isChecked = visibleColumns.includes(col.id);
-              return (
-                <label 
-                  key={col.id} 
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
-                >
-                  <input 
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleColumn(col.id)}
-                    style={{ accentColor: 'var(--color-primary)' }}
-                  />
-                  {col.label}
-                </label>
-              );
-            })}
+          
+          {/* Grouped checkboxes */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.25rem' }}>
+            {columnGroups.map((group) => (
+              <div key={group.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {group.name}
+                </span>
+                {group.items.map((col) => {
+                  const isChecked = visibleColumns.includes(col.id);
+                  return (
+                    <label 
+                      key={col.id} 
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      <input 
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleColumn(col.id)}
+                        style={{ accentColor: 'var(--color-primary)' }}
+                      />
+                      {col.label}
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Active column reordering */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.75rem' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
+              Active Columns Order (Reorder with Arrow keys)
+            </span>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Ticker (Fixed)
+              </div>
+              
+              {visibleColumns.map((colId, idx) => {
+                const meta = columnsMeta[colId];
+                if (!meta) return null;
+                return (
+                  <div 
+                    key={colId}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      color: 'var(--color-primary)',
+                      padding: '0.2rem 0.45rem',
+                      borderRadius: '4px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <span>{meta.label}</span>
+                    <div style={{ display: 'flex', gap: '1px' }}>
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => moveColumn(colId, 'left')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === 0 ? 'rgba(255,255,255,0.15)' : 'var(--color-primary)',
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.65rem',
+                          padding: '0 2px',
+                          lineHeight: 1
+                        }}
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === visibleColumns.length - 1}
+                        onClick={() => moveColumn(colId, 'right')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: idx === visibleColumns.length - 1 ? 'rgba(255,255,255,0.15)' : 'var(--color-primary)',
+                          cursor: idx === visibleColumns.length - 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.65rem',
+                          padding: '0 2px',
+                          lineHeight: 1
+                        }}
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Current (Fixed)
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Gain/Loss (Fixed)
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -183,7 +438,7 @@ export function HoldingsTable({
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           <Briefcase size={48} style={{ strokeWidth: 1, marginBottom: '1rem', opacity: 0.5 }} />
           <p>No holdings found in your portfolio.</p>
-          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Click "Add Transaction" above to register purchases.</p>
+          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Click "Add Transaction" below to register purchases.</p>
         </div>
       ) : (
         <div className="table-wrapper">
@@ -193,46 +448,25 @@ export function HoldingsTable({
                 <th onClick={() => handleHoldingsSort('symbol')} style={{ userSelect: 'none' }}>
                   Ticker {renderSortArrow('symbol')}
                 </th>
-                {visibleColumns.includes('name') && (
-                  <th onClick={() => handleHoldingsSort('name')} style={{ userSelect: 'none' }}>
-                    Company Name {renderSortArrow('name')}
-                  </th>
-                )}
-                {visibleColumns.includes('shares') && (
-                  <th onClick={() => handleHoldingsSort('shares')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Shares {renderSortArrow('shares')}
-                  </th>
-                )}
-                {visibleColumns.includes('avg_cost') && (
-                  <th onClick={() => handleHoldingsSort('avg_cost_local')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Avg Cost {renderSortArrow('avg_cost_local')}
-                  </th>
-                )}
-                {visibleColumns.includes('price') && (
-                  <th onClick={() => handleHoldingsSort('current_price_local')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Price {renderSortArrow('current_price_local')}
-                  </th>
-                )}
-                {visibleColumns.includes('cost') && (
-                  <th onClick={() => handleHoldingsSort('cost_basis_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Cost ({summary.base_currency}) {renderSortArrow('cost_basis_base')}
-                  </th>
-                )}
-                {visibleColumns.includes('dividends') && (
-                  <th onClick={() => handleHoldingsSort('dividends_net_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Dividends {renderSortArrow('dividends_net_base')}
-                  </th>
-                )}
-                {visibleColumns.includes('day_change') && (
-                  <th onClick={() => handleHoldingsSort('day_change_percent')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                    Day Change {renderSortArrow('day_change_percent')}
-                  </th>
-                )}
-                {visibleColumns.includes('asset_class') && (
-                  <th onClick={() => handleHoldingsSort('asset_class')} style={{ textAlign: 'left', userSelect: 'none' }}>
-                    Class {renderSortArrow('asset_class')}
-                  </th>
-                )}
+                
+                {/* Dynamically render headers */}
+                {visibleColumns.map((colId) => {
+                  const col = columnsMeta[colId];
+                  if (!col) return null;
+                  return (
+                    <th 
+                      key={colId} 
+                      onClick={() => handleHoldingsSort(colId)} 
+                      style={{ 
+                        textAlign: col.align, 
+                        userSelect: 'none' 
+                      }}
+                    >
+                      {col.renderHeader(summary.base_currency)} {renderSortArrow(colId)}
+                    </th>
+                  );
+                })}
+
                 <th onClick={() => handleHoldingsSort('current_value_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
                   Current ({summary.base_currency}) {renderSortArrow('current_value_base')}
                 </th>
@@ -257,88 +491,56 @@ export function HoldingsTable({
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      {h.is_live && (
-                        <span 
-                          title="Market Session is Live"
-                          style={{ 
-                            display: 'inline-block',
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            background: '#10b981',
-                            boxShadow: '0 0 8px #10b981',
-                            animation: 'pulse 1.8s infinite',
-                            flexShrink: 0
-                          }} 
-                        />
-                      )}
-                      <span>{h.symbol}</span>
-                      <span style={{ 
-                        fontSize: '0.65rem', 
-                        color: 'var(--text-muted)', 
-                        background: 'rgba(255, 255, 255, 0.04)', 
-                        padding: '1px 4px', 
-                        borderRadius: '4px',
-                        marginLeft: '2px'
-                      }}>
-                        {h.currency}
-                      </span>
-                    </td>
-                    {visibleColumns.includes('name') && (
-                      <td style={{ color: 'var(--text-secondary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={h.name}>
-                        {h.name}
-                      </td>
-                    )}
-                    {visibleColumns.includes('shares') && (
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                        {formatShares(h.shares)}
-                      </td>
-                    )}
-                    {visibleColumns.includes('avg_cost') && (
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                        {formatCurrency(h.avg_cost_local, h.currency)}
-                      </td>
-                    )}
-                    {visibleColumns.includes('price') && (
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                        {formatCurrency(h.current_price_local, h.currency)}
-                      </td>
-                    )}
-                    {visibleColumns.includes('cost') && (
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                        {formatCurrency(h.cost_basis_base, summary.base_currency)}
-                      </td>
-                    )}
-                    {visibleColumns.includes('dividends') && (
-                      <td 
-                        style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--color-green)' }}
-                        title={`Gross: ${formatCurrency(h.dividends_base || 0, summary.base_currency)} (based on account tax settings)`}
-                      >
-                        {formatCurrency(h.dividends_net_base || 0, summary.base_currency)}
-                      </td>
-                    )}
-                    {visibleColumns.includes('day_change') && (
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                        {h.day_change_percent !== undefined ? (
-                          <>
-                            <div className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
-                              {h.day_change_percent >= 0 ? '+' : ''}{h.day_change_percent.toFixed(2)}%
-                            </div>
-                            <div style={{ fontSize: '0.72rem' }} className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'}>
-                              {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(h.day_change_value_base || 0, summary.base_currency)}
-                            </div>
-                          </>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                    {/* Fixed Ticker column with div wrapper for flex alignment */}
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {h.is_live && (
+                          <span 
+                            title="Market Session is Live"
+                            style={{ 
+                              display: 'inline-block',
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#10b981',
+                              boxShadow: '0 0 8px #10b981',
+                              animation: 'pulse 1.8s infinite',
+                              flexShrink: 0
+                            }} 
+                          />
                         )}
-                      </td>
-                    )}
-                    {visibleColumns.includes('asset_class') && (
-                      <td style={{ textAlign: 'left', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                        {h.asset_class || 'Equity'}
-                      </td>
-                    )}
+                        <span>{h.symbol}</span>
+                        <span style={{ 
+                          fontSize: '0.65rem', 
+                          color: 'var(--text-muted)', 
+                          background: 'rgba(255, 255, 255, 0.04)', 
+                          padding: '1px 4px', 
+                          borderRadius: '4px',
+                          marginLeft: '2px'
+                        }}>
+                          {h.currency}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Dynamically render cells based on visible order */}
+                    {visibleColumns.map((colId) => {
+                      const col = columnsMeta[colId];
+                      if (!col) return null;
+                      return (
+                        <td 
+                          key={colId} 
+                          style={{ 
+                            textAlign: col.align, 
+                            fontFamily: ['shares', 'avg_cost', 'price', 'cost', 'dividends', 'day_change', 'weight', 'fx_rate'].includes(colId) ? 'monospace' : 'inherit'
+                          }}
+                        >
+                          {col.renderCell(h, summary.base_currency)}
+                        </td>
+                      );
+                    })}
+
+                    {/* Fixed ending columns */}
                     <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
                       {formatCurrency(h.current_value_base, summary.base_currency)}
                     </td>

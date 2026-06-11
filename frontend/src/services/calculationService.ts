@@ -7,7 +7,7 @@ export async function fetchHoldings(
   baseCurrency: string,
   account: string,
   linkCash: boolean
-): Promise<{ holdings: Holding[]; summary: Summary }> {
+): Promise<{ holdings: Holding[]; summary: Summary; dividends_list?: any[] }> {
   const headers: Record<string, string> = {};
   if (jwtToken) {
     headers['Authorization'] = `Bearer ${jwtToken}`;
@@ -34,7 +34,8 @@ export async function fetchHoldings(
       total_gain_base: 0,
       total_gain_percent: 0,
       base_currency: baseCurrency
-    }
+    },
+    dividends_list: data.dividends_list || []
   };
 }
 

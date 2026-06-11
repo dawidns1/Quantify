@@ -24,6 +24,7 @@ class PortfolioManager:
     _live_fx_cache = {}      # pair -> (timestamp, rate)
     _historical_stock_cache = {}  # symbol -> {start_date, end_date, last_updated, prices}
     _historical_fx_cache = {}     # pair -> {start_date, end_date, last_updated, prices}
+    _ticker_metadata_cache = {}   # symbol -> {timezone, exchange, company_name, native_currency, asset_class}
     
     STOCK_CACHE_TTL = 60  # 1 minute
     FX_CACHE_TTL = 600     # 10 minutes
@@ -34,10 +35,12 @@ class PortfolioManager:
         from zoneinfo import ZoneInfo
         from datetime import datetime
         try:
+            if not timezone_str or timezone_str == "Unknown":
+                return False
             tz = ZoneInfo(timezone_str)
             now_tz = datetime.now(tz)
         except Exception:
-            now_tz = datetime.now()
+            return False
             
         if now_tz.weekday() >= 5:
             return False
@@ -142,11 +145,22 @@ class PortfolioManager:
         symbol = symbol.upper().strip()
         now = time.time()
         
+        meta = cls._ticker_metadata_cache.get(symbol)
+        
         if symbol in cls._live_ticker_cache:
-            ts, data = cls._live_ticker_cache[symbol]
+            ts, price_data = cls._live_ticker_cache[symbol]
             if now - ts < cls.STOCK_CACHE_TTL:
-                return data
-                
+                if meta:
+                    return {
+                        "live_price": price_data.get("live_price", 0.0),
+                        "previous_close": price_data.get("previous_close", 0.0),
+                        "company_name": meta.get("company_name", symbol),
+                        "native_currency": meta.get("native_currency", "USD"),
+                        "asset_class": meta.get("asset_class", "Equity"),
+                        "timezone": meta.get("timezone", "Unknown"),
+                        "exchange": meta.get("exchange", "")
+                    }
+                    
         try:
             res = provider.download_live_ticker(symbol)
             live_price = res.get("live_price", 0.0)
@@ -154,7 +168,7 @@ class PortfolioManager:
             native_currency = res.get("native_currency", "USD")
             quote_type = res.get("quote_type")
             previous_close = res.get("previous_close", live_price)
-            timezone = res.get("timezone", "UTC")
+            timezone = res.get("timezone", "Unknown")
             exchange = res.get("exchange", "")
         except Exception as e:
             print(f"Error fetching live data for {symbol}: {e}")
@@ -163,7 +177,7 @@ class PortfolioManager:
             native_currency = "USD"
             quote_type = None
             previous_close = 0.0
-            timezone = "UTC"
+            timezone = "Unknown"
             exchange = ""
             
         # Determine asset class friendly name
@@ -181,18 +195,23 @@ class PortfolioManager:
             else:
                 asset_class = "Equity"
                 
-        data = {
-            "live_price": float(live_price) if live_price else 0.0,
+        # Cache metadata permanently
+        meta_data = {
             "company_name": company_name,
             "native_currency": native_currency.upper().strip(),
             "asset_class": asset_class,
-            "previous_close": float(previous_close) if previous_close else 0.0,
             "timezone": timezone,
             "exchange": exchange
         }
+        cls._ticker_metadata_cache[symbol] = meta_data
         
-        cls._live_ticker_cache[symbol] = (now, data)
-        return data
+        price_data = {
+            "live_price": float(live_price) if live_price else 0.0,
+            "previous_close": float(previous_close) if previous_close else 0.0
+        }
+        cls._live_ticker_cache[symbol] = (now, price_data)
+        
+        return {**price_data, **meta_data}
 
     @classmethod
     def get_cached_live_fx(cls, pair: str) -> float:
@@ -216,6 +235,213 @@ class PortfolioManager:
             
         cls._live_fx_cache[pair] = (now, float(rate))
         return float(rate)
+
+    @classmethod
+    def get_merged_dividends(cls, sorted_txs: list, symbol_txs: dict, ticker_info: dict, base_currency: str, fx_rates: dict, portfolio_settings: dict) -> list:
+        # Resolve tax rates per account
+        account_tax_rates = portfolio_settings.get("accountTaxRates", {}) if portfolio_settings else {}
+        
+        def get_tax_rate(acc):
+            if not acc:
+                acc = "Default"
+            rate = account_tax_rates.get(acc)
+            if rate is not None:
+                return float(rate)
+            for k, v in account_tax_rates.items():
+                if k.lower() == acc.lower():
+                    return float(v)
+            if "ike" in acc.lower() or "ikze" in acc.lower():
+                return 0.0
+            return 0.19
+
+        from datetime import datetime
+        auto_list = []
+        
+        # 1. Compute automatic virtual dividends
+        for symbol, txs in symbol_txs.items():
+            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
+            native_curr = ticker_info[symbol]["native_currency"]
+            accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
+            
+            for acc in accounts:
+                for ex_date, payout in sorted(dividends_data.items()):
+                    ex_date_str = ex_date.strftime("%Y-%m-%d")
+                    
+                    # Calculate shares owned on ex_date in this account
+                    shares_on_ex_date = 0.0
+                    for tx in txs:
+                        tx_acc = tx.get("account", "Default") or "Default"
+                        if tx_acc != acc:
+                            continue
+                        tx_date_str = tx.get("date", "")
+                        if not tx_date_str:
+                            continue
+                        try:
+                            tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                            if tx_date < ex_date:
+                                if tx["type"] == "BUY":
+                                    shares_on_ex_date += tx["shares"]
+                                elif tx["type"] == "SELL":
+                                    shares_on_ex_date -= tx["shares"]
+                        except:
+                            pass
+                            
+                    if shares_on_ex_date > 0.0001:
+                        tax_rate = get_tax_rate(acc)
+                        gross_payout_native = shares_on_ex_date * payout
+                        net_payout_native = gross_payout_native * (1.0 - tax_rate)
+                        
+                        # Resolve FX rate on ex-dividend date
+                        if native_curr == base_currency:
+                            fx_rate_ex = 1.0
+                        else:
+                            fx_ex_dict = cls.get_cached_historical_fx(f"{native_curr}{base_currency}=X", ex_date, ex_date)
+                            fx_rate_ex = fx_ex_dict.get(ex_date) if fx_ex_dict else None
+                            if fx_rate_ex is None:
+                                fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                                
+                        gross_base = gross_payout_native * fx_rate_ex
+                        net_base = net_payout_native * fx_rate_ex
+                        net_native = net_payout_native
+                        
+                        auto_list.append({
+                            "symbol": symbol,
+                            "date": ex_date_str,
+                            "account": acc,
+                            "shares": round(shares_on_ex_date, 4),
+                            "payout_per_share": float(payout),
+                            "gross_base": round(gross_base, 2),
+                            "net_base": round(net_base, 2),
+                            "net_native": round(net_native, 2),
+                            "is_override": False,
+                            "is_manual": False
+                        })
+
+        # 2. Load custom overrides & manual dividends from settings
+        overrides = portfolio_settings.get("dividends", []) if portfolio_settings else []
+        
+        # Build maps for overrides
+        override_map = {} # (symbol, date, account) -> override_item
+        manual_divs = []
+        
+        for od in overrides:
+            sym = od.get("symbol", "").upper().strip()
+            dt_str = od.get("date", "")
+            acc = od.get("account", "Default") or "Default"
+            is_manual = od.get("is_manual", False)
+            
+            if is_manual:
+                manual_divs.append(od)
+            else:
+                override_map[(sym, dt_str, acc)] = od
+                
+        # 3. Merge
+        merged_list = []
+        
+        # Process automatic dividends
+        for ad in auto_list:
+            key = (ad["symbol"], ad["date"], ad["account"])
+            if key in override_map:
+                od = override_map[key]
+                if od.get("is_deleted", False):
+                    # Skip deleted ones
+                    continue
+                else:
+                    # Apply override values
+                    shares = od.get("shares", ad["shares"])
+                    payout = od.get("payout_per_share", ad["payout_per_share"])
+                    
+                    # Recompute amounts
+                    tax_rate = get_tax_rate(ad["account"])
+                    
+                    # Find FX rate for this date
+                    try:
+                        ex_date = datetime.strptime(ad["date"], "%Y-%m-%d").date()
+                    except:
+                        ex_date = date.today()
+                        
+                    native_curr = ticker_info[ad["symbol"]]["native_currency"] if ad["symbol"] in ticker_info else "USD"
+                    
+                    if native_curr == base_currency:
+                        fx_rate_ex = 1.0
+                    else:
+                        fx_ex_dict = cls.get_cached_historical_fx(f"{native_curr}{base_currency}=X", ex_date, ex_date)
+                        fx_rate_ex = fx_ex_dict.get(ex_date) if fx_ex_dict else None
+                        if fx_rate_ex is None:
+                            fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                            
+                    gross_native = shares * payout
+                    net_native = gross_native * (1.0 - tax_rate)
+                    
+                    gross_base = gross_native * fx_rate_ex
+                    net_base = net_native * fx_rate_ex
+                    
+                    merged_list.append({
+                        "id": od.get("id"),
+                        "symbol": ad["symbol"],
+                        "date": ad["date"],
+                        "account": ad["account"],
+                        "shares": round(shares, 4),
+                        "payout_per_share": float(payout),
+                        "gross_base": round(gross_base, 2),
+                        "net_base": round(net_base, 2),
+                        "net_native": round(net_native, 2),
+                        "is_override": True,
+                        "is_manual": False
+                    })
+            else:
+                merged_list.append(ad)
+                
+        # Process manual dividends
+        for md in manual_divs:
+            if md.get("is_deleted", False):
+                continue
+                
+            sym = md.get("symbol", "").upper().strip()
+            dt_str = md.get("date", "")
+            acc = md.get("account", "Default") or "Default"
+            shares = md.get("shares", 0.0)
+            payout = md.get("payout_per_share", 0.0)
+            
+            tax_rate = get_tax_rate(acc)
+            try:
+                dt = datetime.strptime(dt_str, "%Y-%m-%d").date()
+            except:
+                dt = date.today()
+                
+            native_curr = ticker_info[sym]["native_currency"] if sym in ticker_info else "USD"
+            
+            if native_curr == base_currency:
+                fx_rate_ex = 1.0
+            else:
+                fx_ex_dict = cls.get_cached_historical_fx(f"{native_curr}{base_currency}=X", dt, dt)
+                fx_rate_ex = fx_ex_dict.get(dt) if fx_ex_dict else None
+                if fx_rate_ex is None:
+                    fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                    
+            gross_native = shares * payout
+            net_native = gross_native * (1.0 - tax_rate)
+            
+            gross_base = gross_native * fx_rate_ex
+            net_base = net_native * fx_rate_ex
+            
+            merged_list.append({
+                "id": md.get("id"),
+                "symbol": sym,
+                "date": dt_str,
+                "account": acc,
+                "shares": round(shares, 4),
+                "payout_per_share": float(payout),
+                "gross_base": round(gross_base, 2),
+                "net_base": round(net_base, 2),
+                "net_native": round(net_native, 2),
+                "is_override": False,
+                "is_manual": True
+            })
+            
+        # Sort final list by date descending
+        merged_list.sort(key=lambda x: x["date"], reverse=True)
+        return merged_list
 
     @classmethod
     def get_cached_historical_stock(cls, symbol: str, start_dt: date, end_dt: date) -> dict:
@@ -505,63 +731,20 @@ class PortfolioManager:
                 return 0.0
             return 0.19
 
-        dividends_by_symbol_acc = {} # (symbol, acc) -> {"gross_base": 0.0, "net_base": 0.0, "net_native": 0.0}
-        
-        for symbol, txs in symbol_txs.items():
-            # Trigger get_cached_historical_stock to force cache population
+        # Force fetch cache for symbols first
+        for symbol in symbol_txs.keys():
             cls.get_cached_historical_stock(symbol, earliest_date, date.today())
-            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
-            native_curr = ticker_info[symbol]["native_currency"]
             
-            accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
-            
-            for acc in accounts:
-                div_gross_base = 0.0
-                div_net_base = 0.0
-                div_net_native = 0.0
-                
-                for ex_date, payout in sorted(dividends_data.items()):
-                    # Calculate shares owned in this account on ex_date
-                    shares_on_ex_date = 0.0
-                    for tx in txs:
-                        tx_acc = tx.get("account", "Default") or "Default"
-                        if tx_acc != acc:
-                            continue
-                        tx_date_str = tx.get("date", "")
-                        if not tx_date_str:
-                            continue
-                        try:
-                            tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
-                            if tx_date < ex_date:
-                                if tx["type"] == "BUY":
-                                    shares_on_ex_date += tx["shares"]
-                                elif tx["type"] == "SELL":
-                                    shares_on_ex_date -= tx["shares"]
-                        except:
-                            pass
-                            
-                    if shares_on_ex_date > 0.0001:
-                        tax_rate = get_tax_rate(acc)
-                        gross_payout_native = shares_on_ex_date * payout
-                        net_payout_native = gross_payout_native * (1.0 - tax_rate)
-                        
-                        if native_curr == base_currency:
-                            fx_rate_ex = 1.0
-                        else:
-                            fx_ex_dict = cls.get_cached_historical_fx(f"{native_curr}{base_currency}=X", ex_date, ex_date)
-                            fx_rate_ex = fx_ex_dict.get(ex_date) if fx_ex_dict else None
-                            if fx_rate_ex is None:
-                                fx_rate_ex = fx_rates.get(native_curr, 1.0)
-                                
-                        div_gross_base += gross_payout_native * fx_rate_ex
-                        div_net_base += net_payout_native * fx_rate_ex
-                        div_net_native += net_payout_native
-                        
-                dividends_by_symbol_acc[(symbol, acc)] = {
-                    "gross_base": div_gross_base,
-                    "net_base": div_net_base,
-                    "net_native": div_net_native
-                }
+        merged_divs = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info, base_currency, fx_rates, portfolio_settings)
+        
+        dividends_by_symbol_acc = {}
+        for d in merged_divs:
+            sym = d["symbol"]
+            acc = d["account"]
+            dividends_by_symbol_acc.setdefault((sym, acc), {"gross_base": 0.0, "net_base": 0.0, "net_native": 0.0})
+            dividends_by_symbol_acc[(sym, acc)]["gross_base"] += d["gross_base"]
+            dividends_by_symbol_acc[(sym, acc)]["net_base"] += d["net_base"]
+            dividends_by_symbol_acc[(sym, acc)]["net_native"] += d["net_native"]
                 
         # Calculate cash balances per account and currency
         cash_balances = {}
@@ -758,7 +941,8 @@ class PortfolioManager:
                     "total_day_change_percent": 0.0,
                     "base_currency": base_currency
                 },
-                "holdings": []
+                "holdings": [],
+                "dividends_list": merged_divs
             }
             
         total_gain_base = (total_value_base - total_cost_base)
@@ -781,7 +965,8 @@ class PortfolioManager:
                 "total_day_change_percent": round(total_day_change_percent, 2),
                 "base_currency": base_currency
             },
-            "holdings": holdings_list
+            "holdings": holdings_list,
+            "dividends_list": merged_divs
         }
 
     @classmethod
@@ -906,33 +1091,57 @@ class PortfolioManager:
                 return 0.0
             return 0.19
             
-        # Pre-cache dividends data
-        dividends_data_by_sym = {}
-        for sym in stock_symbols:
-            dividends_data_by_sym[sym] = cls._historical_stock_cache.get(sym, {}).get("dividends", {})
+        # Construct symbol_txs and ticker_info to get merged dividends
+        symbol_txs = {}
+        for tx in sorted_txs:
+            sym = tx["symbol"].upper().strip()
+            if not sym.startswith("CASH_"):
+                symbol_txs.setdefault(sym, []).append(tx)
+                
+        ticker_info_tmp = {}
+        for symbol in symbol_txs.keys():
+            info = cls.get_cached_live_ticker(symbol)
+            native_currency = info["native_currency"]
+            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
+                first_tx = symbol_txs[symbol][0]
+                native_currency = first_tx.get("currency", "USD")
+            ticker_info_tmp[symbol] = {
+                "native_currency": native_currency.upper().strip()
+            }
+            
+        fx_rates_tmp = {base_currency: 1.0}
+        for curr in unique_currencies:
+            if curr != base_currency:
+                pair = f"{curr}{base_currency}=X"
+                fx_rates_tmp[curr] = cls.get_cached_live_fx(pair)
+                
+        merged_divs = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info_tmp, base_currency, fx_rates_tmp, portfolio_settings)
+        
+        divs_by_date = {}
+        for d_item in merged_divs:
+            try:
+                dt_obj = datetime.strptime(d_item["date"], "%Y-%m-%d").date()
+                divs_by_date.setdefault(dt_obj, []).append(d_item)
+            except:
+                pass
         
         for d in dates_list:
-            # 7a. Process Dividends on day d (ex-dividend dates)
-            for sym in stock_symbols:
-                divs = dividends_data_by_sym.get(sym, {})
-                payout = divs.get(d)
-                if payout is not None and payout > 0:
-                    if sym in stock_shares:
-                        for acc, shares_owned in stock_shares[sym].items():
-                            if shares_owned > 0.0001:
-                                tax_rate = get_tax_rate(acc)
-                                gross_div = shares_owned * payout
-                                net_div = gross_div * (1.0 - tax_rate)
-                                
-                                native_curr = symbol_currencies.get(sym, "USD")
-                                fx_rate_d = fx_rates_hist.get(native_curr, {}).get(d, 1.0)
-                                net_div_base = net_div * fx_rate_d
-                                
-                                dividends_running_base += net_div_base
-                                
-                                if link_cash:
-                                    cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
-                                    cash_balances_running[acc][native_curr] += net_div
+            # 7a. Process Dividends on day d
+            day_divs = divs_by_date.get(d, [])
+            for div in day_divs:
+                sym = div["symbol"]
+                acc = div["account"]
+                net_div_base = div["net_base"]
+                
+                dividends_running_base += net_div_base
+                
+                if link_cash:
+                    native_curr = symbol_currencies.get(sym, "USD")
+                    fx_rate_d = fx_rates_hist.get(native_curr, {}).get(d, 1.0)
+                    net_div_native = net_div_base / fx_rate_d if fx_rate_d > 0 else net_div_base
+                    
+                    cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                    cash_balances_running[acc][native_curr] += net_div_native
                                     
             # 7b. Process transactions on day d
             day_txs = txs_by_date.get(d, [])

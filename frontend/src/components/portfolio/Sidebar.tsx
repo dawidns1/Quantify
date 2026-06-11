@@ -9,7 +9,9 @@ import {
   Edit2, 
   Trash2, 
   History, 
-  CreditCard 
+  CreditCard,
+  DollarSign,
+  Share2
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
@@ -32,6 +34,12 @@ interface SidebarProps {
   onDeletePortfolio: (id: string) => void;
   sidebarOpen?: boolean;
   onCloseSidebar?: () => void;
+  subTab: 'overview' | 'ledger' | 'dividends';
+  setSubTab: (tab: 'overview' | 'ledger' | 'dividends') => void;
+  baseCurrency: 'PLN' | 'USD' | 'EUR';
+  setBaseCurrency: (val: 'PLN' | 'USD' | 'EUR') => void;
+  onShareClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
 export function Sidebar({
@@ -51,7 +59,13 @@ export function Sidebar({
   onRenamePortfolio,
   onDeletePortfolio,
   sidebarOpen = false,
-  onCloseSidebar
+  onCloseSidebar,
+  subTab,
+  setSubTab,
+  baseCurrency,
+  setBaseCurrency,
+  onShareClick,
+  onSettingsClick
 }: SidebarProps) {
   const { user } = useAuth();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -202,6 +216,66 @@ export function Sidebar({
         )}
       </div>
 
+      {/* Base Currency Picker */}
+      <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
+          Base Currency
+        </div>
+        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
+          {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
+            <button
+              key={curr}
+              onClick={() => setBaseCurrency(curr)}
+              style={{
+                flex: 1,
+                background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
+                color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '0.3rem 0',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+            >
+              {curr}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.5rem', marginBottom: '0.75rem' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, padding: '0.25rem 0.25rem 0.15rem 0.25rem' }}>
+          View Mode
+        </div>
+        <button
+          onClick={() => setSubTab('overview')}
+          className={`tree-node ${subTab === 'overview' ? 'active' : ''}`}
+          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <Briefcase size={14} />
+          <span>Overview</span>
+        </button>
+        <button
+          onClick={() => setSubTab('ledger')}
+          className={`tree-node ${subTab === 'ledger' ? 'active' : ''}`}
+          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <History size={14} />
+          <span>Transactions Ledger</span>
+        </button>
+        <button
+          onClick={() => setSubTab('dividends')}
+          className={`tree-node ${subTab === 'dividends' ? 'active' : ''}`}
+          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <DollarSign size={14} />
+          <span>Dividend History</span>
+        </button>
+      </div>
+
       {/* Navigation Tree Root */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.5rem' }}>
         <div 
@@ -279,6 +353,26 @@ export function Sidebar({
                     {portfolio.name}
                   </span>
                   
+                  {/* Active Actions (Share & Settings) */}
+                  {isActive && portfolio.role === 'owner' && (
+                    <div style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', marginRight: '0.25rem', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => onShareClick?.()}
+                        title="Share Portfolio"
+                        style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      >
+                        <Share2 size={12} />
+                      </button>
+                      <button
+                        onClick={() => onSettingsClick?.()}
+                        title="Portfolio Settings"
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                      >
+                        <Settings size={12} />
+                      </button>
+                    </div>
+                  )}
+
                   {/* Hover CRUD icons */}
                   {portfolio.role === 'owner' && (
                     <div className="tree-node-actions" onClick={(e) => e.stopPropagation()}>

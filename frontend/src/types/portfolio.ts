@@ -4,6 +4,8 @@ export interface Portfolio {
   role: 'owner' | 'editor' | 'viewer';
   settings?: {
     accountTaxRates?: Record<string, number>;
+    dividends?: any[];
+    [key: string]: any;
   };
 }
 

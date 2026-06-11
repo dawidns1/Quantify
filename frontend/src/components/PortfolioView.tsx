@@ -1,16 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Globe, 
-  Briefcase, 
   History, 
   Plus, 
   X, 
   Edit2, 
   Trash2, 
   Lock, 
-  Share2,
   Menu,
-  Settings,
   Search
 } from 'lucide-react';
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
@@ -27,6 +24,8 @@ import { AddTransactionModal } from './portfolio/AddTransactionModal';
 import { ShareModal } from './portfolio/ShareModal';
 import { SettingsModal } from './portfolio/SettingsModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
+import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
+import { AddDividendModal } from './portfolio/AddDividendModal';
 
 import { 
   fetchHoldings as fetchHoldingsService, 
@@ -36,7 +35,8 @@ import {
   fetchUserPortfolios, 
   createPortfolio, 
   renamePortfolio, 
-  deletePortfolio 
+  deletePortfolio,
+  updatePortfolioSettings
 } from '../services/supabaseService';
 import { 
   fetchTransactions as fetchTransactionsService, 
@@ -60,12 +60,12 @@ export function PortfolioView({
   const { user, session, tier } = useAuth();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [subTab, setSubTabState] = useState<'overview' | 'ledger'>(() => {
+  const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
-    return (cached === 'overview' || cached === 'ledger') ? cached : 'overview';
+    return (cached === 'overview' || cached === 'ledger' || cached === 'dividends') ? cached : 'overview';
   });
 
-  const setSubTab = (tab: 'overview' | 'ledger') => {
+  const setSubTab = (tab: 'overview' | 'ledger' | 'dividends') => {
     triggerRandomUpsell();
     setSubTabState(tab);
     localStorage.setItem('portfolio_sub_tab', tab);
@@ -92,10 +92,13 @@ export function PortfolioView({
   });
   
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [dividendsList, setDividendsList] = useState<any[]>([]);
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingDividend, setEditingDividend] = useState<any | null>(null);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -359,6 +362,7 @@ export function PortfolioView({
       );
       setHoldings(result.holdings);
       setSummary(result.summary);
+      setDividendsList(result.dividends_list || []);
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
@@ -477,6 +481,69 @@ export function PortfolioView({
         } catch (err: any) {
           console.error('Error deleting transaction:', err);
           alert('Failed to delete transaction: ' + err.message);
+        }
+      },
+      true
+    );
+  };
+
+  // Handle delete or skip of a dividend payout (saves to portfolio settings)
+  const handleDeleteDividend = async (div: any) => {
+    if (!activePortfolioId) return;
+    if (activePortfolioRole === 'viewer') return;
+    
+    showCustomConfirm(
+      div.is_manual ? "Delete Dividend" : "Skip Dividend Payment",
+      div.is_manual 
+        ? "Are you sure you want to delete this manual dividend record?" 
+        : "Are you sure you want to skip/delete this automatic dividend payment? (This filters it out of holdings and historical NAV calculation)",
+      async () => {
+        try {
+          const activePort = portfolios.find(p => p.id === activePortfolioId);
+          const settings = activePort?.settings || {};
+          const existingDividends = [...(settings.dividends || [])];
+
+          if (div.is_manual) {
+            // Remove the manual dividend record by filtering it out
+            const nextDivs = existingDividends.filter(d => d.id !== div.id);
+            const updatedSettings = { ...settings, dividends: nextDivs };
+            await updatePortfolioSettings(activePortfolioId, updatedSettings);
+            setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+          } else {
+            // Add a skip override key matching (symbol, date, account)
+            const idx = existingDividends.findIndex(d => 
+              !d.is_manual &&
+              d.symbol?.toUpperCase() === div.symbol?.toUpperCase() &&
+              d.date === div.date &&
+              (d.account || 'Default') === (div.account || 'Default')
+            );
+
+            if (idx !== -1) {
+              existingDividends[idx] = {
+                ...existingDividends[idx],
+                is_deleted: true
+              };
+            } else {
+              existingDividends.push({
+                id: 'div_ovr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                symbol: div.symbol,
+                date: div.date,
+                account: div.account || 'Default',
+                is_manual: false,
+                is_deleted: true
+              });
+            }
+
+            const updatedSettings = { ...settings, dividends: existingDividends };
+            await updatePortfolioSettings(activePortfolioId, updatedSettings);
+            setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+          }
+
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchHistoricalPerformance(baseCurrency, selectedAccount);
+        } catch (err: any) {
+          console.error('Error deleting dividend:', err);
+          alert('Failed to delete/skip dividend: ' + err.message);
         }
       },
       true
@@ -628,6 +695,12 @@ export function PortfolioView({
         onDeletePortfolio={handleDeletePortfolio}
         sidebarOpen={sidebarOpen}
         onCloseSidebar={() => setSidebarOpen(false)}
+        subTab={subTab}
+        setSubTab={setSubTab}
+        baseCurrency={baseCurrency}
+        setBaseCurrency={setBaseCurrency}
+        onShareClick={() => setShowShareModal(true)}
+        onSettingsClick={() => setShowSettingsModal(true)}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -688,155 +761,6 @@ export function PortfolioView({
                     {selectedAccount}
                   </span>
                 </>
-              )}
-            </div>
-
-            {/* Utility selectors & action buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-              
-              {/* Sub-tabs buttons */}
-              <div className="sub-tabs-container" style={{ display: 'flex', gap: '0.35rem' }}>
-                <button 
-                  className={`sub-tab-btn ${subTab === 'overview' ? 'active' : ''}`}
-                  onClick={() => setSubTab('overview')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    background: subTab === 'overview' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-                    color: subTab === 'overview' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    border: subTab === 'overview' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
-                    padding: '0.4rem 0.85rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  <Briefcase size={14} />
-                  Overview
-                </button>
-                <button 
-                  className={`sub-tab-btn ${subTab === 'ledger' ? 'active' : ''}`}
-                  onClick={() => setSubTab('ledger')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    background: subTab === 'ledger' ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-                    color: subTab === 'ledger' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    border: subTab === 'ledger' ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
-                    padding: '0.4rem 0.85rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  <History size={14} />
-                  Ledger ({transactions.length})
-                </button>
-              </div>
-
-              {/* Base Currency Selector pills */}
-              <div className="currency-selector-pills" style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-                {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
-                  <button
-                    key={curr}
-                    onClick={() => setBaseCurrency(curr)}
-                    style={{
-                      background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
-                      color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
-                      border: 'none',
-                      padding: '0.2rem 0.55rem',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    {curr}
-                  </button>
-                ))}
-              </div>
-
-              {/* Share button */}
-              {activePortfolioId !== 'all' && activePortfolioRole === 'owner' && (
-                <button
-                  className="glow-btn"
-                  onClick={() => {
-                    if (!triggerRandomUpsell()) {
-                      setShowShareModal(true);
-                    }
-                  }}
-                  style={{
-                    padding: '0.35rem 0.85rem',
-                    fontSize: '0.8rem',
-                    borderRadius: '6px',
-                    boxShadow: 'none',
-                    background: 'rgba(59, 130, 246, 0.06)',
-                    color: 'var(--color-primary)',
-                    borderColor: 'rgba(59, 130, 246, 0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem'
-                  }}
-                >
-                  <Share2 size={13} /> Share
-                </button>
-              )}
-
-              {/* Settings button */}
-              {activePortfolioId !== 'all' && activePortfolioRole === 'owner' && (
-                <button
-                  className="glow-btn"
-                  onClick={() => {
-                    if (!triggerRandomUpsell()) {
-                      setShowSettingsModal(true);
-                    }
-                  }}
-                  style={{
-                    padding: '0.35rem 0.85rem',
-                    fontSize: '0.8rem',
-                    borderRadius: '6px',
-                    boxShadow: 'none',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    color: 'var(--text-secondary)',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    marginLeft: '0.5rem'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
-                >
-                  <Settings size={13} /> Settings
-                </button>
-              )}
-
-              {/* Add Transaction Button */}
-              {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
-                <button 
-                  className="glow-btn"
-                  onClick={() => {
-                    if (!triggerRandomUpsell()) {
-                      setShowAddModal(true);
-                    }
-                  }}
-                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', borderRadius: '6px' }}
-                >
-                  <Plus size={14} /> Add Transaction
-                </button>
               )}
             </div>
           </div>
@@ -981,6 +905,24 @@ export function PortfolioView({
                   onDeleteTransaction={handleDeleteTransaction}
                 />
               </div>
+
+              {/* DIVIDENDS TAB CONTENT */}
+              <div style={{ display: subTab === 'dividends' ? 'block' : 'none' }}>
+                <DividendLedgerTable 
+                  dividends={dividendsList}
+                  activePortfolioRole={activePortfolioRole}
+                  baseCurrency={summary.base_currency}
+                  onAddDividendClick={() => {
+                    setEditingDividend(null);
+                    setShowAddDividendModal(true);
+                  }}
+                  onEditDividendClick={(div) => {
+                    setEditingDividend(div);
+                    setShowAddDividendModal(true);
+                  }}
+                  onDeleteDividendClick={handleDeleteDividend}
+                />
+              </div>
             </>
           )}
 
@@ -1050,6 +992,21 @@ export function PortfolioView({
         onClose={() => setShowSettingsModal(false)}
         portfolio={portfolios.find(p => p.id === activePortfolioId) || null}
         portfolioAccounts={uniqueAccounts}
+        onSaveSuccess={(updatedSettings) => {
+          setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchHistoricalPerformance(baseCurrency, selectedAccount);
+        }}
+      />
+
+      {/* PORTFOLIO DIVIDENDS OVERRIDES MODAL */}
+      <AddDividendModal
+        isOpen={showAddDividendModal}
+        onClose={() => setShowAddDividendModal(false)}
+        editingDividend={editingDividend}
+        activePortfolioId={activePortfolioId}
+        uniqueAccounts={uniqueAccounts}
+        portfolioSettings={portfolios.find(p => p.id === activePortfolioId)?.settings || {}}
         onSaveSuccess={(updatedSettings) => {
           setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
           fetchHoldings(baseCurrency, selectedAccount);
@@ -1365,6 +1322,46 @@ export function PortfolioView({
         onClose={() => setUpsellModalOpen(false)}
         reason={upsellReason}
       />
+
+      {/* Floating Action Button (FAB) */}
+      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
+        <button
+          onClick={() => {
+            if (!triggerRandomUpsell()) {
+              setShowAddModal(true);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            right: '2rem',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+            color: 'white',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
+            zIndex: 99,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
+            e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+            e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
+          }}
+        >
+          <Plus size={24} style={{ strokeWidth: 2.5 }} />
+        </button>
+      )}
 
     </div>
   );
