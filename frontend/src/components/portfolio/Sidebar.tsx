@@ -83,21 +83,17 @@ export function Sidebar({
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
       {/* Branding */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
-        <div style={{
-          background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
-          width: '32px',
-          height: '32px',
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 800,
-          fontSize: '1.1rem',
-          color: 'white',
-          boxShadow: '0 0 12px rgba(6, 182, 212, 0.4)'
-        }}>
-          Q
-        </div>
+        <img 
+          src="/favicon.png" 
+          alt="Quantify Logo" 
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            boxShadow: '0 0 12px rgba(6, 182, 212, 0.4)',
+            objectFit: 'contain'
+          }}
+        />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.03em', background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             QUANTIFY
