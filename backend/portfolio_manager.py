@@ -3,7 +3,7 @@ import json
 import time
 import pandas as pd
 from datetime import datetime, date, timedelta
-from data_provider import get_provider
+from backend.data_provider import get_provider
 
 provider = get_provider()
 
@@ -688,7 +688,7 @@ class PortfolioManager:
                 holdings_list.append({
                     "symbol": symbol,
                     "name": info["company_name"],
-                    "shares": shares_owned,
+                    "shares": round(shares_owned, 4),
                     "avg_cost_local": round(avg_cost_native, 2),
                     "current_price_local": round(live_price_native, 2),
                     "currency": native_curr,

@@ -10,8 +10,10 @@ import {
   Lock, 
   Share2,
   Menu,
-  Settings
+  Settings,
+  Search
 } from 'lucide-react';
+import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
 
 import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
@@ -114,6 +116,16 @@ export function PortfolioView({
   const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(null);
   const [loadingChart, setLoadingChart] = useState<boolean>(false);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
+
+  const [modalSortField, setModalSortField] = useState<string>('date');
+  const [modalSortAsc, setModalSortAsc] = useState<boolean>(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    setModalSortField('date');
+    setModalSortAsc(false);
+    setModalSearchQuery('');
+  }, [selectedPositionSymbol]);
 
   // Filtering states
   const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
@@ -477,11 +489,75 @@ export function PortfolioView({
     setShowAddModal(true);
   };
 
-  // Filter transactions for the selected holding position modal
-  const positionTransactions = useMemo(() => {
+  // Filter and sort transactions for the selected holding position modal
+  const positionTransactionsFilteredAndSorted = useMemo(() => {
     if (!selectedPositionSymbol) return [];
-    return transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
-  }, [transactions, selectedPositionSymbol]);
+    
+    // 1. Filter by symbol
+    let list = transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
+    
+    // 2. Filter by search query (date, type, account, price, shares, etc.)
+    if (modalSearchQuery.trim()) {
+      const q = modalSearchQuery.toLowerCase().trim();
+      list = list.filter(tx => 
+        tx.date.includes(q) || 
+        tx.type.toLowerCase().includes(q) ||
+        (tx.account || 'Default').toLowerCase().includes(q) ||
+        tx.shares.toString().includes(q) ||
+        tx.price.toString().includes(q)
+      );
+    }
+    
+    // 3. Map with totalLocal
+    const listWithTotals = list.map(tx => {
+      const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+      return {
+        ...tx,
+        totalLocal
+      };
+    });
+    
+    // 4. Sort
+    listWithTotals.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+      
+      if (modalSortField === 'date') {
+        valA = a.date;
+        valB = b.date;
+      } else if (modalSortField === 'type') {
+        valA = a.type;
+        valB = b.type;
+      } else if (modalSortField === 'shares') {
+        valA = a.shares;
+        valB = b.shares;
+      } else if (modalSortField === 'price') {
+        valA = a.price;
+        valB = b.price;
+      } else if (modalSortField === 'fees') {
+        valA = a.fees;
+        valB = b.fees;
+      } else if (modalSortField === 'total') {
+        valA = a.totalLocal;
+        valB = b.totalLocal;
+      } else {
+        valA = a.date;
+        valB = b.date;
+      }
+      
+      if (valA === undefined || valA === null) return modalSortAsc ? 1 : -1;
+      if (valB === undefined || valB === null) return modalSortAsc ? -1 : 1;
+      
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comp = valA.localeCompare(valB, undefined, { sensitivity: 'base' });
+        return modalSortAsc ? comp : -comp;
+      }
+      
+      return modalSortAsc ? valA - valB : valB - valA;
+    });
+    
+    return listWithTotals;
+  }, [transactions, selectedPositionSymbol, modalSearchQuery, modalSortField, modalSortAsc]);
 
   // Find holding details for the selected position modal
   const holdingDetails = useMemo(() => {
@@ -500,6 +576,30 @@ export function PortfolioView({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(val);
+  };
+
+  const formatShares = (shares: number) => {
+    return (Math.round(shares * 10000) / 10000).toString();
+  };
+
+  const handleModalSort = (field: string) => {
+    if (modalSortField === field) {
+      setModalSortAsc(!modalSortAsc);
+    } else {
+      setModalSortField(field);
+      setModalSortAsc(field !== 'date');
+    }
+  };
+
+  const renderModalSortArrow = (field: string) => {
+    if (modalSortField !== field) {
+      return <span style={{ opacity: 0.25, marginLeft: '4px', fontSize: '0.75rem' }}>↕</span>;
+    }
+    return modalSortAsc ? (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '4px', fontSize: '0.75rem' }}>▲</span>
+    ) : (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '4px', fontSize: '0.75rem' }}>▼</span>
+    );
   };
 
   return (
@@ -846,19 +946,30 @@ export function PortfolioView({
               <div style={{ display: subTab === 'overview' ? 'block' : 'none' }}>
                 <MetricsBanner summary={summary} />
                 
-                <PerformanceChart 
-                  chartData={chartData} 
-                  loadingChart={loadingChart} 
-                  baseCurrency={summary.base_currency} 
-                />
-
-                <HoldingsTable 
-                  holdings={holdings}
-                  summary={summary}
-                  activePortfolioRole={activePortfolioRole}
-                  onQuickAction={handleQuickAction}
-                  onSelectPositionSymbol={setSelectedPositionSymbol}
-                />
+                <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginTop: '0.25rem' }}>
+                  {/* Left Column: Holdings Table */}
+                  <div style={{ minWidth: 0 }}>
+                    <HoldingsTable 
+                      holdings={holdings}
+                      summary={summary}
+                      activePortfolioRole={activePortfolioRole}
+                      onQuickAction={handleQuickAction}
+                      onSelectPositionSymbol={setSelectedPositionSymbol}
+                    />
+                  </div>
+                  {/* Right Column: Performance Chart & Allocations stacked */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <PerformanceChart 
+                      chartData={chartData} 
+                      loadingChart={loadingChart} 
+                      baseCurrency={summary.base_currency} 
+                    />
+                    <PortfolioAllocation 
+                      holdings={holdings}
+                      summary={summary}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* LEDGER TAB CONTENT */}
@@ -952,7 +1063,7 @@ export function PortfolioView({
           <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
           <div className="modal-overlay-container">
             <div className="modal-content" style={{ maxWidth: '850px', width: '95%' }}>
-              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
                   <History size={22} className="gradient-text" /> 
                   <span style={{ fontWeight: 700 }}>{selectedPositionSymbol}</span>
@@ -962,13 +1073,35 @@ export function PortfolioView({
                     </span>
                   )}
                 </h3>
-                <button 
-                  onClick={() => setSelectedPositionSymbol(null)}
-                  className="modal-close-btn"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
-                >
-                  <X size={20} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {/* Modal Search Bar */}
+                  {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
+                      <input 
+                        type="text" 
+                        placeholder="Search history..." 
+                        value={modalSearchQuery}
+                        onChange={(e) => setModalSearchQuery(e.target.value)}
+                        className="input-field"
+                        style={{ 
+                          paddingLeft: '26px', 
+                          fontSize: '0.72rem', 
+                          height: '28px', 
+                          width: '150px',
+                          borderRadius: '6px'
+                        }}
+                      />
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => setSelectedPositionSymbol(null)}
+                    className="modal-close-btn"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -986,7 +1119,7 @@ export function PortfolioView({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Shares Owned</span>
                       <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        {holdingDetails.shares}
+                        {formatShares(holdingDetails.shares)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -1018,7 +1151,7 @@ export function PortfolioView({
                   </div>
                 )}
 
-                {positionTransactions.length === 0 ? (
+                {positionTransactionsFilteredAndSorted.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
                     No transactions found for {selectedPositionSymbol}.
                   </p>
@@ -1033,17 +1166,29 @@ export function PortfolioView({
                     <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                          <th>Date</th>
-                          <th>Type</th>
-                          <th style={{ textAlign: 'right' }}>Shares</th>
-                          <th style={{ textAlign: 'right' }}>Price</th>
-                          <th style={{ textAlign: 'right' }}>Fees</th>
-                          <th style={{ textAlign: 'right' }}>Total</th>
+                          <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Date {renderModalSortArrow('date')}
+                          </th>
+                          <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                            Type {renderModalSortArrow('type')}
+                          </th>
+                          <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                            Shares {renderModalSortArrow('shares')}
+                          </th>
+                          <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                            Price {renderModalSortArrow('price')}
+                          </th>
+                          <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                            Fees {renderModalSortArrow('fees')}
+                          </th>
+                          <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                            Total {renderModalSortArrow('total')}
+                          </th>
                           {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center' }}>Actions</th>}
                         </tr>
                       </thead>
                       <tbody>
-                        {positionTransactions.map((tx) => {
+                        {positionTransactionsFilteredAndSorted.map((tx) => {
                           const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
                           return (
                             <tr key={tx.id} className="interactive-row-modal">
@@ -1056,7 +1201,7 @@ export function PortfolioView({
                                 </span>
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                                {tx.shares}
+                                {formatShares(tx.shares)}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                 {formatCurrency(tx.price, tx.currency)}

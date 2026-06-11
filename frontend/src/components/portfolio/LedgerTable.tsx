@@ -16,6 +16,8 @@ export function LedgerTable({
   onDeleteTransaction
 }: LedgerTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest transactions first
 
   // Local filtering by Symbol or Account name
   const filteredTransactions = useMemo(() => {
@@ -23,9 +25,90 @@ export function LedgerTable({
     const q = searchQuery.toLowerCase().trim();
     return transactions.filter(tx => 
       tx.symbol.toLowerCase().includes(q) || 
-      (tx.account || 'Default').toLowerCase().includes(q)
+      (tx.account || 'Default').toLowerCase().includes(q) ||
+      tx.date.includes(q) ||
+      tx.type.toLowerCase().includes(q)
     );
   }, [transactions, searchQuery]);
+
+  // Sorting logic for all columns
+  const sortedTransactions = useMemo(() => {
+    // Precompute totalLocal to sort efficiently
+    const list = filteredTransactions.map(tx => {
+      const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+      return {
+        ...tx,
+        totalLocal
+      };
+    });
+
+    list.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (sortField === 'date') {
+        valA = a.date;
+        valB = b.date;
+      } else if (sortField === 'type') {
+        valA = a.type;
+        valB = b.type;
+      } else if (sortField === 'symbol') {
+        valA = a.symbol;
+        valB = b.symbol;
+      } else if (sortField === 'account') {
+        valA = a.account || 'Default';
+        valB = b.account || 'Default';
+      } else if (sortField === 'shares') {
+        valA = a.shares;
+        valB = b.shares;
+      } else if (sortField === 'price') {
+        valA = a.price;
+        valB = b.price;
+      } else if (sortField === 'fees') {
+        valA = a.fees;
+        valB = b.fees;
+      } else if (sortField === 'total') {
+        valA = a.totalLocal;
+        valB = b.totalLocal;
+      } else {
+        valA = a.date;
+        valB = b.date;
+      }
+
+      if (valA === undefined || valA === null) return sortAsc ? 1 : -1;
+      if (valB === undefined || valB === null) return sortAsc ? -1 : 1;
+
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comp = valA.localeCompare(valB, undefined, { sensitivity: 'base' });
+        return sortAsc ? comp : -comp;
+      }
+
+      return sortAsc ? valA - valB : valB - valA;
+    });
+
+    return list;
+  }, [filteredTransactions, sortField, sortAsc]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      // default: ascending for text/numbers, descending for dates
+      setSortAsc(field !== 'date');
+    }
+  };
+
+  const renderSortArrow = (field: string) => {
+    if (sortField !== field) {
+      return <span style={{ opacity: 0.25, marginLeft: '6px', fontSize: '0.8rem' }}>↕</span>;
+    }
+    return sortAsc ? (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '6px', fontSize: '0.8rem' }}>▲</span>
+    ) : (
+      <span style={{ color: 'var(--color-primary)', marginLeft: '6px', fontSize: '0.8rem' }}>▼</span>
+    );
+  };
 
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -36,8 +119,12 @@ export function LedgerTable({
     }).format(val);
   };
 
+  const formatShares = (shares: number) => {
+    return (Math.round(shares * 10000) / 10000).toString();
+  };
+
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.25rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>Recorded Transactions Ledger</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -47,7 +134,7 @@ export function LedgerTable({
               <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
-                placeholder="Search symbol/account..." 
+                placeholder="Search ledger..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input-field"
@@ -82,20 +169,37 @@ export function LedgerTable({
           <table className="screener-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Action</th>
-                <th>Symbol</th>
-                <th>Account</th>
-                <th style={{ textAlign: 'right' }}>Shares</th>
-                <th style={{ textAlign: 'right' }}>Price (Local)</th>
-                <th style={{ textAlign: 'right' }}>Fees (Local)</th>
-                <th style={{ textAlign: 'right' }}>Total (Local)</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Date {renderSortArrow('date')}
+                </th>
+                <th onClick={() => handleSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Action {renderSortArrow('type')}
+                </th>
+                <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Symbol {renderSortArrow('symbol')}
+                </th>
+                <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  Account {renderSortArrow('account')}
+                </th>
+                <th onClick={() => handleSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Shares {renderSortArrow('shares')}
+                </th>
+                <th onClick={() => handleSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Price (Local) {renderSortArrow('price')}
+                </th>
+                <th onClick={() => handleSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Fees (Local) {renderSortArrow('fees')}
+                </th>
+                <th onClick={() => handleSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  Total (Local) {renderSortArrow('total')}
+                </th>
+                <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredTransactions.map((tx) => {
-                const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+              {sortedTransactions.map((tx) => {
                 return (
                   <tr key={tx.id} className="interactive-row">
                     <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
@@ -113,7 +217,7 @@ export function LedgerTable({
                       {tx.account || 'Default'}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                      {tx.shares}
+                      {formatShares(tx.shares)}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                       {formatCurrency(tx.price, tx.currency)}
@@ -122,7 +226,7 @@ export function LedgerTable({
                       {tx.fees > 0 ? formatCurrency(tx.fees, tx.currency) : '—'}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                      {formatCurrency(totalLocal, tx.currency)}
+                      {formatCurrency(tx.totalLocal, tx.currency)}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {activePortfolioRole === 'viewer' ? (
@@ -132,17 +236,18 @@ export function LedgerTable({
                           <button 
                             onClick={() => onEditTransaction(tx)}
                             className="ledger-delete-btn"
-                            style={{ color: 'var(--text-secondary)' }}
+                            style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
                             title="Edit Transaction"
                           >
-                            <Edit2 size={15} />
+                            <Edit2 size={13} />
                           </button>
                           <button 
                             onClick={() => onDeleteTransaction(tx.id)}
                             className="ledger-delete-btn"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
                             title="Delete Transaction"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       )}

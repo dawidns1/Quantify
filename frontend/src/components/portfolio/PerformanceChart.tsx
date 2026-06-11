@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Activity } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -12,7 +12,6 @@ import {
   Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import zoomPlugin from 'chartjs-plugin-zoom';
 
 // Register ChartJS elements
 ChartJS.register(
@@ -23,8 +22,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler,
-  zoomPlugin
+  Filler
 );
 
 interface PerformanceChartProps {
@@ -38,20 +36,51 @@ export function PerformanceChart({
   loadingChart,
   baseCurrency
 }: PerformanceChartProps) {
-  const chartRef = useRef<any>(null);
+  const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('MAX');
 
-  // Memoized Chart Options to prevent redraw flickering & enable zoom/pan
+  // Filter and slice chart data based on range
+  const filteredData = useMemo(() => {
+    if (!chartData || !chartData.dates || chartData.dates.length === 0) return null;
+    if (selectedRange === 'MAX') return chartData;
+
+    const latestDateStr = chartData.dates[chartData.dates.length - 1];
+    const latestDate = new Date(latestDateStr);
+
+    let cutoffDate = new Date(latestDate);
+    if (selectedRange === '1M') {
+      cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+    } else if (selectedRange === '1Q') {
+      cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+    } else if (selectedRange === '1Y') {
+      cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+    } else if (selectedRange === '5Y') {
+      cutoffDate.setFullYear(cutoffDate.getFullYear() - 5);
+    }
+
+    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+    const startIndex = chartData.dates.findIndex(d => d >= cutoffStr);
+
+    if (startIndex === -1) return chartData;
+
+    return {
+      dates: chartData.dates.slice(startIndex),
+      nav: chartData.nav.slice(startIndex),
+      cost_basis: chartData.cost_basis.slice(startIndex)
+    };
+  }, [chartData, selectedRange]);
+
+  // Memoized Chart Options
   const chartOptions = useMemo(() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
       animation: {
-        duration: 250 // smooth, fast animation when toggled or updated
+        duration: 200 // fast, responsive duration
       },
       transitions: {
         active: {
           animation: {
-            duration: 0 // Disable active hover transition animation for instant snap
+            duration: 0 // snap tooltips instantly
           }
         }
       },
@@ -59,15 +88,15 @@ export function PerformanceChart({
         x: {
           grid: { display: false },
           ticks: { 
-            color: 'rgba(255, 255, 255, 0.85)', 
-            font: { family: 'Outfit', size: 10, weight: 'normal' as const } 
+            color: 'rgba(255, 255, 255, 0.75)', 
+            font: { family: 'Outfit', size: 9 } 
           }
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.12)' },
+          grid: { color: 'rgba(255, 255, 255, 0.08)' },
           ticks: { 
-            color: 'rgba(255, 255, 255, 0.85)', 
-            font: { family: 'Outfit', size: 10, weight: 'normal' as const } 
+            color: 'rgba(255, 255, 255, 0.75)', 
+            font: { family: 'Outfit', size: 9 } 
           }
         }
       },
@@ -76,10 +105,10 @@ export function PerformanceChart({
           display: true,
           position: 'top' as const,
           labels: { 
-            color: 'rgba(255, 255, 255, 0.95)', 
-            font: { family: 'Outfit', size: 11, weight: 'bold' as const }, 
-            boxWidth: 12, 
-            padding: 10 
+            color: 'rgba(255, 255, 255, 0.9)', 
+            font: { family: 'Outfit', size: 10, weight: 'bold' as const }, 
+            boxWidth: 8, 
+            padding: 8
           }
         },
         tooltip: {
@@ -88,29 +117,14 @@ export function PerformanceChart({
           backgroundColor: 'rgba(15, 23, 42, 0.96)',
           titleColor: '#ffffff',
           bodyColor: '#f1f5f9',
-          borderColor: 'rgba(255, 255, 255, 0.18)',
+          borderColor: 'rgba(255, 255, 255, 0.15)',
           borderWidth: 1,
-          padding: 12,
-          cornerRadius: 8,
-          titleFont: { family: 'Outfit', size: 12, weight: 'bold' as const },
-          bodyFont: { family: 'Outfit', size: 12 },
+          padding: 10,
+          cornerRadius: 6,
+          titleFont: { family: 'Outfit', size: 11, weight: 'bold' as const },
+          bodyFont: { family: 'Outfit', size: 11 },
           animation: {
-            duration: 0 // Disable tooltip animation for instant snapping
-          }
-        },
-        zoom: {
-          zoom: {
-            wheel: {
-              enabled: true
-            },
-            pinch: {
-              enabled: true
-            },
-            mode: 'x' as const
-          },
-          pan: {
-            enabled: true,
-            mode: 'x' as const
+            duration: 0
           }
         }
       }
@@ -119,107 +133,102 @@ export function PerformanceChart({
 
   // Memoized Chart Data
   const chartDataFormatted = useMemo(() => {
-    if (!chartData || !chartData.dates || chartData.dates.length === 0) return null;
+    if (!filteredData || !filteredData.dates || filteredData.dates.length === 0) return null;
     return {
-      labels: chartData.dates,
+      labels: filteredData.dates,
       datasets: [
         {
-          label: 'Net Asset Value (NAV)',
-          data: chartData.nav,
+          label: 'NAV',
+          data: filteredData.nav,
           fill: true,
-          backgroundColor: 'rgba(6, 182, 212, 0.06)',
-          borderColor: '#06b6d4', // Premium glowing cyan
-          borderWidth: 2,
-          pointRadius: 0, // Set to 0 to prevent initial draw lag
+          backgroundColor: 'rgba(6, 182, 212, 0.04)',
+          borderColor: '#06b6d4', // Glowing cyan
+          borderWidth: 1.75,
+          pointRadius: 0, 
           pointHoverRadius: 4,
-          pointHitRadius: 10, // Increase interaction hit area
+          pointHitRadius: 10,
           tension: 0.15
         },
         {
-          label: 'Invested Capital (Cost Basis)',
-          data: chartData.cost_basis,
+          label: 'Cost Basis',
+          data: filteredData.cost_basis,
           fill: false,
-          borderColor: 'rgba(255, 255, 255, 0.85)', // Brighter dashed white line
-          borderWidth: 1.5,
-          borderDash: [5, 5],
-          pointRadius: 0, // Set to 0 to prevent initial draw lag
+          borderColor: 'rgba(255, 255, 255, 0.65)',
+          borderWidth: 1.25,
+          borderDash: [4, 4],
+          pointRadius: 0,
           pointHoverRadius: 3,
-          pointHitRadius: 8, // Increase interaction hit area
+          pointHitRadius: 8,
           tension: 0.05
         }
       ]
     };
-  }, [chartData]);
+  }, [filteredData]);
 
   if (!loadingChart && (!chartData || !chartData.dates || chartData.dates.length === 0)) {
     return null;
   }
 
   return (
-    <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Activity size={16} className="gradient-text" /> Portfolio Performance History
-          {!loadingChart && chartDataFormatted && (
-            <button
-              onClick={() => chartRef.current?.resetZoom()}
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '4px',
-                padding: '0.2rem 0.55rem',
-                color: 'var(--text-secondary)',
-                fontSize: '0.7rem',
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)',
-                marginLeft: '0.5rem',
-                fontWeight: 600
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-            >
-              Reset Zoom
-            </button>
-          )}
+    <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
         </h4>
-        <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>
-          Showing NAV vs. Total Cost Basis in {baseCurrency} (Scroll to Zoom, Drag to Pan)
-        </span>
+        
+        {/* Date range selection pills */}
+        {!loadingChart && chartData && (
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+            {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setSelectedRange(r)}
+                style={{
+                  background: selectedRange === r ? 'var(--color-primary)' : 'transparent',
+                  color: selectedRange === r ? 'white' : 'var(--text-secondary)',
+                  border: 'none',
+                  padding: '0.15rem 0.4rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <div style={{ height: '220px', position: 'relative' }}>
+      
+      <div style={{ height: '200px', position: 'relative' }}>
         {loadingChart && !chartDataFormatted ? (
-          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)' }} className="pulse">
-            Computing historical performance data...
+          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }} className="pulse">
+            Computing performance...
           </div>
         ) : chartDataFormatted ? (
           <>
             <Line 
-              ref={chartRef}
               options={chartOptions}
               data={chartDataFormatted}
             />
             {loadingChart && (
               <div style={{
                 position: 'absolute',
-                top: '0.5rem',
-                right: '0.5rem',
+                top: '0.25rem',
+                right: '0.25rem',
                 background: 'rgba(15, 23, 42, 0.9)',
                 border: '1px solid rgba(255, 255, 255, 0.12)',
-                padding: '0.25rem 0.6rem',
-                borderRadius: '6px',
-                fontSize: '0.7rem',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                fontSize: '0.65rem',
                 color: 'var(--color-primary)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.25rem',
                 pointerEvents: 'none',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 fontWeight: 600
               }} className="pulse">
                 Refetching...
