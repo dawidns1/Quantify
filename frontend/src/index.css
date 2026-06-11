@@ -1461,8 +1461,62 @@ select option {
   font-weight: 700;
 }
 
+/* Responsive Mobile Sidebar styling */
+.mobile-sidebar-backdrop {
+  display: none;
+}
 
+.mobile-menu-toggle-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px;
+  align-items: center;
+  justify-content: center;
+}
 
+.mobile-menu-toggle-btn:hover {
+  color: var(--color-primary);
+}
 
+@media (max-width: 768px) {
+  .mobile-menu-toggle-btn {
+    display: flex !important;
+  }
 
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -270px; /* Hidden off-screen */
+    bottom: 0;
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    height: 100vh;
+  }
 
+  .sidebar.open {
+    left: 0; /* Slide in */
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(5, 7, 13, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    animation: fadeInBackdrop 0.25s ease forwards;
+  }
+
+  .main-content {
+    padding: 1rem;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}

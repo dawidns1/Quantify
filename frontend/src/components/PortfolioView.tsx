@@ -8,7 +8,8 @@ import {
   Edit2, 
   Trash2, 
   Lock, 
-  Share2
+  Share2,
+  Menu
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 
@@ -53,6 +54,7 @@ export function PortfolioView({
 }: PortfolioViewProps) {
   const { user, session } = useAuth();
   
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subTab, setSubTabState] = useState<'overview' | 'ledger'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
     return (cached === 'overview' || cached === 'ledger') ? cached : 'overview';
@@ -453,6 +455,11 @@ export function PortfolioView({
 
   return (
     <div className="app-layout">
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {sidebarOpen && (
+        <div className="mobile-sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* LEFT SIDEBAR */}
       <Sidebar 
         signOut={signOut}
@@ -470,6 +477,8 @@ export function PortfolioView({
         onCreatePortfolio={handleCreatePortfolio}
         onRenamePortfolio={handleRenamePortfolio}
         onDeletePortfolio={handleDeletePortfolio}
+        sidebarOpen={sidebarOpen}
+        onCloseSidebar={() => setSidebarOpen(false)}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -489,8 +498,15 @@ export function PortfolioView({
             borderRadius: '10px'
           }}>
             {/* Breadcrumb Trail */}
-            <div className="breadcrumb-trail">
-              <Globe size={14} style={{ color: 'var(--color-primary)' }} />
+            <div className="breadcrumb-trail" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                className="mobile-menu-toggle-btn"
+                onClick={() => setSidebarOpen(true)}
+                title="Open Navigation Menu"
+              >
+                <Menu size={18} />
+              </button>
+              <Globe size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
               <span className="breadcrumb-item">All Assets</span>
               {activePortfolioId && activePortfolioId !== 'all' && (
                 <>

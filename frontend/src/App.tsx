@@ -4,9 +4,10 @@ import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? 'http://localhost:8000'
-  : window.location.origin;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000'
+    : window.location.origin);
 
 function App() {
   const { user, loading: authLoading, recoveryMode, signOut } = useAuth();

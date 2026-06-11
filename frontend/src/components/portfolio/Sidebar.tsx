@@ -30,6 +30,8 @@ interface SidebarProps {
   onCreatePortfolio: () => void;
   onRenamePortfolio: (id: string) => void;
   onDeletePortfolio: (id: string) => void;
+  sidebarOpen?: boolean;
+  onCloseSidebar?: () => void;
 }
 
 export function Sidebar({
@@ -47,7 +49,9 @@ export function Sidebar({
   portfolioAccountsMap,
   onCreatePortfolio,
   onRenamePortfolio,
-  onDeletePortfolio
+  onDeletePortfolio,
+  sidebarOpen = false,
+  onCloseSidebar
 }: SidebarProps) {
   const { user } = useAuth();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -62,7 +66,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
       {/* Branding */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
         <div style={{
@@ -206,6 +210,7 @@ export function Sidebar({
             setActivePortfolioId('all');
             setSelectedAccount('All');
             localStorage.setItem('portfolio_active_id', 'all');
+            if (onCloseSidebar) onCloseSidebar();
           }}
         >
           <Globe size={15} />
@@ -254,6 +259,7 @@ export function Sidebar({
                     setActivePortfolioRole(portfolio.role);
                     setSelectedAccount('All');
                     localStorage.setItem('portfolio_active_id', portfolio.id);
+                    if (onCloseSidebar) onCloseSidebar();
                   }}
                 >
                   <div 
@@ -315,6 +321,7 @@ export function Sidebar({
                         setActivePortfolioRole(portfolio.role);
                         setSelectedAccount('All');
                         localStorage.setItem('portfolio_active_id', portfolio.id);
+                        if (onCloseSidebar) onCloseSidebar();
                       }}
                     >
                       <History size={12} />
@@ -333,6 +340,7 @@ export function Sidebar({
                             setActivePortfolioRole(portfolio.role);
                             setSelectedAccount(accName);
                             localStorage.setItem('portfolio_active_id', portfolio.id);
+                            if (onCloseSidebar) onCloseSidebar();
                           }}
                         >
                           <CreditCard size={12} />
