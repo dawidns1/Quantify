@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Search, Edit2, Trash2, Plus, Sparkles } from 'lucide-react';
+import { Search, Edit2, Trash2, Sparkles } from 'lucide-react';
 
 interface DividendLedgerTableProps {
   dividends: any[];
   activePortfolioRole: string;
   baseCurrency: string;
-  onAddDividendClick: () => void;
   onEditDividendClick: (div: any) => void;
   onDeleteDividendClick: (div: any) => void;
 }
@@ -14,7 +13,6 @@ export function DividendLedgerTable({
   dividends,
   activePortfolioRole,
   baseCurrency,
-  onAddDividendClick,
   onEditDividendClick,
   onDeleteDividendClick
 }: DividendLedgerTableProps) {
@@ -150,25 +148,6 @@ export function DividendLedgerTable({
               onBlur={(e) => e.target.style.borderColor = 'var(--panel-border)'}
             />
           </div>
-
-          {/* Record Manual Dividend Button */}
-          {!isViewer && (
-            <button
-              onClick={onAddDividendClick}
-              className="glow-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.42rem 0.85rem',
-                fontSize: '0.78rem',
-                borderRadius: '6px'
-              }}
-            >
-              <Plus size={13} />
-              Record Dividend
-            </button>
-          )}
         </div>
       </div>
 
