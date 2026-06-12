@@ -647,6 +647,10 @@ class PortfolioManager:
         if account and account.lower() != "all":
             transactions = [tx for tx in transactions if tx.get("account", "Default").lower() == account.lower()]
             
+        accounts = set(tx.get("account", "Default") or "Default" for tx in transactions)
+        if not accounts:
+            accounts = {account if (account and account.lower() != "all") else "Default"}
+            
         sorted_txs = sorted(transactions, key=lambda x: x.get("date", ""))
         
         # Group stock transactions by ticker (exclude CASH_ tickers from symbol_txs)
