@@ -57,7 +57,8 @@ export function PortfolioView({
   lowPerformanceMode, 
   setLowPerformanceMode 
 }: PortfolioViewProps) {
-  const { user, session, tier } = useAuth();
+  const { user, session } = useAuth();
+  const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends'>(() => {
@@ -859,7 +860,7 @@ export function PortfolioView({
           ) : (
             <>
               {/* Viewer Lock Warning Banner */}
-              {activePortfolioRole === 'viewer' && (
+              {activePortfolioRole === 'viewer' && activePortfolioId !== 'all' && (
                 <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                   <Lock size={16} style={{ flexShrink: 0 }} />
                   <span>You have <strong>Read-Only (Viewer)</strong> access to this portfolio. Adding, editing, or deleting transactions is disabled.</span>

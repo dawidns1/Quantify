@@ -1245,30 +1245,6 @@ class PortfolioManager:
             nav_res.append(round(day_nav, 2))
             cost_basis_res.append(round(max(0.0, day_cost), 2))
             
-        # 8. Downsample data if > 366 days to maintain snappy rendering
-        total_days = len(dates_res)
-        if total_days > 366:
-            step = 7 # weekly downsampling
-            downsampled_dates = []
-            downsampled_nav = []
-            downsampled_cost = []
-            
-            for i in range(0, total_days, step):
-                downsampled_dates.append(dates_res[i])
-                downsampled_nav.append(nav_res[i])
-                downsampled_cost.append(cost_basis_res[i])
-                
-            if dates_res[-1] not in downsampled_dates:
-                downsampled_dates.append(dates_res[-1])
-                downsampled_nav.append(nav_res[-1])
-                downsampled_cost.append(cost_basis_res[-1])
-                
-            return {
-                "dates": downsampled_dates,
-                "nav": downsampled_nav,
-                "cost_basis": downsampled_cost
-            }
-            
         return {
             "dates": dates_res,
             "nav": nav_res,

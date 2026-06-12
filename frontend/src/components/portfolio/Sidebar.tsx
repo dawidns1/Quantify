@@ -8,7 +8,6 @@ import {
   Briefcase, 
   Edit2, 
   Trash2, 
-  History, 
   CreditCard,
   Share2
 } from 'lucide-react';
@@ -69,6 +68,7 @@ export function Sidebar({
   const { user } = useAuth();
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
+  const [allAssetsExpanded, setAllAssetsExpanded] = useState(true);
 
   const togglePortfolioExpand = (portfolioId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -274,26 +274,10 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Navigation Tree Root */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.5rem' }}>
-        <div 
-          className={`tree-node ${activePortfolioId === 'all' ? 'active' : ''}`}
-          onClick={() => {
-            setActivePortfolioId('all');
-            setSelectedAccount('All');
-            localStorage.setItem('portfolio_active_id', 'all');
-            if (onCloseSidebar) onCloseSidebar();
-          }}
-        >
-          <Globe size={15} />
-          <span>All Assets</span>
-        </div>
-      </div>
-
-      {/* Portfolios Section */}
+      {/* Assets Section */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '0 0.5rem' }}>
         <div className="tree-section-header">
-          <span>Portfolios</span>
+          <span>Assets</span>
           <button 
             onClick={onCreatePortfolio}
             title="Create New Portfolio"
@@ -316,151 +300,170 @@ export function Sidebar({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '0.25rem' }}>
-          {portfolios.map((portfolio) => {
-            const isActive = activePortfolioId === portfolio.id;
-            const isExpanded = !!expandedPortfolios[portfolio.id];
-            const accounts = portfolioAccountsMap[portfolio.id] || [];
-            
-            return (
-              <div key={portfolio.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Portfolio Folder Node */}
-                <div 
-                  className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePortfolioId(portfolio.id);
-                    setActivePortfolioRole(portfolio.role);
-                    setSelectedAccount('All');
-                    localStorage.setItem('portfolio_active_id', portfolio.id);
-                    if (onCloseSidebar) onCloseSidebar();
-                  }}
-                >
-                  <div 
-                    className={`tree-caret ${isExpanded ? '' : 'collapsed'}`}
-                    onClick={(e) => togglePortfolioExpand(portfolio.id, e)}
-                  >
-                    <ChevronDown size={13} />
-                  </div>
-                  <Briefcase size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ 
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: 'hidden', 
-                    textOverflow: 'ellipsis', 
-                    whiteSpace: 'nowrap', 
-                    paddingRight: portfolio.role === 'owner' 
-                      ? (isActive ? '4.5rem' : '2.5rem') 
-                      : '0.5rem',
-                    fontSize: '0.82rem'
-                  }}>
-                    {portfolio.name}
-                  </span>
-                  
-                  {/* Portfolio Actions */}
-                  {portfolio.role === 'owner' && (
-                    <div 
-                      className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
-                      style={{ 
-                        position: 'absolute',
-                        right: '0.5rem',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        zIndex: 10,
-                        display: isActive ? 'flex' : undefined,
-                        gap: '0.35rem'
-                      }} 
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {isActive && (
-                        <>
-                          <button
-                            onClick={() => onShareClick?.()}
-                            title="Share Portfolio"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                          >
-                            <Share2 size={12} />
-                          </button>
-                          <button
-                            onClick={() => onSettingsClick?.()}
-                            title="Portfolio Settings"
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                          >
-                            <Settings size={12} />
-                          </button>
-                        </>
-                      )}
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRenamePortfolio(portfolio.id);
-                        }}
-                        title="Rename Portfolio"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                      >
-                        <Edit2 size={11} />
-                      </button>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeletePortfolio(portfolio.id);
-                        }}
-                        title="Delete Portfolio"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Nested Accounts Sub-list */}
-                {isExpanded && (
-                  <div className="tree-sub-list">
-                    <div 
-                      className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
-                      style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
-                      onClick={() => {
-                        setActivePortfolioId(portfolio.id);
-                        setActivePortfolioRole(portfolio.role);
-                        setSelectedAccount('All');
-                        localStorage.setItem('portfolio_active_id', portfolio.id);
-                        if (onCloseSidebar) onCloseSidebar();
-                      }}
-                    >
-                      <History size={12} />
-                      <span>All Accounts</span>
-                    </div>
-                    
-                    {accounts.map((accName) => {
-                      const isAccActive = isActive && selectedAccount === accName;
-                      return (
-                        <div 
-                          key={accName}
-                          className={`tree-node ${isAccActive ? 'active' : ''}`}
-                          style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
-                          onClick={() => {
-                            setActivePortfolioId(portfolio.id);
-                            setActivePortfolioRole(portfolio.role);
-                            setSelectedAccount(accName);
-                            localStorage.setItem('portfolio_active_id', portfolio.id);
-                            if (onCloseSidebar) onCloseSidebar();
-                          }}
-                        >
-                          <CreditCard size={12} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {accName}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+          {/* All Assets Node */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div 
+              className={`tree-node ${activePortfolioId === 'all' ? 'active' : ''}`}
+              onClick={() => {
+                setActivePortfolioId('all');
+                setSelectedAccount('All');
+                localStorage.setItem('portfolio_active_id', 'all');
+                if (onCloseSidebar) onCloseSidebar();
+              }}
+            >
+              <div 
+                className={`tree-caret ${allAssetsExpanded ? '' : 'collapsed'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAllAssetsExpanded(!allAssetsExpanded);
+                }}
+              >
+                <ChevronDown size={13} />
               </div>
-            );
-          })}
+              <Globe size={14} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>All Assets</span>
+            </div>
+
+            {/* Nested Portfolios under All Assets */}
+            {allAssetsExpanded && (
+              <div className="tree-sub-list">
+                {portfolios.map((portfolio) => {
+                  const isActive = activePortfolioId === portfolio.id;
+                  const isExpanded = !!expandedPortfolios[portfolio.id];
+                  const accounts = portfolioAccountsMap[portfolio.id] || [];
+                  
+                  return (
+                    <div key={portfolio.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                      {/* Portfolio Folder Node */}
+                      <div 
+                        className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
+                        onClick={() => {
+                          setActivePortfolioId(portfolio.id);
+                          setActivePortfolioRole(portfolio.role);
+                          setSelectedAccount('All');
+                          localStorage.setItem('portfolio_active_id', portfolio.id);
+                          if (onCloseSidebar) onCloseSidebar();
+                        }}
+                      >
+                        {accounts.length > 0 ? (
+                          <div 
+                            className={`tree-caret ${isExpanded ? '' : 'collapsed'}`}
+                            onClick={(e) => togglePortfolioExpand(portfolio.id, e)}
+                          >
+                            <ChevronDown size={13} />
+                          </div>
+                        ) : (
+                          <div style={{ width: '18px', flexShrink: 0 }} />
+                        )}
+                        <Briefcase size={14} style={{ flexShrink: 0 }} />
+                        <span style={{ 
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap', 
+                          paddingRight: portfolio.role === 'owner' 
+                            ? (isActive ? '4.5rem' : '2.5rem') 
+                            : '0.5rem',
+                          fontSize: '0.82rem'
+                        }}>
+                          {portfolio.name}
+                        </span>
+                        
+                        {/* Portfolio Actions */}
+                        {portfolio.role === 'owner' && (
+                          <div 
+                            className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
+                            style={{ 
+                              position: 'absolute',
+                              right: '0.5rem',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              zIndex: 10,
+                              display: isActive ? 'flex' : undefined,
+                              gap: '0.35rem'
+                            }} 
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isActive && (
+                              <>
+                                <button
+                                  onClick={() => onShareClick?.()}
+                                  title="Share Portfolio"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <Share2 size={12} />
+                                </button>
+                                <button
+                                  onClick={() => onSettingsClick?.()}
+                                  title="Portfolio Settings"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <Settings size={12} />
+                                </button>
+                              </>
+                            )}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRenamePortfolio(portfolio.id);
+                              }}
+                              title="Rename Portfolio"
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                            >
+                              <Edit2 size={11} />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeletePortfolio(portfolio.id);
+                              }}
+                              title="Delete Portfolio"
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Nested Accounts Sub-list */}
+                      {isExpanded && accounts.length > 0 && (
+                        <div className="tree-sub-list">
+                          {accounts.map((accName) => {
+                            const isAccActive = isActive && selectedAccount === accName;
+                            return (
+                              <div 
+                                key={accName}
+                                className={`tree-node ${isAccActive ? 'active' : ''}`}
+                                style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                                onClick={() => {
+                                  setActivePortfolioId(portfolio.id);
+                                  setActivePortfolioRole(portfolio.role);
+                                  setSelectedAccount(accName);
+                                  localStorage.setItem('portfolio_active_id', portfolio.id);
+                                  if (onCloseSidebar) onCloseSidebar();
+                                }}
+                              >
+                                <CreditCard size={12} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {accName}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </aside>

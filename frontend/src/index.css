@@ -1396,12 +1396,9 @@ select option {
 }
 
 .tree-node.active {
-  background: rgba(59, 130, 246, 0.09);
+  background: rgba(6, 182, 212, 0.08); /* Cyan glow highlight */
   color: var(--color-primary);
   font-weight: 600;
-  border-left: 3px solid var(--color-primary);
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
 }
 
 .tree-node-actions {
@@ -1414,14 +1411,13 @@ select option {
 }
 
 .tree-sub-list {
-  padding-left: 1rem;
+  padding-left: 0.6rem;
   margin-top: 0.15rem;
   margin-bottom: 0.15rem;
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  border-left: 1px dashed rgba(255, 255, 255, 0.05);
-  margin-left: 1.25rem;
+  margin-left: 0.8rem;
 }
 
 .tree-caret {
