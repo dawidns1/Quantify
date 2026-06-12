@@ -371,7 +371,15 @@ export function Sidebar({
 
                   {/* Hover CRUD icons */}
                   {portfolio.role === 'owner' && (
-                    <div className="tree-node-actions" onClick={(e) => e.stopPropagation()}>
+                    <div 
+                      className="tree-node-actions" 
+                      style={{ 
+                        marginLeft: isActive ? '0' : 'auto', 
+                        marginRight: '0.25rem',
+                        zIndex: 10 
+                      }} 
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
