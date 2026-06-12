@@ -152,6 +152,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const [priceTrend, setPriceTrend] = useState<'up' | 'down' | null>(null);
   const [isMarketOpen, setIsMarketOpen] = useState<boolean>(false);
+  const [currency, setCurrency] = useState<string>('USD');
   
   // Active curves (persistent in localStorage)
   const [selectedCurves, setSelectedCurves] = useState<string[]>(() => {
@@ -172,7 +173,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
   const curveDefinitions = useMemo(() => [
     {
       id: 'price',
-      name: 'Share Price ($)',
+      name: `Share Price (${currency === 'PLN' ? 'zł' : (currency === 'EUR' ? '€' : '$')})`,
       category: 'Price & Technicals',
       axis: 'y', // left
       color: 'hsl(217, 91%, 60%)',
@@ -327,6 +328,9 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         .then((priceData) => {
           const newPrice = priceData.price;
           setIsMarketOpen(priceData.is_market_open);
+          if (priceData.currency) {
+            setCurrency(priceData.currency);
+          }
 
           if (newPrice !== null && newPrice !== undefined) {
             setLivePrice((prevPrice) => {
@@ -650,11 +654,11 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             {isMarketOpen ? (
-              <span className="live-badge open" title="NASDAQ Session Active">
+              <span className="live-badge open" title="Market Session Active">
                 <span className="live-dot pulse"></span> LIVE SESSION
               </span>
             ) : (
-              <span className="live-badge closed" title="NASDAQ Session Closed">
+              <span className="live-badge closed" title="Market Session Closed">
                 <span className="live-dot"></span> MARKET CLOSED
               </span>
             )}
@@ -666,7 +670,9 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
                 color: priceTrend === 'up' ? 'var(--color-green)' : (priceTrend === 'down' ? 'var(--color-red)' : 'var(--text-primary)') 
               }}
             >
-              ${livePrice !== null ? livePrice.toFixed(2) : (overview.price ? overview.price.toFixed(2) : 'N/A')}
+              {currency === 'PLN' ? '' : (currency === 'EUR' ? '€' : '$')}
+              {livePrice !== null ? livePrice.toFixed(2) : (overview.price ? overview.price.toFixed(2) : 'N/A')}
+              {currency === 'PLN' ? ' zł' : ''}
             </span>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current Price</div>

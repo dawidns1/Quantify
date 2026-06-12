@@ -229,22 +229,16 @@ def get_stock_price(ticker: str):
         if price is None:
             price = ticker_obj.info.get('currentPrice')
             
-        # Determine if NASDAQ trading session is active (Eastern Time, Mon-Fri 9:30 AM - 4:00 PM)
-        import pytz
-        from datetime import datetime
-        tz = pytz.timezone('US/Eastern')
-        now = datetime.now(tz)
+        timezone = ticker_obj.fast_info.get("timezone") or "UTC"
+        exchange = ticker_obj.fast_info.get("exchange") or ""
+        currency = ticker_obj.fast_info.get("currency") or ticker_obj.info.get("currency") or "USD"
         
-        is_open = False
-        if now.weekday() < 5:  # Monday to Friday
-            current_time = now.time()
-            market_start = datetime.strptime("09:30:00", "%H:%M:%S").time()
-            market_end = datetime.strptime("16:00:00", "%H:%M:%S").time()
-            is_open = market_start <= current_time <= market_end
+        is_open = PortfolioManager.is_market_open(timezone, exchange)
             
         return {
             "symbol": clean_ticker,
             "price": price,
+            "currency": currency.upper().strip(),
             "is_market_open": is_open,
             "timestamp": time.time()
         }

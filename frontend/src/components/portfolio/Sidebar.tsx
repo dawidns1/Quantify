@@ -10,7 +10,6 @@ import {
   Trash2, 
   History, 
   CreditCard,
-  DollarSign,
   Share2
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
@@ -241,35 +240,38 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0 0.5rem', marginBottom: '0.75rem' }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, padding: '0.25rem 0.25rem 0.15rem 0.25rem' }}>
+      {/* View Mode Picker */}
+      <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
           View Mode
         </div>
-        <button
-          onClick={() => setSubTab('overview')}
-          className={`tree-node ${subTab === 'overview' ? 'active' : ''}`}
-          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Briefcase size={14} />
-          <span>Overview</span>
-        </button>
-        <button
-          onClick={() => setSubTab('ledger')}
-          className={`tree-node ${subTab === 'ledger' ? 'active' : ''}`}
-          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <History size={14} />
-          <span>Transactions Ledger</span>
-        </button>
-        <button
-          onClick={() => setSubTab('dividends')}
-          className={`tree-node ${subTab === 'dividends' ? 'active' : ''}`}
-          style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <DollarSign size={14} />
-          <span>Dividend History</span>
-        </button>
+        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
+          {([
+            { id: 'overview', label: 'Overview' },
+            { id: 'ledger', label: 'Ledger' },
+            { id: 'dividends', label: 'Dividends' }
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSubTab(tab.id)}
+              style={{
+                flex: 1,
+                background: subTab === tab.id ? 'var(--color-primary)' : 'transparent',
+                color: subTab === tab.id ? 'white' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '0.3rem 0',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)',
+                textAlign: 'center'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Navigation Tree Root */}
@@ -340,6 +342,8 @@ export function Sidebar({
                   </div>
                   <Briefcase size={14} style={{ flexShrink: 0 }} />
                   <span style={{ 
+                    flex: 1,
+                    minWidth: 0,
                     overflow: 'hidden', 
                     textOverflow: 'ellipsis', 
                     whiteSpace: 'nowrap', 
@@ -356,8 +360,10 @@ export function Sidebar({
                     <div 
                       className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
                       style={{ 
-                        marginLeft: 'auto', 
-                        marginRight: '0.25rem',
+                        position: 'absolute',
+                        right: '0.5rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
                         zIndex: 10,
                         display: isActive ? 'flex' : undefined,
                         gap: '0.35rem'
