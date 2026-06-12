@@ -1,13 +1,22 @@
 import { useMemo } from 'react';
-import { PieChart, Coins, Globe, Layers } from 'lucide-react';
+import { PieChart, Coins, Globe, Layers, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 
 interface PortfolioAllocationProps {
   holdings: Holding[];
   summary: Summary;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onClose?: () => void;
 }
 
-export function PortfolioAllocation({ holdings, summary }: PortfolioAllocationProps) {
+export function PortfolioAllocation({ 
+  holdings, 
+  summary,
+  onMoveUp,
+  onMoveDown,
+  onClose
+}: PortfolioAllocationProps) {
   // Client-side calculations for allocations
   const { assets, currencies, countries, assetClasses } = useMemo(() => {
     const totalValue = summary.total_value_base || 1; // avoid division by zero
@@ -64,9 +73,46 @@ export function PortfolioAllocation({ holdings, summary }: PortfolioAllocationPr
 
   return (
     <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
-      <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <PieChart size={16} className="gradient-text" /> Portfolio Allocation
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <PieChart size={16} className="gradient-text" /> Portfolio Allocation
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          {onMoveUp && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Move Up" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <ChevronUp size={14} />
+            </button>
+          )}
+          {onMoveDown && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Move Down" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <ChevronDown size={14} />
+            </button>
+          )}
+          {onClose && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onClose(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Hide Card" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
       
       {holdings.length === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>

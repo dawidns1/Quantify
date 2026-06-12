@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity, ChevronUp, ChevronDown, X } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -29,12 +29,18 @@ interface PerformanceChartProps {
   chartData: { dates: string[]; nav: number[]; cost_basis: number[] } | null;
   loadingChart: boolean;
   baseCurrency: string;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onClose?: () => void;
 }
 
 export function PerformanceChart({
   chartData,
   loadingChart,
-  baseCurrency
+  baseCurrency,
+  onMoveUp,
+  onMoveDown,
+  onClose
 }: PerformanceChartProps) {
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
 
@@ -179,30 +185,71 @@ export function PerformanceChart({
           <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
         </h4>
         
-        {/* Date range selection pills */}
-        {!loadingChart && chartData && (
-          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-            {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setSelectedRange(r)}
-                style={{
-                  background: selectedRange === r ? 'var(--color-primary)' : 'transparent',
-                  color: selectedRange === r ? 'white' : 'var(--text-secondary)',
-                  border: 'none',
-                  padding: '0.15rem 0.4rem',
-                  fontSize: '0.65rem',
-                  fontWeight: 600,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {/* Date range selection pills */}
+          {!loadingChart && chartData && (
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+              {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setSelectedRange(r)}
+                  style={{
+                    background: selectedRange === r ? 'var(--color-primary)' : 'transparent',
+                    color: selectedRange === r ? 'white' : 'var(--text-secondary)',
+                    border: 'none',
+                    padding: '0.15rem 0.4rem',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Widget Controls */}
+          {(onMoveUp || onMoveDown || onClose) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.25rem', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '0.25rem' }}>
+              {onMoveUp && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                  title="Move Up" 
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <ChevronUp size={14} />
+                </button>
+              )}
+              {onMoveDown && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                  title="Move Down" 
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <ChevronDown size={14} />
+                </button>
+              )}
+              {onClose && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onClose(); }} 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                  title="Hide Card" 
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       <div style={{ height: '200px', position: 'relative' }}>

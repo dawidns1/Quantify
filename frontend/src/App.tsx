@@ -14,7 +14,7 @@ const API_BASE_URL = rawApiUrl.replace(/\/$/, "");
 function App() {
   const { user, loading: authLoading, recoveryMode, signOut } = useAuth();
 
-  const [settings, setSettings] = useState<{
+  const [settings] = useState<{
     lowPerformanceMode: boolean;
   }>(() => {
     const cachedLowPerf = localStorage.getItem('settings_low_perf_mode');
@@ -47,11 +47,6 @@ function App() {
     <PortfolioView 
       apiBaseUrl={API_BASE_URL} 
       signOut={signOut}
-      lowPerformanceMode={settings.lowPerformanceMode}
-      setLowPerformanceMode={(val: boolean) => {
-        setSettings({ lowPerformanceMode: val });
-        localStorage.setItem('settings_low_perf_mode', String(val));
-      }}
     />
   );
 }

@@ -7,7 +7,9 @@ import {
   Trash2, 
   Lock, 
   Menu,
-  Search
+  Search,
+  LayoutGrid,
+  Layout
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -71,15 +73,11 @@ import {
 interface PortfolioViewProps {
   apiBaseUrl: string;
   signOut: () => Promise<void>;
-  lowPerformanceMode: boolean;
-  setLowPerformanceMode: (val: boolean) => void;
 }
 
 export function PortfolioView({ 
   apiBaseUrl, 
-  signOut, 
-  lowPerformanceMode, 
-  setLowPerformanceMode 
+  signOut
 }: PortfolioViewProps) {
   const { user, session } = useAuth();
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
@@ -139,6 +137,54 @@ export function PortfolioView({
     triggerRandomUpsell();
     setLinkCashState(val);
     localStorage.setItem('portfolio_link_cash', String(val));
+  };
+
+  const [widgets, setWidgets] = useState<string[]>(() => {
+    const cached = localStorage.getItem('dashboard_widgets_order');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return ['metrics', 'chart', 'events', 'allocation'];
+  });
+
+  const [showWidgetManager, setShowWidgetManager] = useState<boolean>(false);
+
+  const handleMoveWidget = (fromIdx: number, toIdx: number) => {
+    setWidgets(prev => {
+      const next = [...prev];
+      const temp = next[fromIdx];
+      next[fromIdx] = next[toIdx];
+      next[toIdx] = temp;
+      localStorage.setItem('dashboard_widgets_order', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleCloseWidget = (widgetId: string) => {
+    setWidgets(prev => {
+      const next = prev.filter(w => w !== widgetId);
+      localStorage.setItem('dashboard_widgets_order', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleToggleWidgetVisibility = (widgetId: string) => {
+    setWidgets(prev => {
+      let next;
+      if (prev.includes(widgetId)) {
+        next = prev.filter(w => w !== widgetId);
+      } else {
+        const defaultOrder = ['metrics', 'chart', 'events', 'allocation'];
+        next = [...prev, widgetId].sort((a, b) => defaultOrder.indexOf(a) - defaultOrder.indexOf(b));
+      }
+      localStorage.setItem('dashboard_widgets_order', JSON.stringify(next));
+      return next;
+    });
   };
 
   const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(null);
@@ -811,10 +857,6 @@ export function PortfolioView({
       {/* LEFT SIDEBAR */}
       <Sidebar 
         signOut={signOut}
-        lowPerformanceMode={lowPerformanceMode}
-        setLowPerformanceMode={setLowPerformanceMode}
-        linkCash={linkCash}
-        setLinkCash={setLinkCash}
         portfolios={portfolios}
         activePortfolioId={activePortfolioId}
         setActivePortfolioId={setActivePortfolioId}
@@ -974,22 +1016,131 @@ export function PortfolioView({
                   </div>
                   {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <MetricsBanner summary={summary} />
-                    <PerformanceChart 
-                      chartData={chartData} 
-                      loadingChart={loadingChart} 
-                      baseCurrency={summary.base_currency} 
-                    />
-                    <UpcomingEvents 
-                      apiBaseUrl={apiBaseUrl}
-                      activePortfolioId={activePortfolioId}
-                      session={session}
-                      holdings={holdings}
-                    />
-                    <PortfolioAllocation 
-                      holdings={holdings}
-                      summary={summary}
-                    />
+                    {/* Widget Manager Toggle Button */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
+                      <button 
+                        className="glow-btn"
+                        style={{
+                          background: showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          color: 'var(--text-secondary)',
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          fontSize: '0.72rem',
+                          boxShadow: 'none'
+                        }}
+                        onClick={() => setShowWidgetManager(!showWidgetManager)}
+                      >
+                        <Layout size={12} />
+                        {showWidgetManager ? 'Close Customizer' : 'Customize Cards'}
+                      </button>
+                    </div>
+
+                    {/* Widget Manager Selection Card */}
+                    {showWidgetManager && (
+                      <div className="glass-panel" style={{
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.75) 0%, rgba(0, 0, 0, 0.9) 100%)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                      }}>
+                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
+                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> Toggle Dashboard Cards
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                          {[
+                            { id: 'metrics', name: 'Portfolio Metrics' },
+                            { id: 'chart', name: 'Performance Chart' },
+                            { id: 'events', name: 'Upcoming Corporate Events' },
+                            { id: 'allocation', name: 'Portfolio Allocation' }
+                          ].map(widget => {
+                            const isVisible = widgets.includes(widget.id);
+                            return (
+                              <label key={widget.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isVisible}
+                                  onChange={() => handleToggleWidgetVisibility(widget.id)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--color-primary)',
+                                    width: '14px',
+                                    height: '14px'
+                                  }}
+                                />
+                                <span>{widget.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Render active widgets in order */}
+                    {widgets.map((widgetId, index) => {
+                      const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
+                      const onMoveDown = index < widgets.length - 1 ? () => handleMoveWidget(index, index + 1) : undefined;
+                      const onClose = () => handleCloseWidget(widgetId);
+
+                      switch (widgetId) {
+                        case 'metrics':
+                          return (
+                            <MetricsBanner 
+                              key="metrics"
+                              summary={summary}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
+                        case 'chart':
+                          return (
+                            <PerformanceChart 
+                              key="chart"
+                              chartData={chartData}
+                              loadingChart={loadingChart}
+                              baseCurrency={summary.base_currency}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
+                        case 'events':
+                          return (
+                            <UpcomingEvents 
+                              key="events"
+                              apiBaseUrl={apiBaseUrl}
+                              activePortfolioId={activePortfolioId}
+                              session={session}
+                              holdings={holdings}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
+                        case 'allocation':
+                          return (
+                            <PortfolioAllocation 
+                              key="allocation"
+                              holdings={holdings}
+                              summary={summary}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
                   </div>
                 </div>
               </div>

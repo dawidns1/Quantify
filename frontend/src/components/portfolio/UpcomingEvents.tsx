@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Info } from 'lucide-react';
+import { Calendar, Info, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { fetchUpcomingEvents } from '../../services/calculationService';
 import type { Holding } from '../../types/portfolio';
 
@@ -8,6 +8,9 @@ interface UpcomingEventsProps {
   activePortfolioId: string | null;
   session: any;
   holdings: Holding[];
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onClose?: () => void;
 }
 
 interface CorporateEvent {
@@ -23,7 +26,10 @@ export function UpcomingEvents({
   apiBaseUrl,
   activePortfolioId,
   session,
-  holdings
+  holdings,
+  onMoveUp,
+  onMoveDown,
+  onClose
 }: UpcomingEventsProps) {
   const [events, setEvents] = useState<CorporateEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,9 +88,46 @@ export function UpcomingEvents({
 
   return (
     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-        <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> Upcoming Corporate Events
-      </h4>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> Upcoming Corporate Events
+        </h4>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          {onMoveUp && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Move Up" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <ChevronUp size={14} />
+            </button>
+          )}
+          {onMoveDown && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Move Down" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <ChevronDown size={14} />
+            </button>
+          )}
+          {onClose && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onClose(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Hide Card" 
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
