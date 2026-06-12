@@ -46,6 +46,7 @@ export interface Holding {
   day_change_value_base?: number;
   is_live?: boolean;
   asset_class?: string;
+  sparkline_prices?: number[];
 }
 
 export interface Summary {

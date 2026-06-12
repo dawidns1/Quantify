@@ -39,7 +39,7 @@ export function HoldingsTable({
         console.error('Error parsing visible columns from localStorage', e);
       }
     }
-    return ['name', 'shares', 'price', 'day_change', 'cost'];
+    return ['name', 'shares', 'price', 'sparkline', 'day_change', 'cost'];
   });
 
   const toggleColumn = (id: string) => {
@@ -96,6 +96,73 @@ export function HoldingsTable({
           {h.name}
         </span>
       )
+    },
+    sparkline: {
+      label: 'Trend',
+      sortField: 'symbol',
+      align: 'center',
+      renderHeader: () => 'Trend (15d)',
+      renderCell: (h) => {
+        if (!h.sparkline_prices || h.sparkline_prices.length < 2) {
+          return <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>;
+        }
+        
+        const prices = h.sparkline_prices;
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const range = max - min || 1;
+        
+        const width = 80;
+        const height = 24;
+        const padding = 2;
+        
+        const points = prices.map((price, idx) => {
+          const x = padding + (idx / (prices.length - 1)) * (width - padding * 2);
+          const y = padding + (1 - (price - min) / range) * (height - padding * 2);
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+
+        const isUp = prices[prices.length - 1] >= prices[0];
+        const color = isUp ? 'var(--color-green)' : 'var(--color-red)';
+        const glowId = `sparkline-glow-${h.symbol.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+        return (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <svg width={width} height={height} style={{ overflow: 'visible' }}>
+              <defs>
+                <linearGradient id={glowId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                  <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d={`M ${padding},${height} L ${points} L ${width - padding},${height} Z`}
+                fill={`url(#${glowId})`}
+              />
+              <polyline
+                fill="none"
+                stroke={color}
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={points}
+                style={{
+                  filter: `drop-shadow(0px 1px 3px ${color}40)`
+                }}
+              />
+              <circle
+                cx={padding + (prices.length - 1) * ((width - padding * 2) / (prices.length - 1))}
+                cy={padding + (1 - (prices[prices.length - 1] - min) / range) * (height - padding * 2)}
+                r="2.5"
+                fill={color}
+                style={{
+                  filter: `drop-shadow(0px 0px 3px ${color})`
+                }}
+              />
+            </svg>
+          </div>
+        );
+      }
     },
     shares: {
       label: 'Shares Owned',
@@ -187,13 +254,13 @@ export function HoldingsTable({
     }
   };
 
-  // Logical Grouping
   const columnGroups = [
     {
       name: 'Basic Info',
       items: [
         { id: 'name', label: 'Company Name' },
-        { id: 'asset_class', label: 'Asset Class' }
+        { id: 'asset_class', label: 'Asset Class' },
+        { id: 'sparkline', label: 'Trend' }
       ]
     },
     {

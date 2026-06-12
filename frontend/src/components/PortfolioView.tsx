@@ -9,6 +9,30 @@ import {
   Menu,
   Search
 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  Filler
+);
+
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
 
@@ -119,16 +143,131 @@ export function PortfolioView({
   const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(null);
   const [loadingChart, setLoadingChart] = useState<boolean>(false);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
+  const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
 
   const [modalSortField, setModalSortField] = useState<string>('date');
   const [modalSortAsc, setModalSortAsc] = useState<boolean>(false);
   const [modalSearchQuery, setModalSearchQuery] = useState<string>('');
+  const [modalRange, setModalRange] = useState<'1M' | '3M' | '1Y' | '3Y' | 'MAX'>('1M');
 
   useEffect(() => {
     setModalSortField('date');
     setModalSortAsc(false);
     setModalSearchQuery('');
+    setModalRange('1M');
   }, [selectedPositionSymbol]);
+
+  useEffect(() => {
+    if (!selectedPositionSymbol) {
+      setSelectedStockDetails(null);
+      return;
+    }
+    setLoadingDetails(true);
+    fetch(`${apiBaseUrl}/api/stocks/${selectedPositionSymbol}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch stock details");
+        return res.json();
+      })
+      .then(data => {
+        setSelectedStockDetails(data);
+        setLoadingDetails(false);
+      })
+      .catch(err => {
+        console.error("Error fetching stock details:", err);
+        setLoadingDetails(false);
+      });
+  }, [selectedPositionSymbol, apiBaseUrl]);
+
+  const modalChartData = useMemo(() => {
+    if (!selectedStockDetails || !selectedStockDetails.history || selectedStockDetails.history.length === 0) return null;
+    let hist = [...selectedStockDetails.history];
+    hist.sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    if (modalRange !== 'MAX') {
+      const latestDateStr = hist[hist.length - 1].date;
+      const latestDate = new Date(latestDateStr);
+      let cutoffDate = new Date(latestDate);
+      if (modalRange === '1M') {
+        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+      } else if (modalRange === '3M') {
+        cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+      } else if (modalRange === '1Y') {
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+      } else if (modalRange === '3Y') {
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 3);
+      }
+      const cutoffStr = cutoffDate.toISOString().split('T')[0];
+      hist = hist.filter((pt: any) => pt.date >= cutoffStr);
+    }
+    return hist;
+  }, [selectedStockDetails, modalRange]);
+
+  const modalChartFormatted = useMemo(() => {
+    if (!modalChartData || modalChartData.length === 0) return null;
+    const dates = modalChartData.map((pt: any) => pt.date);
+    const prices = modalChartData.map((pt: any) => pt.price);
+    const isUp = prices[prices.length - 1] >= prices[0];
+    const accentColor = isUp ? '#10b981' : '#ef4444';
+    return {
+      labels: dates,
+      datasets: [
+        {
+          label: 'Price',
+          data: prices,
+          fill: true,
+          backgroundColor: isUp ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
+          borderColor: accentColor,
+          borderWidth: 1.75,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHitRadius: 10,
+          tension: 0.15
+        }
+      ]
+    };
+  }, [modalChartData]);
+
+  const modalChartOptions = useMemo(() => {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 150 },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: 'rgba(255, 255, 255, 0.6)',
+            font: { family: 'Outfit', size: 9 },
+            maxTicksLimit: 6
+          }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            color: 'rgba(255, 255, 255, 0.6)',
+            font: { family: 'Outfit', size: 9 }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index' as const,
+          intersect: false,
+          backgroundColor: 'rgba(15, 23, 42, 0.96)',
+          titleColor: '#ffffff',
+          bodyColor: '#f1f5f9',
+          borderColor: 'rgba(255, 255, 255, 0.15)',
+          borderWidth: 1,
+          padding: 8,
+          cornerRadius: 6,
+          titleFont: { family: 'Outfit', size: 10, weight: 'bold' as const },
+          bodyFont: { family: 'Outfit', size: 10 }
+        }
+      }
+    };
+  }, []);
 
   // Filtering states
   const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
@@ -1072,6 +1211,57 @@ export function PortfolioView({
                     </div>
                   </div>
                 )}
+
+                {/* Simplified Interactive Details Chart */}
+                <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                      Price Performance ({holdingDetails?.currency || 'USD'})
+                    </span>
+                    
+                    {/* Modal range selector pills */}
+                    {!loadingDetails && selectedStockDetails && (
+                      <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+                        {(['1M', '3M', '1Y', '3Y', 'MAX'] as const).map((r) => (
+                          <button
+                            key={r}
+                            onClick={() => setModalRange(r)}
+                            style={{
+                              background: modalRange === r ? 'var(--color-primary)' : 'transparent',
+                              color: modalRange === r ? 'white' : 'var(--text-secondary)',
+                              border: 'none',
+                              padding: '0.15rem 0.4rem',
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              transition: 'var(--transition-smooth)'
+                            }}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div style={{ height: '140px', position: 'relative' }}>
+                    {loadingDetails ? (
+                      <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }} className="pulse">
+                        Loading price details...
+                      </div>
+                    ) : modalChartFormatted ? (
+                      <Line 
+                        options={modalChartOptions}
+                        data={modalChartFormatted}
+                      />
+                    ) : (
+                      <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        No price history available.
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>

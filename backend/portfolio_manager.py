@@ -875,6 +875,16 @@ class PortfolioManager:
                 gain_base = (current_value_base - cost_basis_base) + div_net
                 gain_percent = (gain_base / cost_basis_base * 100) if cost_basis_base > 0 else 0.0
                 
+                # Get last 15 daily historical prices for sparkline
+                sparkline_prices = []
+                try:
+                    hist_prices = cls.get_cached_historical_stock(symbol, date.today() - timedelta(days=45), date.today())
+                    if hist_prices:
+                        sorted_dates = sorted(hist_prices.keys())
+                        sparkline_prices = [round(float(hist_prices[d]), 2) for d in sorted_dates[-15:]]
+                except Exception as ex:
+                    print(f"Error fetching sparkline for {symbol}: {ex}")
+                
                 holdings_list.append({
                     "symbol": symbol,
                     "name": info["company_name"],
@@ -892,7 +902,8 @@ class PortfolioManager:
                     "day_change_percent": round(day_change_percent, 2),
                     "day_change_value_base": round(day_change_value_base, 2),
                     "is_live": is_live,
-                    "asset_class": info.get("asset_class", "Equity")
+                    "asset_class": info.get("asset_class", "Equity"),
+                    "sparkline_prices": sparkline_prices
                 })
                 
                 total_cost_base += cost_basis_base
