@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Globe, 
   History, 
   Plus, 
   X, 
@@ -633,10 +632,6 @@ export function PortfolioView({
     return holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()) || null;
   }, [holdings, selectedPositionSymbol]);
 
-  const activePortfolioName = activePortfolioId === 'all'
-    ? 'All Assets'
-    : portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio';
-
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -706,7 +701,7 @@ export function PortfolioView({
 
       {/* MAIN CONTENT AREA */}
       <main className="main-content">
-        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative' }}>
           
           {/* Glowing Neon Top Progress Bar */}
           {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
@@ -724,46 +719,15 @@ export function PortfolioView({
             }} />
           )}
           
-          {/* Top navigation Header Switcher Bar */}
-          <div className="portfolio-header-bar glass-panel" style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            flexWrap: 'wrap', 
-            gap: '1rem',
-            padding: '0.75rem 1.25rem',
-            background: 'rgba(13, 20, 35, 0.45)',
-            border: '1px solid var(--panel-border)',
-            borderRadius: '10px'
-          }}>
-            {/* Breadcrumb Trail */}
-            <div className="breadcrumb-trail" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button 
-                className="mobile-menu-toggle-btn"
-                onClick={() => setSidebarOpen(true)}
-                title="Open Navigation Menu"
-              >
-                <Menu size={18} />
-              </button>
-              <Globe size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-              <span className="breadcrumb-item">All Assets</span>
-              {activePortfolioId && activePortfolioId !== 'all' && (
-                <>
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>/</span>
-                  <span className={`breadcrumb-item ${selectedAccount === 'All' ? 'active' : ''}`}>
-                    {activePortfolioName}
-                  </span>
-                </>
-              )}
-              {selectedAccount && selectedAccount !== 'All' && (
-                <>
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem' }}>/</span>
-                  <span className="breadcrumb-item active">
-                    {selectedAccount}
-                  </span>
-                </>
-              )}
-            </div>
+          {/* Top navigation Header Switcher Bar (Mobile only) */}
+          <div className="portfolio-header-bar glass-panel">
+            <button 
+              className="mobile-menu-toggle-btn"
+              onClick={() => setSidebarOpen(true)}
+              title="Open Navigation Menu"
+            >
+              <Menu size={18} />
+            </button>
           </div>
 
           {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
@@ -800,16 +764,16 @@ export function PortfolioView({
               {subTab === 'overview' ? (
                 <>
                   {/* Chart skeleton */}
-                  <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '0.5rem', height: '260px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="glass-panel" style={{ padding: '1rem', marginBottom: '0.5rem', height: '260px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div className="shimmer-placeholder" style={{ width: '220px', height: '18px' }}></div>
                     <div className="shimmer-placeholder" style={{ width: '100%', flex: 1 }}></div>
                   </div>
 
                   {/* Grid skeleton */}
-                  <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                    <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div className="shimmer-placeholder" style={{ width: '180px', height: '22px' }}></div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
                         {[1, 2, 3, 4, 5].map(i => (
                           <div key={i} style={{ display: 'flex', gap: '1rem' }}>
                             <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
@@ -821,7 +785,7 @@ export function PortfolioView({
                       </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
                       {[1, 2, 3].map(i => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -837,12 +801,12 @@ export function PortfolioView({
                 </>
               ) : (
                 /* Ledger tab skeleton */
-                <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="shimmer-placeholder" style={{ width: '220px', height: '24px' }}></div>
                     <div className="shimmer-placeholder" style={{ width: '150px', height: '18px' }}></div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                       <div key={i} style={{ display: 'flex', gap: '1rem' }}>
                         <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
@@ -871,7 +835,7 @@ export function PortfolioView({
               <div style={{ display: subTab === 'overview' ? 'block' : 'none' }}>
                 <MetricsBanner summary={summary} />
                 
-                <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginTop: '0.25rem' }}>
+                <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
                   {/* Left Column: Holdings Table */}
                   <div style={{ minWidth: 0 }}>
                     <HoldingsTable 
@@ -883,7 +847,7 @@ export function PortfolioView({
                     />
                   </div>
                   {/* Right Column: Performance Chart & Allocations stacked */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <PerformanceChart 
                       chartData={chartData} 
                       loadingChart={loadingChart} 

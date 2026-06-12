@@ -90,8 +90,8 @@ body::before {
 .glass-panel {
   background: rgba(13, 20, 35, 0.82); /* Opaque dark background for high contrast & performance */
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 1rem;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   transition: border-color 0.2s ease;
 }
@@ -1354,10 +1354,26 @@ select option {
 
 .main-content {
   flex: 1;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   overflow-y: auto;
   min-width: 0;
   height: 100vh;
+}
+
+.portfolio-header-bar {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .portfolio-header-bar {
+    display: flex !important;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(13, 20, 35, 0.45);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+  }
 }
 
 /* Sidebar Tree Styling */

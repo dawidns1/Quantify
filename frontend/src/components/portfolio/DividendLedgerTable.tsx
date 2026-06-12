@@ -114,7 +114,7 @@ export function DividendLedgerTable({
   const isViewer = activePortfolioRole === 'viewer';
 
   return (
-    <div className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
       {/* Search and Action Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>

@@ -22,14 +22,14 @@ export function MetricsBanner({ summary }: MetricsBannerProps) {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '1.25rem 1.75rem',
+      padding: '1rem 1.25rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.65) 0%, rgba(13, 17, 28, 0.8) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
-      gap: '1.5rem',
+      gap: '1rem',
       flexWrap: 'wrap',
-      marginBottom: '1rem'
+      marginBottom: '0.75rem'
     }}>
       {/* Left: NAV / Value */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
