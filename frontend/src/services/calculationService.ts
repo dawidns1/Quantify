@@ -24,7 +24,14 @@ export async function fetchHoldings(
     headers
   });
 
-  if (!response.ok) throw new Error('Failed to calculate holdings');
+  if (!response.ok) {
+    let errMsg = 'Failed to calculate holdings';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
   const data = await response.json();
   return {
     holdings: data.holdings || [],
@@ -63,7 +70,14 @@ export async function fetchHistoricalPerformance(
     headers
   });
 
-  if (!response.ok) throw new Error('Failed to fetch historical performance');
+  if (!response.ok) {
+    let errMsg = 'Failed to fetch historical performance';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
   return response.json();
 }
 
@@ -73,6 +87,13 @@ export async function searchAssets(
   query: string
 ): Promise<any[]> {
   const response = await fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(query)}`);
-  if (!response.ok) throw new Error('Asset search failed');
+  if (!response.ok) {
+    let errMsg = 'Asset search failed';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
   return response.json();
 }
