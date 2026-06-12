@@ -314,7 +314,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
 
       {/* Collapsible Column Selector Panel */}
       {showColumnPicker && (
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
             <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Configure Screener Table Columns</h4>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Core columns (Ticker, Company) are fixed</span>

@@ -732,20 +732,20 @@ export function PortfolioView({
 
           {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
           {((loadingPortfolios && portfolios.length === 0) || (loadingHoldings && holdings.length === 0) || (loadingTransactions && allTransactions.length === 0)) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {/* Consolidated Premium Metrics Banner Skeleton */}
               <div className="glass-panel" style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '1.25rem 1.75rem',
+                padding: '1rem',
                 background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.65) 0%, rgba(13, 17, 28, 0.8) 100%)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '12px',
                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
-                gap: '1.5rem',
+                gap: '1rem',
                 flexWrap: 'wrap',
-                marginBottom: '0.5rem'
+                marginBottom: '0.75rem'
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '120px' }}>
                   <div className="shimmer-placeholder" style={{ width: '120px', height: '12px' }}></div>
@@ -764,7 +764,7 @@ export function PortfolioView({
               {subTab === 'overview' ? (
                 <>
                   {/* Chart skeleton */}
-                  <div className="glass-panel" style={{ padding: '1rem', marginBottom: '0.5rem', height: '260px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div className="glass-panel" style={{ padding: '1rem', marginBottom: '0.75rem', height: '260px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div className="shimmer-placeholder" style={{ width: '220px', height: '18px' }}></div>
                     <div className="shimmer-placeholder" style={{ width: '100%', flex: 1 }}></div>
                   </div>
@@ -785,7 +785,7 @@ export function PortfolioView({
                       </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
                       {[1, 2, 3].map(i => (
                         <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

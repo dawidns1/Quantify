@@ -315,7 +315,7 @@ export function HoldingsTable({
       {showColumnPicker && (
         <div style={{ 
           background: 'rgba(0,0,0,0.2)', 
-          padding: '1.25rem', 
+          padding: '1rem', 
           borderRadius: '8px', 
           border: '1px solid var(--panel-border)', 
           display: 'flex', 
@@ -328,7 +328,7 @@ export function HoldingsTable({
           </div>
           
           {/* Grouped checkboxes */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
             {columnGroups.map((group) => (
               <div key={group.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>

@@ -63,7 +63,7 @@ export function PortfolioAllocation({ holdings, summary }: PortfolioAllocationPr
   }, [holdings, summary.total_value_base]);
 
   return (
-    <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem' }}>
+    <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
       <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <PieChart size={16} className="gradient-text" /> Portfolio Allocation
       </h3>
@@ -74,7 +74,7 @@ export function PortfolioAllocation({ holdings, summary }: PortfolioAllocationPr
           <p>Enter data to calculate asset splits.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Asset Classes Allocation */}
           <div>
             <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
