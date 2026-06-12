@@ -498,6 +498,47 @@ def get_historical_portfolio_nav_jwt(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
 
+@app.get("/api/portfolio/{portfolio_id}/upcoming-events")
+def get_upcoming_events_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    try:
+        # 1. Fetch transactions and settings
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        
+        # 2. Calculate holdings to get active share counts
+        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
+        holdings = res.get("holdings", [])
+        
+        # 3. Filter active stock holdings (exclude cash or empty positions)
+        active_holdings = []
+        for h in holdings:
+            symbol = h.get("symbol")
+            shares = h.get("shares", 0.0)
+            if symbol and symbol.upper() != "CASH" and shares > 0.0:
+                active_holdings.append({
+                    "symbol": symbol,
+                    "shares": shares
+                })
+                
+        # 4. Get sorted upcoming events
+        events = PortfolioManager.get_upcoming_events(active_holdings)
+        return events
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating upcoming events: {str(e)}")
+
 @app.get("/api/portfolio/search")
 def search_portfolio_assets(q: str):
     if not q or len(q.strip()) < 2:

@@ -49,6 +49,7 @@ import { SettingsModal } from './portfolio/SettingsModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
+import { UpcomingEvents } from './portfolio/UpcomingEvents';
 
 import { 
   fetchHoldings as fetchHoldingsService, 
@@ -991,6 +992,12 @@ export function PortfolioView({
                       chartData={chartData} 
                       loadingChart={loadingChart} 
                       baseCurrency={summary.base_currency} 
+                    />
+                    <UpcomingEvents 
+                      apiBaseUrl={apiBaseUrl}
+                      activePortfolioId={activePortfolioId}
+                      session={session}
+                      holdings={holdings}
                     />
                     <PortfolioAllocation 
                       holdings={holdings}
