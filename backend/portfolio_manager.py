@@ -685,7 +685,10 @@ class PortfolioManager:
                 "live_price": info["live_price"],
                 "company_name": info["company_name"],
                 "native_currency": native_currency.upper().strip(),
-                "asset_class": info.get("asset_class", "Equity")
+                "asset_class": info.get("asset_class", "Equity"),
+                "previous_close": info.get("previous_close", 0.0),
+                "timezone": info.get("timezone", "UTC"),
+                "exchange": info.get("exchange", "")
             }
             
         # Collect unique currencies for FX
@@ -1242,9 +1245,9 @@ class PortfolioManager:
             nav_res.append(round(day_nav, 2))
             cost_basis_res.append(round(max(0.0, day_cost), 2))
             
-        # 8. Downsample data if > 90 days to maintain snappy rendering
+        # 8. Downsample data if > 366 days to maintain snappy rendering
         total_days = len(dates_res)
-        if total_days > 90:
+        if total_days > 366:
             step = 7 # weekly downsampling
             downsampled_dates = []
             downsampled_nav = []

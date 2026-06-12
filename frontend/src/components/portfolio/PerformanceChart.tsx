@@ -36,7 +36,7 @@ export function PerformanceChart({
   loadingChart,
   baseCurrency
 }: PerformanceChartProps) {
-  const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('MAX');
+  const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
 
   // Filter and slice chart data based on range
   const filteredData = useMemo(() => {
@@ -108,7 +108,9 @@ export function PerformanceChart({
           labels: { 
             color: 'rgba(255, 255, 255, 0.9)', 
             font: { family: 'Outfit', size: 10, weight: 'bold' as const }, 
-            boxWidth: 8, 
+            boxWidth: 15, 
+            usePointStyle: true,
+            pointStyle: 'line',
             padding: 8
           }
         },
