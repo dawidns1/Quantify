@@ -343,50 +343,52 @@ export function Sidebar({
                     overflow: 'hidden', 
                     textOverflow: 'ellipsis', 
                     whiteSpace: 'nowrap', 
-                    paddingRight: portfolio.role === 'owner' ? '2.5rem' : '0.5rem',
+                    paddingRight: portfolio.role === 'owner' 
+                      ? (isActive ? '4.5rem' : '2.5rem') 
+                      : '0.5rem',
                     fontSize: '0.82rem'
                   }}>
                     {portfolio.name}
                   </span>
                   
-                  {/* Active Actions (Share & Settings) */}
-                  {isActive && portfolio.role === 'owner' && (
-                    <div style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', marginRight: '0.25rem', zIndex: 10 }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => onShareClick?.()}
-                        title="Share Portfolio"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <Share2 size={12} />
-                      </button>
-                      <button
-                        onClick={() => onSettingsClick?.()}
-                        title="Portfolio Settings"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <Settings size={12} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Hover CRUD icons */}
+                  {/* Portfolio Actions */}
                   {portfolio.role === 'owner' && (
                     <div 
-                      className="tree-node-actions" 
+                      className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
                       style={{ 
-                        marginLeft: isActive ? '0' : 'auto', 
+                        marginLeft: 'auto', 
                         marginRight: '0.25rem',
-                        zIndex: 10 
+                        zIndex: 10,
+                        display: isActive ? 'flex' : undefined,
+                        gap: '0.35rem'
                       }} 
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {isActive && (
+                        <>
+                          <button
+                            onClick={() => onShareClick?.()}
+                            title="Share Portfolio"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                          >
+                            <Share2 size={12} />
+                          </button>
+                          <button
+                            onClick={() => onSettingsClick?.()}
+                            title="Portfolio Settings"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                          >
+                            <Settings size={12} />
+                          </button>
+                        </>
+                      )}
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           onRenamePortfolio(portfolio.id);
                         }}
                         title="Rename Portfolio"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                         onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                       >
@@ -398,7 +400,7 @@ export function Sidebar({
                           onDeletePortfolio(portfolio.id);
                         }}
                         title="Delete Portfolio"
-                        style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px' }}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                         onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                         onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
                       >
