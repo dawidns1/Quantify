@@ -12,6 +12,14 @@ export async function fetchHoldings(
   if (jwtToken) {
     headers['Authorization'] = `Bearer ${jwtToken}`;
   }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl) {
+    headers['x-supabase-url'] = supabaseUrl;
+  }
+  if (supabaseAnonKey) {
+    headers['x-supabase-anon-key'] = supabaseAnonKey;
+  }
 
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
@@ -57,6 +65,14 @@ export async function fetchHistoricalPerformance(
   const headers: Record<string, string> = {};
   if (jwtToken) {
     headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl) {
+    headers['x-supabase-url'] = supabaseUrl;
+  }
+  if (supabaseAnonKey) {
+    headers['x-supabase-anon-key'] = supabaseAnonKey;
   }
 
   const queryParams = new URLSearchParams({

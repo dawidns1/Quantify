@@ -393,23 +393,23 @@ def calculate_historical_portfolio_nav(req: HoldingsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
 
-def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
-    supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> list:
+    url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
     
-    print(f"[DEBUG] fetch_transactions_from_supabase url={supabase_url} portfolio={portfolio_id}")
+    print(f"[DEBUG] fetch_transactions_from_supabase url={url_val} portfolio={portfolio_id}")
     print(f"[DEBUG] Authorization: {jwt_token[:30]}..." if jwt_token else "[DEBUG] Authorization: None")
     
-    if not supabase_url or not supabase_key:
+    if not url_val or not key_val:
         print("[DEBUG] Supabase env variables missing!")
         raise HTTPException(status_code=500, detail="Supabase environment variables not configured on backend.")
         
-    url = f"{supabase_url}/rest/v1/transactions"
+    url = f"{url_val}/rest/v1/transactions"
     if portfolio_id != 'all':
         url += f"?portfolio_id=eq.{portfolio_id}"
         
     headers = {
-        "apikey": supabase_key,
+        "apikey": key_val,
         "Authorization": jwt_token
     }
     
@@ -432,15 +432,15 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str) -> list:
         print(f"[DEBUG] Network error contacting Supabase: {req_err}")
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
-def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str) -> dict:
-    supabase_url = os.environ.get("SUPABASE_URL")
-    supabase_key = os.environ.get("SUPABASE_ANON_KEY")
-    if not supabase_url or not supabase_key or portfolio_id == 'all':
+def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> dict:
+    url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+    if not url_val or not key_val or portfolio_id == 'all':
         return {}
         
-    url = f"{supabase_url}/rest/v1/portfolios?id=eq.{portfolio_id}&select=settings"
+    url = f"{url_val}/rest/v1/portfolios?id=eq.{portfolio_id}&select=settings"
     headers = {
-        "apikey": supabase_key,
+        "apikey": key_val,
         "Authorization": jwt_token
     }
     try:
@@ -461,14 +461,16 @@ def get_portfolio_holdings_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
-    authorization: str = Header(None)
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
     try:
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
         print(f"[DEBUG] Holdings response summary: {res.get('summary')}")
         print(f"[DEBUG] Holdings count: {len(res.get('holdings', []))}")
@@ -486,14 +488,16 @@ def get_historical_portfolio_nav_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
-    authorization: str = Header(None)
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
     try:
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings)
     except HTTPException:
         raise
