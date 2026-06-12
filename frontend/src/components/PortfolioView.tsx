@@ -560,11 +560,7 @@ export function PortfolioView({
     }
   }, [portfolios]);
 
-  // Reset holdings and chart data on portfolio or account change to show skeleton loader
-  useEffect(() => {
-    setHoldings([]);
-    setChartData(null);
-  }, [activePortfolioId, selectedAccount]);
+  // No longer resetting holdings and chart data on portfolio/account change to prevent skeleton flicker and enable SWR
 
   // Recalculate holdings when active portfolio, filters, or transactions update
   useEffect(() => {
@@ -971,7 +967,11 @@ export function PortfolioView({
               )}
 
               {/* OVERVIEW TAB CONTENT */}
-              <div style={{ display: subTab === 'overview' ? 'block' : 'none' }}>
+              <div style={{ 
+                display: subTab === 'overview' ? 'block' : 'none',
+                opacity: loadingHoldings ? 0.6 : 1,
+                transition: 'opacity 0.15s ease-in-out'
+              }}>
                 <MetricsBanner summary={summary} />
                 
                 <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
@@ -1001,7 +1001,11 @@ export function PortfolioView({
               </div>
 
               {/* LEDGER TAB CONTENT */}
-              <div style={{ display: subTab === 'ledger' ? 'block' : 'none' }}>
+              <div style={{ 
+                display: subTab === 'ledger' ? 'block' : 'none',
+                opacity: loadingTransactions ? 0.6 : 1,
+                transition: 'opacity 0.15s ease-in-out'
+              }}>
                 <LedgerTable 
                   transactions={transactions}
                   activePortfolioRole={activePortfolioRole}
@@ -1011,7 +1015,11 @@ export function PortfolioView({
               </div>
 
               {/* DIVIDENDS TAB CONTENT */}
-              <div style={{ display: subTab === 'dividends' ? 'block' : 'none' }}>
+              <div style={{ 
+                display: subTab === 'dividends' ? 'block' : 'none',
+                opacity: loadingHoldings ? 0.6 : 1,
+                transition: 'opacity 0.15s ease-in-out'
+              }}>
                 <DividendLedgerTable 
                   dividends={dividendsList}
                   activePortfolioRole={activePortfolioRole}
