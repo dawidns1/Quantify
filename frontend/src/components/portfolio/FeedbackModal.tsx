@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, MessageSquare, Check, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../AuthContext';
 import { usePortfolio } from '../../context/PortfolioContext';
 
@@ -11,6 +12,7 @@ interface FeedbackModalProps {
 export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const { user, session } = useAuth();
   const { apiBaseUrl } = usePortfolio();
+  const { t } = useTranslation();
   const [category, setCategory] = useState<'bug' | 'feedback' | 'question' | 'feature_request'>('feedback');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState(user?.email || '');
@@ -23,7 +25,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) {
-      setErrorMsg('Please enter a message.');
+      setErrorMsg(t('modals.feedback.err_message'));
       return;
     }
     setSending(true);
@@ -75,7 +77,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
           <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.2rem', color: '#fff' }}>
               <MessageSquare size={20} style={{ color: 'var(--color-primary)' }} />
-              <span style={{ fontWeight: 700 }}>Feedback & Bug Report</span>
+              <span style={{ fontWeight: 700 }}>{t('modals.feedback.title')}</span>
             </h3>
             <button 
               type="button"
@@ -92,15 +94,15 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--color-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-green)' }}>
                 <Check size={24} />
               </div>
-              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>Thank You!</h4>
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>{t('modals.feedback.success_title_short')}</h4>
               <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Your feedback has been submitted successfully. We appreciate your help in making Quantify better!
+                {t('modals.feedback.success_desc_short')}
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                Help us improve Quantify. Report bugs, suggest new features, or ask a question directly to the developer.
+                {t('modals.feedback.desc')}
               </p>
 
               {errorMsg && (
@@ -110,7 +112,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Category</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t('modals.feedback.label_category_short')}</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
@@ -125,20 +127,20 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                     cursor: 'pointer'
                   }}
                 >
-                  <option value="feedback">General Feedback</option>
-                  <option value="bug">Report a Bug</option>
-                  <option value="feature_request">Feature Request</option>
-                  <option value="question">Question / Contact Developer</option>
+                  <option value="feedback">{t('modals.feedback.cat_feedback')}</option>
+                  <option value="bug">{t('modals.feedback.cat_bug')}</option>
+                  <option value="feature_request">{t('modals.feedback.cat_feature')}</option>
+                  <option value="question">{t('modals.feedback.cat_question')}</option>
                 </select>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Contact Email (Optional)</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t('modals.feedback.label_email_opt')}</label>
                 <input 
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={t('modals.feedback.placeholder_email')}
                   style={{
                     padding: '0.55rem',
                     fontSize: '0.82rem',
@@ -152,11 +154,11 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Message</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{t('modals.feedback.label_message')}</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Describe your feedback, request, or details of the bug..."
+                  placeholder={t('modals.feedback.placeholder_message_short')}
                   rows={4}
                   required
                   style={{
@@ -175,7 +177,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
               <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  You can also reach out directly to the developer at: <strong style={{ color: 'var(--color-primary)' }}>dawidns1@gmail.com</strong>
+                  {t('modals.feedback.direct_contact')}
                 </div>
               </div>
 
@@ -185,7 +187,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                   onClick={onClose}
                   style={{ padding: '0.45rem 1.05rem', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                 >
-                  Cancel
+                  {t('modals.common_cancel')}
                 </button>
                 
                 <button 
@@ -205,7 +207,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                     fontWeight: 600
                   }}
                 >
-                  <Send size={14} /> {sending ? 'Submitting...' : 'Send Feedback'}
+                  <Send size={14} /> {sending ? t('modals.feedback.btn_sending') : t('modals.feedback.btn_send')}
                 </button>
               </div>
             </form>

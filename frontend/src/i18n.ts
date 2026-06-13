@@ -16,12 +16,13 @@ i18n
         translation: plTranslation
       }
     },
+    lng: localStorage.getItem('i18nextLng') || 'en',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false // React already escapes values
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       caches: ['localStorage']
     }
   });

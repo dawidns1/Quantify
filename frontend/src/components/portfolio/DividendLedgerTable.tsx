@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, Edit2, Trash2, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DividendLedgerTableProps {
   dividends: any[];
@@ -16,6 +17,7 @@ export function DividendLedgerTable({
   onEditDividendClick,
   onDeleteDividendClick
 }: DividendLedgerTableProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest dividends first
@@ -118,9 +120,9 @@ export function DividendLedgerTable({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Sparkles size={18} className="gradient-text" />
-          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Dividend History Log</h4>
+          <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>{t('calendar.tab_payouts', 'Dividend History Log')}</h4>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
-            {sortedDividends.length} Payments
+            {sortedDividends.length} {t('calendar.payments', 'Payments')}
           </span>
         </div>
 
@@ -130,7 +132,7 @@ export function DividendLedgerTable({
             <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
-              placeholder="Search ticker, account..."
+              placeholder={t('calendar.search_placeholder', 'Search ticker, account...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -157,37 +159,37 @@ export function DividendLedgerTable({
           <thead>
             <tr>
               <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Payment Date {renderSortArrow('date')}
+                {t('calendar.col_date', 'Payment Date')} {renderSortArrow('date')}
               </th>
               <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Ticker {renderSortArrow('symbol')}
+                {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
               </th>
               <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Account {renderSortArrow('account')}
+                {t('ledger.col_account', 'Account')} {renderSortArrow('account')}
               </th>
               <th onClick={() => handleSort('shares')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                Shares {renderSortArrow('shares')}
+                {t('ledger.col_shares', 'Shares')} {renderSortArrow('shares')}
               </th>
               <th onClick={() => handleSort('payout')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                Payout/Share {renderSortArrow('payout')}
+                {t('calendar.col_payout_share', 'Payout/Share')} {renderSortArrow('payout')}
               </th>
               <th onClick={() => handleSort('gross')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                Gross ({baseCurrency}) {renderSortArrow('gross')}
+                {t('metrics.gross', 'Gross')} ({baseCurrency}) {renderSortArrow('gross')}
               </th>
               <th onClick={() => handleSort('net')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                Net ({baseCurrency}) {renderSortArrow('net')}
+                {t('calendar.col_net', 'Net')} ({baseCurrency}) {renderSortArrow('net')}
               </th>
               <th onClick={() => handleSort('type')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                Type {renderSortArrow('type')}
+                {t('ledger.col_type', 'Type')} {renderSortArrow('type')}
               </th>
-              {!isViewer && <th style={{ textAlign: 'right', paddingRight: '1rem' }}>Actions</th>}
+              {!isViewer && <th style={{ textAlign: 'right', paddingRight: '1rem' }}>{t('ledger.col_actions', 'Actions')}</th>}
             </tr>
           </thead>
           <tbody>
             {sortedDividends.length === 0 ? (
               <tr>
                 <td colSpan={isViewer ? 8 : 9} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                  No dividend payments found in this view.
+                  {t('calendar.empty_ledger_state', 'No dividend payments found in this view.')}
                 </td>
               </tr>
             ) : (
@@ -197,15 +199,15 @@ export function DividendLedgerTable({
                 // Style for tags
                 let tagColor = 'rgba(59, 130, 246, 0.1)';
                 let tagTextColor = 'var(--color-primary)';
-                let tagText = 'Auto';
+                let tagText = t('calendar.type_auto', 'Auto');
                 if (div.is_manual) {
                   tagColor = 'rgba(168, 85, 247, 0.1)';
                   tagTextColor = '#a855f7';
-                  tagText = 'Manual';
+                  tagText = t('calendar.type_manual', 'Manual');
                 } else if (div.is_override) {
                   tagColor = 'rgba(234, 179, 8, 0.1)';
                   tagTextColor = '#eab308';
-                  tagText = 'Override';
+                  tagText = t('calendar.type_override', 'Override');
                 }
 
                 return (
@@ -253,7 +255,7 @@ export function DividendLedgerTable({
                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                           <button
                             onClick={() => onEditDividendClick(div)}
-                            title="Edit / Override payout values"
+                            title={t('calendar.action_edit_tooltip', 'Edit / Override payout values')}
                             style={{
                               background: 'transparent',
                               border: 'none',
@@ -279,7 +281,7 @@ export function DividendLedgerTable({
                           </button>
                           <button
                             onClick={() => onDeleteDividendClick(div)}
-                            title={div.is_manual ? 'Delete manual dividend' : 'Delete / Skip this automatic payout'}
+                            title={div.is_manual ? t('calendar.action_delete_manual_tooltip', 'Delete manual dividend') : t('calendar.action_delete_auto_tooltip', 'Delete / Skip this automatic payout')}
                             style={{
                               background: 'transparent',
                               border: 'none',

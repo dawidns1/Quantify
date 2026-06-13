@@ -17,63 +17,79 @@ def get_connection():
     # We add a 30-second timeout to prevent 'database is locked' errors under concurrent load.
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    # Enable WAL mode so readers and writers do not block each other
+    # Enable synchronous=NORMAL for write-efficiency on this connection
     try:
-        conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
     except Exception as e:
-        print(f"[DB] Error setting PRAGMAs: {e}")
+        print(f"[DB] Error setting synchronous pragma: {e}")
     return conn
 
 def init_db():
     conn = get_connection()
-    cursor = conn.cursor()
-    
-    # 1. Table for live prices
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS live_prices (
-        symbol TEXT PRIMARY KEY,
-        live_price REAL,
-        previous_close REAL,
-        company_name TEXT,
-        native_currency TEXT,
-        timezone TEXT,
-        exchange TEXT,
-        last_updated REAL
-    )
-    """)
-    
-    # 2. Table for daily prices
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS daily_prices (
-        symbol TEXT,
-        date TEXT,
-        close REAL,
-        dividend REAL,
-        PRIMARY KEY (symbol, date)
-    )
-    """)
-    
-    # 3. Table for upcoming corporate events
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS upcoming_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        symbol TEXT,
-        event_type TEXT,
-        event_date TEXT,
-        description TEXT,
-        last_div_val REAL,
-        currency TEXT,
-        last_updated REAL
-    )
-    """)
-    
-    # Create indexes for performance
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_prices ON daily_prices (symbol, date)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_upcoming_events ON upcoming_events (symbol)")
-    
-    conn.commit()
-    conn.close()
+    try:
+        # Check current journal mode
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA journal_mode;")
+        row = cursor.fetchone()
+        current_mode = row[0] if row else ""
+        if current_mode.lower() != "wal":
+            # Enable WAL mode persistently on the database file
+            # PRAGMA journal_mode cannot run inside transaction, run on raw connection
+            conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception as e:
+        print(f"[DB] Error setting WAL mode: {e}")
+        
+    try:
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            cursor = conn.cursor()
+            
+            # 1. Table for live prices
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS live_prices (
+                symbol TEXT PRIMARY KEY,
+                live_price REAL,
+                previous_close REAL,
+                company_name TEXT,
+                native_currency TEXT,
+                timezone TEXT,
+                exchange TEXT,
+                last_updated REAL
+            )
+            """)
+            
+            # 2. Table for daily prices
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                symbol TEXT,
+                date TEXT,
+                close REAL,
+                dividend REAL,
+                PRIMARY KEY (symbol, date)
+            )
+            """)
+            
+            # 3. Table for upcoming corporate events
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS upcoming_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT,
+                event_type TEXT,
+                event_date TEXT,
+                description TEXT,
+                last_div_val REAL,
+                currency TEXT,
+                last_updated REAL
+            )
+            """)
+            
+            # Create indexes for performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_prices ON daily_prices (symbol, date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_upcoming_events ON upcoming_events (symbol)")
+    except Exception as e:
+        print(f"[DB] Error initializing database tables: {e}")
+    finally:
+        conn.close()
 
 # Initialize DB on import
 init_db()
@@ -97,30 +113,36 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
 def save_cached_live_price(symbol: str, data: dict):
     with db_write_lock:
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-        INSERT INTO live_prices (symbol, live_price, previous_close, company_name, native_currency, timezone, exchange, last_updated)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(symbol) DO UPDATE SET
-            live_price = excluded.live_price,
-            previous_close = excluded.previous_close,
-            company_name = excluded.company_name,
-            native_currency = excluded.native_currency,
-            timezone = excluded.timezone,
-            exchange = excluded.exchange,
-            last_updated = excluded.last_updated
-        """, (
-            symbol.upper(),
-            data.get("live_price", 0.0),
-            data.get("previous_close", 0.0),
-            data.get("company_name", symbol),
-            data.get("native_currency", "USD"),
-            data.get("timezone", "UTC"),
-            data.get("exchange", ""),
-            time.time()
-        ))
-        conn.commit()
-        conn.close()
+        try:
+            with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                cursor = conn.cursor()
+                cursor.execute("""
+                INSERT INTO live_prices (symbol, live_price, previous_close, company_name, native_currency, timezone, exchange, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol) DO UPDATE SET
+                    live_price = excluded.live_price,
+                    previous_close = excluded.previous_close,
+                    company_name = excluded.company_name,
+                    native_currency = excluded.native_currency,
+                    timezone = excluded.timezone,
+                    exchange = excluded.exchange,
+                    last_updated = excluded.last_updated
+                """, (
+                    symbol.upper(),
+                    data.get("live_price", 0.0),
+                    data.get("previous_close", 0.0),
+                    data.get("company_name", symbol),
+                    data.get("native_currency", "USD"),
+                    data.get("timezone", "UTC"),
+                    data.get("exchange", ""),
+                    time.time()
+                ))
+        except Exception as e:
+            print(f"[DB] Error saving live price for {symbol}: {e}")
+            raise
+        finally:
+            conn.close()
 
 # --- API FOR HISTORICAL DAILY PRICES ---
 
@@ -160,29 +182,34 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
         
     with db_write_lock:
         conn = get_connection()
-        cursor = conn.cursor()
-        
-        symbol_upper = symbol.upper()
-        all_dates = set(prices.keys()).union(dividends.keys())
-        
-        rows_to_insert = []
-        for dt in all_dates:
-            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-            close = prices.get(dt, 0.0)
-            div = dividends.get(dt, 0.0)
-            rows_to_insert.append((symbol_upper, dt_str, close, div))
-            
-        # Bulk insert
-        cursor.executemany("""
-        INSERT INTO daily_prices (symbol, date, close, dividend)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(symbol, date) DO UPDATE SET
-            close = excluded.close,
-            dividend = excluded.dividend
-        """, rows_to_insert)
-        
-        conn.commit()
-        conn.close()
+        try:
+            with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                cursor = conn.cursor()
+                
+                symbol_upper = symbol.upper()
+                all_dates = set(prices.keys()).union(dividends.keys())
+                
+                rows_to_insert = []
+                for dt in all_dates:
+                    dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+                    close = prices.get(dt, 0.0)
+                    div = dividends.get(dt, 0.0)
+                    rows_to_insert.append((symbol_upper, dt_str, close, div))
+                    
+                # Bulk insert
+                cursor.executemany("""
+                INSERT INTO daily_prices (symbol, date, close, dividend)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(symbol, date) DO UPDATE SET
+                    close = excluded.close,
+                    dividend = excluded.dividend
+                """, rows_to_insert)
+        except Exception as e:
+            print(f"[DB] Error saving historical prices for {symbol}: {e}")
+            raise
+        finally:
+            conn.close()
 
 # --- API FOR UPCOMING CORPORATE EVENTS ---
 
@@ -224,37 +251,42 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0) ->
 def save_cached_upcoming_events(symbol: str, events: list):
     with db_write_lock:
         conn = get_connection()
-        cursor = conn.cursor()
-        
-        symbol_upper = symbol.upper()
-        now_ts = time.time()
-        
-        # 1. Clear old events for this symbol
-        cursor.execute("DELETE FROM upcoming_events WHERE symbol = ?", (symbol_upper,))
-        
-        # 2. Insert new events
-        if events:
-            rows = []
-            for ev in events:
-                rows.append((
-                    symbol_upper,
-                    ev.get("type", "Dividend"),
-                    ev.get("date"),
-                    ev.get("description", ""),
-                    ev.get("last_dividend_value", 0.0),
-                    ev.get("currency", "USD"),
-                    now_ts
-                ))
-            cursor.executemany("""
-            INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, rows)
-        else:
-            # Save a dummy row with event_date = None just to mark that we have a cache check (no events found)
-            cursor.execute("""
-            INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
-            VALUES (?, ?, NULL, 'No Events', 0.0, 'USD', ?)
-            """, (symbol_upper, now_ts))
-            
-        conn.commit()
-        conn.close()
+        try:
+            with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                cursor = conn.cursor()
+                
+                symbol_upper = symbol.upper()
+                now_ts = time.time()
+                
+                # 1. Clear old events for this symbol
+                cursor.execute("DELETE FROM upcoming_events WHERE symbol = ?", (symbol_upper,))
+                
+                # 2. Insert new events
+                if events:
+                    rows = []
+                    for ev in events:
+                        rows.append((
+                            symbol_upper,
+                            ev.get("type", "Dividend"),
+                            ev.get("date"),
+                            ev.get("description", ""),
+                            ev.get("last_dividend_value", 0.0),
+                            ev.get("currency", "USD"),
+                            now_ts
+                        ))
+                    cursor.executemany("""
+                    INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, rows)
+                else:
+                    # Save a dummy row with event_date = None just to mark that we have a cache check (no events found)
+                    cursor.execute("""
+                    INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
+                    VALUES (?, ?, NULL, 'No Events', 0.0, 'USD', ?)
+                    """, (symbol_upper, now_ts))
+        except Exception as e:
+            print(f"[DB] Error saving upcoming events for {symbol}: {e}")
+            raise
+        finally:
+            conn.close()

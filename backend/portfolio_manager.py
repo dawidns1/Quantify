@@ -37,6 +37,7 @@ class PortfolioManager:
     _upcoming_events_cache = {}   # symbol -> (timestamp, events)
     
     _live_prefetch_lock = threading.Lock()
+    _historical_prefetch_lock = threading.Lock()
     _symbol_fetch_locks = {}
     _fetch_locks_lock = threading.Lock()
     
@@ -151,19 +152,12 @@ class PortfolioManager:
 
     @classmethod
     def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
-        now = time.time()
-        
-        # Process each symbol under its own lock to avoid concurrent thundering herds for the same symbol
-        for sym in symbols:
-            sym = sym.upper().strip()
+        with cls._historical_prefetch_lock:
+            now = time.time()
+            missing_symbols = []
             
-            with cls._fetch_locks_lock:
-                if sym not in cls._symbol_fetch_locks:
-                    cls._symbol_fetch_locks[sym] = threading.Lock()
-                sym_lock = cls._symbol_fetch_locks[sym]
-                
-            with sym_lock:
-                # Double check cache inside the lock
+            for sym in symbols:
+                sym = sym.upper().strip()
                 cache_entry = cls._historical_stock_cache.get(sym)
                 if cache_entry and cache_entry["start_date"] <= start_dt and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
                     continue
@@ -179,16 +173,25 @@ class PortfolioManager:
                         "dividends": sqlite_divs
                     }
                     continue
+                    
+                missing_symbols.append(sym)
                 
-                # Fetch from provider (Yahoo Finance)
-                try:
-                    print(f"[DEBUG] Fetching historical stock prices from Yahoo Finance for {sym} (start={start_dt})")
-                    prices_dict, dividends_dict = provider.download_historical_stock(sym, start_dt, end_dt)
+            if not missing_symbols:
+                return
+                
+            try:
+                print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {missing_symbols} (start={start_dt})")
+                bulk_prices, bulk_divs = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
+                
+                for sym in missing_symbols:
+                    prices_dict = bulk_prices.get(sym, {})
+                    dividends_dict = bulk_divs.get(sym, {})
                     
                     if prices_dict:
                         actual_start = min(prices_dict.keys())
                         actual_end = max(prices_dict.keys())
                         
+                        cache_entry = cls._historical_stock_cache.get(sym)
                         if cache_entry:
                             merged_prices = {**cache_entry["prices"], **prices_dict}
                             merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
@@ -206,8 +209,8 @@ class PortfolioManager:
                         }
                         # Save to SQLite L2 Cache
                         save_cached_historical_prices(sym, prices_dict, dividends_dict)
-                except Exception as e:
-                    print(f"Error prefetching historical stock prices for {sym}: {e}")
+            except Exception as e:
+                print(f"Error bulk prefetching historical stock prices: {e}")
 
     @classmethod
     def get_cached_live_ticker(cls, symbol: str) -> dict:

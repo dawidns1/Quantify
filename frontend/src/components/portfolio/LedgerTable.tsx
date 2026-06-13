@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { History, Edit2, Trash2, Search } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface LedgerTableProps {
   transactions: Transaction[];
@@ -15,6 +16,7 @@ export function LedgerTable({
   onEditTransaction,
   onDeleteTransaction
 }: LedgerTableProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest transactions first
@@ -126,7 +128,7 @@ export function LedgerTable({
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <h3 className="portfolio-section-title" style={{ margin: 0 }}>Recorded Transactions Ledger</h3>
+        <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('ledger.header', 'Transaction History Ledger')}</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           {/* Search Input */}
           {transactions.length > 0 && (
@@ -134,7 +136,7 @@ export function LedgerTable({
               <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
-                placeholder="Search ledger..." 
+                placeholder={t('ledger.search_placeholder', 'Search ledger...')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input-field"
@@ -149,7 +151,7 @@ export function LedgerTable({
             </div>
           )}
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Total operations recorded: {transactions.length}
+            {t('ledger.total_operations', 'Total operations recorded')}: {transactions.length}
           </span>
         </div>
       </div>
@@ -157,12 +159,12 @@ export function LedgerTable({
       {transactions.length === 0 ? (
         <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           <History size={48} style={{ strokeWidth: 1, marginBottom: '1rem', opacity: 0.5 }} />
-          <p>No transaction history recorded.</p>
-          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Use "Add Transaction" to input buys/sells.</p>
+          <p>{t('ledger.empty_state', 'No transactions logged in this portfolio yet.')}</p>
+          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{t('ledger.empty_state_desc', 'Use "Add Transaction" to input buys/sells.')}</p>
         </div>
       ) : filteredTransactions.length === 0 ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <p>No transactions match your search query.</p>
+          <p>{t('ledger.no_matches', 'No transactions match your search query.')}</p>
         </div>
       ) : (
         <div className="table-wrapper">
@@ -170,31 +172,31 @@ export function LedgerTable({
             <thead>
               <tr>
                 <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Date {renderSortArrow('date')}
+                  {t('ledger.col_date', 'Date')} {renderSortArrow('date')}
                 </th>
                 <th onClick={() => handleSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Action {renderSortArrow('type')}
+                  {t('ledger.col_type', 'Type')} {renderSortArrow('type')}
                 </th>
                 <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Symbol {renderSortArrow('symbol')}
+                  {t('ledger.col_symbol', 'Symbol')} {renderSortArrow('symbol')}
                 </th>
                 <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  Account {renderSortArrow('account')}
+                  {t('ledger.col_account', 'Account')} {renderSortArrow('account')}
                 </th>
                 <th onClick={() => handleSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Shares {renderSortArrow('shares')}
+                  {t('ledger.col_shares', 'Shares')} {renderSortArrow('shares')}
                 </th>
                 <th onClick={() => handleSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Price (Local) {renderSortArrow('price')}
+                  {t('ledger.col_price', 'Price')} (Local) {renderSortArrow('price')}
                 </th>
                 <th onClick={() => handleSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Fees (Local) {renderSortArrow('fees')}
+                  {t('ledger.col_fees', 'Fees')} (Local) {renderSortArrow('fees')}
                 </th>
                 <th onClick={() => handleSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  Total (Local) {renderSortArrow('total')}
+                  {t('ledger.col_value', 'Net Value')} (Local) {renderSortArrow('total')}
                 </th>
                 <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  Actions
+                  {t('ledger.col_actions', 'Actions')}
                 </th>
               </tr>
             </thead>
@@ -207,7 +209,7 @@ export function LedgerTable({
                     </td>
                     <td>
                       <span className={`ledger-type-badge ${tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'}`}>
-                        {tx.type}
+                        {tx.type === 'BUY' ? t('modals.add_tx.type_buy', 'Buy') : t('modals.add_tx.type_sell', 'Sell')}
                       </span>
                     </td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -237,7 +239,7 @@ export function LedgerTable({
                             onClick={() => onEditTransaction(tx)}
                             className="ledger-delete-btn"
                             style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                            title="Edit Transaction"
+                            title={t('modals.add_tx.edit_title', 'Edit Transaction')}
                           >
                             <Edit2 size={13} />
                           </button>
@@ -245,7 +247,7 @@ export function LedgerTable({
                             onClick={() => onDeleteTransaction(tx.id)}
                             className="ledger-delete-btn"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                            title="Delete Transaction"
+                            title={t('ledger.action_delete', 'Delete')}
                           >
                             <Trash2 size={13} />
                           </button>

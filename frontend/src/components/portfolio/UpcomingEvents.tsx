@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Info, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { fetchUpcomingEvents } from '../../services/calculationService';
 import type { Holding } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface UpcomingEventsProps {
   apiBaseUrl: string;
@@ -31,6 +32,7 @@ export function UpcomingEvents({
   onMoveDown,
   onClose
 }: UpcomingEventsProps) {
+  const { t, i18n } = useTranslation();
   const [events, setEvents] = useState<CorporateEvent[]>(() => {
     if (!activePortfolioId) return [];
     const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
@@ -75,7 +77,8 @@ export function UpcomingEvents({
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const activeLang = i18n.language || 'en';
+      return d.toLocaleDateString(activeLang, { month: 'short', day: 'numeric' });
     } catch (e) {
       return dateStr;
     }
@@ -106,7 +109,7 @@ export function UpcomingEvents({
     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> Upcoming Corporate Events
+          <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> {t('events.header', 'Upcoming Corporate Events')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (
@@ -169,7 +172,7 @@ export function UpcomingEvents({
           marginTop: '0.25rem'
         }}>
           <Info size={13} style={{ flexShrink: 0 }} />
-          <span>No upcoming corporate events for your holdings.</span>
+          <span>{t('events.empty_state', 'No upcoming events found for active holdings.')}</span>
         </div>
       ) : (
         <div style={{ 
@@ -237,7 +240,7 @@ export function UpcomingEvents({
                   color: isDividend ? 'var(--color-green)' : '#a78bfa',
                   border: isDividend ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(139, 92, 246, 0.15)'
                 }}>
-                  {isDividend ? 'Dividend' : 'Earnings'}
+                  {isDividend ? t('events.ex_dividend', 'Ex-Dividend') : t('events.earnings_release', 'Earnings Release')}
                 </div>
 
                 {/* Description and Estimated Payout */}
@@ -265,7 +268,7 @@ export function UpcomingEvents({
                       flexShrink: 0,
                       textShadow: '0 0 6px rgba(16, 185, 129, 0.15)'
                     }}>
-                      Est: {formatPayout(event.est_payout, event.currency)}
+                      {t('events.est', 'Est')}: {formatPayout(event.est_payout, event.currency)}
                     </span>
                   )}
                 </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Settings, Check, HelpCircle, Save } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Portfolio } from '../../types/portfolio';
 import { updatePortfolioSettings } from '../../services/supabaseService';
 
@@ -18,6 +19,7 @@ export function SettingsModal({
   portfolioAccounts,
   onSaveSuccess
 }: SettingsModalProps) {
+  const { t } = useTranslation();
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
   const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
@@ -104,7 +106,7 @@ export function SettingsModal({
           <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.2rem' }}>
               <Settings size={20} className="gradient-text" />
-              <span style={{ fontWeight: 700 }}>Portfolio Settings</span>
+              <span style={{ fontWeight: 700 }}>{t('modals.settings.title')}</span>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 400 }}>({portfolio.name})</span>
             </h3>
             <button 
@@ -120,7 +122,7 @@ export function SettingsModal({
             <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)', padding: '0.75rem 1rem', borderRadius: '8px', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <HelpCircle size={16} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
               <div>
-                Configure capital gains tax rates (such as standard Polish 19% Belka tax) or exempt tax status (0% tax) for your brokerage accounts. This controls your dynamic Net Dividend earnings.
+                {t('modals.settings.tax_mapping_desc')}
               </div>
             </div>
 
@@ -132,12 +134,12 @@ export function SettingsModal({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
-                Brokerage Account Tax Mapping
+                {t('modals.settings.tax_mapping_title')}
               </span>
 
               {portfolioAccounts.length === 0 ? (
                 <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  No accounts found in your ledger. Add stock transactions to configure.
+                  {t('modals.settings.no_accounts')}
                 </div>
               ) : (
                 portfolioAccounts.map(accName => {
@@ -174,7 +176,7 @@ export function SettingsModal({
                             onChange={(e) => handleTaxExemptChange(accName, e.target.checked)}
                             style={{ accentColor: 'var(--color-primary)' }}
                           />
-                          Tax-Exempt
+                          {t('modals.settings.tax_exempt')}
                         </label>
 
                         {/* Tax Rate Input */}
@@ -198,7 +200,7 @@ export function SettingsModal({
                               fontFamily: 'monospace'
                             }}
                           />
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>% Tax</span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('modals.settings.tax_suffix')}</span>
                         </div>
                       </div>
                     </div>
@@ -210,14 +212,14 @@ export function SettingsModal({
             {/* Analytics Configuration */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
-                Analytics Configuration
+                {t('modals.settings.analytics_title')}
               </span>
               
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 {/* Risk-Free Rate Input */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '140px' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    Annual Risk-Free Rate (%)
+                    {t('modals.settings.label_risk_free')}
                   </label>
                   <input 
                     type="number"
@@ -242,7 +244,7 @@ export function SettingsModal({
                 {/* Beta Benchmark Select */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '180px' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                    Beta Benchmark
+                    {t('modals.settings.label_beta_bench')}
                   </label>
                   <select
                     disabled={isViewer}
@@ -276,7 +278,7 @@ export function SettingsModal({
                 className="cancel-btn"
                 style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: '6px' }}
               >
-                Cancel
+                {t('modals.common_cancel')}
               </button>
               
               {!isViewer && (
@@ -297,11 +299,11 @@ export function SettingsModal({
                 >
                   {successMsg ? (
                     <>
-                      <Check size={14} /> Saved!
+                      <Check size={14} /> {t('modals.settings.btn_saved')}
                     </>
                   ) : (
                     <>
-                      <Save size={14} /> {saving ? 'Saving...' : 'Save Settings'}
+                      <Save size={14} /> {saving ? t('modals.settings.btn_saving') : t('modals.settings.btn_save')}
                     </>
                   )}
                 </button>

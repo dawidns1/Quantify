@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DividendCalendarProps {
   dividends: any[];
@@ -16,6 +17,7 @@ export function DividendCalendar({
   onMoveDown,
   onClose
 }: DividendCalendarProps) {
+  const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
 
   const formatCurrency = (val: number, currency: string) => {
@@ -41,14 +43,17 @@ export function DividendCalendar({
 
   // Aggregate dividends by month for the selected year
   const monthlyData = useMemo(() => {
-    const months = Array.from({ length: 12 }, (_, i) => ({
-      index: i,
-      name: new Date(2000, i, 1).toLocaleString('default', { month: 'long' }),
-      shortName: new Date(2000, i, 1).toLocaleString('default', { month: 'short' }),
-      totalNet: 0,
-      totalGross: 0,
-      payments: [] as any[]
-    }));
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const activeLang = i18n.language || 'en';
+      return {
+        index: i,
+        name: new Date(2000, i, 1).toLocaleString(activeLang, { month: 'long' }),
+        shortName: new Date(2000, i, 1).toLocaleString(activeLang, { month: 'short' }),
+        totalNet: 0,
+        totalGross: 0,
+        payments: [] as any[]
+      };
+    });
 
     dividends.forEach(d => {
       if (d.date && !d.is_deleted) {
@@ -64,7 +69,7 @@ export function DividendCalendar({
     });
 
     return months;
-  }, [dividends, selectedYear]);
+  }, [dividends, selectedYear, i18n.language]);
 
   // Total for the selected year
   const yearlyTotal = useMemo(() => {
@@ -105,7 +110,7 @@ export function DividendCalendar({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.6rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
           <Calendar size={16} style={{ color: 'var(--color-primary)' }} />
-          <span>Dividend Income Calendar</span>
+          <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -173,13 +178,13 @@ export function DividendCalendar({
         alignItems: 'center'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Yearly Dividend Cash Flow</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
           <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal, baseCurrency)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Avg. Monthly Income</span>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
           <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal / 12, baseCurrency)}
           </span>

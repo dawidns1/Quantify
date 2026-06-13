@@ -3,6 +3,7 @@ import { Plus, Edit2, X, AlertCircle, Info } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { searchAssets } from '../../services/calculationService';
 import { saveTransaction } from '../../services/transactionService';
+import { useTranslation } from 'react-i18next';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export function AddTransactionModal({
   tier,
   onLimitReached
 }: AddTransactionModalProps) {
+  const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
   const [formType, setFormType] = useState<'BUY' | 'SELL'>('BUY');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
@@ -325,11 +327,11 @@ export function AddTransactionModal({
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               {editingTransaction ? (
                 <>
-                  <Edit2 size={20} className="gradient-text" /> Edit Transaction
+                  <Edit2 size={20} className="gradient-text" /> {t('modals.add_tx.edit_title', 'Edit Portfolio Transaction')}
                 </>
               ) : (
                 <>
-                  <Plus size={20} className="gradient-text" /> Add New Transaction
+                  <Plus size={20} className="gradient-text" /> {t('modals.add_tx.title', 'Add Portfolio Transaction')}
                 </>
               )}
             </h3>
@@ -353,7 +355,7 @@ export function AddTransactionModal({
             
             {/* Type selector */}
             <div className="form-group">
-              <label className="form-label">Action Type</label>
+              <label className="form-label">{t('modals.add_tx.action_type', 'Action Type')}</label>
               <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
                 <button
                   type="button"
@@ -372,7 +374,7 @@ export function AddTransactionModal({
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  BUY
+                  {t('modals.add_tx.type_buy', 'BUY')}
                 </button>
                 <button
                   type="button"
@@ -391,18 +393,18 @@ export function AddTransactionModal({
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  SELL
+                  {t('modals.add_tx.type_sell', 'SELL')}
                 </button>
               </div>
             </div>
 
             {/* Ticker Input */}
             <div className="form-group" style={{ position: 'relative' }}>
-              <label className="form-label" htmlFor="form-ticker">Stock Symbol / Ticker</label>
+              <label className="form-label" htmlFor="form-ticker">{t('modals.add_tx.label_symbol', 'Stock Ticker Symbol')}</label>
               <input 
                 id="form-ticker"
                 type="text" 
-                placeholder="e.g. AAPL, CDR.WA, SXR8.DE" 
+                placeholder={t('modals.add_tx.placeholder_symbol', 'e.g. AAPL, MSFT, CDR.WA')} 
                 className="input-field" 
                 value={formSymbol}
                 onChange={(e) => handleTickerChange(e.target.value)}
@@ -462,14 +464,14 @@ export function AddTransactionModal({
               )}
               
               <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Info size={12} /> Suffixes: USA (no suffix), Poland GPW (<code>.WA</code>), Germany Xetra (<code>.DE</code>).
+                <Info size={12} /> {t('modals.add_tx.suffixes_desc', 'Suffixes: USA (no suffix), Poland GPW (.WA), Germany Xetra (.DE).')}
               </small>
             </div>
 
             {/* Grid: Date, Currency, and Account */}
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
-                <label className="form-label" htmlFor="form-date">Date</label>
+                <label className="form-label" htmlFor="form-date">{t('modals.add_tx.label_date', 'Transaction Date')}</label>
                 <input 
                   id="form-date"
                   type="date" 
@@ -482,7 +484,7 @@ export function AddTransactionModal({
               </div>
               
               <div className="form-group">
-                <label className="form-label" htmlFor="form-currency">Currency (Local)</label>
+                <label className="form-label" htmlFor="form-currency">{t('modals.add_tx.label_currency', 'Transaction Currency')}</label>
                 <select 
                   id="form-currency"
                   className="input-field"
@@ -497,11 +499,11 @@ export function AddTransactionModal({
               </div>
 
               <div className="form-group" style={{ position: 'relative' }}>
-                <label className="form-label" htmlFor="form-account">Brokerage Account</label>
+                <label className="form-label" htmlFor="form-account">{t('modals.add_tx.label_account', 'Account Name / Broker')}</label>
                 <input 
                   id="form-account"
                   type="text" 
-                  placeholder="e.g. mBank, IBKR" 
+                  placeholder={t('modals.add_tx.placeholder_account', 'e.g. mBank, XTB, IBKR')} 
                   className="input-field"
                   style={{ width: '100%' }}
                   value={formAccount}
@@ -542,7 +544,7 @@ export function AddTransactionModal({
 
             {/* Price Input Mode Selector */}
             <div className="form-group">
-              <label className="form-label">Price Input Mode</label>
+              <label className="form-label">{t('modals.add_tx.price_input_mode', 'Price Input Mode')}</label>
               <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
                 <button
                   type="button"
@@ -561,7 +563,7 @@ export function AddTransactionModal({
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  Per Share
+                  {t('modals.add_tx.per_share', 'Per Share')}
                 </button>
                 <button
                   type="button"
@@ -580,7 +582,7 @@ export function AddTransactionModal({
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  Total Value
+                  {t('modals.add_tx.total_value', 'Total Value')}
                 </button>
                 {formSymbol.toUpperCase().startsWith('CASH_') && (
                   <button
@@ -600,7 +602,7 @@ export function AddTransactionModal({
                       transition: 'var(--transition-smooth)'
                     }}
                   >
-                    Adjust Balance
+                    {t('modals.add_tx.adjust_balance', 'Adjust Balance')}
                   </button>
                 )}
               </div>
@@ -609,7 +611,7 @@ export function AddTransactionModal({
             {/* Grid: Shares, Price & Fees OR Target Cash Balance */}
             {formSymbol.toUpperCase().startsWith('CASH_') && priceInputMode === 'adjust' ? (
               <div className="form-group">
-                <label className="form-label" htmlFor="form-target-bal">Target Cash Balance ({formCurrency})</label>
+                <label className="form-label" htmlFor="form-target-bal">{t('modals.add_tx.target_cash_balance', 'Target Cash Balance')} ({formCurrency})</label>
                 <div style={{ position: 'relative' }}>
                   <input 
                     id="form-target-bal"
@@ -623,16 +625,16 @@ export function AddTransactionModal({
                     required
                   />
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem', lineHeight: '1.4' }}>
-                    Current Balance in <strong>{formAccount}</strong>: {formatCurrency(getCurrentCashBalance(formSymbol.split('_')[1] || formCurrency, formAccount), formCurrency)}.
+                    {t('modals.add_tx.current_balance_in', 'Current Balance in')} <strong>{formAccount}</strong>: {formatCurrency(getCurrentCashBalance(formSymbol.split('_')[1] || formCurrency, formAccount), formCurrency)}.
                     <br />
-                    Saving will automatically create a transaction for the difference.
+                    {t('modals.add_tx.saving_adjust_desc', 'Saving will automatically create a transaction for the difference.')}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="form-shares">Shares</label>
+                  <label className="form-label" htmlFor="form-shares">{t('modals.add_tx.label_shares', 'Number of Shares')}</label>
                   <input 
                     id="form-shares"
                     type="number" 
@@ -648,7 +650,7 @@ export function AddTransactionModal({
 
                 <div className="form-group">
                   <label className="form-label" htmlFor="form-price">
-                    {priceInputMode === 'per_share' ? 'Price (per share)' : 'Total Price (excl. fees)'}
+                    {priceInputMode === 'per_share' ? t('modals.add_tx.label_price', 'Share Purchase Price') : t('modals.add_tx.total_price_ex_fees', 'Total Price (excl. fees)')}
                   </label>
                   <input 
                     id="form-price"
@@ -664,7 +666,7 @@ export function AddTransactionModal({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="form-fees">Transaction Fees</label>
+                  <label className="form-label" htmlFor="form-fees">{t('modals.add_tx.label_fees', 'Brokerage Fees / Commission')}</label>
                   <input 
                     id="form-fees"
                     type="number" 
@@ -701,11 +703,11 @@ export function AddTransactionModal({
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                         <div>
-                          Gross Total: <strong>{formatCurrency(grossTotal, formCurrency)}</strong>
+                          {t('modals.add_tx.gross_total', 'Gross Total')}: <strong>{formatCurrency(grossTotal, formCurrency)}</strong>
                         </div>
                         {fees > 0 && (
                           <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
-                            {formType === 'BUY' ? 'Total Cash Outlay (incl. fees):' : 'Net Cash Proceeds (after fees):'}{' '}
+                            {formType === 'BUY' ? t('modals.add_tx.total_cash_outlay', 'Total Cash Outlay (incl. fees):') : t('modals.add_tx.net_cash_proceeds', 'Net Cash Proceeds (after fees):')}{' '}
                             <strong>{formatCurrency(netTotal, formCurrency)}</strong>
                           </div>
                         )}
@@ -719,11 +721,11 @@ export function AddTransactionModal({
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                         <div>
-                          Calculated Price Per Share: <strong>{formatCurrency(calculatedPricePerShare, formCurrency)}</strong>
+                          {t('modals.add_tx.calculated_price_per_share', 'Calculated Price Per Share:')} <strong>{formatCurrency(calculatedPricePerShare, formCurrency)}</strong>
                         </div>
                         {fees > 0 && (
                           <div style={{ fontWeight: 600, color: formType === 'BUY' ? 'var(--color-primary)' : 'var(--color-green)' }}>
-                            {formType === 'BUY' ? 'Effective Buy Cost Per Share (incl. fees):' : 'Effective Sell Proceeds Per Share (after fees):'}{' '}
+                            {formType === 'BUY' ? t('modals.add_tx.effective_buy_cost', 'Effective Buy Cost Per Share (incl. fees):') : t('modals.add_tx.effective_sell_proceeds', 'Effective Sell Proceeds Per Share (after fees):')}{' '}
                             <strong>{formatCurrency(adjustedPrice, formCurrency)}</strong>
                           </div>
                         )}
@@ -745,7 +747,7 @@ export function AddTransactionModal({
                   style={{ cursor: 'pointer', width: '14px', height: '14px' }}
                 />
                 <label htmlFor="form-link-cash" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
-                  Link cash balance (auto-adjust cash position for stock transactions)
+                  {t('modals.add_tx.link_cash_desc', 'Link cash balance (auto-adjust cash position for stock transactions)')}
                 </label>
               </div>
             )}
@@ -758,7 +760,7 @@ export function AddTransactionModal({
                 style={{ cursor: 'pointer', background: 'transparent' }}
                 disabled={submitting}
               >
-                Cancel
+                {t('modals.common_cancel', 'Cancel')}
               </button>
               <button
                 type="submit"
@@ -766,8 +768,8 @@ export function AddTransactionModal({
                 disabled={submitting}
               >
                 {submitting 
-                  ? (editingTransaction ? 'Updating...' : 'Adding...') 
-                  : (editingTransaction ? 'Update Transaction' : 'Save Transaction')}
+                  ? (editingTransaction ? t('modals.add_tx.updating', 'Updating...') : t('modals.add_tx.adding', 'Adding...')) 
+                  : (editingTransaction ? t('modals.add_tx.btn_save', 'Save Transaction') : t('modals.add_tx.btn_submit', 'Add Transaction'))}
               </button>
             </div>
           </form>

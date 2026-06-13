@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { PieChart, Coins, Globe, Layers, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface PortfolioAllocationProps {
   holdings: Holding[];
@@ -17,6 +18,8 @@ export function PortfolioAllocation({
   onMoveDown,
   onClose
 }: PortfolioAllocationProps) {
+  const { t } = useTranslation();
+
   // Client-side calculations for allocations
   const { assets, currencies, countries, assetClasses } = useMemo(() => {
     const totalValue = summary.total_value_base || 1; // avoid division by zero
@@ -75,7 +78,7 @@ export function PortfolioAllocation({
     <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <PieChart size={16} className="gradient-text" /> Portfolio Allocation
+          <PieChart size={16} className="gradient-text" /> {t('allocation.title', 'Portfolio Allocation')}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (
@@ -117,20 +120,20 @@ export function PortfolioAllocation({
       {holdings.length === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           <PieChart size={32} style={{ strokeWidth: 1, marginBottom: '0.5rem', opacity: 0.5 }} />
-          <p>Enter data to calculate asset splits.</p>
+          <p>{t('allocation.no_data', 'Add holdings to display allocation weights.')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Asset Classes Allocation */}
           <div>
             <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Layers size={13} /> By Asset Class
+              <Layers size={13} /> {t('allocation.by_class', 'By Asset Class')}
             </h4>
             <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
               {assetClasses.map((item) => (
                 <div key={item.name} className="allocation-item">
                   <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name}</span>
+                    <span>{item.name === 'Equity' ? t('holdings.class_equity', 'Equity') : item.name === 'Cash' ? t('holdings.class_cash', 'Cash') : item.name === 'ETF' ? t('holdings.class_etf', 'ETF') : item.name}</span>
                     <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
                   </div>
                   <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
@@ -153,7 +156,7 @@ export function PortfolioAllocation({
           {/* Asset Tickers Allocation */}
           <div>
             <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <PieChart size={13} /> By Asset Ticker
+              <PieChart size={13} /> {t('allocation.by_ticker', 'By Asset Ticker')}
             </h4>
             <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
               {assets.slice(0, 5).map((item) => (
@@ -177,7 +180,7 @@ export function PortfolioAllocation({
               ))}
               {assets.length > 5 && (
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                  + {assets.length - 5} more tickers
+                  {t('allocation.more_tickers', '+ {{count}} more tickers', { count: assets.length - 5 })}
                 </div>
               )}
             </div>
@@ -186,7 +189,7 @@ export function PortfolioAllocation({
           {/* Currency Allocation */}
           <div>
             <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Coins size={13} /> By Currency
+              <Coins size={13} /> {t('allocation.by_currency', 'By Currency')}
             </h4>
             <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
               {currencies.map((item) => (
@@ -215,13 +218,13 @@ export function PortfolioAllocation({
           {/* Geographic Allocation */}
           <div>
             <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Globe size={13} /> By Market / Exchange
+              <Globe size={13} /> {t('allocation.by_market', 'By Market / Exchange')}
             </h4>
             <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
               {countries.map((item) => (
                 <div key={item.name} className="allocation-item">
                   <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name}</span>
+                    <span>{item.name === 'USA' ? t('allocation.usa', 'USA') : item.name === 'Poland' ? t('allocation.poland', 'Poland') : item.name === 'Germany' ? t('allocation.germany', 'Germany') : item.name}</span>
                     <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
                   </div>
                   <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>

@@ -189,40 +189,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Language Picker */}
-      <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
-          {t('sidebar.language', 'Language')}
-        </div>
-        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
-          {[
-            { code: 'en', label: 'English' },
-            { code: 'pl', label: 'Polski' }
-          ].map((lang) => {
-            const isActive = i18n.language.startsWith(lang.code);
-            return (
-              <button
-                key={lang.code}
-                onClick={() => i18n.changeLanguage(lang.code)}
-                style={{
-                  flex: 1,
-                  background: isActive ? 'var(--color-primary)' : 'transparent',
-                  color: isActive ? 'white' : 'var(--text-secondary)',
-                  border: 'none',
-                  padding: '0.3rem 0',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'var(--transition-smooth)'
-                }}
-              >
-                {lang.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+
 
       {/* View Mode Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
@@ -259,12 +226,12 @@ export function Sidebar({
       </div>
 
       {/* Assets Section */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '0 0.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '0 0.5rem', minHeight: 0 }}>
         <div className="tree-section-header">
-          <span>Assets</span>
+          <span>{t('sidebar.assets', 'Assets')}</span>
           <button 
             onClick={onCreatePortfolio}
-            title="Create New Portfolio"
+            title={t('sidebar.create_portfolio', 'Create Portfolio')}
             style={{
               background: 'transparent',
               border: 'none',
@@ -305,7 +272,7 @@ export function Sidebar({
                 <ChevronDown size={13} />
               </div>
               <Globe size={14} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>All Assets</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{t('sidebar.all_assets', 'All Assets')}</span>
             </div>
 
             {/* Nested Portfolios under All Assets */}
@@ -449,6 +416,53 @@ export function Sidebar({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Footer / Language Selector */}
+      <div style={{ 
+        padding: '0.6rem 0.5rem', 
+        borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '0.5rem',
+        fontSize: '0.7rem',
+        color: 'var(--text-muted)',
+        flexShrink: 0
+      }}>
+        <button 
+          onClick={() => i18n.changeLanguage('en')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: i18n.language.startsWith('en') ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: i18n.language.startsWith('en') ? 'bold' : 'normal',
+            textDecoration: i18n.language.startsWith('en') ? 'underline' : 'none',
+            cursor: 'pointer',
+            padding: '2px 4px',
+            fontSize: '0.7rem',
+            transition: 'var(--transition-smooth)'
+          }}
+        >
+          EN
+        </button>
+        <span style={{ opacity: 0.3 }}>|</span>
+        <button 
+          onClick={() => i18n.changeLanguage('pl')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: i18n.language.startsWith('pl') ? 'var(--text-primary)' : 'var(--text-muted)',
+            fontWeight: i18n.language.startsWith('pl') ? 'bold' : 'normal',
+            textDecoration: i18n.language.startsWith('pl') ? 'underline' : 'none',
+            cursor: 'pointer',
+            padding: '2px 4px',
+            fontSize: '0.7rem',
+            transition: 'var(--transition-smooth)'
+          }}
+        >
+          PL
+        </button>
       </div>
     </aside>
   );

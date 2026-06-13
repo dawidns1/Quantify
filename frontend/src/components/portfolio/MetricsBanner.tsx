@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { Summary } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface MetricsBannerProps {
   summary: Summary;
@@ -14,6 +15,7 @@ export function MetricsBanner({
   onMoveDown,
   onClose
 }: MetricsBannerProps) {
+  const { t } = useTranslation();
   const isProfit = summary.total_gain_base >= 0;
 
   const formatCurrency = (val: number, currency: string) => {
@@ -39,7 +41,7 @@ export function MetricsBanner({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.5rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} /> Portfolio Metrics
+          <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} /> {t('metrics.header', 'Portfolio Metrics')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (
@@ -81,7 +83,7 @@ export function MetricsBanner({
       {/* Net Asset Value (NAV) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
         <span className="metric-title" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-          Net Asset Value (NAV)
+          {t('metrics.nav', 'Net Asset Value (NAV)')}
         </span>
         <span className="metric-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'system-ui, sans-serif' }}>
           {formatCurrency(summary.total_value_base, summary.base_currency)}
@@ -92,7 +94,7 @@ export function MetricsBanner({
         {/* Day Return */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.6rem' }}>
           <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Day Return
+            {t('metrics.day_return', 'Day Return')}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span className={`metric-value ${(summary.total_day_change_base || 0) >= 0 ? 'text-green' : 'text-red'}`} style={{ fontSize: '0.9rem', fontWeight: 700 }}>
@@ -107,7 +109,7 @@ export function MetricsBanner({
         {/* Total Return */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.6rem' }}>
           <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Total Return
+            {t('metrics.total_return', 'Total Return')}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span className={`metric-value ${isProfit ? 'text-green' : 'text-red'}`} style={{ fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -123,7 +125,7 @@ export function MetricsBanner({
         {/* Cost Basis */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.6rem' }}>
           <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Total Cost Basis
+            {t('metrics.cost_basis', 'Total Cost Basis')}
           </span>
           <span className="metric-value" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
             {formatCurrency(summary.total_cost_base, summary.base_currency)}
@@ -133,7 +135,7 @@ export function MetricsBanner({
         {/* Dividends */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.6rem' }}>
           <span className="metric-title" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Dividends
+            {t('metrics.dividends', 'Dividends')}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
             <span className="metric-value text-green" style={{ fontSize: '0.9rem', fontWeight: 700 }}>
@@ -141,7 +143,7 @@ export function MetricsBanner({
             </span>
             {summary.total_dividends_base !== undefined && summary.total_dividends_base > 0 && (
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                Gross: {formatCurrency(summary.total_dividends_base, summary.base_currency)}
+                {t('metrics.gross', 'Gross')}: {formatCurrency(summary.total_dividends_base, summary.base_currency)}
               </span>
             )}
           </div>

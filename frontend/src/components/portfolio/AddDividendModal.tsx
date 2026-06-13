@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Save, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { updatePortfolioSettings } from '../../services/supabaseService';
 
 interface AddDividendModalProps {
@@ -21,6 +22,7 @@ export function AddDividendModal({
   portfolioSettings,
   onSaveSuccess
 }: AddDividendModalProps) {
+  const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formAccount, setFormAccount] = useState('Default');
@@ -63,23 +65,23 @@ export function AddDividendModal({
     const payoutNum = parseFloat(formPayout);
 
     if (!symbol) {
-      setFormError('Ticker symbol is required.');
+      setFormError(t('modals.add_div.err_symbol'));
       return;
     }
     if (!dateStr) {
-      setFormError('Payment date is required.');
+      setFormError(t('modals.add_div.err_date'));
       return;
     }
     if (!account) {
-      setFormError('Account is required.');
+      setFormError(t('modals.add_div.err_account'));
       return;
     }
     if (isNaN(sharesNum) || sharesNum <= 0) {
-      setFormError('Shares must be a positive number.');
+      setFormError(t('modals.add_div.err_shares'));
       return;
     }
     if (isNaN(payoutNum) || payoutNum <= 0) {
-      setFormError('Payout per share must be a positive number.');
+      setFormError(t('modals.add_div.err_payout'));
       return;
     }
 
@@ -170,8 +172,8 @@ export function AddDividendModal({
               <Check size={20} className="gradient-text" />
               <span style={{ fontWeight: 700 }}>
                 {editingDividend 
-                  ? (isOverrideMode ? 'Override Automatic Dividend' : 'Edit Manual Dividend')
-                  : 'Record Manual Dividend'
+                  ? (isOverrideMode ? t('modals.add_div.title_override') : t('modals.add_div.title_edit'))
+                  : t('modals.add_div.title_record')
                 }
               </span>
             </h3>
@@ -195,7 +197,7 @@ export function AddDividendModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {/* Ticker Symbol */}
               <div className="form-group">
-                <label className="form-label">Ticker / Symbol</label>
+                <label className="form-label">{t('modals.add_div.label_symbol')}</label>
                 <input
                   type="text"
                   className="form-input"
@@ -209,7 +211,7 @@ export function AddDividendModal({
 
               {/* Date */}
               <div className="form-group">
-                <label className="form-label">Payment Date</label>
+                <label className="form-label">{t('modals.add_div.label_date')}</label>
                 <input
                   type="date"
                   className="form-input"
@@ -222,7 +224,7 @@ export function AddDividendModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Brokerage Account</label>
+              <label className="form-label">{t('modals.add_div.label_account')}</label>
               {isOverrideMode ? (
                 <input
                   type="text"
@@ -250,7 +252,7 @@ export function AddDividendModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {/* Shares owned */}
               <div className="form-group">
-                <label className="form-label">Shares Owned</label>
+                <label className="form-label">{t('modals.add_div.label_shares')}</label>
                 <input
                   type="number"
                   step="any"
@@ -264,7 +266,7 @@ export function AddDividendModal({
 
               {/* Payout per share */}
               <div className="form-group">
-                <label className="form-label">Gross Payout / Share</label>
+                <label className="form-label">{t('modals.add_div.label_payout')}</label>
                 <input
                   type="number"
                   step="any"
@@ -279,7 +281,7 @@ export function AddDividendModal({
 
             {isOverrideMode && (
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <strong>Note:</strong> You are overriding an automatic dividend entry calculated from Yahoo Finance. Symbol, ex-date, and account fields cannot be changed.
+                {t('modals.add_div.note_override')}
               </div>
             )}
 
@@ -295,7 +297,7 @@ export function AddDividendModal({
                   boxShadow: 'none'
                 }}
               >
-                Cancel
+                {t('modals.common_cancel')}
               </button>
               <button
                 type="submit"
@@ -304,7 +306,7 @@ export function AddDividendModal({
                 style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               >
                 <Save size={14} />
-                {submitting ? 'Saving...' : 'Save Dividend'}
+                {submitting ? t('modals.add_div.btn_saving') : t('modals.add_div.btn_save')}
               </button>
             </div>
           </form>

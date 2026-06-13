@@ -37,6 +37,7 @@ ChartJS.register(
 
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
+import { useTranslation } from 'react-i18next';
 
 import type { Transaction } from '../types/portfolio';
 
@@ -80,6 +81,7 @@ export function PortfolioView({
   signOut
 }: PortfolioViewProps) {
   const { user, session } = useAuth();
+  const { t } = useTranslation();
   const {
     portfolios,
     setPortfolios,
@@ -825,7 +827,7 @@ export function PortfolioView({
               {activePortfolioRole === 'viewer' && activePortfolioId !== 'all' && (
                 <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                   <Lock size={16} style={{ flexShrink: 0 }} />
-                  <span>You have <strong>Read-Only (Viewer)</strong> access to this portfolio. Adding, editing, or deleting transactions is disabled.</span>
+                  <span>{t('dashboard.viewer_readonly_warning', 'You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.')}</span>
                 </div>
               )}
 
@@ -840,9 +842,9 @@ export function PortfolioView({
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1.25rem' }}>
                       <Plus size={30} />
                     </div>
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>Welcome to Quantify!</h3>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>{t('dashboard.empty_title', 'Welcome to Quantify!')}</h3>
                     <p style={{ margin: '0 0 2rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '480px', lineHeight: 1.5 }}>
-                      Your portfolio is currently empty. Get started by adding a transaction manually, or load a sample demo portfolio to immediately explore all advanced charts, dividend tracking, and risk analytics.
+                      {t('dashboard.empty_desc', 'Your portfolio is currently empty. Get started by adding a transaction manually, or load a sample demo portfolio to immediately explore all advanced charts, dividend tracking, and risk analytics.')}
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                       {activePortfolioRole !== 'viewer' && (
@@ -853,7 +855,7 @@ export function PortfolioView({
                             className="glow-btn"
                             style={{ padding: '0.65rem 1.75rem', fontSize: '0.85rem', borderRadius: '8px', cursor: 'pointer', border: 'none', fontWeight: 600 }}
                           >
-                            Add First Transaction
+                            {t('dashboard.btn_add_tx', 'Add First Transaction')}
                           </button>
                           <button 
                             type="button"
@@ -862,13 +864,13 @@ export function PortfolioView({
                             className="cancel-btn"
                             style={{ padding: '0.65rem 1.75rem', fontSize: '0.85rem', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                           >
-                            {loadingDemo ? 'Loading Demo...' : 'Load Demo Portfolio'}
+                            {loadingDemo ? t('dashboard.btn_loading_demo', 'Loading Demo...') : t('dashboard.btn_load_demo', 'Load Demo Portfolio')}
                           </button>
                         </>
                       )}
                       {activePortfolioRole === 'viewer' && (
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          This portfolio is empty and you have read-only access.
+                          {t('dashboard.viewer_empty_warning', 'This portfolio is empty and you have read-only access.')}
                         </div>
                       )}
                     </div>
@@ -981,16 +983,16 @@ export function PortfolioView({
                         marginTop: '0.25rem'
                       }}>
                         <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
-                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> Toggle Dashboard Cards
+                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> {t('dashboard.toggle_cards', 'Toggle Dashboard Cards')}
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                           {[
-                            { id: 'metrics', name: 'Portfolio Metrics' },
-                            { id: 'chart', name: 'Performance Chart' },
-                            { id: 'events', name: 'Upcoming Corporate Events' },
-                            { id: 'allocation', name: 'Portfolio Allocation' },
-                            { id: 'analytics', name: 'Performance & Risk' },
-                            { id: 'dividend_calendar', name: 'Dividend Calendar' }
+                            { id: 'metrics', name: t('metrics.header', 'Portfolio Metrics') },
+                            { id: 'chart', name: t('dashboard.performance_chart', 'Performance Chart') },
+                            { id: 'events', name: t('events.header', 'Upcoming Corporate Events') },
+                            { id: 'allocation', name: t('allocation.title', 'Portfolio Allocation') },
+                            { id: 'analytics', name: t('analytics.header', 'Performance & Risk') },
+                            { id: 'dividend_calendar', name: t('calendar.header', 'Dividend Calendar') }
                           ].map(widget => {
                             const isVisible = widgets.includes(widget.id);
                             return (
@@ -1034,7 +1036,7 @@ export function PortfolioView({
                           transition: 'var(--transition-smooth)'
                         }}
                         onClick={() => setShowWidgetManager(!showWidgetManager)}
-                        title={showWidgetManager ? 'Close Card Customizer' : 'Customize Dashboard Cards'}
+                        title={showWidgetManager ? t('dashboard.close_customizer', 'Close Card Customizer') : t('dashboard.customize_cards', 'Customize Dashboard Cards')}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
                           e.currentTarget.style.transform = 'scale(1.08)';
@@ -1100,10 +1102,10 @@ export function PortfolioView({
             lineHeight: '1.45'
           }}>
             <div>
-              <strong>Disclaimer:</strong> Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.
+              <strong>{t('dashboard.disclaimer_title', 'Disclaimer')}:</strong> {t('dashboard.disclaimer_desc', 'Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.')}
             </div>
             <div>
-              Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.
+              {t('dashboard.disclaimer_market_data', 'Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.')}
             </div>
           </footer>
 
@@ -1219,7 +1221,7 @@ export function PortfolioView({
                       }}
                     >
                       <Plus size={13} />
-                      <span>Add Transaction</span>
+                      <span>{t('dashboard.add_tx_shortcut', 'Add Transaction')}</span>
                     </button>
                   )}
                   {/* Modal Search Bar */}
@@ -1228,7 +1230,7 @@ export function PortfolioView({
                       <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
                       <input 
                         type="text" 
-                        placeholder="Search history..." 
+                        placeholder={t('dashboard.search_history_placeholder', 'Search history...')} 
                         value={modalSearchQuery}
                         onChange={(e) => setModalSearchQuery(e.target.value)}
                         className="input-field"
@@ -1251,7 +1253,7 @@ export function PortfolioView({
                   </button>
                 </div>
               </div>
-
+ 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* Quick Summary Dashboard */}
                 {holdingDetails && (
@@ -1265,25 +1267,25 @@ export function PortfolioView({
                     border: '1px solid rgba(255, 255, 255, 0.05)'
                   }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Shares Owned</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('holdings.col_shares_owned', 'Shares Owned')}</span>
                       <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                         {formatShares(holdingDetails.shares)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avg Cost (Local)</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('holdings.col_avg_cost', 'Avg Cost (Local)')}</span>
                       <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                         {formatCurrency(holdingDetails.avg_cost_local, holdingDetails.currency)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Value</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('metrics.nav', 'Current Value')}</span>
                       <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                         {formatCurrency(holdingDetails.current_value_base, summary.base_currency)}
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Return</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('metrics.total_return', 'Total Return')}</span>
                       <span style={{ 
                         fontSize: '1.2rem', 
                         fontWeight: 700, 
@@ -1303,7 +1305,7 @@ export function PortfolioView({
                 <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-                      Price Performance ({holdingDetails?.currency || 'USD'})
+                      {t('holdings.price_performance', 'Price Performance')} ({holdingDetails?.currency || 'USD'})
                     </span>
                     
                     {/* Modal range selector pills */}
@@ -1335,7 +1337,7 @@ export function PortfolioView({
                   <div style={{ height: '140px', position: 'relative' }}>
                     {loadingDetails ? (
                       <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }} className="pulse">
-                        Loading price details...
+                        {t('holdings.loading_price_details', 'Loading price details...')}
                       </div>
                     ) : modalChartFormatted ? (
                       <Line 
@@ -1344,7 +1346,7 @@ export function PortfolioView({
                       />
                     ) : (
                       <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        No price history available.
+                        {t('holdings.no_price_history', 'No price history available.')}
                       </div>
                     )}
                   </div>
@@ -1359,7 +1361,7 @@ export function PortfolioView({
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
-                    No transactions found for {selectedPositionSymbol}.
+                    {t('holdings.no_tx_found_for', 'No transactions found for')} {selectedPositionSymbol}.
                   </p>
                 ) : (
                   <div style={{ 
@@ -1373,24 +1375,24 @@ export function PortfolioView({
                       <thead>
                         <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
                           <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                            Date {renderModalSortArrow('date')}
+                            {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
                           </th>
                           <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                            Type {renderModalSortArrow('type')}
+                            {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
                           </th>
                           <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                            Shares {renderModalSortArrow('shares')}
+                            {t('ledger.col_shares', 'Shares')} {renderModalSortArrow('shares')}
                           </th>
                           <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                            Price {renderModalSortArrow('price')}
+                            {t('ledger.col_price', 'Price')} {renderModalSortArrow('price')}
                           </th>
                           <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                            Fees {renderModalSortArrow('fees')}
+                            {t('ledger.col_fees', 'Fees')} {renderModalSortArrow('fees')}
                           </th>
                           <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                            Total {renderModalSortArrow('total')}
+                            {t('ledger.col_value', 'Total')} {renderModalSortArrow('total')}
                           </th>
-                          {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center' }}>Actions</th>}
+                          {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center' }}>{t('ledger.col_actions', 'Actions')}</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1403,7 +1405,7 @@ export function PortfolioView({
                               </td>
                               <td>
                                 <span className={`ledger-type-badge ${tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'}`}>
-                                  {tx.type}
+                                  {tx.type === 'BUY' ? t('modals.add_tx.type_buy', 'Buy') : t('modals.add_tx.type_sell', 'Sell')}
                                 </span>
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
@@ -1428,7 +1430,7 @@ export function PortfolioView({
                                       }}
                                       className="ledger-delete-btn"
                                       style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                                      title="Edit Transaction"
+                                      title={t('modals.add_tx.edit_title', 'Edit Transaction')}
                                     >
                                       <Edit2 size={13} />
                                     </button>
@@ -1436,7 +1438,7 @@ export function PortfolioView({
                                       onClick={() => handleDeleteTransaction(tx.id)}
                                       className="ledger-delete-btn"
                                       style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                                      title="Delete Transaction"
+                                      title={t('ledger.action_delete', 'Delete')}
                                     >
                                       <Trash2 size={13} />
                                     </button>
@@ -1466,7 +1468,7 @@ export function PortfolioView({
                       fontSize: '0.85rem'
                     }}
                   >
-                    Close
+                    {t('modals.common_close', 'Close')}
                   </button>
                 </div>
               </div>
@@ -1534,7 +1536,7 @@ export function PortfolioView({
                       width: 'auto'
                     }}
                   >
-                    Cancel
+                    {t('modals.common_cancel', 'Cancel')}
                   </button>
                   <button
                     onClick={() => {
@@ -1557,7 +1559,7 @@ export function PortfolioView({
                       height: 'auto'
                     }}
                   >
-                    Confirm
+                    {t('modals.common_confirm', 'Confirm')}
                   </button>
                 </div>
               </div>
@@ -1585,7 +1587,7 @@ export function PortfolioView({
               }
             }
           }}
-          title={subTab === 'dividends' ? "Record Dividend" : "Add Transaction"}
+          title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
           style={{
             position: 'fixed',
             bottom: '2rem',

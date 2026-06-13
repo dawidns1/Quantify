@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Share2, X, AlertCircle, Users, Shield } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../AuthContext';
 import type { Member } from '../../types/portfolio';
 import { 
@@ -23,6 +24,7 @@ export function ShareModal({
   showCustomConfirm
 }: ShareModalProps) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -62,13 +64,13 @@ export function ShareModal({
 
     const email = inviteEmail.trim().toLowerCase();
     if (!email) {
-      setInviteError("Please enter an email address.");
+      setInviteError(t('modals.share.err_email'));
       return;
     }
 
     try {
       await inviteMemberByEmail(activePortfolioId!, email, inviteRole, members);
-      setInviteSuccess(`Successfully shared with ${email}!`);
+      setInviteSuccess(t('modals.share.success_msg', { email }));
       setInviteEmail('');
       loadMembers();
     } catch (err: any) {
@@ -80,20 +82,20 @@ export function ShareModal({
   // Remove member from portfolio
   const handleRemoveMember = (userId: string) => {
     if (userId === user?.id) {
-      alert("You cannot remove yourself from your own portfolio.");
+      alert(t('modals.share.err_remove_self'));
       return;
     }
     
     showCustomConfirm(
-      "Remove Member",
-      "Are you sure you want to remove this member from this portfolio?",
+      t('modals.share.confirm_remove_title'),
+      t('modals.share.confirm_remove_desc'),
       async () => {
         try {
           await removeMember(activePortfolioId!, userId);
           loadMembers();
         } catch (err: any) {
           console.error('Error removing member:', err);
-          alert('Failed to remove member: ' + err.message);
+          alert(t('modals.share.err_failed_remove') + err.message);
         }
       },
       true
@@ -106,7 +108,7 @@ export function ShareModal({
       loadMembers();
     } catch (err: any) {
       console.error('Error updating member role:', err);
-      alert('Failed to update role: ' + err.message);
+      alert(t('modals.share.err_failed_update') + err.message);
     }
   };
 
@@ -119,7 +121,7 @@ export function ShareModal({
         <div className="modal-content glass-panel" style={{ maxWidth: '480px' }}>
           <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-              <Share2 size={20} className="gradient-text" /> Share Portfolio
+              <Share2 size={20} className="gradient-text" /> {t('modals.share.title')}
             </h3>
             <button 
               onClick={onClose}
@@ -145,11 +147,11 @@ export function ShareModal({
           {/* Invite Form */}
           <form onSubmit={handleInviteUser} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: '1.5rem', borderBottom: '1px solid var(--panel-border)', paddingBottom: '1.5rem' }}>
             <div className="form-group" style={{ flex: 2 }}>
-              <label className="form-label" htmlFor="invite-email">Invite User by Email</label>
+              <label className="form-label" htmlFor="invite-email">{t('modals.share.invite_title')}</label>
               <input 
                 id="invite-email"
                 type="email"
-                placeholder="collaborator@example.com"
+                placeholder={t('modals.share.placeholder_email')}
                 className="input-field"
                 style={{ width: '100%' }}
                 value={inviteEmail}
@@ -159,7 +161,7 @@ export function ShareModal({
             </div>
 
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label" htmlFor="invite-role">Access Role</label>
+              <label className="form-label" htmlFor="invite-role">{t('modals.share.label_role')}</label>
               <select
                 id="invite-role"
                 className="input-field"
@@ -167,25 +169,25 @@ export function ShareModal({
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
               >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
+                <option value="viewer">{t('modals.share.role_viewer')}</option>
+                <option value="editor">{t('modals.share.role_editor')}</option>
               </select>
             </div>
 
             <button type="submit" className="glow-btn" style={{ padding: '0.55rem 1rem', height: '38px', borderRadius: '6px' }}>
-              Invite
+              {t('modals.share.invite_btn')}
             </button>
           </form>
 
           {/* Members List */}
           <div>
             <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Users size={16} /> Active Portfolio Members ({members.length})
+              <Users size={16} /> {t('modals.share.active_members')} ({members.length})
             </h4>
             
             {loadingMembers ? (
               <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }} className="pulse">
-                Loading members list...
+                {t('modals.share.loading_members')}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '220px', overflowY: 'auto', paddingRight: '4px' }}>
@@ -193,10 +195,10 @@ export function ShareModal({
                   <div key={member.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--panel-border)', borderRadius: '6px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                       <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={member.email}>
-                        {member.email} {member.user_id === user?.id && <span style={{ color: 'var(--color-primary)', fontSize: '0.75rem' }}>(You)</span>}
+                        {member.email} {member.user_id === user?.id && <span style={{ color: 'var(--color-primary)', fontSize: '0.75rem' }}>{t('modals.share.you')}</span>}
                       </span>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Shield size={10} /> {member.role.toUpperCase()}
+                        <Shield size={10} /> {member.role === 'owner' ? t('modals.share.role_owner').toUpperCase() : member.role === 'editor' ? t('modals.share.role_editor').toUpperCase() : t('modals.share.role_viewer').toUpperCase()}
                       </span>
                     </div>
 
@@ -217,8 +219,8 @@ export function ShareModal({
                           value={member.role}
                           onChange={(e) => handleChangeMemberRole(member.user_id, e.target.value as 'editor' | 'viewer')}
                         >
-                          <option value="viewer">Viewer</option>
-                          <option value="editor">Editor</option>
+                          <option value="viewer">{t('modals.share.role_viewer')}</option>
+                          <option value="editor">{t('modals.share.role_editor')}</option>
                         </select>
 
                         {/* Remove button */}
@@ -234,7 +236,7 @@ export function ShareModal({
                             alignItems: 'center',
                             justifyContent: 'center'
                           }}
-                          title="Remove Member"
+                          title={t('modals.share.confirm_remove_title')}
                         >
                           <X size={14} />
                         </button>

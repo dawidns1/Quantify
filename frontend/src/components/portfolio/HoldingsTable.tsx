@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Eye, Briefcase } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -17,6 +18,8 @@ export function HoldingsTable({
   onQuickAction,
   onSelectPositionSymbol
 }: HoldingsTableProps) {
+  const { t } = useTranslation();
+
   // Sorting states
   const [holdingsSortField, setHoldingsSortField] = useState<string>(() => {
     return localStorage.getItem('portfolio_holdings_sort_field') || 'symbol';
@@ -87,10 +90,10 @@ export function HoldingsTable({
     renderCell: (h: Holding, baseCurrency: string) => React.ReactNode;
   }> = {
     name: {
-      label: 'Company Name',
+      label: t('holdings.col_name', 'Company Name'),
       sortField: 'name',
       align: 'left',
-      renderHeader: () => 'Company Name',
+      renderHeader: () => t('holdings.col_name', 'Company Name'),
       renderCell: (h) => (
         <span style={{ color: 'var(--text-secondary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={h.name}>
           {h.name}
@@ -98,10 +101,10 @@ export function HoldingsTable({
       )
     },
     sparkline: {
-      label: 'Trend',
+      label: t('holdings.col_trend', 'Trend'),
       sortField: 'symbol',
       align: 'center',
-      renderHeader: () => 'Trend (15d)',
+      renderHeader: () => t('holdings.trend_days', 'Trend (15d)'),
       renderCell: (h) => {
         if (!h.sparkline_prices || h.sparkline_prices.length < 2) {
           return <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>;
@@ -121,11 +124,11 @@ export function HoldingsTable({
           const y = padding + (1 - (price - min) / range) * (height - padding * 2);
           return `${x.toFixed(1)},${y.toFixed(1)}`;
         }).join(' ');
-
+ 
         const isUp = prices[prices.length - 1] >= prices[0];
         const color = isUp ? 'var(--color-green)' : 'var(--color-red)';
         const glowId = `sparkline-glow-${h.symbol.replace(/[^a-zA-Z0-9]/g, '')}`;
-
+ 
         return (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <svg width={width} height={height} style={{ overflow: 'visible' }}>
@@ -165,49 +168,49 @@ export function HoldingsTable({
       }
     },
     shares: {
-      label: 'Shares Owned',
+      label: t('holdings.col_shares_owned', 'Shares Owned'),
       sortField: 'shares',
       align: 'right',
-      renderHeader: () => 'Shares',
+      renderHeader: () => t('holdings.col_shares', 'Shares'),
       renderCell: (h) => formatShares(h.shares)
     },
     avg_cost: {
-      label: 'Average Cost',
+      label: t('holdings.col_avg_cost', 'Average Cost'),
       sortField: 'avg_cost_local',
       align: 'right',
-      renderHeader: () => 'Avg Cost',
+      renderHeader: () => t('holdings.col_avg_price', 'Avg Price'),
       renderCell: (h) => formatCurrency(h.avg_cost_local, h.currency)
     },
     price: {
-      label: 'Local Price',
+      label: t('holdings.col_local_price', 'Local Price'),
       sortField: 'current_price_local',
       align: 'right',
-      renderHeader: () => 'Price',
+      renderHeader: () => t('holdings.col_cur_price', 'Price'),
       renderCell: (h) => formatCurrency(h.current_price_local, h.currency)
     },
     cost: {
-      label: 'Cost Basis',
+      label: t('holdings.col_cost_basis', 'Cost Basis'),
       sortField: 'cost_basis_base',
       align: 'right',
-      renderHeader: (baseCurrency) => `Cost (${baseCurrency})`,
+      renderHeader: (baseCurrency) => `${t('holdings.col_cost_basis', 'Cost Basis')} (${baseCurrency})`,
       renderCell: (h, baseCurrency) => formatCurrency(h.cost_basis_base, baseCurrency)
     },
     dividends: {
-      label: 'Dividends Net',
+      label: t('holdings.col_dividends_net', 'Dividends Net'),
       sortField: 'dividends_net_base',
       align: 'right',
-      renderHeader: () => 'Dividends',
+      renderHeader: () => t('metrics.dividends', 'Dividends'),
       renderCell: (h, baseCurrency) => (
-        <span title={`Gross: ${formatCurrency(h.dividends_base || 0, baseCurrency)} (based on settings tax)`} style={{ color: 'var(--color-green)' }}>
+        <span title={`${t('metrics.gross', 'Gross')}: ${formatCurrency(h.dividends_base || 0, baseCurrency)}`} style={{ color: 'var(--color-green)' }}>
           {formatCurrency(h.dividends_net_base || 0, baseCurrency)}
         </span>
       )
     },
     day_change: {
-      label: 'Day Change',
+      label: t('holdings.col_day_change', 'Day Change'),
       sortField: 'day_change_percent',
       align: 'right',
-      renderHeader: () => 'Day Change',
+      renderHeader: () => t('holdings.col_day_change', 'Day Change'),
       renderCell: (h, baseCurrency) => {
         return h.day_change_percent !== undefined ? (
           <>
@@ -224,21 +227,21 @@ export function HoldingsTable({
       }
     },
     asset_class: {
-      label: 'Asset Class',
+      label: t('holdings.col_asset_class', 'Asset Class'),
       sortField: 'asset_class',
       align: 'left',
-      renderHeader: () => 'Class',
+      renderHeader: () => t('holdings.col_asset_class', 'Class'),
       renderCell: (h) => (
         <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-          {h.asset_class || 'Equity'}
+          {h.asset_class === 'Cash' ? t('holdings.class_cash', 'Cash') : (h.asset_class || t('holdings.class_equity', 'Equity'))}
         </span>
       )
     },
     weight: {
-      label: 'Weight',
+      label: t('holdings.col_weight', 'Weight'),
       sortField: 'current_value_base',
       align: 'right',
-      renderHeader: () => 'Weight',
+      renderHeader: () => t('holdings.col_weight', 'Weight'),
       renderCell: (h) => {
         const total = summary.total_value_base || 1;
         const wt = (h.current_value_base / total) * 100;
@@ -246,44 +249,44 @@ export function HoldingsTable({
       }
     },
     fx_rate: {
-      label: 'FX Rate',
+      label: t('holdings.col_fx_rate', 'FX Rate'),
       sortField: 'fx_rate',
       align: 'right',
-      renderHeader: () => 'FX Rate',
+      renderHeader: () => t('holdings.col_fx_rate', 'FX Rate'),
       renderCell: (h) => <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{h.fx_rate?.toFixed(4) || '1.0000'}</span>
     }
   };
 
   const columnGroups = [
     {
-      name: 'Basic Info',
+      name: t('holdings.group_basic', 'Basic Info'),
       items: [
-        { id: 'name', label: 'Company Name' },
-        { id: 'asset_class', label: 'Asset Class' },
-        { id: 'sparkline', label: 'Trend' }
+        { id: 'name', label: t('holdings.col_name', 'Company Name') },
+        { id: 'asset_class', label: t('holdings.col_asset_class', 'Asset Class') },
+        { id: 'sparkline', label: t('holdings.col_trend', 'Trend') }
       ]
     },
     {
-      name: 'Position Info',
+      name: t('holdings.group_position', 'Position Info'),
       items: [
-        { id: 'shares', label: 'Shares Owned' },
-        { id: 'weight', label: 'Weight' }
+        { id: 'shares', label: t('holdings.col_shares_owned', 'Shares Owned') },
+        { id: 'weight', label: t('holdings.col_weight', 'Weight') }
       ]
     },
     {
-      name: 'Valuation',
+      name: t('holdings.group_valuation', 'Valuation'),
       items: [
-        { id: 'price', label: 'Local Price' },
-        { id: 'avg_cost', label: 'Average Cost' },
-        { id: 'cost', label: 'Cost Basis' },
-        { id: 'fx_rate', label: 'FX Rate' }
+        { id: 'price', label: t('holdings.col_local_price', 'Local Price') },
+        { id: 'avg_cost', label: t('holdings.col_avg_cost', 'Average Cost') },
+        { id: 'cost', label: t('holdings.col_cost_basis', 'Cost Basis') },
+        { id: 'fx_rate', label: t('holdings.col_fx_rate', 'FX Rate') }
       ]
     },
     {
-      name: 'Returns',
+      name: t('holdings.group_returns', 'Returns'),
       items: [
-        { id: 'day_change', label: 'Day Change' },
-        { id: 'dividends', label: 'Dividends Net' }
+        { id: 'day_change', label: t('holdings.col_day_change', 'Day Change') },
+        { id: 'dividends', label: t('holdings.col_dividends_net', 'Dividends Net') }
       ]
     }
   ];
@@ -359,7 +362,7 @@ export function HoldingsTable({
   return (
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 className="portfolio-section-title" style={{ margin: 0 }}>Holding Asset Summary</h3>
+        <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
         <button 
           className="glow-btn"
           style={{ 
@@ -375,7 +378,7 @@ export function HoldingsTable({
           }}
           onClick={() => setShowColumnPicker(!showColumnPicker)}
         >
-          <Eye size={14} /> Customize Columns
+          <Eye size={14} /> {t('holdings.btn_customize_cols', 'Customize Columns')}
         </button>
       </div>
 
@@ -390,8 +393,8 @@ export function HoldingsTable({
           gap: '1rem' 
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>Configure Portfolio Columns</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ticker, Current Value, Gain/Loss & Actions are always visible</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('holdings.config_columns', 'Configure Portfolio Columns')}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('holdings.config_columns_desc', 'Ticker, Current Value, Gain/Loss & Actions are always visible')}</span>
           </div>
           
           {/* Grouped checkboxes */}
@@ -425,11 +428,11 @@ export function HoldingsTable({
           {/* Active column reordering */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '0.75rem' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
-              Active Columns Order (Reorder with Arrow keys)
+              {t('holdings.active_order', 'Active Columns Order (Reorder with Arrow keys)')}
             </span>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Ticker (Fixed)
+                {t('holdings.ticker_fixed', 'Ticker (Fixed)')}
               </div>
               
               {visibleColumns.map((colId, idx) => {
@@ -491,10 +494,10 @@ export function HoldingsTable({
               })}
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Current (Fixed)
+                {t('holdings.current_fixed', 'Current (Fixed)')}
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Gain/Loss (Fixed)
+                {t('holdings.gain_loss_fixed', 'Gain/Loss (Fixed)')}
               </div>
             </div>
           </div>
@@ -504,8 +507,8 @@ export function HoldingsTable({
       {holdings.length === 0 ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           <Briefcase size={48} style={{ strokeWidth: 1, marginBottom: '1rem', opacity: 0.5 }} />
-          <p>No holdings found in your portfolio.</p>
-          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Click "Add Transaction" below to register purchases.</p>
+          <p>{t('holdings.empty_state', 'No holdings found. Add your first transaction to get started!')}</p>
+          <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{t('holdings.empty_state_desc', 'Click "Add Transaction" below to register purchases.')}</p>
         </div>
       ) : (
         <div className="table-wrapper">
@@ -513,7 +516,7 @@ export function HoldingsTable({
             <thead>
               <tr>
                 <th onClick={() => handleHoldingsSort('symbol')} style={{ userSelect: 'none' }}>
-                  Ticker {renderSortArrow('symbol')}
+                  {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
                 </th>
                 
                 {/* Dynamically render headers */}
@@ -535,13 +538,13 @@ export function HoldingsTable({
                 })}
 
                 <th onClick={() => handleHoldingsSort('current_value_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                  Current ({summary.base_currency}) {renderSortArrow('current_value_base')}
+                  {t('holdings.col_current', 'Current')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
                 </th>
                 <th onClick={() => handleHoldingsSort('gain_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
-                  Gain/Loss {renderSortArrow('gain_base')}
+                  {t('holdings.col_gain_loss', 'Gain/Loss')} {renderSortArrow('gain_base')}
                 </th>
                 <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  Actions
+                  {t('holdings.col_actions', 'Actions')}
                 </th>
               </tr>
             </thead>
@@ -627,14 +630,14 @@ export function HoldingsTable({
                           <button 
                             className="holding-action-btn buy"
                             onClick={() => onQuickAction(h.symbol, 'BUY')}
-                            title={h.symbol.startsWith('CASH_') ? `Deposit ${h.currency}` : `Buy more ${h.symbol}`}
+                            title={h.symbol.startsWith('CASH_') ? `${t('holdings.action_deposit', 'Deposit')} ${h.currency}` : `${t('holdings.action_buy_more', 'Buy more')} ${h.symbol}`}
                           >
                             +
                           </button>
                           <button 
                             className="holding-action-btn sell"
                             onClick={() => onQuickAction(h.symbol, 'SELL')}
-                            title={h.symbol.startsWith('CASH_') ? `Withdraw ${h.currency}` : `Sell ${h.symbol}`}
+                            title={h.symbol.startsWith('CASH_') ? `${t('holdings.action_withdraw', 'Withdraw')} ${h.currency}` : `${t('holdings.action_sell', 'Sell')} ${h.symbol}`}
                           >
                             -
                           </button>
