@@ -29,6 +29,67 @@ export function PortfolioAnalytics({
     return 'rgba(255, 255, 255, 0.04)'; // low/neutral
   };
 
+  const getCorrelationConclusions = (matrix: Record<string, Record<string, number>>) => {
+    const keys = Object.keys(matrix);
+    if (keys.length < 2) return null;
+
+    let sum = 0;
+    let count = 0;
+    let maxVal = -2;
+    let maxPair = ['', ''];
+    let minVal = 2;
+    let minPair = ['', ''];
+
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const row = keys[i];
+        const col = keys[j];
+        const val = matrix[row]?.[col];
+        if (val !== undefined && !isNaN(val)) {
+          sum += val;
+          count++;
+          if (val > maxVal) {
+            maxVal = val;
+            maxPair = [row, col];
+          }
+          if (val < minVal) {
+            minVal = val;
+            minPair = [row, col];
+          }
+        }
+      }
+    }
+
+    if (count === 0) return null;
+
+    const avg = sum / count;
+    let avgType = 'Neutral';
+    let avgColor = 'var(--text-secondary)';
+    if (avg > 0.7) {
+      avgType = 'High (Low Diversification)';
+      avgColor = 'hsl(350, 70%, 60%)'; // red
+    } else if (avg > 0.3) {
+      avgType = 'Moderate (Decent Diversification)';
+      avgColor = 'hsl(45, 90%, 65%)'; // yellow
+    } else if (avg > -0.1) {
+      avgType = 'Low (Strong Diversification)';
+      avgColor = 'hsl(142, 70%, 55%)'; // green
+    } else {
+      avgType = 'Negative (Hedging Effects)';
+      avgColor = 'hsl(142, 70%, 55%)'; // green
+    }
+
+    return {
+      avg,
+      avgType,
+      avgColor,
+      maxVal,
+      maxPair,
+      minVal,
+      minPair
+    };
+  };
+
   return (
     <div className="glass-panel" style={{
       padding: '1rem',
@@ -136,12 +197,16 @@ export function PortfolioAnalytics({
                 Holdings Correlation Heatmap
               </span>
               
-              <div style={{ 
-                overflowX: 'auto', 
-                border: '1px solid rgba(255,255,255,0.05)',
-                borderRadius: '8px', 
-                background: 'rgba(0,0,0,0.1)'
-              }}>
+              <div 
+                className="custom-scrollbar"
+                style={{ 
+                  overflowX: 'auto', 
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  borderRadius: '8px', 
+                  background: 'rgba(0,0,0,0.1)',
+                  paddingBottom: '2px'
+                }}
+              >
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem', fontFamily: 'monospace' }}>
                   <thead>
                     <tr>
@@ -183,6 +248,48 @@ export function PortfolioAnalytics({
                   </tbody>
                 </table>
               </div>
+
+              {/* Dynamic Insights */}
+              {(() => {
+                const insights = getCorrelationConclusions(analytics.correlation_matrix);
+                if (!insights) return null;
+                return (
+                  <div style={{
+                    marginTop: '0.4rem',
+                    padding: '0.5rem 0.65rem',
+                    background: 'rgba(255,255,255,0.015)',
+                    border: '1px solid rgba(255,255,255,0.03)',
+                    borderRadius: '8px',
+                    fontSize: '0.65rem',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.3rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Average Correlation:</span>
+                      <span style={{ fontWeight: 700, color: insights.avgColor }}>
+                        {insights.avg.toFixed(2)} ({insights.avgType})
+                      </span>
+                    </div>
+                    {insights.maxVal > 0.7 && (
+                      <div style={{ color: 'hsl(350, 70%, 65%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                        <span>⚠️</span>
+                        <span><strong>Concentration risk:</strong> {insights.maxPair[0]} & {insights.maxPair[1]} move in lockstep ({insights.maxVal.toFixed(2)}).</span>
+                      </div>
+                    )}
+                    {insights.minVal < 0.3 && (
+                      <div style={{ color: 'hsl(142, 70%, 55%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                        <span>✓</span>
+                        <span><strong>Diversification:</strong> {insights.minPair[0]} & {insights.minPair[1]} are uncorrelated/hedged ({insights.minVal.toFixed(2)}).</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.2rem', marginTop: '0.1rem' }}>
+                      Range: <strong>+1.0</strong> (moves in lockstep), <strong>0.0</strong> (uncorrelated/diversified), <strong>-1.0</strong> (moves in opposite directions/hedges).
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

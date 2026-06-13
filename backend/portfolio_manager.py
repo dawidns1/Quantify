@@ -1560,10 +1560,23 @@ class PortfolioManager:
         else:
             txs_cf = transactions
             
-        # 3. Calculate cash flows in base currency
+        # 3. Calculate cash flows in base currency for XIRR
         cf_by_date = {}
+        symbol_txs = {}
         for tx in txs_cf:
             try:
+                sym = tx["symbol"].upper().strip()
+                if not sym.startswith("CASH_"):
+                    symbol_txs.setdefault(sym, []).append(tx)
+                    
+                is_cash = sym.startswith("CASH_")
+                # If link_cash is True, stock BUY/SELL are internal reallocations, not external cash flows
+                if link_cash and not is_cash:
+                    continue
+                # If link_cash is False, CASH_* are ignored
+                if not link_cash and is_cash:
+                    continue
+                    
                 tx_dt = datetime.strptime(tx["date"], "%Y-%m-%d").date()
                 tx_curr = tx["currency"].upper().strip()
                 
@@ -1588,68 +1601,22 @@ class PortfolioManager:
                 pass
                 
         # 4. Integrate dividends as positive cash flows
-        symbol_txs = {}
-        for tx in txs_cf:
-            sym = tx["symbol"].upper().strip()
-            if not sym.startswith("CASH_"):
-                symbol_txs.setdefault(sym, []).append(tx)
-                
-        ticker_info_tmp = {}
-        for symbol in symbol_txs.keys():
-            info = cls.get_cached_live_ticker(symbol)
-            ticker_info_tmp[symbol] = {
-                "live_price": info["live_price"],
-                "company_name": info["company_name"],
-                "native_currency": info["native_currency"].upper().strip(),
-                "asset_class": info.get("asset_class", "Equity"),
-                "previous_close": info.get("previous_close", 0.0),
-                "timezone": info.get("timezone", "UTC"),
-                "exchange": info.get("exchange", "")
-            }
+        # Note: Dividends are kept inside the portfolio (added to NAV/cash), so they are not external cash flows.
+        # We do not add them to cf_by_date or daily_cfs.
+        
+        # Build daily cash flows for TWR (negating signs: BUY becomes positive/deposit, SELL becomes negative/withdrawal)
+        daily_cfs = {}
+        for dt, val in cf_by_date.items():
+            dt_str = dt.strftime("%Y-%m-%d")
+            daily_cfs[dt_str] = -val
             
-        fx_rates = {base_currency: 1.0}
-        unique_currencies = {base_currency}
-        for tx in txs_cf:
-            unique_currencies.add(tx["currency"].upper().strip())
-        for curr in unique_currencies:
-            if curr != base_currency:
-                pair = f"{curr}{base_currency}=X"
-                fx_rates[curr] = cls.get_cached_live_fx(pair)
-                
-        sorted_txs = sorted(txs_cf, key=lambda x: x.get("date", ""))
-        try:
-            div_list = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info_tmp, base_currency, fx_rates, portfolio_settings)
-            for div in div_list:
-                if div.get("is_deleted"):
-                    continue
-                div_dt_str = div.get("date")
-                if div_dt_str:
-                    try:
-                        div_dt = datetime.strptime(div_dt_str.split("T")[0], "%Y-%m-%d").date()
-                        payout_base = float(div.get("payout_net_base") or div.get("payout_base") or 0.0)
-                        cf_by_date[div_dt] = cf_by_date.get(div_dt, 0.0) + payout_base
-                    except:
-                        pass
-        except Exception as div_err:
-            print(f"[AnalyticsEngine] Error parsing dividends: {div_err}")
-            
-        # 5. Add current NAV as final positive cash flow on today
+        # 5. Add current NAV as final positive cash flow on today for XIRR
         today = date.today()
         last_nav = hist_perf["nav"][-1]
         cf_by_date[today] = cf_by_date.get(today, 0.0) + last_nav
         
         # Build Cash flows list for XIRR
         cash_flows_list = [(dt, val) for dt, val in cf_by_date.items()]
-        
-        # Build daily cash flows for TWR
-        daily_cfs = {}
-        for dt, val in cf_by_date.items():
-            dt_str = dt.strftime("%Y-%m-%d")
-            daily_cfs[dt_str] = val
-        # Subtract the current NAV valuation component from TWR cash flow adjustments
-        today_str = today.strftime("%Y-%m-%d")
-        if today_str in daily_cfs:
-            daily_cfs[today_str] -= last_nav
             
         # 6. Run Calculations
         mwr = calculate_xirr(cash_flows_list)
