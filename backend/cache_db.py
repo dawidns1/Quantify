@@ -1,7 +1,10 @@
 import os
 import sqlite3
 import time
+import threading
 from datetime import datetime, date
+
+db_write_lock = threading.Lock()
 
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(DB_DIR), "backend", "data")
@@ -92,31 +95,32 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
     return None
 
 def save_cached_live_price(symbol: str, data: dict):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO live_prices (symbol, live_price, previous_close, company_name, native_currency, timezone, exchange, last_updated)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(symbol) DO UPDATE SET
-        live_price = excluded.live_price,
-        previous_close = excluded.previous_close,
-        company_name = excluded.company_name,
-        native_currency = excluded.native_currency,
-        timezone = excluded.timezone,
-        exchange = excluded.exchange,
-        last_updated = excluded.last_updated
-    """, (
-        symbol.upper(),
-        data.get("live_price", 0.0),
-        data.get("previous_close", 0.0),
-        data.get("company_name", symbol),
-        data.get("native_currency", "USD"),
-        data.get("timezone", "UTC"),
-        data.get("exchange", ""),
-        time.time()
-    ))
-    conn.commit()
-    conn.close()
+    with db_write_lock:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO live_prices (symbol, live_price, previous_close, company_name, native_currency, timezone, exchange, last_updated)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(symbol) DO UPDATE SET
+            live_price = excluded.live_price,
+            previous_close = excluded.previous_close,
+            company_name = excluded.company_name,
+            native_currency = excluded.native_currency,
+            timezone = excluded.timezone,
+            exchange = excluded.exchange,
+            last_updated = excluded.last_updated
+        """, (
+            symbol.upper(),
+            data.get("live_price", 0.0),
+            data.get("previous_close", 0.0),
+            data.get("company_name", symbol),
+            data.get("native_currency", "USD"),
+            data.get("timezone", "UTC"),
+            data.get("exchange", ""),
+            time.time()
+        ))
+        conn.commit()
+        conn.close()
 
 # --- API FOR HISTORICAL DAILY PRICES ---
 
@@ -154,30 +158,31 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
     if not prices:
         return
         
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    symbol_upper = symbol.upper()
-    all_dates = set(prices.keys()).union(dividends.keys())
-    
-    rows_to_insert = []
-    for dt in all_dates:
-        dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-        close = prices.get(dt, 0.0)
-        div = dividends.get(dt, 0.0)
-        rows_to_insert.append((symbol_upper, dt_str, close, div))
+    with db_write_lock:
+        conn = get_connection()
+        cursor = conn.cursor()
         
-    # Bulk insert
-    cursor.executemany("""
-    INSERT INTO daily_prices (symbol, date, close, dividend)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(symbol, date) DO UPDATE SET
-        close = excluded.close,
-        dividend = excluded.dividend
-    """, rows_to_insert)
-    
-    conn.commit()
-    conn.close()
+        symbol_upper = symbol.upper()
+        all_dates = set(prices.keys()).union(dividends.keys())
+        
+        rows_to_insert = []
+        for dt in all_dates:
+            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+            close = prices.get(dt, 0.0)
+            div = dividends.get(dt, 0.0)
+            rows_to_insert.append((symbol_upper, dt_str, close, div))
+            
+        # Bulk insert
+        cursor.executemany("""
+        INSERT INTO daily_prices (symbol, date, close, dividend)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(symbol, date) DO UPDATE SET
+            close = excluded.close,
+            dividend = excluded.dividend
+        """, rows_to_insert)
+        
+        conn.commit()
+        conn.close()
 
 # --- API FOR UPCOMING CORPORATE EVENTS ---
 
@@ -217,38 +222,39 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0) ->
     return events
 
 def save_cached_upcoming_events(symbol: str, events: list):
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    symbol_upper = symbol.upper()
-    now_ts = time.time()
-    
-    # 1. Clear old events for this symbol
-    cursor.execute("DELETE FROM upcoming_events WHERE symbol = ?", (symbol_upper,))
-    
-    # 2. Insert new events
-    if events:
-        rows = []
-        for ev in events:
-            rows.append((
-                symbol_upper,
-                ev.get("type", "Dividend"),
-                ev.get("date"),
-                ev.get("description", ""),
-                ev.get("last_dividend_value", 0.0),
-                ev.get("currency", "USD"),
-                now_ts
-            ))
-        cursor.executemany("""
-        INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, rows)
-    else:
-        # Save a dummy row with event_date = None just to mark that we have a cache check (no events found)
-        cursor.execute("""
-        INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
-        VALUES (?, ?, NULL, 'No Events', 0.0, 'USD', ?)
-        """, (symbol_upper, now_ts))
+    with db_write_lock:
+        conn = get_connection()
+        cursor = conn.cursor()
         
-    conn.commit()
-    conn.close()
+        symbol_upper = symbol.upper()
+        now_ts = time.time()
+        
+        # 1. Clear old events for this symbol
+        cursor.execute("DELETE FROM upcoming_events WHERE symbol = ?", (symbol_upper,))
+        
+        # 2. Insert new events
+        if events:
+            rows = []
+            for ev in events:
+                rows.append((
+                    symbol_upper,
+                    ev.get("type", "Dividend"),
+                    ev.get("date"),
+                    ev.get("description", ""),
+                    ev.get("last_dividend_value", 0.0),
+                    ev.get("currency", "USD"),
+                    now_ts
+                ))
+            cursor.executemany("""
+            INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, rows)
+        else:
+            # Save a dummy row with event_date = None just to mark that we have a cache check (no events found)
+            cursor.execute("""
+            INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
+            VALUES (?, ?, NULL, 'No Events', 0.0, 'USD', ?)
+            """, (symbol_upper, now_ts))
+            
+        conn.commit()
+        conn.close()
