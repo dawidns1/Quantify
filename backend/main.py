@@ -9,9 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import requests
+
+# Globally patch requests.Session.request to default timeout to 5.0 seconds
+# to prevent any external Yahoo Finance or Supabase requests from hanging indefinitely.
+_original_session_request = requests.Session.request
+def _patched_session_request(self, method, url, *args, **kwargs):
+    if 'timeout' not in kwargs:
+        kwargs['timeout'] = 5.0
+    return _original_session_request(self, method, url, *args, **kwargs)
+requests.Session.request = _patched_session_request
+
 from backend.data_fetcher import run_screener_collection, WikipediaNasdaq100Provider, StockDataCollector
 from backend.portfolio_manager import PortfolioManager
-import requests
+
+
 
 # Load environment variables manually
 for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'frontend/.env.local']:

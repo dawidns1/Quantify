@@ -772,7 +772,7 @@ export function PortfolioView({
                   </div>
 
                   {/* Right Column: Metrics, Chart & Allocations stacked */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
                     {/* Portfolio Metrics Skeleton */}
                     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div className="shimmer-placeholder" style={{ width: '120px', height: '18px' }} />
@@ -897,7 +897,7 @@ export function PortfolioView({
                     />
                   </div>
                   {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
                     {/* Render active widgets in order */}
                     {widgets.map((widgetId, index) => {
                       const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
