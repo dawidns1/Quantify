@@ -1197,6 +1197,31 @@ export function PortfolioView({
                   )}
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {activePortfolioRole !== 'viewer' && (
+                    <button
+                      onClick={() => {
+                        const symbol = selectedPositionSymbol;
+                        setSelectedPositionSymbol(null);
+                        setQuickActionData({ symbol: symbol!, type: 'BUY' });
+                      }}
+                      className="glow-btn"
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.75rem',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        height: '28px',
+                        fontWeight: 600,
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Plus size={13} />
+                      <span>Add Transaction</span>
+                    </button>
+                  )}
                   {/* Modal Search Bar */}
                   {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>

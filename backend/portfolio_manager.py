@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import threading
 import pandas as pd
 from datetime import datetime, date, timedelta
 from backend.data_provider import get_provider
@@ -34,6 +35,10 @@ class PortfolioManager:
     _historical_fx_cache = {}     # pair -> {start_date, end_date, last_updated, prices}
     _ticker_metadata_cache = {}   # symbol -> {timezone, exchange, company_name, native_currency, asset_class}
     _upcoming_events_cache = {}   # symbol -> (timestamp, events)
+    
+    _live_prefetch_lock = threading.Lock()
+    _symbol_fetch_locks = {}
+    _fetch_locks_lock = threading.Lock()
     
     STOCK_CACHE_TTL = 60  # 1 minute
     FX_CACHE_TTL = 600     # 10 minutes
@@ -72,86 +77,97 @@ class PortfolioManager:
 
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list):
-        now = time.time()
-        missing_symbols = []
-        missing_fx = []
-        
-        for sym in symbols:
-            sym = sym.upper().strip()
-            cache_entry = cls._live_ticker_cache.get(sym)
-            if not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
-                # Try loading from L2 SQLite Cache
-                sqlite_data = get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
-                if sqlite_data:
-                    cls._live_ticker_cache[sym] = (sqlite_data["last_updated"], {
-                        "live_price": sqlite_data["live_price"],
-                        "previous_close": sqlite_data["previous_close"],
-                        "company_name": sqlite_data["company_name"],
-                        "native_currency": sqlite_data["native_currency"]
-                    })
-                    cls._ticker_metadata_cache[sym] = {
-                        "company_name": sqlite_data["company_name"],
-                        "native_currency": sqlite_data["native_currency"].upper().strip(),
-                        "asset_class": "Equity",
-                        "timezone": sqlite_data["timezone"],
-                        "exchange": sqlite_data["exchange"]
-                    }
-                else:
-                    missing_symbols.append(sym)
-                
-        for pair in fx_pairs:
-            pair = pair.upper().strip()
-            cache_entry = cls._live_fx_cache.get(pair)
-            if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
-                # Try loading from L2 SQLite Cache
-                sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
-                if sqlite_data:
-                    cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
-                else:
-                    missing_fx.append(pair)
-                
-        if not missing_symbols and not missing_fx:
-            return
+        with cls._live_prefetch_lock:
+            now = time.time()
+            missing_symbols = []
+            missing_fx = []
             
-        print(f"[DEBUG] Prefetching live prices for stocks {missing_symbols} and FX {missing_fx}")
-        
-        try:
-            res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
-            for sym in missing_symbols:
-                stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
-                cls._live_ticker_cache[sym] = (now, stock_data)
-                # Save to SQLite L2 Cache
-                save_cached_live_price(sym, {
-                    "live_price": stock_data.get("live_price", 0.0),
-                    "previous_close": stock_data.get("previous_close", 0.0),
-                    "company_name": stock_data.get("company_name", sym),
-                    "native_currency": stock_data.get("native_currency", "USD"),
-                    "timezone": stock_data.get("timezone", "UTC"),
-                    "exchange": stock_data.get("exchange", "")
-                })
+            for sym in symbols:
+                sym = sym.upper().strip()
+                cache_entry = cls._live_ticker_cache.get(sym)
+                if not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
+                    # Try loading from L2 SQLite Cache
+                    sqlite_data = get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
+                    if sqlite_data:
+                        cls._live_ticker_cache[sym] = (sqlite_data["last_updated"], {
+                            "live_price": sqlite_data["live_price"],
+                            "previous_close": sqlite_data["previous_close"],
+                            "company_name": sqlite_data["company_name"],
+                            "native_currency": sqlite_data["native_currency"]
+                        })
+                        cls._ticker_metadata_cache[sym] = {
+                            "company_name": sqlite_data["company_name"],
+                            "native_currency": sqlite_data["native_currency"].upper().strip(),
+                            "asset_class": "Equity",
+                            "timezone": sqlite_data["timezone"],
+                            "exchange": sqlite_data["exchange"]
+                        }
+                    else:
+                        missing_symbols.append(sym)
+                    
+            for pair in fx_pairs:
+                pair = pair.upper().strip()
+                cache_entry = cls._live_fx_cache.get(pair)
+                if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
+                    # Try loading from L2 SQLite Cache
+                    sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
+                    if sqlite_data:
+                        cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
+                    else:
+                        missing_fx.append(pair)
+                    
+            if not missing_symbols and not missing_fx:
+                return
                 
-            for pair in missing_fx:
-                rate = res["fx"].get(pair, 1.0)
-                cls._live_fx_cache[pair] = (now, rate)
-                # Save to SQLite L2 Cache
-                save_cached_live_price(pair, {
-                    "live_price": rate,
-                    "previous_close": rate,
-                    "company_name": pair,
-                    "native_currency": "USD"
-                })
-        except Exception as e:
-            print(f"Error prefetching live prices: {e}")
+            print(f"[DEBUG] Prefetching live prices for stocks {missing_symbols} and FX {missing_fx}")
+            
+            try:
+                res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
+                for sym in missing_symbols:
+                    stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
+                    cls._live_ticker_cache[sym] = (now, stock_data)
+                    # Save to SQLite L2 Cache
+                    save_cached_live_price(sym, {
+                        "live_price": stock_data.get("live_price", 0.0),
+                        "previous_close": stock_data.get("previous_close", 0.0),
+                        "company_name": stock_data.get("company_name", sym),
+                        "native_currency": stock_data.get("native_currency", "USD"),
+                        "timezone": stock_data.get("timezone", "UTC"),
+                        "exchange": stock_data.get("exchange", "")
+                    })
+                    
+                for pair in missing_fx:
+                    rate = res["fx"].get(pair, 1.0)
+                    cls._live_fx_cache[pair] = (now, rate)
+                    # Save to SQLite L2 Cache
+                    save_cached_live_price(pair, {
+                        "live_price": rate,
+                        "previous_close": rate,
+                        "company_name": pair,
+                        "native_currency": "USD"
+                    })
+            except Exception as e:
+                print(f"Error prefetching live prices: {e}")
 
     @classmethod
     def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
         now = time.time()
-        missing_symbols = []
         
+        # Process each symbol under its own lock to avoid concurrent thundering herds for the same symbol
         for sym in symbols:
             sym = sym.upper().strip()
-            cache_entry = cls._historical_stock_cache.get(sym)
-            if not cache_entry or cache_entry["start_date"] > start_dt or (now - cache_entry["last_updated"] > cls.HISTORICAL_CACHE_TTL):
+            
+            with cls._fetch_locks_lock:
+                if sym not in cls._symbol_fetch_locks:
+                    cls._symbol_fetch_locks[sym] = threading.Lock()
+                sym_lock = cls._symbol_fetch_locks[sym]
+                
+            with sym_lock:
+                # Double check cache inside the lock
+                cache_entry = cls._historical_stock_cache.get(sym)
+                if cache_entry and cache_entry["start_date"] <= start_dt and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
+                    continue
+                    
                 # Try loading from L2 SQLite Cache
                 sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
                 if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
@@ -162,44 +178,36 @@ class PortfolioManager:
                         "prices": sqlite_prices,
                         "dividends": sqlite_divs
                     }
-                else:
-                    missing_symbols.append(sym)
+                    continue
                 
-        if not missing_symbols:
-            return
-            
-        try:
-            print(f"[DEBUG] Prefetching historical stock prices for {len(missing_symbols)} symbols: {missing_symbols}")
-            prices_by_symbol, dividends_by_symbol = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
-            
-            for sym in missing_symbols:
-                prices_dict = prices_by_symbol.get(sym, {})
-                dividends_dict = dividends_by_symbol.get(sym, {})
-                
-                cache_entry = cls._historical_stock_cache.get(sym)
-                if prices_dict:
-                    actual_start = min(prices_dict.keys())
-                    actual_end = max(prices_dict.keys())
+                # Fetch from provider (Yahoo Finance)
+                try:
+                    print(f"[DEBUG] Fetching historical stock prices from Yahoo Finance for {sym} (start={start_dt})")
+                    prices_dict, dividends_dict = provider.download_historical_stock(sym, start_dt, end_dt)
                     
-                    if cache_entry:
-                        merged_prices = {**cache_entry["prices"], **prices_dict}
-                        merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
-                        actual_start = min(merged_prices.keys())
-                        actual_end = max(merged_prices.keys())
-                        prices_dict = merged_prices
-                        dividends_dict = merged_dividends
+                    if prices_dict:
+                        actual_start = min(prices_dict.keys())
+                        actual_end = max(prices_dict.keys())
                         
-                    cls._historical_stock_cache[sym] = {
-                        "start_date": actual_start,
-                        "end_date": actual_end,
-                        "last_updated": now,
-                        "prices": prices_dict,
-                        "dividends": dividends_dict
-                    }
-                    # Save to SQLite L2 Cache
-                    save_cached_historical_prices(sym, prices_dict, dividends_dict)
-        except Exception as e:
-            print(f"Error prefetching historical stock prices in bulk: {e}")
+                        if cache_entry:
+                            merged_prices = {**cache_entry["prices"], **prices_dict}
+                            merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
+                            actual_start = min(merged_prices.keys())
+                            actual_end = max(merged_prices.keys())
+                            prices_dict = merged_prices
+                            dividends_dict = merged_dividends
+                            
+                        cls._historical_stock_cache[sym] = {
+                            "start_date": actual_start,
+                            "end_date": actual_end,
+                            "last_updated": now,
+                            "prices": prices_dict,
+                            "dividends": dividends_dict
+                        }
+                        # Save to SQLite L2 Cache
+                        save_cached_historical_prices(sym, prices_dict, dividends_dict)
+                except Exception as e:
+                    print(f"Error prefetching historical stock prices for {sym}: {e}")
 
     @classmethod
     def get_cached_live_ticker(cls, symbol: str) -> dict:
