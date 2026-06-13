@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   History, 
   Plus, 
@@ -396,6 +396,17 @@ export function PortfolioView({
   });
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
 
+  const latestParamsRef = useRef({
+    activePortfolioId,
+    baseCurrency,
+    selectedAccount
+  });
+  latestParamsRef.current = {
+    activePortfolioId,
+    baseCurrency,
+    selectedAccount
+  };
+
   // Trigger a random upsell modal (e.g. 10% chance) on general user actions when on the Free plan
   const triggerRandomUpsell = () => {
     if (tier === 'free') {
@@ -613,6 +624,16 @@ export function PortfolioView({
         accountFilter,
         linkCash
       );
+
+      // Prevent race conditions: check if parameters changed in the meantime
+      if (
+        activePortfolioId !== latestParamsRef.current.activePortfolioId ||
+        curr !== latestParamsRef.current.baseCurrency ||
+        accountFilter !== latestParamsRef.current.selectedAccount
+      ) {
+        return; // Discard stale response
+      }
+
       setHoldings(result.holdings);
       setSummary(result.summary);
       setDividendsList(result.dividends_list || []);
@@ -624,7 +645,13 @@ export function PortfolioView({
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
-      if (!silent) setLoadingHoldings(false);
+      if (
+        activePortfolioId === latestParamsRef.current.activePortfolioId &&
+        curr === latestParamsRef.current.baseCurrency &&
+        accountFilter === latestParamsRef.current.selectedAccount
+      ) {
+        if (!silent) setLoadingHoldings(false);
+      }
     }
   };
 
@@ -667,6 +694,16 @@ export function PortfolioView({
         accountFilter,
         linkCash
       );
+
+      // Prevent race conditions: check if parameters changed in the meantime
+      if (
+        activePortfolioId !== latestParamsRef.current.activePortfolioId ||
+        curr !== latestParamsRef.current.baseCurrency ||
+        accountFilter !== latestParamsRef.current.selectedAccount
+      ) {
+        return; // Discard stale response
+      }
+
       setChartData(data);
       
       // Cache historical data
@@ -674,7 +711,13 @@ export function PortfolioView({
     } catch (err) {
       console.error('Error fetching historical performance:', err);
     } finally {
-      setLoadingChart(false);
+      if (
+        activePortfolioId === latestParamsRef.current.activePortfolioId &&
+        curr === latestParamsRef.current.baseCurrency &&
+        accountFilter === latestParamsRef.current.selectedAccount
+      ) {
+        setLoadingChart(false);
+      }
     }
   };
 
