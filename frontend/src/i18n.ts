@@ -16,14 +16,15 @@ i18n
         translation: plTranslation
       }
     },
-    lng: localStorage.getItem('i18nextLng') || 'en',
+    lng: localStorage.getItem('quantify_language') || 'en',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false // React already escapes values
     },
     detection: {
       order: ['localStorage'],
-      caches: ['localStorage']
+      caches: ['localStorage'],
+      lookupLocalStorage: 'quantify_language'
     }
   });
 
