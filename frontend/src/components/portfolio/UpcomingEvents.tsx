@@ -38,6 +38,8 @@ export function UpcomingEvents({
   });
   const [loading, setLoading] = useState(false);
 
+  const symbolsKey = holdings.map(h => h.symbol.toUpperCase()).sort().join(',');
+
   useEffect(() => {
     if (!activePortfolioId) return;
 
@@ -47,7 +49,8 @@ export function UpcomingEvents({
       setEvents(JSON.parse(cached));
     }
 
-    if (holdings.length === 0) {
+    if (symbolsKey === '') {
+      setEvents([]);
       return;
     }
 
@@ -67,7 +70,7 @@ export function UpcomingEvents({
       .finally(() => {
         setLoading(false);
       });
-  }, [activePortfolioId, holdings, apiBaseUrl, session]);
+  }, [activePortfolioId, symbolsKey, apiBaseUrl, session]);
 
   const formatDate = (dateStr: string) => {
     try {
