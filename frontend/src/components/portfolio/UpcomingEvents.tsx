@@ -70,7 +70,7 @@ export function UpcomingEvents({
       .finally(() => {
         setLoading(false);
       });
-  }, [activePortfolioId, symbolsKey, apiBaseUrl, session]);
+  }, [activePortfolioId, symbolsKey, apiBaseUrl, session?.access_token]);
 
   const formatDate = (dateStr: string) => {
     try {

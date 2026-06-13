@@ -726,18 +726,7 @@ export function PortfolioView({
           
           {/* Glowing Neon Top Progress Bar */}
           {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '3px',
-              background: 'linear-gradient(90deg, transparent, var(--color-primary), transparent)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 1.5s infinite linear',
-              zIndex: 10,
-              borderRadius: '3px 3px 0 0'
-            }} />
+            <div className="shimmer-progress-bar" />
           )}
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}

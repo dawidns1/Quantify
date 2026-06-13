@@ -1530,3 +1530,24 @@ select option {
     overflow-y: auto;
   }
 }
+
+/* Global Fixed Top Progress Bar */
+.shimmer-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 270px;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .shimmer-progress-bar {
+    left: 0;
+  }
+}
+
