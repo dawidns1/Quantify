@@ -11,8 +11,15 @@ DB_PATH = os.path.join(DATA_DIR, "cache.db")
 def get_connection():
     # check_same_thread=False allows us to pass connections across threads, 
     # but since we open/close transactions in a short-lived manner it's safe.
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    # We add a 30-second timeout to prevent 'database is locked' errors under concurrent load.
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Enable WAL mode so readers and writers do not block each other
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+    except Exception as e:
+        print(f"[DB] Error setting PRAGMAs: {e}")
     return conn
 
 def init_db():

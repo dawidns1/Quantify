@@ -5,7 +5,7 @@ __pycache__/
 backend/data/screener_data.json
 backend/data/status.json
 backend/data/details/
-backend/data/cache.db
+backend/data/cache.db*
 backend/data/feedback/
 
 # Frontend
