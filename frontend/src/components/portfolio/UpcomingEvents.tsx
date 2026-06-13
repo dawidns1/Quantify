@@ -31,12 +31,23 @@ export function UpcomingEvents({
   onMoveDown,
   onClose
 }: UpcomingEventsProps) {
-  const [events, setEvents] = useState<CorporateEvent[]>([]);
+  const [events, setEvents] = useState<CorporateEvent[]>(() => {
+    if (!activePortfolioId) return [];
+    const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
+    return cached ? JSON.parse(cached) : [];
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!activePortfolioId || holdings.length === 0) {
-      setEvents([]);
+    if (!activePortfolioId) return;
+
+    // Load from cache synchronously first
+    const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
+    if (cached) {
+      setEvents(JSON.parse(cached));
+    }
+
+    if (holdings.length === 0) {
       return;
     }
 
@@ -46,7 +57,9 @@ export function UpcomingEvents({
     // We assume default base currency is PLN, default account is All, link cash is true
     fetchUpcomingEvents(apiBaseUrl, jwtToken, activePortfolioId, 'PLN', 'All', true)
       .then((data) => {
-        setEvents(data || []);
+        const eventsData = data || [];
+        localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(eventsData));
+        setEvents(eventsData);
       })
       .catch((err) => {
         console.error('Error fetching upcoming events:', err);
@@ -129,7 +142,7 @@ export function UpcomingEvents({
         </div>
       </div>
 
-      {loading ? (
+      {loading && events.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
           {[1, 2, 3].map((i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0' }}>

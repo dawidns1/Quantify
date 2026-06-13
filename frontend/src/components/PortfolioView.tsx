@@ -105,17 +105,58 @@ export function PortfolioView({
     localStorage.setItem('portfolio_base_currency', currency);
   };
   
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [summary, setSummary] = useState<Summary>({
-    total_cost_base: 0,
-    total_value_base: 0,
-    total_gain_base: 0,
-    total_gain_percent: 0,
-    base_currency: 'PLN'
+  const [holdings, setHoldings] = useState<Holding[]>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
+    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    if (!activeId) return [];
+    try {
+      const cached = localStorage.getItem(`cached_holdings_${activeId}_${baseCurr}_${selAcc}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [summary, setSummary] = useState<Summary>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
+    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    const defaultSum: Summary = {
+      total_cost_base: 0,
+      total_value_base: 0,
+      total_gain_base: 0,
+      total_gain_percent: 0,
+      base_currency: baseCurr as any
+    };
+    if (!activeId) return defaultSum;
+    try {
+      const cached = localStorage.getItem(`cached_summary_${activeId}_${baseCurr}_${selAcc}`);
+      return cached ? JSON.parse(cached) : defaultSum;
+    } catch (e) {
+      return defaultSum;
+    }
   });
   
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
-  const [dividendsList, setDividendsList] = useState<any[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>(() => {
+    try {
+      const cached = localStorage.getItem('cached_all_transactions');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [dividendsList, setDividendsList] = useState<any[]>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
+    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    if (!activeId) return [];
+    try {
+      const cached = localStorage.getItem(`cached_dividends_list_${activeId}_${baseCurr}_${selAcc}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -187,7 +228,18 @@ export function PortfolioView({
     });
   };
 
-  const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(null);
+  const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
+    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    if (!activeId) return null;
+    try {
+      const cached = localStorage.getItem(`cached_chart_data_${activeId}_${baseCurr}_${selAcc}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [loadingChart, setLoadingChart] = useState<boolean>(false);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
   const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
@@ -328,9 +380,20 @@ export function PortfolioView({
   };
 
   // Portfolios state (multi-device collaborative lists)
-  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
-  const [activePortfolioRole, setActivePortfolioRole] = useState<'owner' | 'editor' | 'viewer'>('viewer');
+  const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
+    try {
+      const cached = localStorage.getItem('cached_portfolios');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(() => {
+    return localStorage.getItem('portfolio_active_id');
+  });
+  const [activePortfolioRole, setActivePortfolioRole] = useState<'owner' | 'editor' | 'viewer'>(() => {
+    return (localStorage.getItem('portfolio_active_role') as any) || 'viewer';
+  });
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
 
   // Trigger a random upsell modal (e.g. 10% chance) on general user actions when on the Free plan
@@ -405,20 +468,24 @@ export function PortfolioView({
       }
 
       setPortfolios(formatted);
+      localStorage.setItem('cached_portfolios', JSON.stringify(formatted));
 
       const cachedId = localStorage.getItem('portfolio_active_id');
       if (cachedId === 'all') {
         setActivePortfolioId('all');
         setActivePortfolioRole('viewer');
+        localStorage.setItem('portfolio_active_role', 'viewer');
       } else {
         const found = formatted.find(p => p.id === cachedId);
         if (found) {
           setActivePortfolioId(found.id);
           setActivePortfolioRole(found.role);
+          localStorage.setItem('portfolio_active_role', found.role);
         } else {
           setActivePortfolioId(formatted[0].id);
           setActivePortfolioRole(formatted[0].role);
           localStorage.setItem('portfolio_active_id', formatted[0].id);
+          localStorage.setItem('portfolio_active_role', formatted[0].role);
         }
       }
     } catch (err) {
@@ -549,6 +616,11 @@ export function PortfolioView({
       setHoldings(result.holdings);
       setSummary(result.summary);
       setDividendsList(result.dividends_list || []);
+      
+      // Cache the fresh data
+      localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
+      localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
+      localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
@@ -568,6 +640,9 @@ export function PortfolioView({
       const portfolioIds = portfolios.map(p => p.id);
       const data = await fetchTransactionsService(portfolioIds);
       setAllTransactions(data);
+      
+      // Cache all transactions list
+      localStorage.setItem('cached_all_transactions', JSON.stringify(data));
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -593,6 +668,9 @@ export function PortfolioView({
         linkCash
       );
       setChartData(data);
+      
+      // Cache historical data
+      localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(data));
     } catch (err) {
       console.error('Error fetching historical performance:', err);
     } finally {
@@ -607,11 +685,17 @@ export function PortfolioView({
     }
   }, [portfolios]);
 
-  // No longer resetting holdings and chart data on portfolio/account change to prevent skeleton flicker and enable SWR
-
   // Recalculate holdings when active portfolio, filters, or transactions update
   useEffect(() => {
     if (activePortfolioId && portfolios.length > 0) {
+      // Synchronously load from local storage cache first to avoid flashing empty state
+      const cachedH = localStorage.getItem(`cached_holdings_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      const cachedS = localStorage.getItem(`cached_summary_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      if (cachedH) setHoldings(JSON.parse(cachedH));
+      if (cachedS) setSummary(JSON.parse(cachedS));
+      if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
+
       fetchHoldings(baseCurrency, selectedAccount, false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
@@ -634,6 +718,12 @@ export function PortfolioView({
   // Recalculate chart when active portfolio, filters, or transactions update
   useEffect(() => {
     if (activePortfolioId && portfolioTransactions.length > 0) {
+      // Synchronously load chart data from cache first
+      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      if (cachedC) {
+        setChartData(JSON.parse(cachedC));
+      }
+
       fetchHistoricalPerformance(baseCurrency, selectedAccount);
     } else {
       setChartData(null);
@@ -1016,74 +1106,6 @@ export function PortfolioView({
                   </div>
                   {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {/* Widget Manager Toggle Button */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
-                      <button 
-                        className="glow-btn"
-                        style={{
-                          background: showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          color: 'var(--text-secondary)',
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          fontSize: '0.72rem',
-                          boxShadow: 'none'
-                        }}
-                        onClick={() => setShowWidgetManager(!showWidgetManager)}
-                      >
-                        <Layout size={12} />
-                        {showWidgetManager ? 'Close Customizer' : 'Customize Cards'}
-                      </button>
-                    </div>
-
-                    {/* Widget Manager Selection Card */}
-                    {showWidgetManager && (
-                      <div className="glass-panel" style={{
-                        padding: '1rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.75rem',
-                        background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.75) 0%, rgba(0, 0, 0, 0.9) 100%)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '12px',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-                      }}>
-                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
-                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> Toggle Dashboard Cards
-                        </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-                          {[
-                            { id: 'metrics', name: 'Portfolio Metrics' },
-                            { id: 'chart', name: 'Performance Chart' },
-                            { id: 'events', name: 'Upcoming Corporate Events' },
-                            { id: 'allocation', name: 'Portfolio Allocation' }
-                          ].map(widget => {
-                            const isVisible = widgets.includes(widget.id);
-                            return (
-                              <label key={widget.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={isVisible}
-                                  onChange={() => handleToggleWidgetVisibility(widget.id)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    accentColor: 'var(--color-primary)',
-                                    width: '14px',
-                                    height: '14px'
-                                  }}
-                                />
-                                <span>{widget.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
                     {/* Render active widgets in order */}
                     {widgets.map((widgetId, index) => {
                       const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
@@ -1141,6 +1163,85 @@ export function PortfolioView({
                           return null;
                       }
                     })}
+
+                    {/* Widget Manager Selection Card */}
+                    {showWidgetManager && (
+                      <div className="glass-panel" style={{
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.75) 0%, rgba(0, 0, 0, 0.9) 100%)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                        marginTop: '0.25rem'
+                      }}>
+                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
+                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> Toggle Dashboard Cards
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                          {[
+                            { id: 'metrics', name: 'Portfolio Metrics' },
+                            { id: 'chart', name: 'Performance Chart' },
+                            { id: 'events', name: 'Upcoming Corporate Events' },
+                            { id: 'allocation', name: 'Portfolio Allocation' }
+                          ].map(widget => {
+                            const isVisible = widgets.includes(widget.id);
+                            return (
+                              <label key={widget.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isVisible}
+                                  onChange={() => handleToggleWidgetVisibility(widget.id)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--color-primary)',
+                                    width: '14px',
+                                    height: '14px'
+                                  }}
+                                />
+                                <span>{widget.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Widget Manager Toggle Button (at the bottom, centered, icon only) */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.25rem' }}>
+                      <button 
+                        className="glow-btn"
+                        style={{
+                          background: showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)',
+                          border: '1px dashed var(--panel-border)',
+                          color: 'var(--text-secondary)',
+                          padding: '0.5rem',
+                          borderRadius: '50%',
+                          width: '36px',
+                          height: '36px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: 'none',
+                          transition: 'var(--transition-smooth)'
+                        }}
+                        onClick={() => setShowWidgetManager(!showWidgetManager)}
+                        title={showWidgetManager ? 'Close Card Customizer' : 'Customize Dashboard Cards'}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                          e.currentTarget.style.transform = 'scale(1.08)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)';
+                          e.currentTarget.style.transform = 'scale(1)';
+                        }}
+                      >
+                        <Layout size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
