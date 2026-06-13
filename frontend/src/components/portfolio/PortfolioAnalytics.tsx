@@ -1,5 +1,6 @@
 import { Shield } from 'lucide-react';
 import type { AnalyticsData } from '../../context/PortfolioContext';
+import { useTranslation } from 'react-i18next';
 
 interface PortfolioAnalyticsProps {
   analytics: AnalyticsData | null;
@@ -16,6 +17,7 @@ export function PortfolioAnalytics({
   onMoveDown,
   onClose
 }: PortfolioAnalyticsProps) {
+  const { t } = useTranslation();
   
   const formatPercent = (val: number) => {
     return `${(val * 100).toFixed(2)}%`;
@@ -63,25 +65,31 @@ export function PortfolioAnalytics({
     if (count === 0) return null;
 
     const avg = sum / count;
-    let avgType = 'Neutral';
+    let avgTypeKey = 'analytics.levels.neutral';
+    let avgTypeFallback = 'Neutral';
     let avgColor = 'var(--text-secondary)';
     if (avg > 0.7) {
-      avgType = 'High (Low Diversification)';
+      avgTypeKey = 'analytics.levels.high';
+      avgTypeFallback = 'High (Low Diversification)';
       avgColor = 'hsl(350, 70%, 60%)'; // red
     } else if (avg > 0.3) {
-      avgType = 'Moderate (Decent Diversification)';
+      avgTypeKey = 'analytics.levels.moderate';
+      avgTypeFallback = 'Moderate (Decent Diversification)';
       avgColor = 'hsl(45, 90%, 65%)'; // yellow
     } else if (avg > -0.1) {
-      avgType = 'Low (Strong Diversification)';
+      avgTypeKey = 'analytics.levels.low';
+      avgTypeFallback = 'Low (Strong Diversification)';
       avgColor = 'hsl(142, 70%, 55%)'; // green
     } else {
-      avgType = 'Negative (Hedging Effects)';
+      avgTypeKey = 'analytics.levels.negative';
+      avgTypeFallback = 'Negative (Hedging Effects)';
       avgColor = 'hsl(142, 70%, 55%)'; // green
     }
 
     return {
       avg,
-      avgType,
+      avgTypeKey,
+      avgTypeFallback,
       avgColor,
       maxVal,
       maxPair,
@@ -104,7 +112,7 @@ export function PortfolioAnalytics({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.5rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Shield size={16} style={{ color: 'var(--color-primary)' }} /> Performance & Risk Analytics
+          <Shield size={16} style={{ color: 'var(--color-primary)' }} /> {t('analytics.header', 'Performance & Risk Analytics')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (
@@ -139,11 +147,11 @@ export function PortfolioAnalytics({
 
       {loading ? (
         <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }} className="pulse">
-          Recalculating risk portfolio matrices...
+          {t('analytics.loading', 'Recalculating risk portfolio matrices...')}
         </div>
       ) : !analytics ? (
         <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          Add stock transactions to compute advanced volatility metrics.
+          {t('analytics.empty_state', 'Add stock transactions to compute advanced volatility metrics.')}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -151,7 +159,7 @@ export function PortfolioAnalytics({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem' }}>
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.5rem 0.65rem' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>
-                Time-Weighted Return (TWR)
+                {t('analytics.twr', 'Time-Weighted Return (TWR)')}
               </span>
               <span style={{ fontSize: '1.15rem', fontWeight: 700, color: analytics.twr >= 0 ? 'var(--color-green)' : 'var(--color-red)', fontFamily: 'monospace' }}>
                 {analytics.twr >= 0 ? '+' : ''}{formatPercent(analytics.twr)}
@@ -160,7 +168,7 @@ export function PortfolioAnalytics({
 
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.5rem 0.65rem' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>
-                Money-Weighted (MWR / XIRR)
+                {t('analytics.mwr', 'Money-Weighted (MWR / XIRR)')}
               </span>
               <span style={{ fontSize: '1.15rem', fontWeight: 700, color: analytics.mwr >= 0 ? 'var(--color-green)' : 'var(--color-red)', fontFamily: 'monospace' }}>
                 {analytics.mwr >= 0 ? '+' : ''}{formatPercent(analytics.mwr)}
@@ -171,19 +179,19 @@ export function PortfolioAnalytics({
           {/* Risk Metrics Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Sharpe Ratio</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>{t('analytics.sharpe', 'Sharpe Ratio')}</span>
               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {analytics.sharpe_ratio.toFixed(2)}
               </span>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Sortino Ratio</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>{t('analytics.sortino', 'Sortino Ratio')}</span>
               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {analytics.sortino_ratio.toFixed(2)}
               </span>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Beta Coefficient</span>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>{t('analytics.beta', 'Beta Coefficient')}</span>
               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {analytics.beta.toFixed(2)}
               </span>
@@ -194,7 +202,7 @@ export function PortfolioAnalytics({
           {Object.keys(analytics.correlation_matrix).length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.25rem' }}>
               <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>
-                Holdings Correlation Heatmap
+                {t('analytics.heatmap_title', 'Holdings Correlation Heatmap')}
               </span>
               
               <div 
@@ -267,25 +275,25 @@ export function PortfolioAnalytics({
                     gap: '0.3rem'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Average Correlation:</span>
+                      <span>{t('analytics.average_correlation', 'Average Correlation')}:</span>
                       <span style={{ fontWeight: 700, color: insights.avgColor }}>
-                        {insights.avg.toFixed(2)} ({insights.avgType})
+                        {insights.avg.toFixed(2)} ({t(insights.avgTypeKey, insights.avgTypeFallback)})
                       </span>
                     </div>
                     {insights.maxVal > 0.7 && (
                       <div style={{ color: 'hsl(350, 70%, 65%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <span>⚠️</span>
-                        <span><strong>Concentration risk:</strong> {insights.maxPair[0]} & {insights.maxPair[1]} move in lockstep ({insights.maxVal.toFixed(2)}).</span>
+                        <span><strong>{t('analytics.concentration_risk', 'Concentration risk')}:</strong> {insights.maxPair[0]} & {insights.maxPair[1]} {t('analytics.concentration_desc', 'move in lockstep')} ({insights.maxVal.toFixed(2)}).</span>
                       </div>
                     )}
                     {insights.minVal < 0.3 && (
                       <div style={{ color: 'hsl(142, 70%, 55%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <span>✓</span>
-                        <span><strong>Diversification:</strong> {insights.minPair[0]} & {insights.minPair[1]} are uncorrelated/hedged ({insights.minVal.toFixed(2)}).</span>
+                        <span><strong>{t('analytics.diversification', 'Diversification')}:</strong> {insights.minPair[0]} & {insights.minPair[1]} {t('analytics.diversification_desc', 'are uncorrelated/hedged')} ({insights.minVal.toFixed(2)}).</span>
                       </div>
                     )}
                     <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.2rem', marginTop: '0.1rem' }}>
-                      Range: <strong>+1.0</strong> (moves in lockstep), <strong>0.0</strong> (uncorrelated/diversified), <strong>-1.0</strong> (moves in opposite directions/hedges).
+                      {t('analytics.legend_range', 'Range')}: <strong>+1.0</strong> ({t('analytics.legend_lockstep', 'moves in lockstep')}), <strong>0.0</strong> ({t('analytics.legend_uncorrelated', 'uncorrelated/diversified')}), <strong>-1.0</strong> ({t('analytics.legend_hedges', 'moves in opposite directions/hedges')}).
                     </div>
                   </div>
                 );

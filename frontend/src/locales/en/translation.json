@@ -1,0 +1,42 @@
+{
+  "sidebar": {
+    "logged_in_as": "Logged in as",
+    "base_currency": "Base Currency",
+    "language": "Language",
+    "view_mode": "View Mode",
+    "overview": "Overview",
+    "ledger": "Ledger",
+    "dividends": "Dividends",
+    "sign_out": "Sign Out",
+    "feedback": "Feedback & Bug Report",
+    "rename_portfolio": "Rename Portfolio",
+    "delete_portfolio": "Delete Portfolio",
+    "portfolio_intelligence": "Portfolio Intelligence",
+    "create_portfolio": "Create Portfolio"
+  },
+  "analytics": {
+    "header": "Performance & Risk Analytics",
+    "twr": "Time-Weighted Return (TWR)",
+    "mwr": "Money-Weighted (MWR / XIRR)",
+    "sharpe": "Sharpe Ratio",
+    "sortino": "Sortino Ratio",
+    "beta": "Beta Coefficient",
+    "heatmap_title": "Holdings Correlation Heatmap",
+    "average_correlation": "Average Correlation",
+    "legend_range": "Range",
+    "legend_lockstep": "moves in lockstep",
+    "legend_uncorrelated": "uncorrelated/diversified",
+    "legend_hedges": "moves in opposite directions/hedges",
+    "levels": {
+      "high": "High (Low Diversification)",
+      "moderate": "Moderate (Decent Diversification)",
+      "low": "Low (Strong Diversification)",
+      "negative": "Negative (Hedging Effects)",
+      "neutral": "Neutral"
+    },
+    "concentration_risk": "Concentration risk",
+    "concentration_desc": "move in lockstep",
+    "diversification": "Diversification",
+    "diversification_desc": "are uncorrelated/hedged"
+  }
+}

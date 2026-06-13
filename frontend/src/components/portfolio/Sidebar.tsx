@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
+import { useTranslation } from 'react-i18next';
 
 interface SidebarProps {
   signOut: () => Promise<void>;
@@ -61,6 +62,7 @@ export function Sidebar({
   onFeedbackClick
 }: SidebarProps) {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
   const [allAssetsExpanded, setAllAssetsExpanded] = useState(true);
 
@@ -92,7 +94,7 @@ export function Sidebar({
             QUANTIFY
           </span>
           <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Portfolio Intelligence
+            {t('sidebar.portfolio_intelligence', 'Portfolio Intelligence')}
           </span>
         </div>
       </div>
@@ -111,7 +113,7 @@ export function Sidebar({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Logged in as</span>
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{t('sidebar.logged_in_as', 'Logged in as')}</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
               {user?.email}
             </span>
@@ -132,7 +134,7 @@ export function Sidebar({
                 cursor: 'pointer',
                 transition: 'var(--transition-smooth)'
               }}
-              title="Feedback & Bug Report"
+              title={t('sidebar.feedback', 'Feedback & Bug Report')}
             >
               <MessageSquare size={13} />
             </button>
@@ -150,7 +152,7 @@ export function Sidebar({
                 cursor: 'pointer',
                 transition: 'var(--transition-smooth)'
               }}
-              title="Sign Out"
+              title={t('sidebar.sign_out', 'Sign Out')}
             >
               <LogOut size={13} />
             </button>
@@ -161,7 +163,7 @@ export function Sidebar({
       {/* Base Currency Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
-          Base Currency
+          {t('sidebar.base_currency', 'Base Currency')}
         </div>
         <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
           {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
@@ -187,20 +189,55 @@ export function Sidebar({
         </div>
       </div>
 
+      {/* Language Picker */}
+      <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
+          {t('sidebar.language', 'Language')}
+        </div>
+        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
+          {[
+            { code: 'en', label: 'English' },
+            { code: 'pl', label: 'Polski' }
+          ].map((lang) => {
+            const isActive = i18n.language.startsWith(lang.code);
+            return (
+              <button
+                key={lang.code}
+                onClick={() => i18n.changeLanguage(lang.code)}
+                style={{
+                  flex: 1,
+                  background: isActive ? 'var(--color-primary)' : 'transparent',
+                  color: isActive ? 'white' : 'var(--text-secondary)',
+                  border: 'none',
+                  padding: '0.3rem 0',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                {lang.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* View Mode Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
-          View Mode
+          {t('sidebar.view_mode', 'View Mode')}
         </div>
         <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
-          {([
+          {[
             { id: 'overview', label: 'Overview' },
             { id: 'ledger', label: 'Ledger' },
             { id: 'dividends', label: 'Dividends' }
-          ] as const).map((tab) => (
+          ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSubTab(tab.id)}
+              onClick={() => setSubTab(tab.id as any)}
               style={{
                 flex: 1,
                 background: subTab === tab.id ? 'var(--color-primary)' : 'transparent',
@@ -215,7 +252,7 @@ export function Sidebar({
                 textAlign: 'center'
               }}
             >
-              {tab.label}
+              {t('sidebar.' + tab.id, tab.label)}
             </button>
           ))}
         </div>

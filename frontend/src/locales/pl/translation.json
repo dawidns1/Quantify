@@ -1,0 +1,42 @@
+{
+  "sidebar": {
+    "logged_in_as": "Zalogowano jako",
+    "base_currency": "Waluta bazowa",
+    "language": "Język",
+    "view_mode": "Tryb widoku",
+    "overview": "Podsumowanie",
+    "ledger": "Księga transakcji",
+    "dividends": "Dywidendy",
+    "sign_out": "Wyloguj się",
+    "feedback": "Zgłoś błąd / opinię",
+    "rename_portfolio": "Zmień nazwę portfela",
+    "delete_portfolio": "Usuń portfel",
+    "portfolio_intelligence": "Inteligencja Portfela",
+    "create_portfolio": "Utwórz portfel"
+  },
+  "analytics": {
+    "header": "Analiza Wyników i Ryzyka",
+    "twr": "Stopa zwrotu ważona czasem (TWR)",
+    "mwr": "Stopa zwrotu ważona pieniądzem (MWR / XIRR)",
+    "sharpe": "Wskaźnik Sharpe'a",
+    "sortino": "Wskaźnik Sortino",
+    "beta": "Współczynnik Beta",
+    "heatmap_title": "Mapa korelacji aktywów",
+    "average_correlation": "Średnia korelacja",
+    "legend_range": "Zakres",
+    "legend_lockstep": "poruszają się identycznie",
+    "legend_uncorrelated": "brak korelacji/zdywersyfikowane",
+    "legend_hedges": "poruszają się przeciwnie/zabezpieczenie",
+    "levels": {
+      "high": "Wysoka (Niska Dywersyfikacja)",
+      "moderate": "Umiarkowana (Dobra Dywersyfikacja)",
+      "low": "Niska (Silna Dywersyfikacja)",
+      "negative": "Ujemna (Efekt Zabezpieczenia)",
+      "neutral": "Neutralna"
+    },
+    "concentration_risk": "Ryzyko koncentracji",
+    "concentration_desc": "poruszają się w tym samym kierunku",
+    "diversification": "Dywersyfikacja",
+    "diversification_desc": "są nieskorelowane/zabezpieczone"
+  }
+}
