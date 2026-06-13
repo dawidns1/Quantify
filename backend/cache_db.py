@@ -283,7 +283,7 @@ def save_cached_upcoming_events(symbol: str, events: list):
                     # Save a dummy row with event_date = None just to mark that we have a cache check (no events found)
                     cursor.execute("""
                     INSERT INTO upcoming_events (symbol, event_type, event_date, description, last_div_val, currency, last_updated)
-                    VALUES (?, ?, NULL, 'No Events', 0.0, 'USD', ?)
+                    VALUES (?, 'None', NULL, 'No Events', 0.0, 'USD', ?)
                     """, (symbol_upper, now_ts))
         except Exception as e:
             print(f"[DB] Error saving upcoming events for {symbol}: {e}")
