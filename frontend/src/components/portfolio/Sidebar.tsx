@@ -9,7 +9,8 @@ import {
   Edit2, 
   Trash2, 
   CreditCard,
-  Share2
+  Share2,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
@@ -34,6 +35,7 @@ interface SidebarProps {
   setBaseCurrency: (val: 'PLN' | 'USD' | 'EUR') => void;
   onShareClick?: () => void;
   onSettingsClick?: () => void;
+  onFeedbackClick?: () => void;
 }
 
 export function Sidebar({
@@ -55,7 +57,8 @@ export function Sidebar({
   baseCurrency,
   setBaseCurrency,
   onShareClick,
-  onSettingsClick
+  onSettingsClick,
+  onFeedbackClick
 }: SidebarProps) {
   const { user } = useAuth();
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
@@ -115,6 +118,24 @@ export function Sidebar({
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', flexShrink: 0 }}>
+            <button 
+              onClick={onFeedbackClick}
+              style={{
+                background: 'rgba(6, 182, 212, 0.06)',
+                border: '1px solid rgba(6, 182, 212, 0.15)',
+                color: 'var(--color-primary)',
+                borderRadius: '4px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+              title="Feedback & Bug Report"
+            >
+              <MessageSquare size={13} />
+            </button>
             <button 
               onClick={signOut}
               style={{

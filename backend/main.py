@@ -638,6 +638,58 @@ def search_portfolio_assets(q: str):
         print(f"Error querying search suggestions: {e}")
         return []
 
+class FeedbackCreate(BaseModel):
+    category: str
+    message: str
+    email: str = None
+
+@app.post("/api/feedback")
+def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
+    print(f"[FEEDBACK] Received feedback. Category: {fb.category}, Email: {fb.email}")
+    print(f"[FEEDBACK] Message: {fb.message}")
+    
+    # Save locally to JSON file
+    try:
+        feedback_dir = os.path.join(DATA_DIR, 'feedback')
+        os.makedirs(feedback_dir, exist_ok=True)
+        filename = f"feedback_{int(time.time())}_{str(time.time()).split('.')[-1]}.json"
+        filepath = os.path.join(feedback_dir, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump({
+                "timestamp": time.time(),
+                "category": fb.category,
+                "email": fb.email,
+                "message": fb.message
+            }, f, indent=2)
+        print(f"[FEEDBACK] Saved locally to {filepath}")
+    except Exception as e:
+        print(f"[FEEDBACK] Error saving locally: {e}")
+        
+    # Save to Supabase if configured
+    supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+    
+    if supabase_url and supabase_key:
+        try:
+            url = f"{supabase_url}/rest/v1/feedback"
+            headers = {
+                "apikey": supabase_key,
+                "Authorization": authorization if authorization else f"Bearer {supabase_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+            }
+            res = requests.post(url, headers=headers, json={
+                "category": fb.category,
+                "message": fb.message,
+                "user_email": fb.email
+            }, timeout=10)
+            print(f"[FEEDBACK] Supabase insertion response code: {res.status_code}")
+        except Exception as e:
+            print(f"[FEEDBACK] Error sending to Supabase: {e}")
+            
+    return {"status": "ok", "message": "Feedback submitted successfully"}
+
 # Serve Frontend static assets if compiled in production
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
 if os.path.exists(frontend_dist_path):

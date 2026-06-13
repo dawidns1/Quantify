@@ -49,6 +49,7 @@ import { AddTransactionModal } from './portfolio/AddTransactionModal';
 import { ShareModal } from './portfolio/ShareModal';
 import { SettingsModal } from './portfolio/SettingsModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
+import { FeedbackModal } from './portfolio/FeedbackModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
 import { UpcomingEvents } from './portfolio/UpcomingEvents';
@@ -109,6 +110,7 @@ export function PortfolioView({
     setLinkCash,
     portfolioAccountsMap,
     uniqueAccounts,
+    portfolioTransactions,
     transactions,
     loadPortfolios,
     fetchHoldings,
@@ -137,6 +139,8 @@ export function PortfolioView({
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
@@ -412,7 +416,71 @@ export function PortfolioView({
     );
   };
 
+  // Load Demo Portfolio Transactions
+  const handleLoadDemoData = async () => {
+    if (!activePortfolioId) return;
+    setLoadingDemo(true);
+    
+    const demoTransactions = [
+      {
+        portfolio_id: activePortfolioId,
+        symbol: 'AAPL',
+        type: 'BUY' as const,
+        date: '2025-01-15',
+        shares: 15.0,
+        price: 175.5,
+        currency: 'USD',
+        fees: 1.0,
+        account: 'US Stocks'
+      },
+      {
+        portfolio_id: activePortfolioId,
+        symbol: 'MSFT',
+        type: 'BUY' as const,
+        date: '2025-02-10',
+        shares: 8.0,
+        price: 410.2,
+        currency: 'USD',
+        fees: 2.0,
+        account: 'US Stocks'
+      },
+      {
+        portfolio_id: activePortfolioId,
+        symbol: 'SPY',
+        type: 'BUY' as const,
+        date: '2025-03-01',
+        shares: 12.0,
+        price: 505.0,
+        currency: 'USD',
+        fees: 0.0,
+        account: 'ETF Account'
+      },
+      {
+        portfolio_id: activePortfolioId,
+        symbol: 'PKO.WA',
+        type: 'BUY' as const,
+        date: '2025-03-20',
+        shares: 100.0,
+        price: 52.4,
+        currency: 'PLN',
+        fees: 5.5,
+        account: 'GPW Polish Stocks'
+      }
+    ];
 
+    try {
+      const { saveTransaction } = await import('../services/transactionService');
+      for (const tx of demoTransactions) {
+        await saveTransaction(tx);
+      }
+      await fetchTransactions();
+    } catch (err: any) {
+      console.error('Error loading demo transactions:', err);
+      alert('Failed to load demo transactions: ' + err.message);
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
 
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
@@ -649,6 +717,7 @@ export function PortfolioView({
         setBaseCurrency={setBaseCurrency}
         onShareClick={() => setShowShareModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
+        onFeedbackClick={() => setShowFeedbackModal(true)}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -777,7 +846,46 @@ export function PortfolioView({
                 opacity: loadingHoldings ? 0.6 : 1,
                 transition: 'opacity 0.15s ease-in-out'
               }}>
-                <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+                {portfolioTransactions.length === 0 && !loadingTransactions ? (
+                  <div className="glass-panel" style={{ padding: '3rem 2rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.04) 0%, rgba(236, 72, 153, 0.04) 100%)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1.25rem' }}>
+                      <Plus size={30} />
+                    </div>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>Welcome to Quantify!</h3>
+                    <p style={{ margin: '0 0 2rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '480px', lineHeight: 1.5 }}>
+                      Your portfolio is currently empty. Get started by adding a transaction manually, or load a sample demo portfolio to immediately explore all advanced charts, dividend tracking, and risk analytics.
+                    </p>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {activePortfolioRole !== 'viewer' && (
+                        <>
+                          <button 
+                            type="button"
+                            onClick={() => setShowAddModal(true)}
+                            className="glow-btn"
+                            style={{ padding: '0.65rem 1.75rem', fontSize: '0.85rem', borderRadius: '8px', cursor: 'pointer', border: 'none', fontWeight: 600 }}
+                          >
+                            Add First Transaction
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={handleLoadDemoData}
+                            disabled={loadingDemo}
+                            className="cancel-btn"
+                            style={{ padding: '0.65rem 1.75rem', fontSize: '0.85rem', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', color: 'white', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
+                            {loadingDemo ? 'Loading Demo...' : 'Load Demo Portfolio'}
+                          </button>
+                        </>
+                      )}
+                      {activePortfolioRole === 'viewer' && (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          This portfolio is empty and you have read-only access.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
                   {/* Left Column: Holdings Table */}
                   <div style={{ minWidth: 0 }}>
                     <HoldingsTable 
@@ -952,6 +1060,7 @@ export function PortfolioView({
                     </div>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* LEDGER TAB CONTENT */}
@@ -1059,6 +1168,12 @@ export function PortfolioView({
           fetchHoldings(baseCurrency, selectedAccount);
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         }}
+      />
+
+      {/* FEEDBACK & BUG REPORT MODAL */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
       />
 
       {/* PORTFOLIO DIVIDENDS OVERRIDES MODAL */}

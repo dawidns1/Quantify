@@ -503,6 +503,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
 
       fetchHoldings(baseCurrency, selectedAccount, false);
+    } else {
+      setLoadingHoldings(false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
 
@@ -533,6 +535,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       fetchHistoricalPerformance(baseCurrency, selectedAccount);
     } else {
       setChartData(null);
+      setLoadingChart(false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
 
@@ -548,6 +551,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       fetchPortfolioAnalytics(baseCurrency, selectedAccount);
     } else {
       setAnalytics(null);
+      setLoadingAnalytics(false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
 
