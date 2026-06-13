@@ -4,6 +4,14 @@ import time
 import pandas as pd
 from datetime import datetime, date, timedelta
 from backend.data_provider import get_provider
+from backend.cache_db import (
+    get_cached_live_price,
+    save_cached_live_price,
+    get_cached_historical_prices,
+    save_cached_historical_prices,
+    get_cached_upcoming_events,
+    save_cached_upcoming_events
+)
 
 provider = get_provider()
 
@@ -72,13 +80,35 @@ class PortfolioManager:
             sym = sym.upper().strip()
             cache_entry = cls._live_ticker_cache.get(sym)
             if not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
-                missing_symbols.append(sym)
+                # Try loading from L2 SQLite Cache
+                sqlite_data = get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
+                if sqlite_data:
+                    cls._live_ticker_cache[sym] = (sqlite_data["last_updated"], {
+                        "live_price": sqlite_data["live_price"],
+                        "previous_close": sqlite_data["previous_close"],
+                        "company_name": sqlite_data["company_name"],
+                        "native_currency": sqlite_data["native_currency"]
+                    })
+                    cls._ticker_metadata_cache[sym] = {
+                        "company_name": sqlite_data["company_name"],
+                        "native_currency": sqlite_data["native_currency"].upper().strip(),
+                        "asset_class": "Equity",
+                        "timezone": sqlite_data["timezone"],
+                        "exchange": sqlite_data["exchange"]
+                    }
+                else:
+                    missing_symbols.append(sym)
                 
         for pair in fx_pairs:
             pair = pair.upper().strip()
             cache_entry = cls._live_fx_cache.get(pair)
             if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
-                missing_fx.append(pair)
+                # Try loading from L2 SQLite Cache
+                sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
+                if sqlite_data:
+                    cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
+                else:
+                    missing_fx.append(pair)
                 
         if not missing_symbols and not missing_fx:
             return
@@ -90,10 +120,26 @@ class PortfolioManager:
             for sym in missing_symbols:
                 stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
                 cls._live_ticker_cache[sym] = (now, stock_data)
+                # Save to SQLite L2 Cache
+                save_cached_live_price(sym, {
+                    "live_price": stock_data.get("live_price", 0.0),
+                    "previous_close": stock_data.get("previous_close", 0.0),
+                    "company_name": stock_data.get("company_name", sym),
+                    "native_currency": stock_data.get("native_currency", "USD"),
+                    "timezone": stock_data.get("timezone", "UTC"),
+                    "exchange": stock_data.get("exchange", "")
+                })
                 
             for pair in missing_fx:
                 rate = res["fx"].get(pair, 1.0)
                 cls._live_fx_cache[pair] = (now, rate)
+                # Save to SQLite L2 Cache
+                save_cached_live_price(pair, {
+                    "live_price": rate,
+                    "previous_close": rate,
+                    "company_name": pair,
+                    "native_currency": "USD"
+                })
         except Exception as e:
             print(f"Error prefetching live prices: {e}")
 
@@ -106,7 +152,18 @@ class PortfolioManager:
             sym = sym.upper().strip()
             cache_entry = cls._historical_stock_cache.get(sym)
             if not cache_entry or cache_entry["start_date"] > start_dt or (now - cache_entry["last_updated"] > cls.HISTORICAL_CACHE_TTL):
-                missing_symbols.append(sym)
+                # Try loading from L2 SQLite Cache
+                sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
+                if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
+                    cls._historical_stock_cache[sym] = {
+                        "start_date": min(sqlite_prices.keys()),
+                        "end_date": max(sqlite_prices.keys()),
+                        "last_updated": now,
+                        "prices": sqlite_prices,
+                        "dividends": sqlite_divs
+                    }
+                else:
+                    missing_symbols.append(sym)
                 
         if not missing_symbols:
             return
@@ -139,6 +196,8 @@ class PortfolioManager:
                         "prices": prices_dict,
                         "dividends": dividends_dict
                     }
+                    # Save to SQLite L2 Cache
+                    save_cached_historical_prices(sym, prices_dict, dividends_dict)
         except Exception as e:
             print(f"Error prefetching historical stock prices in bulk: {e}")
 
@@ -162,6 +221,25 @@ class PortfolioManager:
                         "timezone": meta.get("timezone", "Unknown"),
                         "exchange": meta.get("exchange", "")
                     }
+        
+        # Check L2 SQLite Cache
+        sqlite_data = get_cached_live_price(symbol, cls.STOCK_CACHE_TTL)
+        if sqlite_data:
+            # Populate metadata cache
+            meta_data = {
+                "company_name": sqlite_data["company_name"],
+                "native_currency": sqlite_data["native_currency"].upper().strip(),
+                "asset_class": "Equity",  # default
+                "timezone": sqlite_data["timezone"],
+                "exchange": sqlite_data["exchange"]
+            }
+            cls._ticker_metadata_cache[symbol] = meta_data
+            price_data = {
+                "live_price": sqlite_data["live_price"],
+                "previous_close": sqlite_data["previous_close"]
+            }
+            cls._live_ticker_cache[symbol] = (sqlite_data["last_updated"], price_data)
+            return {**price_data, **meta_data}
                     
         try:
             res = provider.download_live_ticker(symbol)
@@ -213,6 +291,9 @@ class PortfolioManager:
         }
         cls._live_ticker_cache[symbol] = (now, price_data)
         
+        # Save to SQLite Cache
+        save_cached_live_price(symbol, {**price_data, **meta_data})
+        
         return {**price_data, **meta_data}
 
     @classmethod
@@ -225,6 +306,12 @@ class PortfolioManager:
             if now - ts < cls.FX_CACHE_TTL:
                 return rate
                 
+        # Check L2 SQLite Cache
+        sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
+        if sqlite_data:
+            cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
+            return sqlite_data["live_price"]
+                
         rate = None
         try:
             rate = provider.download_live_fx(pair)
@@ -236,6 +323,15 @@ class PortfolioManager:
             rate = FALLBACK_RATES.get(base_pair, 1.0)
             
         cls._live_fx_cache[pair] = (now, float(rate))
+        
+        # Save to SQLite Cache
+        save_cached_live_price(pair, {
+            "live_price": float(rate),
+            "previous_close": float(rate),
+            "company_name": pair,
+            "native_currency": "USD"
+        })
+        
         return float(rate)
 
     @classmethod
@@ -278,12 +374,29 @@ class PortfolioManager:
 
         def fetch_ticker_events(symbol, shares_owned):
             symbol = symbol.upper().strip()
-            # 1. Check cache first
+            # 1. Check L1 cache first
             cached_entry = cls._upcoming_events_cache.get(symbol)
             if cached_entry and (now - cached_entry[0] < cls.EVENTS_CACHE_TTL):
                 # Recalculate est_payout because shares_owned might have changed
                 updated_events = []
                 for ev in cached_entry[1]:
+                    if ev.get("date") is None:
+                        continue
+                    new_ev = dict(ev)
+                    if new_ev["type"] == "Dividend":
+                        div_val = new_ev.get("last_dividend_value", 0.0)
+                        new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
+                    updated_events.append(new_ev)
+                return updated_events
+
+            # 2. Check L2 SQLite Cache
+            sqlite_events = get_cached_upcoming_events(symbol, cls.EVENTS_CACHE_TTL)
+            if sqlite_events is not None:
+                cls._upcoming_events_cache[symbol] = (now, sqlite_events)
+                updated_events = []
+                for ev in sqlite_events:
+                    if ev.get("date") is None:
+                        continue
                     new_ev = dict(ev)
                     if new_ev["type"] == "Dividend":
                         div_val = new_ev.get("last_dividend_value", 0.0)
@@ -303,6 +416,7 @@ class PortfolioManager:
 
                 if cal and isinstance(cal, dict):
                     # Check Ex-Dividend Date
+                    ex_div_date = cal.get('Dividend Date') or cal.get('Ex-Dividend Date')
                     ex_date_obj = to_date_obj(ex_div_date)
                     if ex_date_obj and ex_date_obj >= today:
                         curr = info.get('currency') or info.get('financialCurrency') or 'USD'
@@ -354,9 +468,12 @@ class PortfolioManager:
             except Exception as ex:
                 print(f"[UpcomingEvents] Error fetching for {symbol}: {ex}")
 
-            # Cache the parsed results
+            # Cache the parsed results to L1 and L2
             cls._upcoming_events_cache[symbol] = (now, events)
-            return events
+            save_cached_upcoming_events(symbol, events)
+            
+            # Filter dummy events out for the return value
+            return [ev for ev in events if ev.get("date") is not None]
 
         # Compile concurrently
         compiled_events = []
@@ -1402,4 +1519,152 @@ class PortfolioManager:
             "dates": dates_res,
             "nav": nav_res,
             "cost_basis": cost_basis_res
+        }
+
+    @classmethod
+    def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+        from backend.financial_engine import (
+            calculate_xirr,
+            calculate_twr,
+            calculate_risk_metrics,
+            calculate_beta,
+            calculate_correlation_matrix
+        )
+        base_currency = base_currency.upper().strip()
+        portfolio_settings = portfolio_settings or {}
+        
+        # 1. Get daily performance curve
+        hist_perf = cls.calculate_historical_performance(transactions, base_currency, account, link_cash, portfolio_settings)
+        if not hist_perf.get("dates"):
+            return {
+                "mwr": 0.0,
+                "twr": 0.0,
+                "volatility_annual": 0.0,
+                "sharpe_ratio": 0.0,
+                "sortino_ratio": 0.0,
+                "beta": 1.0,
+                "correlation_matrix": {}
+            }
+            
+        # 2. Filter transactions for cash flows
+        if account and account.lower() != "all":
+            txs_cf = [tx for tx in transactions if tx.get("account", "Default").lower() == account.lower()]
+        else:
+            txs_cf = transactions
+            
+        # 3. Calculate cash flows in base currency
+        cf_by_date = {}
+        for tx in txs_cf:
+            try:
+                tx_dt = datetime.strptime(tx["date"], "%Y-%m-%d").date()
+                tx_curr = tx["currency"].upper().strip()
+                
+                # Fetch historical exchange rate on transaction date
+                if tx_curr == base_currency:
+                    rate = 1.0
+                else:
+                    pair = f"{tx_curr}{base_currency}=X"
+                    rates = cls.get_cached_historical_fx(pair, tx_dt, tx_dt)
+                    rate = rates.get(tx_dt, FALLBACK_RATES.get(f"{tx_curr}{base_currency}", 1.0))
+                    
+                cost_native = float(tx["shares"]) * float(tx["price"])
+                fees_native = float(tx.get("fees") or 0.0)
+                
+                if tx["type"] == "BUY":
+                    val = -(cost_native + fees_native) * rate
+                else:
+                    val = (cost_native - fees_native) * rate
+                    
+                cf_by_date[tx_dt] = cf_by_date.get(tx_dt, 0.0) + val
+            except Exception:
+                pass
+                
+        # 4. Integrate dividends as positive cash flows
+        symbol_txs = {}
+        for tx in txs_cf:
+            sym = tx["symbol"].upper().strip()
+            if not sym.startswith("CASH_"):
+                symbol_txs.setdefault(sym, []).append(tx)
+                
+        ticker_info_tmp = {}
+        for symbol in symbol_txs.keys():
+            info = cls.get_cached_live_ticker(symbol)
+            ticker_info_tmp[symbol] = {
+                "live_price": info["live_price"],
+                "company_name": info["company_name"],
+                "native_currency": info["native_currency"].upper().strip(),
+                "asset_class": info.get("asset_class", "Equity"),
+                "previous_close": info.get("previous_close", 0.0),
+                "timezone": info.get("timezone", "UTC"),
+                "exchange": info.get("exchange", "")
+            }
+            
+        fx_rates = {base_currency: 1.0}
+        unique_currencies = {base_currency}
+        for tx in txs_cf:
+            unique_currencies.add(tx["currency"].upper().strip())
+        for curr in unique_currencies:
+            if curr != base_currency:
+                pair = f"{curr}{base_currency}=X"
+                fx_rates[curr] = cls.get_cached_live_fx(pair)
+                
+        sorted_txs = sorted(txs_cf, key=lambda x: x.get("date", ""))
+        try:
+            div_list = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info_tmp, base_currency, fx_rates, portfolio_settings)
+            for div in div_list:
+                if div.get("is_deleted"):
+                    continue
+                div_dt_str = div.get("date")
+                if div_dt_str:
+                    try:
+                        div_dt = datetime.strptime(div_dt_str.split("T")[0], "%Y-%m-%d").date()
+                        payout_base = float(div.get("payout_net_base") or div.get("payout_base") or 0.0)
+                        cf_by_date[div_dt] = cf_by_date.get(div_dt, 0.0) + payout_base
+                    except:
+                        pass
+        except Exception as div_err:
+            print(f"[AnalyticsEngine] Error parsing dividends: {div_err}")
+            
+        # 5. Add current NAV as final positive cash flow on today
+        today = date.today()
+        last_nav = hist_perf["nav"][-1]
+        cf_by_date[today] = cf_by_date.get(today, 0.0) + last_nav
+        
+        # Build Cash flows list for XIRR
+        cash_flows_list = [(dt, val) for dt, val in cf_by_date.items()]
+        
+        # Build daily cash flows for TWR
+        daily_cfs = {}
+        for dt, val in cf_by_date.items():
+            dt_str = dt.strftime("%Y-%m-%d")
+            daily_cfs[dt_str] = val
+        # Subtract the current NAV valuation component from TWR cash flow adjustments
+        today_str = today.strftime("%Y-%m-%d")
+        if today_str in daily_cfs:
+            daily_cfs[today_str] -= last_nav
+            
+        # 6. Run Calculations
+        mwr = calculate_xirr(cash_flows_list)
+        
+        daily_nav_list = [{"date": d, "nav": n, "cost": c} for d, n, c in zip(hist_perf["dates"], hist_perf["nav"], hist_perf["cost_basis"])]
+        twr = calculate_twr(daily_nav_list, daily_cfs)
+        
+        rf_rate = float(portfolio_settings.get("risk_free_rate", 2.0)) / 100.0
+        risk = calculate_risk_metrics(daily_nav_list, daily_cfs, rf_rate)
+        
+        benchmark = portfolio_settings.get("beta_benchmark", "SPY")
+        beta = calculate_beta(daily_nav_list, daily_cfs, benchmark)
+        
+        # Get active Symbols for correlation matrix
+        active_symbols = [sym for sym in symbol_txs.keys()]
+        correlation = calculate_correlation_matrix(active_symbols)
+        
+        return {
+            "mwr": round(mwr, 4),
+            "twr": round(twr, 4),
+            "volatility_annual": risk.get("volatility_annual", 0.0),
+            "sharpe_ratio": risk.get("sharpe_ratio", 0.0),
+            "sortino_ratio": risk.get("sortino_ratio", 0.0),
+            "beta": beta,
+            "correlation_matrix": correlation
         }

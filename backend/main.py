@@ -85,6 +85,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def start_cache_warmer():
+    def warmer_loop():
+        print("[CACHE WARMER] Starting background cache warmer thread...")
+        time.sleep(10)  # Wait for uvicorn to settle
+        while True:
+            try:
+                from backend.cache_db import get_connection
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT symbol FROM live_prices WHERE symbol NOT LIKE 'CASH_%' AND symbol NOT LIKE '%=X'")
+                rows = cursor.fetchall()
+                symbols = [r["symbol"] for r in rows]
+                conn.close()
+                
+                if symbols:
+                    print(f"[CACHE WARMER] Warming cache for {len(symbols)} symbols: {symbols}")
+                    fx_pairs = ["USDPLN=X", "EURPLN=X", "PLNUSD=X", "PLNEUR=X", "USDEUR=X", "EURUSD=X"]
+                    
+                    # Force a refresh in portfolio manager prefetch (by passing symbols)
+                    PortfolioManager.prefetch_live_prices(symbols, fx_pairs)
+                    
+                    # Historical prefetch
+                    from datetime import date, timedelta
+                    start_dt = date.today() - timedelta(days=365)
+                    end_dt = date.today()
+                    PortfolioManager.prefetch_historical_stock_prices(symbols, start_dt, end_dt)
+                    print("[CACHE WARMER] Cache warming cycle completed successfully.")
+                else:
+                    print("[CACHE WARMER] No cached symbols found in SQLite. Cache warming skipped.")
+            except Exception as e:
+                print(f"[CACHE WARMER] Error in cache warming cycle: {e}")
+            
+            # Sleep for 1 hour
+            time.sleep(3600)
+            
+    thread = threading.Thread(target=warmer_loop, daemon=True)
+    thread.start()
+
+@app.on_event("startup")
+def startup_event():
+    start_cache_warmer()
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 DETAILS_DIR = os.path.join(DATA_DIR, 'details')
 
@@ -497,6 +539,28 @@ def get_historical_portfolio_nav_jwt(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
+
+@app.get("/api/portfolio/{portfolio_id}/analytics")
+def get_portfolio_analytics_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    try:
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        return PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating portfolio analytics: {str(e)}")
 
 @app.get("/api/portfolio/{portfolio_id}/upcoming-events")
 def get_upcoming_events_jwt(

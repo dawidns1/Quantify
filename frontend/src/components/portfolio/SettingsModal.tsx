@@ -19,6 +19,8 @@ export function SettingsModal({
   onSaveSuccess
 }: SettingsModalProps) {
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
+  const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
+  const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
@@ -42,6 +44,8 @@ export function SettingsModal({
         }
       });
       setAccountTaxRates(initialRates);
+      setRiskFreeRate(portfolio.settings?.risk_free_rate !== undefined ? portfolio.settings.risk_free_rate : 2.0);
+      setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
       setErrorMsg(null);
       setSuccessMsg(false);
     }
@@ -74,7 +78,9 @@ export function SettingsModal({
     try {
       const updatedSettings = {
         ...portfolio.settings,
-        accountTaxRates
+        accountTaxRates,
+        risk_free_rate: riskFreeRate,
+        beta_benchmark: betaBenchmark
       };
       await updatePortfolioSettings(portfolio.id, updatedSettings);
       setSuccessMsg(true);
@@ -201,6 +207,68 @@ export function SettingsModal({
               )}
             </div>
 
+            {/* Analytics Configuration */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
+                Analytics Configuration
+              </span>
+              
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {/* Risk-Free Rate Input */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '140px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    Annual Risk-Free Rate (%)
+                  </label>
+                  <input 
+                    type="number"
+                    disabled={isViewer}
+                    value={riskFreeRate}
+                    onChange={(e) => setRiskFreeRate(parseFloat(e.target.value) || 0)}
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    style={{
+                      padding: '0.5rem',
+                      fontSize: '0.82rem',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Beta Benchmark Select */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minWidth: '180px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    Beta Benchmark
+                  </label>
+                  <select
+                    disabled={isViewer}
+                    value={betaBenchmark}
+                    onChange={(e) => setBetaBenchmark(e.target.value)}
+                    style={{
+                      padding: '0.5rem',
+                      fontSize: '0.82rem',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="SPY">SPY (S&P 500 ETF)</option>
+                    <option value="^GSPC">S&P 500 Index (^GSPC)</option>
+                    <option value="^IXIC">Nasdaq Composite (^IXIC)</option>
+                    <option value="^DJI">Dow Jones Industrial Average (^DJI)</option>
+                    <option value="^WIG20">WIG20 Index (^WIG20)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             {/* Footer Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
               <button 
@@ -214,7 +282,7 @@ export function SettingsModal({
               {!isViewer && (
                 <button 
                   onClick={handleSave}
-                  disabled={saving || successMsg || portfolioAccounts.length === 0}
+                  disabled={saving || successMsg}
                   className="glow-btn"
                   style={{ 
                     padding: '0.45rem 1rem', 

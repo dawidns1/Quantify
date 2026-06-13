@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   History, 
   Plus, 
@@ -38,7 +38,7 @@ ChartJS.register(
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
 
-import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
+import type { Transaction } from '../types/portfolio';
 
 import { Sidebar } from './portfolio/Sidebar';
 import { MetricsBanner } from './portfolio/MetricsBanner';
@@ -52,23 +52,22 @@ import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
 import { UpcomingEvents } from './portfolio/UpcomingEvents';
+import { PortfolioAnalytics } from './portfolio/PortfolioAnalytics';
+import { DividendCalendar } from './portfolio/DividendCalendar';
+import { FXHedgingVisualizer } from './portfolio/FXHedgingVisualizer';
 
 import { 
-  fetchHoldings as fetchHoldingsService, 
-  fetchHistoricalPerformance as fetchHistoricalPerformanceService 
-} from '../services/calculationService';
-import { 
-  fetchUserPortfolios, 
-  createPortfolio, 
-  renamePortfolio, 
+  createPortfolio,
+  renamePortfolio,
   deletePortfolio,
   updatePortfolioSettings
 } from '../services/supabaseService';
 import { 
-  fetchTransactions as fetchTransactionsService, 
   deleteTransaction as deleteTransactionService 
 } from '../services/transactionService';
 
+
+import { usePortfolio } from '../context/PortfolioContext';
 
 interface PortfolioViewProps {
   apiBaseUrl: string;
@@ -80,6 +79,43 @@ export function PortfolioView({
   signOut
 }: PortfolioViewProps) {
   const { user, session } = useAuth();
+  const {
+    portfolios,
+    setPortfolios,
+    activePortfolioId,
+    setActivePortfolioId,
+    activePortfolioRole,
+    setActivePortfolioRole,
+    baseCurrency,
+    setBaseCurrency,
+    selectedAccount,
+    setSelectedAccount,
+    holdings,
+    summary,
+    allTransactions,
+    dividendsList,
+    chartData,
+    analytics,
+    loadingHoldings,
+    loadingTransactions,
+    loadingPortfolios,
+    loadingChart,
+    loadingAnalytics,
+    widgets,
+    setWidgets,
+    showWidgetManager,
+    setShowWidgetManager,
+    linkCash,
+    setLinkCash,
+    portfolioAccountsMap,
+    uniqueAccounts,
+    transactions,
+    loadPortfolios,
+    fetchHoldings,
+    fetchTransactions,
+    fetchHistoricalPerformance
+  } = usePortfolio();
+
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -93,72 +129,6 @@ export function PortfolioView({
     setSubTabState(tab);
     localStorage.setItem('portfolio_sub_tab', tab);
   };
-
-  const [baseCurrency, setBaseCurrencyState] = useState<'PLN' | 'USD' | 'EUR'>(() => {
-    const cached = localStorage.getItem('portfolio_base_currency');
-    return (cached === 'PLN' || cached === 'USD' || cached === 'EUR') ? cached : 'PLN';
-  });
-
-  const setBaseCurrency = (currency: 'PLN' | 'USD' | 'EUR') => {
-    triggerRandomUpsell();
-    setBaseCurrencyState(currency);
-    localStorage.setItem('portfolio_base_currency', currency);
-  };
-  
-  const [holdings, setHoldings] = useState<Holding[]>(() => {
-    const activeId = localStorage.getItem('portfolio_active_id');
-    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
-    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    if (!activeId) return [];
-    try {
-      const cached = localStorage.getItem(`cached_holdings_${activeId}_${baseCurr}_${selAcc}`);
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [summary, setSummary] = useState<Summary>(() => {
-    const activeId = localStorage.getItem('portfolio_active_id');
-    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
-    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    const defaultSum: Summary = {
-      total_cost_base: 0,
-      total_value_base: 0,
-      total_gain_base: 0,
-      total_gain_percent: 0,
-      base_currency: baseCurr as any
-    };
-    if (!activeId) return defaultSum;
-    try {
-      const cached = localStorage.getItem(`cached_summary_${activeId}_${baseCurr}_${selAcc}`);
-      return cached ? JSON.parse(cached) : defaultSum;
-    } catch (e) {
-      return defaultSum;
-    }
-  });
-  
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>(() => {
-    try {
-      const cached = localStorage.getItem('cached_all_transactions');
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [dividendsList, setDividendsList] = useState<any[]>(() => {
-    const activeId = localStorage.getItem('portfolio_active_id');
-    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
-    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    if (!activeId) return [];
-    try {
-      const cached = localStorage.getItem(`cached_dividends_list_${activeId}_${baseCurr}_${selAcc}`);
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [loadingHoldings, setLoadingHoldings] = useState(true);
-  const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -170,31 +140,6 @@ export function PortfolioView({
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
-  const [linkCash, setLinkCashState] = useState<boolean>(() => {
-    return localStorage.getItem('portfolio_link_cash') !== 'false';
-  });
-
-  const setLinkCash = (val: boolean) => {
-    triggerRandomUpsell();
-    setLinkCashState(val);
-    localStorage.setItem('portfolio_link_cash', String(val));
-  };
-
-  const [widgets, setWidgets] = useState<string[]>(() => {
-    const cached = localStorage.getItem('dashboard_widgets_order');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {}
-    }
-    return ['metrics', 'chart', 'events', 'allocation'];
-  });
-
-  const [showWidgetManager, setShowWidgetManager] = useState<boolean>(false);
-
   const handleMoveWidget = (fromIdx: number, toIdx: number) => {
     setWidgets(prev => {
       const next = [...prev];
@@ -228,19 +173,6 @@ export function PortfolioView({
     });
   };
 
-  const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(() => {
-    const activeId = localStorage.getItem('portfolio_active_id');
-    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
-    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    if (!activeId) return null;
-    try {
-      const cached = localStorage.getItem(`cached_chart_data_${activeId}_${baseCurr}_${selAcc}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch (e) {
-      return null;
-    }
-  });
-  const [loadingChart, setLoadingChart] = useState<boolean>(false);
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
   const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
@@ -368,45 +300,6 @@ export function PortfolioView({
     };
   }, []);
 
-  // Filtering states
-  const [selectedAccount, setSelectedAccountState] = useState<string>(() => {
-    return localStorage.getItem('portfolio_selected_account') || 'All';
-  });
-
-  const setSelectedAccount = (account: string) => {
-    triggerRandomUpsell();
-    setSelectedAccountState(account);
-    localStorage.setItem('portfolio_selected_account', account);
-  };
-
-  // Portfolios state (multi-device collaborative lists)
-  const [portfolios, setPortfolios] = useState<Portfolio[]>(() => {
-    try {
-      const cached = localStorage.getItem('cached_portfolios');
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [activePortfolioId, setActivePortfolioId] = useState<string | null>(() => {
-    return localStorage.getItem('portfolio_active_id');
-  });
-  const [activePortfolioRole, setActivePortfolioRole] = useState<'owner' | 'editor' | 'viewer'>(() => {
-    return (localStorage.getItem('portfolio_active_role') as any) || 'viewer';
-  });
-  const [loadingPortfolios, setLoadingPortfolios] = useState(true);
-
-  const latestParamsRef = useRef({
-    activePortfolioId,
-    baseCurrency,
-    selectedAccount
-  });
-  latestParamsRef.current = {
-    activePortfolioId,
-    baseCurrency,
-    selectedAccount
-  };
-
   // Trigger a random upsell modal (e.g. 10% chance) on general user actions when on the Free plan
   const triggerRandomUpsell = () => {
     if (tier === 'free') {
@@ -417,93 +310,6 @@ export function PortfolioView({
       }
     }
     return false;
-  };
-
-  // 1. Transactions filtered by portfolio (used for fetching holdings & historical charting)
-  const portfolioTransactions = useMemo(() => {
-    if (activePortfolioId && activePortfolioId !== 'all') {
-      return allTransactions.filter(tx => tx.portfolio_id === activePortfolioId);
-    }
-    return allTransactions;
-  }, [allTransactions, activePortfolioId]);
-
-  // 2. Transactions filtered by both portfolio and account (used for ledger, Cash Modal, etc.)
-  const transactions = useMemo(() => {
-    let list = allTransactions;
-    if (activePortfolioId && activePortfolioId !== 'all') {
-      list = list.filter(tx => tx.portfolio_id === activePortfolioId);
-    }
-    if (selectedAccount && selectedAccount !== 'All') {
-      list = list.filter(tx => (tx.account || 'Default').toLowerCase() === selectedAccount.toLowerCase());
-    }
-    return list;
-  }, [allTransactions, activePortfolioId, selectedAccount]);
-
-  // 3. Dynamic map of unique accounts per portfolio ID for sidebar tree list
-  const portfolioAccountsMap = useMemo(() => {
-    const mapping: Record<string, string[]> = {};
-    for (const tx of allTransactions) {
-      const pId = tx.portfolio_id;
-      if (!pId) continue;
-      const acc = tx.account || 'Default';
-      if (!mapping[pId]) {
-        mapping[pId] = [];
-      }
-      if (!mapping[pId].includes(acc)) {
-        mapping[pId].push(acc);
-      }
-    }
-    for (const pId in mapping) {
-      mapping[pId].sort();
-    }
-    return mapping;
-  }, [allTransactions]);
-
-  // 4. Extract unique accounts dynamically for the active portfolio scope
-  const uniqueAccounts = useMemo(() => {
-    return Array.from(
-      new Set(portfolioTransactions.map((tx) => tx.account || 'Default'))
-    ).sort();
-  }, [portfolioTransactions]);
-
-  // Load portfolios from Supabase
-  const loadPortfolios = async () => {
-    if (!user) return;
-    setLoadingPortfolios(true);
-    try {
-      let formatted = await fetchUserPortfolios(user.id);
-
-      if (formatted.length === 0) {
-        const defaultPortfolio = await createPortfolio(user.id, 'My Portfolio');
-        formatted = [defaultPortfolio];
-      }
-
-      setPortfolios(formatted);
-      localStorage.setItem('cached_portfolios', JSON.stringify(formatted));
-
-      const cachedId = localStorage.getItem('portfolio_active_id');
-      if (cachedId === 'all') {
-        setActivePortfolioId('all');
-        setActivePortfolioRole('viewer');
-        localStorage.setItem('portfolio_active_role', 'viewer');
-      } else {
-        const found = formatted.find(p => p.id === cachedId);
-        if (found) {
-          setActivePortfolioId(found.id);
-          setActivePortfolioRole(found.role);
-          localStorage.setItem('portfolio_active_role', found.role);
-        } else {
-          setActivePortfolioId(formatted[0].id);
-          setActivePortfolioRole(formatted[0].role);
-          localStorage.setItem('portfolio_active_id', formatted[0].id);
-          localStorage.setItem('portfolio_active_role', formatted[0].role);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading portfolios:', err);
-    } finally {
-      setLoadingPortfolios(false);
-    }
   };
 
   // Custom modal helpers
@@ -606,172 +412,7 @@ export function PortfolioView({
     );
   };
 
-  useEffect(() => {
-    loadPortfolios();
-  }, [user?.id]);
 
-  // Fetch holdings (GET from backend calculator using JWT)
-  const fetchHoldings = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount, silent = false) => {
-    if (!activePortfolioId) return;
-    if (!silent) setLoadingHoldings(true);
-    try {
-      const jwtToken = session?.access_token || null;
-      const result = await fetchHoldingsService(
-        apiBaseUrl,
-        jwtToken,
-        activePortfolioId,
-        curr,
-        accountFilter,
-        linkCash
-      );
-
-      // Prevent race conditions: check if parameters changed in the meantime
-      if (
-        activePortfolioId !== latestParamsRef.current.activePortfolioId ||
-        curr !== latestParamsRef.current.baseCurrency ||
-        accountFilter !== latestParamsRef.current.selectedAccount
-      ) {
-        return; // Discard stale response
-      }
-
-      setHoldings(result.holdings);
-      setSummary(result.summary);
-      setDividendsList(result.dividends_list || []);
-      
-      // Cache the fresh data
-      localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
-      localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
-      localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
-    } catch (err) {
-      console.error('Error fetching holdings:', err);
-    } finally {
-      if (
-        activePortfolioId === latestParamsRef.current.activePortfolioId &&
-        curr === latestParamsRef.current.baseCurrency &&
-        accountFilter === latestParamsRef.current.selectedAccount
-      ) {
-        if (!silent) setLoadingHoldings(false);
-      }
-    }
-  };
-
-  // Fetch transactions from Supabase for all loaded portfolios
-  const fetchTransactions = async () => {
-    if (!portfolios || portfolios.length === 0) {
-      setAllTransactions([]);
-      setLoadingTransactions(false);
-      return;
-    }
-    setLoadingTransactions(true);
-    try {
-      const portfolioIds = portfolios.map(p => p.id);
-      const data = await fetchTransactionsService(portfolioIds);
-      setAllTransactions(data);
-      
-      // Cache all transactions list
-      localStorage.setItem('cached_all_transactions', JSON.stringify(data));
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-    } finally {
-      setLoadingTransactions(false);
-    }
-  };
-
-  // Fetch historical performance data for the chart
-  const fetchHistoricalPerformance = async (curr: 'PLN' | 'USD' | 'EUR', accountFilter: string = selectedAccount) => {
-    if (!activePortfolioId) {
-      setChartData(null);
-      return;
-    }
-    setLoadingChart(true);
-    try {
-      const jwtToken = session?.access_token || null;
-      const data = await fetchHistoricalPerformanceService(
-        apiBaseUrl,
-        jwtToken,
-        activePortfolioId,
-        curr,
-        accountFilter,
-        linkCash
-      );
-
-      // Prevent race conditions: check if parameters changed in the meantime
-      if (
-        activePortfolioId !== latestParamsRef.current.activePortfolioId ||
-        curr !== latestParamsRef.current.baseCurrency ||
-        accountFilter !== latestParamsRef.current.selectedAccount
-      ) {
-        return; // Discard stale response
-      }
-
-      setChartData(data);
-      
-      // Cache historical data
-      localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(data));
-    } catch (err) {
-      console.error('Error fetching historical performance:', err);
-    } finally {
-      if (
-        activePortfolioId === latestParamsRef.current.activePortfolioId &&
-        curr === latestParamsRef.current.baseCurrency &&
-        accountFilter === latestParamsRef.current.selectedAccount
-      ) {
-        setLoadingChart(false);
-      }
-    }
-  };
-
-  // Fetch transactions when the list of portfolios updates
-  useEffect(() => {
-    if (portfolios.length > 0) {
-      fetchTransactions();
-    }
-  }, [portfolios]);
-
-  // Recalculate holdings when active portfolio, filters, or transactions update
-  useEffect(() => {
-    if (activePortfolioId && portfolios.length > 0) {
-      // Synchronously load from local storage cache first to avoid flashing empty state
-      const cachedH = localStorage.getItem(`cached_holdings_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      const cachedS = localStorage.getItem(`cached_summary_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      if (cachedH) setHoldings(JSON.parse(cachedH));
-      if (cachedS) setSummary(JSON.parse(cachedS));
-      if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
-
-      fetchHoldings(baseCurrency, selectedAccount, false);
-    }
-  }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
-
-  // Set up live polling (every 60 seconds) for real-time price updates when active portfolios exist and markets are open
-  useEffect(() => {
-    if (!activePortfolioId || portfolios.length === 0) return;
-    
-    // We only poll if at least one holding is currently in a live trading session
-    const hasLiveInstruments = holdings.some(h => h.is_live);
-    if (!hasLiveInstruments) return;
-    
-    const interval = setInterval(() => {
-      fetchHoldings(baseCurrency, selectedAccount, true);
-    }, 60000); // Poll every 60 seconds (1 minute)
-    
-    return () => clearInterval(interval);
-  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, holdings]);
-
-  // Recalculate chart when active portfolio, filters, or transactions update
-  useEffect(() => {
-    if (activePortfolioId && portfolioTransactions.length > 0) {
-      // Synchronously load chart data from cache first
-      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      if (cachedC) {
-        setChartData(JSON.parse(cachedC));
-      }
-
-      fetchHistoricalPerformance(baseCurrency, selectedAccount);
-    } else {
-      setChartData(null);
-    }
-  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
 
   // Handle quick actions from holdings table
   const handleQuickAction = (symbol: string, type: 'BUY' | 'SELL') => {
@@ -1202,6 +843,28 @@ export function PortfolioView({
                               onClose={onClose}
                             />
                           );
+                        case 'analytics':
+                          return (
+                            <PortfolioAnalytics 
+                              key="analytics"
+                              analytics={analytics}
+                              loading={loadingAnalytics}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
+                        case 'dividend_calendar':
+                          return (
+                            <DividendCalendar 
+                              key="dividend_calendar"
+                              dividends={dividendsList}
+                              baseCurrency={summary.base_currency}
+                              onMoveUp={onMoveUp}
+                              onMoveDown={onMoveDown}
+                              onClose={onClose}
+                            />
+                          );
                         default:
                           return null;
                       }
@@ -1228,7 +891,9 @@ export function PortfolioView({
                             { id: 'metrics', name: 'Portfolio Metrics' },
                             { id: 'chart', name: 'Performance Chart' },
                             { id: 'events', name: 'Upcoming Corporate Events' },
-                            { id: 'allocation', name: 'Portfolio Allocation' }
+                            { id: 'allocation', name: 'Portfolio Allocation' },
+                            { id: 'analytics', name: 'Performance & Risk' },
+                            { id: 'dividend_calendar', name: 'Dividend Calendar' }
                           ].map(widget => {
                             const isVisible = widgets.includes(widget.id);
                             return (
@@ -1555,6 +1220,13 @@ export function PortfolioView({
                     )}
                   </div>
                 </div>
+
+                {holdingDetails && (
+                  <FXHedgingVisualizer 
+                    holding={holdingDetails} 
+                    baseCurrency={summary.base_currency} 
+                  />
+                )}
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>

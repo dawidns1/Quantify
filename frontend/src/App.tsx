@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PortfolioView } from './components/PortfolioView';
 import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
+import { PortfolioProvider } from './context/PortfolioContext';
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
@@ -44,10 +45,12 @@ function App() {
   }
 
   return (
-    <PortfolioView 
-      apiBaseUrl={API_BASE_URL} 
-      signOut={signOut}
-    />
+    <PortfolioProvider apiBaseUrl={API_BASE_URL}>
+      <PortfolioView 
+        apiBaseUrl={API_BASE_URL} 
+        signOut={signOut}
+      />
+    </PortfolioProvider>
   );
 }
 

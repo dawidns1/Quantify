@@ -157,3 +157,54 @@ export async function fetchUpcomingEvents(
   return response.json();
 }
 
+export async function fetchPortfolioAnalytics(
+  apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
+  baseCurrency: string,
+  account: string,
+  linkCash: boolean
+): Promise<{
+  mwr: number;
+  twr: number;
+  volatility_annual: number;
+  sharpe_ratio: number;
+  sortino_ratio: number;
+  beta: number;
+  correlation_matrix: Record<string, Record<string, number>>;
+}> {
+  const headers: Record<string, string> = {};
+  if (jwtToken) {
+    headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl) {
+    headers['x-supabase-url'] = supabaseUrl;
+  }
+  if (supabaseAnonKey) {
+    headers['x-supabase-anon-key'] = supabaseAnonKey;
+  }
+
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash)
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/analytics?${queryParams.toString()}`, {
+    method: 'GET',
+    headers
+  });
+
+  if (!response.ok) {
+    let errMsg = 'Failed to fetch portfolio analytics';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+
