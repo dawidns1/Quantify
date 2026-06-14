@@ -11,7 +11,8 @@ from backend.cache_db import (
     get_cached_historical_prices,
     save_cached_historical_prices,
     get_cached_upcoming_events,
-    save_cached_upcoming_events
+    save_cached_upcoming_events,
+    update_upcoming_events_timestamp
 )
 
 provider = get_provider()
@@ -416,11 +417,17 @@ class PortfolioManager:
                 return updated_events
 
             events = []
+            fetch_success = False
             try:
                 ticker = yf.Ticker(symbol, session=session)
                 cal = ticker.calendar
                 info = ticker.info
                 
+                # Check if we got something meaningful back from ticker.info
+                # If info is None or empty, yfinance call didn't get proper data
+                if not info or not isinstance(info, dict) or ('symbol' not in info and 'shortName' not in info and 'longName' not in info):
+                    raise Exception("Invalid or empty ticker info returned (likely rate-limited or API issue)")
+
                 # Ex-dividend value
                 last_div = info.get('lastDividendValue') or (info.get('dividendRate', 0) / 4.0 if info.get('dividendRate') else 0.0)
                 last_div = float(last_div) if last_div else 0.0
@@ -476,15 +483,39 @@ class PortfolioManager:
                                 })
                         except Exception:
                             pass
+                
+                # If we get to this point, the fetch was successful!
+                fetch_success = True
+                
             except Exception as ex:
                 print(f"[UpcomingEvents] Error fetching for {symbol}: {ex}")
+                # Fetch failed! Try to fall back to expired cache (ignore TTL)
+                expired_sqlite_events = get_cached_upcoming_events(symbol, cls.EVENTS_CACHE_TTL, ignore_ttl=True)
+                if expired_sqlite_events is not None:
+                    # Update database timestamp so we don't spam requests to yfinance
+                    update_upcoming_events_timestamp(symbol)
+                    cls._upcoming_events_cache[symbol] = (now, expired_sqlite_events)
+                    
+                    # Recalculate payouts for return value
+                    updated_events = []
+                    for ev in expired_sqlite_events:
+                        if ev.get("date") is None:
+                            continue
+                        new_ev = dict(ev)
+                        if new_ev["type"] == "Dividend":
+                            div_val = new_ev.get("last_dividend_value", 0.0)
+                            new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
+                        updated_events.append(new_ev)
+                    return updated_events
 
-            # Cache the parsed results to L1 and L2
-            cls._upcoming_events_cache[symbol] = (now, events)
-            save_cached_upcoming_events(symbol, events)
-            
-            # Filter dummy events out for the return value
-            return [ev for ev in events if ev.get("date") is not None]
+            if fetch_success:
+                # Cache the parsed results to L1 and L2
+                cls._upcoming_events_cache[symbol] = (now, events)
+                save_cached_upcoming_events(symbol, events)
+                return [ev for ev in events if ev.get("date") is not None]
+            else:
+                # If we got here, fetch failed and we have no cached data at all. Return empty list but do not write to DB.
+                return []
 
         # Compile concurrently
         compiled_events = []

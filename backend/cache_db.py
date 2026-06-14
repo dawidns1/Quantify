@@ -213,25 +213,29 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
 
 # --- API FOR UPCOMING CORPORATE EVENTS ---
 
-def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0) -> list:
-    """Gets cached upcoming events if they are not older than max_age_seconds."""
+def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0, ignore_ttl: bool = False) -> list:
+    """Gets cached upcoming events if they are not older than max_age_seconds (unless ignore_ttl is True)."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Check if there is an update within max_age
+    # Check if there is any cached record at all
     cursor.execute(
         "SELECT last_updated FROM upcoming_events WHERE symbol = ? LIMIT 1",
         (symbol.upper(),)
     )
     row = cursor.fetchone()
     
-    if not row or (time.time() - row["last_updated"] > max_age_seconds):
+    if not row:
+        conn.close()
+        return None
+        
+    if not ignore_ttl and (time.time() - row["last_updated"] > max_age_seconds):
         conn.close()
         return None
         
     # Fetch events
     cursor.execute(
-        "SELECT event_type, event_date, description, last_div_val, currency FROM upcoming_events WHERE symbol = ?",
+        "SELECT symbol, event_type, event_date, description, last_div_val, currency FROM upcoming_events WHERE symbol = ?",
         (symbol.upper(),)
     )
     rows = cursor.fetchall()
@@ -240,6 +244,7 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0) ->
     events = []
     for r in rows:
         events.append({
+            "symbol": r["symbol"],
             "type": r["event_type"],
             "date": r["event_date"],
             "description": r["description"],
@@ -247,6 +252,23 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0) ->
             "currency": r["currency"]
         })
     return events
+
+def update_upcoming_events_timestamp(symbol: str):
+    """Updates the last_updated timestamp for all cached events of a symbol to the current time."""
+    with db_write_lock:
+        conn = get_connection()
+        try:
+            with conn:
+                conn.execute("BEGIN IMMEDIATE")
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE upcoming_events SET last_updated = ? WHERE symbol = ?",
+                    (time.time(), symbol.upper())
+                )
+        except Exception as e:
+            print(f"[DB] Error updating upcoming events timestamp for {symbol}: {e}")
+        finally:
+            conn.close()
 
 def save_cached_upcoming_events(symbol: str, events: list):
     with db_write_lock:
