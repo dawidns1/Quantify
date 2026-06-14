@@ -13,7 +13,9 @@ import {
   MessageSquare,
   Eye,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Coins,
+  Layers
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -83,6 +85,56 @@ export function Sidebar({
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+
+  // Debounced search for watchlist suggestions
+  useEffect(() => {
+    if (isSuggestionSelected) return;
+
+    if (newSymbol.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      fetch(`${apiBaseUrl}/api/portfolio/search?q=${newSymbol}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (newSymbol.trim().length < 2) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+          }
+          setSuggestions(data || []);
+          setShowSuggestions(data && data.length > 0);
+        })
+        .catch((err) => {
+          console.error('Error fetching watchlist suggestions:', err);
+        });
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [newSymbol, apiBaseUrl, isSuggestionSelected]);
+
+  const handleSelectWatchlistSuggestion = (s: any) => {
+    const sym = s.symbol.toUpperCase().trim();
+    setIsSuggestionSelected(true);
+    setShowSuggestions(false);
+    
+    if (!watchlist.includes(sym)) {
+      const updated = [...watchlist, sym];
+      setWatchlist(updated);
+      localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
+      syncWatchlistToDb(updated);
+    }
+    
+    setNewSymbol('');
+    setShowAddInput(false);
+    setIsSuggestionSelected(false);
+  };
 
   const fetchWatchlistFromDb = async () => {
     try {
@@ -292,8 +344,9 @@ export function Sidebar({
 
       {/* Base Currency Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
-          {t('sidebar.base_currency', 'Base Currency')}
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Coins size={12} style={{ color: 'var(--color-primary)' }} />
+          <span>{t('sidebar.base_currency', 'Base Currency')}</span>
         </div>
         <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
           {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
@@ -319,12 +372,11 @@ export function Sidebar({
         </div>
       </div>
 
-
-
       {/* View Mode Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem' }}>
-          {t('sidebar.view_mode', 'View Mode')}
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Layers size={12} style={{ color: 'var(--color-primary)' }} />
+          <span>{t('sidebar.view_mode', 'View Mode')}</span>
         </div>
         <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
           {[
@@ -355,349 +407,443 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Assets Section */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '0 0.5rem', minHeight: 0 }}>
-        <div className="tree-section-header">
-          <span>{t('sidebar.assets', 'Assets')}</span>
-          <button 
-            onClick={onCreatePortfolio}
-            title={t('sidebar.create_portfolio', 'Create Portfolio')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2px',
-              borderRadius: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-          >
-            <Plus size={13} />
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '0.25rem' }}>
-          {/* All Assets Node */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div 
-              className={`tree-node ${activePortfolioId === 'all' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePortfolioId('all');
-                setSelectedAccount('All');
-                localStorage.setItem('portfolio_active_id', 'all');
-                if (onCloseSidebar) onCloseSidebar();
+      {/* Unified scrollbox container for Assets and Watchlist */}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', minHeight: 0 }} className="custom-scrollbar">
+        
+        {/* Assets Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem' }}>
+          <div style={{ 
+            fontSize: '0.62rem', 
+            color: 'var(--text-muted)', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.05em', 
+            fontWeight: 600, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            padding: '0.25rem 0.5rem',
+            marginTop: '0.5rem',
+            marginBottom: '0.35rem',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+            paddingBottom: '0.25rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Briefcase size={12} style={{ color: 'var(--color-primary)' }} />
+              <span>{t('sidebar.assets', 'Assets')}</span>
+            </div>
+            <button 
+              onClick={onCreatePortfolio}
+              title={t('sidebar.create_portfolio', 'Create Portfolio')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px',
+                borderRadius: '4px'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
+              <Plus size={13} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingRight: '4px', marginTop: '0.25rem' }}>
+            {/* All Assets Node */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div 
-                className={`tree-caret ${allAssetsExpanded ? '' : 'collapsed'}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAllAssetsExpanded(!allAssetsExpanded);
+                className={`tree-node ${activePortfolioId === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setActivePortfolioId('all');
+                  setSelectedAccount('All');
+                  localStorage.setItem('portfolio_active_id', 'all');
+                  if (onCloseSidebar) onCloseSidebar();
                 }}
               >
-                <ChevronDown size={13} />
+                <div 
+                  className={`tree-caret ${allAssetsExpanded ? '' : 'collapsed'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAllAssetsExpanded(!allAssetsExpanded);
+                  }}
+                >
+                  <ChevronDown size={13} />
+                </div>
+                <Globe size={14} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{t('sidebar.all_assets', 'All Assets')}</span>
               </div>
-              <Globe size={14} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{t('sidebar.all_assets', 'All Assets')}</span>
-            </div>
 
-            {/* Nested Portfolios under All Assets */}
-            {allAssetsExpanded && (
-              <div className="tree-sub-list">
-                {portfolios.map((portfolio) => {
-                  const isActive = activePortfolioId === portfolio.id;
-                  const isExpanded = !!expandedPortfolios[portfolio.id];
-                  const accounts = portfolioAccountsMap[portfolio.id] || [];
-                  
-                  return (
-                    <div key={portfolio.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                      {/* Portfolio Folder Node */}
-                      <div 
-                        className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
-                        onClick={() => {
-                          setActivePortfolioId(portfolio.id);
-                          setActivePortfolioRole(portfolio.role);
-                          setSelectedAccount('All');
-                          localStorage.setItem('portfolio_active_id', portfolio.id);
-                          if (onCloseSidebar) onCloseSidebar();
-                        }}
-                      >
-                        {accounts.length > 0 ? (
-                          <div 
-                            className={`tree-caret ${isExpanded ? '' : 'collapsed'}`}
-                            onClick={(e) => togglePortfolioExpand(portfolio.id, e)}
-                          >
-                            <ChevronDown size={13} />
-                          </div>
-                        ) : (
-                          <div style={{ width: '18px', flexShrink: 0 }} />
-                        )}
-                        <Briefcase size={14} style={{ flexShrink: 0 }} />
-                        <span style={{ 
-                          flex: 1,
-                          minWidth: 0,
-                          overflow: 'hidden', 
-                          textOverflow: 'ellipsis', 
-                          whiteSpace: 'nowrap', 
-                          paddingRight: portfolio.role === 'owner' 
-                            ? (isActive ? '4.5rem' : '2.5rem') 
-                            : '0.5rem',
-                          fontSize: '0.82rem'
-                        }}>
-                          {portfolio.name}
-                        </span>
-                        
-                        {/* Portfolio Actions */}
-                        {portfolio.role === 'owner' && (
-                          <div 
-                            className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
-                            style={{ 
-                              position: 'absolute',
-                              right: '0.5rem',
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              zIndex: 10,
-                              display: isActive ? 'flex' : undefined,
-                              gap: '0.35rem'
-                            }} 
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {isActive && (
-                              <>
-                                <button
-                                  onClick={() => onShareClick?.()}
-                                  title="Share Portfolio"
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                >
-                                  <Share2 size={12} />
-                                </button>
-                                <button
-                                  onClick={() => onSettingsClick?.()}
-                                  title="Portfolio Settings"
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                >
-                                  <Settings size={12} />
-                                </button>
-                              </>
-                            )}
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRenamePortfolio(portfolio.id);
-                              }}
-                              title="Rename Portfolio"
-                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              {/* Nested Portfolios under All Assets */}
+              {allAssetsExpanded && (
+                <div className="tree-sub-list">
+                  {portfolios.map((portfolio) => {
+                    const isActive = activePortfolioId === portfolio.id;
+                    const isExpanded = !!expandedPortfolios[portfolio.id];
+                    const accounts = portfolioAccountsMap[portfolio.id] || [];
+                    
+                    return (
+                      <div key={portfolio.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                        {/* Portfolio Folder Node */}
+                        <div 
+                          className={`tree-node ${isActive && selectedAccount === 'All' ? 'active' : ''}`}
+                          onClick={() => {
+                            setActivePortfolioId(portfolio.id);
+                            setActivePortfolioRole(portfolio.role);
+                            setSelectedAccount('All');
+                            localStorage.setItem('portfolio_active_id', portfolio.id);
+                            if (onCloseSidebar) onCloseSidebar();
+                          }}
+                        >
+                          {accounts.length > 0 ? (
+                            <div 
+                              className={`tree-caret ${isExpanded ? '' : 'collapsed'}`}
+                              onClick={(e) => togglePortfolioExpand(portfolio.id, e)}
                             >
-                              <Edit2 size={11} />
-                            </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeletePortfolio(portfolio.id);
-                              }}
-                              title="Delete Portfolio"
-                              style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                              <ChevronDown size={13} />
+                            </div>
+                          ) : (
+                            <div style={{ width: '18px', flexShrink: 0 }} />
+                          )}
+                          <Briefcase size={14} style={{ flexShrink: 0 }} />
+                          <span style={{ 
+                            flex: 1,
+                            minWidth: 0,
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            whiteSpace: 'nowrap', 
+                            paddingRight: portfolio.role === 'owner' 
+                              ? (isActive ? '4.5rem' : '2.5rem') 
+                              : '0.5rem',
+                            fontSize: '0.82rem'
+                          }}>
+                            {portfolio.name}
+                          </span>
+                          
+                          {/* Portfolio Actions */}
+                          {portfolio.role === 'owner' && (
+                            <div 
+                              className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
+                              style={{ 
+                                position: 'absolute',
+                                right: '0.5rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10,
+                                display: isActive ? 'flex' : undefined,
+                                gap: '0.35rem'
+                              }} 
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Trash2 size={11} />
-                            </button>
+                              {isActive && (
+                                <>
+                                  <button
+                                    onClick={() => onShareClick?.()}
+                                    title="Share Portfolio"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    <Share2 size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => onSettingsClick?.()}
+                                    title="Portfolio Settings"
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    <Settings size={12} />
+                                  </button>
+                                </>
+                              )}
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onRenamePortfolio(portfolio.id);
+                                }}
+                                title="Rename Portfolio"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeletePortfolio(portfolio.id);
+                                }}
+                                title="Delete Portfolio"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Nested Accounts Sub-list */}
+                        {isExpanded && accounts.length > 0 && (
+                          <div className="tree-sub-list">
+                            {accounts.map((accName) => {
+                              const isAccActive = isActive && selectedAccount === accName;
+                              return (
+                                <div 
+                                  key={accName}
+                                  className={`tree-node ${isAccActive ? 'active' : ''}`}
+                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                                  onClick={() => {
+                                    setActivePortfolioId(portfolio.id);
+                                    setActivePortfolioRole(portfolio.role);
+                                    setSelectedAccount(accName);
+                                    localStorage.setItem('portfolio_active_id', portfolio.id);
+                                    if (onCloseSidebar) onCloseSidebar();
+                                  }}
+                                >
+                                  <CreditCard size={12} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {accName}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
-
-                      {/* Nested Accounts Sub-list */}
-                      {isExpanded && accounts.length > 0 && (
-                        <div className="tree-sub-list">
-                          {accounts.map((accName) => {
-                            const isAccActive = isActive && selectedAccount === accName;
-                            return (
-                              <div 
-                                key={accName}
-                                className={`tree-node ${isAccActive ? 'active' : ''}`}
-                                style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
-                                onClick={() => {
-                                  setActivePortfolioId(portfolio.id);
-                                  setActivePortfolioRole(portfolio.role);
-                                  setSelectedAccount(accName);
-                                  localStorage.setItem('portfolio_active_id', portfolio.id);
-                                  if (onCloseSidebar) onCloseSidebar();
-                                }}
-                              >
-                                <CreditCard size={12} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {accName}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Watchlist Section */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 0.8, padding: '0 0.5rem', minHeight: 0, borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.50rem', marginTop: '0.25rem' }}>
-        <div className="tree-section-header" style={{ marginTop: 0, paddingTop: 0 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Eye size={13} style={{ color: 'var(--color-primary)' }} />
-            {t('sidebar.watchlist', 'Watchlist')}
-          </span>
-          <button 
-            onClick={() => setShowAddInput(!showAddInput)}
-            title={t('sidebar.add_to_watchlist', 'Add to Watchlist')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2px',
-              borderRadius: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-          >
-            <Plus size={13} />
-          </button>
-        </div>
-
-        {/* Inline Add Ticker Form */}
-        {showAddInput && (
-          <form onSubmit={handleAddSymbol} style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem 0.5rem', marginBottom: '0.5rem' }}>
-            <input 
-              type="text"
-              value={newSymbol}
-              onChange={(e) => setNewSymbol(e.target.value)}
-              placeholder="e.g. TSLA, NVDA"
-              autoFocus
-              style={{
-                flex: 1,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--panel-border)',
-                borderRadius: '4px',
-                padding: '0.25rem 0.4rem',
-                fontSize: '0.75rem',
-                color: 'white',
-                outline: 'none'
-              }}
-            />
-            <button 
-              type="submit"
-              style={{
-                background: 'var(--color-primary)',
-                border: 'none',
-                borderRadius: '4px',
-                color: 'white',
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.7rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Add
-            </button>
-          </form>
-        )}
-
-        {/* Watchlist Scrollable List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '0.25rem' }} className="custom-scrollbar">
-          {watchlist.length === 0 ? (
-            <div style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              {t('sidebar.watchlist_empty', 'Watchlist is empty')}
+        {/* Watchlist Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', marginTop: '0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.75rem' }}>
+          <div style={{ 
+            fontSize: '0.62rem', 
+            color: 'var(--text-muted)', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.05em', 
+            fontWeight: 600, 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            padding: '0.25rem 0.5rem',
+            marginBottom: '0.35rem',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+            paddingBottom: '0.25rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Eye size={12} style={{ color: 'var(--color-primary)' }} />
+              <span>{t('sidebar.watchlist', 'Watchlist')}</span>
             </div>
-          ) : (
-            watchlist.map((symbol) => {
-              const data = prices[symbol];
-              const price = data?.price;
-              const pct = data?.change_percent ?? 0;
-              const isPositive = pct >= 0;
-              
-              return (
-                <div 
-                  key={symbol}
-                  className="tree-node"
-                  style={{ justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}
-                  onClick={() => onSelectStockSymbol(symbol)}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>{symbol}</span>
-                    {data !== undefined && (
-                      <span 
-                        style={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          backgroundColor: data.is_market_open ? 'var(--color-green)' : 'rgba(255, 255, 255, 0.2)',
-                          display: 'inline-block' 
-                        }} 
-                        title={data.is_market_open ? t('sidebar.market_open', 'Market Open') : t('sidebar.market_closed', 'Market Closed')}
-                      />
-                    )}
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                    {price !== undefined && price !== null ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.72rem', lineHeight: '1.1' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                          {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
-                        </span>
+            <button 
+              onClick={() => setShowAddInput(!showAddInput)}
+              title={t('sidebar.add_to_watchlist', 'Add to Watchlist')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px',
+                borderRadius: '4px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <Plus size={13} />
+            </button>
+          </div>
+
+          {/* Inline Add Ticker Form */}
+          {showAddInput && (
+            <form onSubmit={handleAddSymbol} style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem 0.5rem', marginBottom: '0.5rem', position: 'relative' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input 
+                  type="text"
+                  value={newSymbol}
+                  onChange={(e) => setNewSymbol(e.target.value)}
+                  placeholder="e.g. TSLA, NVDA"
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '4px',
+                    padding: '0.25rem 0.4rem',
+                    fontSize: '0.75rem',
+                    color: 'white',
+                    outline: 'none'
+                  }}
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div 
+                    className="search-suggestions-dropdown" 
+                    style={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      zIndex: 2000, 
+                      maxHeight: '150px',
+                      background: 'rgba(18, 24, 38, 0.98)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '8px',
+                      overflowY: 'auto'
+                    }}
+                  >
+                    {suggestions.map((s) => (
+                      <div 
+                        key={s.symbol}
+                        className="suggestion-item" 
+                        onClick={() => handleSelectWatchlistSuggestion(s)}
+                        style={{
+                          padding: '0.4rem 0.6rem',
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: '2px',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                          cursor: 'pointer',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, color: 'white' }}>{s.symbol}</span>
+                          <span style={{ 
+                            fontSize: '0.6rem', 
+                            background: 'rgba(255, 255, 255, 0.08)', 
+                            padding: '1px 4px', 
+                            borderRadius: '3px',
+                            color: 'var(--text-muted)'
+                          }}>{s.exchange}</span>
+                        </div>
                         <span style={{ 
-                          fontSize: '0.62rem', 
-                          fontWeight: 600,
-                          color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
+                          fontSize: '0.65rem', 
+                          color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%',
+                          textAlign: 'left'
+                        }} title={s.name}>{s.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button 
+                type="submit"
+                style={{
+                  background: 'var(--color-primary)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: 'white',
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                Add
+              </button>
+            </form>
+          )}
+
+          {/* Watchlist Scrollable List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>
+            {watchlist.length === 0 ? (
+              <div style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                {t('sidebar.watchlist_empty', 'Watchlist is empty')}
+              </div>
+            ) : (
+              watchlist.map((symbol) => {
+                const data = prices[symbol];
+                const price = data?.price;
+                const pct = data?.change_percent ?? 0;
+                const isPositive = pct >= 0;
+                
+                return (
+                  <div 
+                    key={symbol}
+                    className="tree-node"
+                    style={{ justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}
+                    onClick={() => onSelectStockSymbol(symbol)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>{symbol}</span>
+                      {data !== undefined && (
+                        <span 
+                          style={{ 
+                            width: '5px', 
+                            height: '5px', 
+                            borderRadius: '50%', 
+                            backgroundColor: data.is_market_open ? 'var(--color-green)' : 'rgba(255, 255, 255, 0.2)',
+                            display: 'inline-block' 
+                          }} 
+                          title={data.is_market_open ? t('sidebar.market_open', 'Market Open') : t('sidebar.market_closed', 'Market Closed')}
+                        />
+                      )}
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                      {price !== undefined && price !== null ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.72rem', lineHeight: '1.1' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                            {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
+                          </span>
+                          <span style={{ 
+                            fontSize: '0.62rem', 
+                            fontWeight: 600,
+                            color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1px'
+                          }}>
+                            {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                            {isPositive ? '+' : ''}{pct.toFixed(2)}%
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                          {loadingPrices ? '...' : 'N/A'}
+                        </span>
+                      )}
+                      
+                      <button
+                        onClick={(e) => handleRemoveSymbol(symbol, e)}
+                        title="Remove from Watchlist"
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '2px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '1px'
-                        }}>
-                          {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                          {isPositive ? '+' : ''}{pct.toFixed(2)}%
-                        </span>
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                        {loadingPrices ? '...' : 'N/A'}
-                      </span>
-                    )}
-                    
-                    <button
-                      onClick={(e) => handleRemoveSymbol(symbol, e)}
-                      title="Remove from Watchlist"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        padding: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginLeft: '0.1rem',
-                        fontSize: '0.7rem'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'}
-                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                    >
-                      ✕
-                    </button>
+                          marginLeft: '0.1rem',
+                          fontSize: '0.7rem'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 

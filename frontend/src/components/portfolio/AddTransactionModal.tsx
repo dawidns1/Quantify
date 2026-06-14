@@ -58,14 +58,16 @@ export function AddTransactionModal({
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Memoize sorted transactions to avoid expensive sorting on every keystroke
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+  }, [transactions]);
+
   // Helper to calculate historical cash balance for a currency and account matching the backend zero floor rule
   const getCurrentCashBalance = (curr: string, acc: string) => {
     let balance = 0.0;
     
-    // Sort transactions chronologically
-    const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
-    
-    for (const tx of sorted) {
+    for (const tx of sortedTransactions) {
       const tx_acc = tx.account || 'Default';
       if (tx_acc.toLowerCase() !== acc.toLowerCase()) continue;
       
@@ -102,6 +104,14 @@ export function AddTransactionModal({
       acc.toLowerCase().includes(formAccount.toLowerCase())
     );
   }, [uniqueAccounts, formAccount, isAccountInputDirty]);
+
+  // Memoize cash balance to fix keypress typing lag
+  const currentCashBalance = useMemo(() => {
+    const cashCurr = formSymbol.toUpperCase().startsWith('CASH_') 
+      ? (formSymbol.split('_')[1] || formCurrency) 
+      : formCurrency;
+    return getCurrentCashBalance(cashCurr, formAccount);
+  }, [sortedTransactions, formSymbol, formCurrency, formAccount, linkCash]);
 
   // Debounced search for suggestions
   useEffect(() => {
@@ -246,8 +256,7 @@ export function AddTransactionModal({
         setFormError('Target balance must be a valid non-negative number.');
         return;
       }
-      const cashCurr = symbol.split('_')[1] || formCurrency;
-      const currentBal = getCurrentCashBalance(cashCurr, formAccount);
+      const currentBal = currentCashBalance;
       const diff = targetVal - currentBal;
       
       if (Math.abs(diff) < 0.001) {
@@ -625,7 +634,7 @@ export function AddTransactionModal({
                     required
                   />
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem', lineHeight: '1.4' }}>
-                    {t('modals.add_tx.current_balance_in', 'Current Balance in')} <strong>{formAccount}</strong>: {formatCurrency(getCurrentCashBalance(formSymbol.split('_')[1] || formCurrency, formAccount), formCurrency)}.
+                    {t('modals.add_tx.current_balance_in', 'Current Balance in')} <strong>{formAccount}</strong>: {formatCurrency(currentCashBalance, formCurrency)}.
                     <br />
                     {t('modals.add_tx.saving_adjust_desc', 'Saving will automatically create a transaction for the difference.')}
                   </div>
