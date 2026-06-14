@@ -1893,6 +1893,27 @@ class PortfolioManager:
             # 1. Retrieve the historical dividends from the cache
             dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
             
+            if not dividends_data:
+                # Try to load from SQLite persistent cache to prevent slow individual HTTP fetches under concurrent load
+                try:
+                    two_years_ago = today - timedelta(days=730)
+                    _, sqlite_divs = get_cached_historical_prices(symbol, two_years_ago, today)
+                    if sqlite_divs:
+                        dividends_data = sqlite_divs
+                        # Warm up the in-memory cache so subsequent price calculations can reuse it
+                        if symbol not in cls._historical_stock_cache:
+                            cls._historical_stock_cache[symbol] = {
+                                "start_date": two_years_ago,
+                                "end_date": today,
+                                "last_updated": time.time(),
+                                "prices": {},
+                                "dividends": sqlite_divs
+                            }
+                        else:
+                            cls._historical_stock_cache[symbol]["dividends"] = sqlite_divs
+                except Exception as cache_err:
+                    print(f"Error loading historical dividends from SQLite for {symbol}: {cache_err}")
+            
             # Find payouts in the last 2 years to deduce payout months & values
             payouts_recent = []
             if dividends_data:
