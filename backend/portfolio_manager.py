@@ -1682,17 +1682,15 @@ class PortfolioManager:
     @classmethod
     def calculate_dividend_forecast(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
         """
-        Computes a 12-month forward dividend forecast.
-        Returns projected monthly dividend income (base currency) for the next 12 months,
-        aggregated totals, forward yield, yield on cost, and contributions per ticker.
+        Computes a 12-month forward net dividend forecast matching the calendar payouts.
         """
         # 1. Calculate holdings to find active positions and cost basis
         holdings_res = cls.calculate_holdings(transactions, base_currency, account, link_cash, portfolio_settings)
         holdings = holdings_res.get("holdings", [])
         summary = holdings_res.get("summary", {})
         
-        total_market_value = summary.get("total_value", 0.0)
-        total_cost_basis = summary.get("total_cost", 0.0)
+        total_market_value = summary.get("total_value_base", 0.0) or summary.get("total_value", 0.0)
+        total_cost_basis = summary.get("total_cost_base", 0.0) or summary.get("total_cost", 0.0)
         
         # Build list of next 12 months (e.g. from current month/year to 11 months ahead)
         import time
@@ -1724,133 +1722,96 @@ class PortfolioManager:
                 "ticker_contributions": {}
             }
             
+        # Resolve tax rates per account
+        account_tax_rates = portfolio_settings.get("accountTaxRates", {}) if portfolio_settings else {}
+        def get_tax_rate(acc):
+            if not acc:
+                acc = "Default"
+            rate = account_tax_rates.get(acc)
+            if rate is not None:
+                return float(rate)
+            for k, v in account_tax_rates.items():
+                if k.lower() == acc.lower():
+                    return float(v)
+            if "ike" in acc.lower() or "ikze" in acc.lower():
+                return 0.0
+            return 0.19
+            
+        tax_rate = get_tax_rate(account) if account and account != "All" else 0.19
+        
         # Initialize results structures
         ticker_contributions = {}
         monthly_totals = [0.0] * 12
         
-        # We need a database connection to inspect historical dividends to see which months they pay in
-        from backend.cache_db import get_connection, get_cached_upcoming_events
-        conn = get_connection()
-        cursor = conn.cursor()
+        active_holdings = [h for h in holdings if float(h.get("shares", 0.0)) > 0]
         
-        # Fetch FX rates for currency conversions
-        unique_currencies = set()
-        for h in holdings:
-            unique_currencies.add(h.get("currency", "USD").upper().strip())
-        
-        fx_rates = {}
-        for curr in unique_currencies:
-            if curr == base_currency:
-                fx_rates[curr] = 1.0
-            else:
-                pair = f"{curr}{base_currency}=X"
-                rates = cls.get_cached_historical_fx(pair, today, today)
-                fx_rates[curr] = rates.get(today, FALLBACK_RATES.get(f"{curr}{base_currency}", 1.0))
-        
-        # Fetch dividendRates concurrently to keep load times down
-        from concurrent.futures import ThreadPoolExecutor
-        import requests
-        import yfinance as yf
-        
-        session = requests.Session()
-        session.verify = False
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        })
-        
-        def fetch_div_rate(symbol):
-            now_ts = time.time()
-            cached = cls._dividend_rate_cache.get(symbol)
-            if cached and (now_ts - cached[0] < cls.EVENTS_CACHE_TTL):
-                return symbol, cached[1]
-                
-            try:
-                ticker = yf.Ticker(symbol, session=session)
-                info = ticker.info
-                rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
-                if not rate:
-                    last_div = info.get("lastDividendValue")
-                    rate = float(last_div) * 4.0 if last_div else 0.0
-                rate_val = float(rate) if rate else 0.0
-                cls._dividend_rate_cache[symbol] = (now_ts, rate_val)
-                return symbol, rate_val
-            except Exception:
-                if cached:
-                    return symbol, cached[1]
-                return symbol, 0.0
-                
-        active_holdings = [h for h in holdings if float(h["shares"]) > 0]
-        symbols_to_fetch = [h["symbol"].upper().strip() for h in active_holdings]
-        
-        div_rates_map = {}
-        if symbols_to_fetch:
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                results = executor.map(fetch_div_rate, symbols_to_fetch)
-                for symbol, rate in results:
-                    div_rates_map[symbol] = rate
-                    
         for h in active_holdings:
             symbol = h["symbol"].upper().strip()
+            if symbol.startswith("CASH"):
+                continue
             shares = float(h["shares"])
             curr = h.get("currency", "USD").upper().strip()
-            fx_rate = fx_rates.get(curr, 1.0)
+            fx_rate = float(h.get("fx_rate", 1.0))
             
-            div_rate = div_rates_map.get(symbol, 0.0)
-            if div_rate <= 0.0:
-                continue
-                
-            # Convert div_rate to base currency
-            div_rate_base = div_rate * fx_rate
-            expected_annual_income = shares * div_rate_base
+            # 1. Retrieve the historical dividends from the cache
+            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
             
-            # Find the months in which this symbol historically paid dividends
-            # Query the daily_prices table for historical dividends
-            payout_months = set()
-            try:
-                cursor.execute(
-                    "SELECT date FROM daily_prices WHERE symbol = ? AND dividend > 0 AND date >= ?",
-                    (symbol, (today - timedelta(days=730)).strftime("%Y-%m-%d"))
-                )
-                rows = cursor.fetchall()
-                for r in rows:
-                    try:
-                        dt_obj = datetime.strptime(r["date"], "%Y-%m-%d").date()
-                        payout_months.add(dt_obj.month)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            
-            # If no history in the database, check if there is any upcoming dividend event
-            if not payout_months:
-                events = get_cached_upcoming_events(symbol, cls.EVENTS_CACHE_TTL, ignore_ttl=True) or []
-                for ev in events:
-                    if ev.get("type") == "Dividend" and ev.get("date"):
-                        try:
-                            dt_obj = datetime.strptime(ev["date"].split("T")[0], "%Y-%m-%d").date()
-                            payout_months.add(dt_obj.month)
-                        except Exception:
-                            pass
-                            
-            # If still no months found, default to quarterly starting from next month
-            if not payout_months:
-                start_m = (current_month % 12) + 1
-                payout_months = {start_m, ((start_m + 3 - 1) % 12) + 1, ((start_m + 6 - 1) % 12) + 1, ((start_m + 9 - 1) % 12) + 1}
-                
-            # Distribute expected annual income across the payout months
-            num_payments = len(payout_months)
-            payment_value = expected_annual_income / num_payments if num_payments > 0 else 0.0
+            # Find payouts in the last 2 years to deduce payout months & values
+            payouts_recent = []
+            if dividends_data:
+                payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=365) <= dt <= today]
+                if not payouts_recent:
+                    payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=730) <= dt <= today]
             
             ticker_amounts = [0.0] * 12
-            for i, (y, m) in enumerate(month_keys):
-                if m in payout_months:
-                    ticker_amounts[i] = round(payment_value, 2)
-                    monthly_totals[i] += payment_value
-                    
-            ticker_contributions[symbol] = ticker_amounts
             
-        conn.close()
-        
+            if payouts_recent:
+                # We have recent payouts! Map them to the next 12 months
+                for ex_date, native_payout in payouts_recent:
+                    # Deduce net payment in base currency
+                    gross_payout_base = shares * native_payout * fx_rate
+                    net_payout_base = gross_payout_base * (1.0 - tax_rate)
+                    
+                    # Find which month of next 12 months matches this ex_date's month
+                    for i, (y, m) in enumerate(month_keys):
+                        if m == ex_date.month:
+                            ticker_amounts[i] += net_payout_base
+                            monthly_totals[i] += net_payout_base
+            else:
+                # Fallback to yfinance dividendRate distributed quarterly
+                # Fetch cached or live rate
+                cached = cls._dividend_rate_cache.get(symbol)
+                div_rate = cached[1] if cached else 0.0
+                if div_rate <= 0.0:
+                    # Try fetch
+                    import requests
+                    import yfinance as yf
+                    try:
+                        session = requests.Session()
+                        session.verify = False
+                        session.headers.update({"User-Agent": "Mozilla/5.0"})
+                        ticker = yf.Ticker(symbol, session=session)
+                        info = ticker.info
+                        rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
+                        div_rate = float(rate) if rate else 0.0
+                        cls._dividend_rate_cache[symbol] = (time.time(), div_rate)
+                    except:
+                        pass
+                
+                if div_rate > 0.0:
+                    expected_annual_net = shares * div_rate * fx_rate * (1.0 - tax_rate)
+                    # Distribute quarterly starting next month
+                    start_m = (current_month % 12) + 1
+                    payout_months = {start_m, ((start_m + 3 - 1) % 12) + 1, ((start_m + 6 - 1) % 12) + 1, ((start_m + 9 - 1) % 12) + 1}
+                    payment_val = expected_annual_net / 4.0
+                    for i, (y, m) in enumerate(month_keys):
+                        if m in payout_months:
+                            ticker_amounts[i] += payment_val
+                            monthly_totals[i] += payment_val
+                            
+            # Round ticker contributions
+            ticker_contributions[symbol] = [round(amt, 2) for amt in ticker_amounts]
+            
         # Calculate forward yields
         forward_annual_income = sum(monthly_totals)
         forward_yield = (forward_annual_income / total_market_value) if total_market_value > 0 else 0.0

@@ -9,7 +9,8 @@ import {
   Menu,
   Search,
   LayoutGrid,
-  Layout
+  Layout,
+  Scale
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -53,6 +54,7 @@ import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { FeedbackModal } from './portfolio/FeedbackModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
+import { ImportCSVModal } from './portfolio/ImportCSVModal';
 import { UpcomingEvents } from './portfolio/UpcomingEvents';
 import { PortfolioAnalytics } from './portfolio/PortfolioAnalytics';
 import { DividendCalendar } from './portfolio/DividendCalendar';
@@ -125,16 +127,17 @@ export function PortfolioView({
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends' | 'rebalance'>(() => {
+  const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
-    return (cached === 'overview' || cached === 'ledger' || cached === 'dividends' || cached === 'rebalance') ? cached : 'overview';
+    return (cached === 'overview' || cached === 'ledger' || cached === 'dividends') ? cached : 'overview';
   });
 
-  const setSubTab = (tab: 'overview' | 'ledger' | 'dividends' | 'rebalance') => {
+  const setSubTab = (tab: 'overview' | 'ledger' | 'dividends') => {
     triggerRandomUpsell();
     setSubTabState(tab);
     localStorage.setItem('portfolio_sub_tab', tab);
   };
+  const [showRebalanceModal, setShowRebalanceModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -144,6 +147,7 @@ export function PortfolioView({
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
@@ -955,6 +959,7 @@ export function PortfolioView({
                       activePortfolioRole={activePortfolioRole}
                       onQuickAction={handleQuickAction}
                       onSelectPositionSymbol={setSelectedPositionSymbol}
+                      onRebalanceClick={() => setShowRebalanceModal(true)}
                     />
                   </div>
                   {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
@@ -1124,6 +1129,7 @@ export function PortfolioView({
                   activePortfolioRole={activePortfolioRole}
                   onEditTransaction={handleStartEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
+                  onImportCSVClick={() => setShowImportModal(true)}
                 />
               </div>
 
@@ -1134,7 +1140,7 @@ export function PortfolioView({
                 transition: 'opacity 0.15s ease-in-out'
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }} className="portfolio-grid">
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, height: '100%' }}>
                     <DividendForecast 
                       apiBaseUrl={apiBaseUrl}
                       activePortfolioId={activePortfolioId}
@@ -1145,7 +1151,7 @@ export function PortfolioView({
                       holdings={holdings}
                     />
                   </div>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, height: '100%' }}>
                     <DividendCalendar 
                       dividends={dividendsList}
                       baseCurrency={summary.base_currency}
@@ -1165,25 +1171,7 @@ export function PortfolioView({
                 />
               </div>
 
-              {/* REBALANCE TAB CONTENT */}
-              <div style={{ 
-                display: subTab === 'rebalance' ? 'block' : 'none',
-                opacity: loadingHoldings ? 0.6 : 1,
-                transition: 'opacity 0.15s ease-in-out'
-              }}>
-                <RebalancingPlanner 
-                  holdings={holdings}
-                  summary={summary}
-                  portfolio={portfolios.find(p => p.id === activePortfolioId) || null}
-                  activePortfolioRole={activePortfolioRole}
-                  onSaveSettings={async (updatedSettings) => {
-                    if (activePortfolioId) {
-                      await updatePortfolioSettings(activePortfolioId, updatedSettings);
-                      setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
-                    }
-                  }}
-                />
-              </div>
+
             </>
           )}
 
@@ -1280,6 +1268,62 @@ export function PortfolioView({
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         }}
       />
+
+      {/* CSV IMPORT DIALOG MODAL */}
+      <ImportCSVModal 
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        portfolioId={activePortfolioId || ''}
+        apiBaseUrl={apiBaseUrl}
+        accounts={uniqueAccounts}
+        onImportComplete={() => {
+          fetchHoldings(baseCurrency, selectedAccount);
+          fetchTransactions();
+        }}
+      />
+
+      {/* REBALANCE DIALOG MODAL */}
+      {showRebalanceModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '640px', padding: '1.75rem', position: 'relative', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflow: 'hidden' }}>
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowRebalanceModal(false)}
+              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              title={t('common.close', 'Close')}
+            >
+              <X size={18} />
+            </button>
+            
+            {/* Modal Header */}
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Scale size={20} style={{ color: 'var(--color-primary)' }} />
+                {t('rebalance.title', 'Portfolio Rebalancing Planner')}
+              </h3>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {t('rebalance.desc', 'Analyze target vs actual holdings weights and compute needed adjustments.')}
+              </p>
+            </div>
+
+            {/* Rebalancing Planner Component */}
+            <div className="custom-scrollbar" style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+              <RebalancingPlanner 
+                holdings={holdings}
+                summary={summary}
+                portfolio={portfolios.find(p => p.id === activePortfolioId) || null}
+                activePortfolioRole={activePortfolioRole}
+                onSaveSettings={async (updatedSettings) => {
+                  if (activePortfolioId) {
+                    await updatePortfolioSettings(activePortfolioId, updatedSettings);
+                    setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* POSITION TRANSACTIONS HISTORY MODAL */}
       {selectedPositionSymbol && (

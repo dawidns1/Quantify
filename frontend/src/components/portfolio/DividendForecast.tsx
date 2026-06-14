@@ -124,6 +124,7 @@ export function DividendForecast({
 
   return (
     <div className="glass-panel" style={{
+      height: '100%',
       padding: '1.25rem',
       display: 'flex',
       flexDirection: 'column',

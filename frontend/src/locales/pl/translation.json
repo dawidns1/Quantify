@@ -93,7 +93,8 @@
     "loading_price_details": "Ładowanie szczegółów kursu...",
     "no_price_history": "Brak dostępnej historii kursów.",
     "no_tx_found_for": "Nie znaleziono transakcji dla",
-    "col_ticker": "Ticker"
+    "col_ticker": "Ticker",
+    "btn_rebalance": "Rebalansuj"
   },
   "ledger": {
     "header": "Księga Historycznych Transakcji",
@@ -108,6 +109,7 @@
     "col_actions": "Akcje",
     "action_delete": "Usuń",
     "btn_add_tx": "Dodaj transakcję",
+    "btn_import_csv": "Importuj CSV",
     "empty_state": "Nie zalogowano jeszcze żadnych transakcji w tym portfelu."
   },
   "calendar": {
@@ -339,5 +341,28 @@
     "empty_title": "Brak aktywów do rebalansowania",
     "empty_desc": "Dodaj najpierw transakcje kupna akcji w księdze, aby móc planować wagi celowe.",
     "copy_header": "Plan rebalansowania QuantiFi"
+  },
+  "import": {
+    "header": "Importuj transakcje z pliku CSV",
+    "desc_upload": "Prześlij wyeksportowany wyciąg transakcji w formacie CSV od swojego brokera.",
+    "desc_preview": "Sprawdź wczytane transakcje przed zapisaniem ich w bazie danych.",
+    "err_invalid_type": "Proszę przesyłać wyłącznie pliki w formacie CSV.",
+    "err_no_txs": "Nie znaleziono poprawnych transakcji w pliku CSV. Sprawdź nagłówki kolumn.",
+    "err_no_account": "Proszę wskazać rachunek maklerski.",
+    "err_no_selected": "Wybierz co najmniej jedną transakcję do zaimportowania.",
+    "drop_prompt": "Przeciągnij i upuść plik CSV tutaj",
+    "click_prompt": "lub kliknij, aby wybrać z dysku",
+    "supported_title": "Automatycznie wykrywane formaty",
+    "generic_tip": "Korzystasz z innego brokera? Upewnij się, że nagłówek zawiera standardowe kolumny: ",
+    "btn_continue": "Analizuj plik",
+    "log_broker": "Wykryty format wyciągu:",
+    "log_found": "Znaleziono:",
+    "log_txs": "transakcji",
+    "map_account": "Wybierz rachunek maklerski do importu:",
+    "new_account_option": "Utwórz nowy rachunek...",
+    "placeholder_account": "Wprowadź nazwę rachunku (np. Biuro Maklerskie XTB)",
+    "selected_count": "Wybrano:",
+    "btn_back": "Wstecz",
+    "btn_confirm": "Potwierdź import"
   }
 }

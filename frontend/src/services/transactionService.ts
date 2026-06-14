@@ -52,3 +52,23 @@ export async function saveTransaction(
     if (error) throw error;
   }
 }
+
+export async function saveTransactionsBulk(
+  payloads: Array<{
+    portfolio_id: string;
+    symbol: string;
+    type: 'BUY' | 'SELL';
+    date: string;
+    shares: number;
+    price: number;
+    currency: string;
+    fees: number;
+    account: string;
+  }>
+): Promise<void> {
+  const { error } = await supabase
+    .from('transactions')
+    .insert(payloads);
+
+  if (error) throw error;
+}

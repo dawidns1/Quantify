@@ -93,7 +93,8 @@
     "loading_price_details": "Loading price details...",
     "no_price_history": "No price history available.",
     "no_tx_found_for": "No transactions found for",
-    "col_ticker": "Ticker"
+    "col_ticker": "Ticker",
+    "btn_rebalance": "Rebalance"
   },
   "ledger": {
     "header": "Transaction History Ledger",
@@ -108,6 +109,7 @@
     "col_actions": "Actions",
     "action_delete": "Delete",
     "btn_add_tx": "Add Transaction",
+    "btn_import_csv": "Import CSV",
     "empty_state": "No transactions logged in this portfolio yet."
   },
   "calendar": {
@@ -339,5 +341,28 @@
     "empty_title": "No Assets to Rebalance",
     "empty_desc": "Add stock transactions in your ledger first to enable the Target Allocation planner.",
     "copy_header": "QuantiFi Rebalancing Plan"
+  },
+  "import": {
+    "header": "Import Transactions CSV",
+    "desc_upload": "Upload a CSV export statement from your brokerage.",
+    "desc_preview": "Review parsed transactions before importing to database.",
+    "err_invalid_type": "Please upload a CSV file only.",
+    "err_no_txs": "No valid transactions found in the CSV file. Please check column headers.",
+    "err_no_account": "Please specify a brokerage account.",
+    "err_no_selected": "Please select at least one transaction to import.",
+    "drop_prompt": "Drag & drop your CSV file here",
+    "click_prompt": "or click to browse files",
+    "supported_title": "Auto-Detected Formats",
+    "generic_tip": "Using another broker? Make sure headers contain standard columns: ",
+    "btn_continue": "Analyze File",
+    "log_broker": "Detected Statement Format:",
+    "log_found": "Found:",
+    "log_txs": "transactions",
+    "map_account": "Select Brokerage Account to import into:",
+    "new_account_option": "Create New Account...",
+    "placeholder_account": "Enter account name (e.g. XTB Broker)",
+    "selected_count": "Selected:",
+    "btn_back": "Back",
+    "btn_confirm": "Confirm Import"
   }
 }

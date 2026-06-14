@@ -258,3 +258,51 @@ export async function fetchDividendForecast(
   return response.json();
 }
 
+export async function fetchAIInsights(
+  apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
+  baseCurrency: string,
+  account: string,
+  linkCash: boolean,
+  lang: string,
+  forceRefresh: boolean = false
+): Promise<{ status: string; insights: string; cached: boolean }> {
+  const headers: Record<string, string> = {};
+  if (jwtToken) {
+    headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl) {
+    headers['x-supabase-url'] = supabaseUrl;
+  }
+  if (supabaseAnonKey) {
+    headers['x-supabase-anon-key'] = supabaseAnonKey;
+  }
+
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash),
+    lang,
+    force_refresh: String(forceRefresh)
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/ai-insights?${queryParams.toString()}`, {
+    method: 'GET',
+    headers
+  });
+
+  if (!response.ok) {
+    let errMsg = 'Failed to fetch AI insights';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+
+

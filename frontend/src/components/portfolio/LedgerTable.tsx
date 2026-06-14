@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { History, Edit2, Trash2, Search } from 'lucide-react';
+import { History, Edit2, Trash2, Search, Upload } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 
@@ -8,13 +8,15 @@ interface LedgerTableProps {
   activePortfolioRole: string;
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onImportCSVClick?: () => void;
 }
 
 export function LedgerTable({
   transactions,
   activePortfolioRole,
   onEditTransaction,
-  onDeleteTransaction
+  onDeleteTransaction,
+  onImportCSVClick
 }: LedgerTableProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,6 +151,25 @@ export function LedgerTable({
                 }}
               />
             </div>
+          )}
+          {activePortfolioRole !== 'viewer' && onImportCSVClick && (
+            <button
+              onClick={onImportCSVClick}
+              className="glow-btn"
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.78rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                height: '32px'
+              }}
+            >
+              <Upload size={14} />
+              <span>{t('ledger.btn_import_csv', 'Import CSV')}</span>
+            </button>
           )}
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             {t('ledger.total_operations', 'Total operations recorded')}: {transactions.length}

@@ -57,13 +57,15 @@ export function DividendCalendar({
 
     dividends.forEach(d => {
       if (d.date && !d.is_deleted) {
-        const dt = new Date(d.date);
-        const y = dt.getFullYear();
-        const m = dt.getMonth();
-        if (y === selectedYear && m >= 0 && m < 12) {
-          months[m].totalNet += d.net_base || d.payout_net_base || 0;
-          months[m].totalGross += d.gross_base || d.payout_base || 0;
-          months[m].payments.push(d);
+        const parts = d.date.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          if (y === selectedYear && m >= 0 && m < 12) {
+            months[m].totalNet += d.net_base || d.payout_net_base || 0;
+            months[m].totalGross += d.gross_base || d.payout_base || 0;
+            months[m].payments.push(d);
+          }
         }
       }
     });
@@ -97,6 +99,7 @@ export function DividendCalendar({
 
   return (
     <div className="glass-panel" style={{
+      height: '100%',
       padding: '1.25rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',

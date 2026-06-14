@@ -2,9 +2,13 @@ import os
 import json
 import threading
 import time
+import csv
+import io
+import re
+from datetime import datetime
 from typing import List
 import yfinance as yf
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Header
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -22,6 +26,7 @@ requests.Session.request = _patched_session_request
 
 from backend.data_fetcher import run_screener_collection, WikipediaNasdaq100Provider, StockDataCollector
 from backend.portfolio_manager import PortfolioManager
+from backend.ai_client import generate_insights
 
 
 
@@ -723,6 +728,303 @@ def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
             print(f"[FEEDBACK] Error sending to Supabase: {e}")
             
     return {"status": "ok", "message": "Feedback submitted successfully"}
+
+def parse_transactions_csv(csv_content: str):
+    f = io.StringIO(csv_content.strip())
+    reader = csv.reader(f)
+    try:
+        headers = next(reader)
+    except StopIteration:
+        raise ValueError("The uploaded CSV file is empty.")
+    
+    headers_clean = [h.strip().lower() for h in headers]
+    
+    broker = "generic"
+    if any("volume" in h for h in headers_clean) and any("open price" in h for h in headers_clean) and any("symbol" in h for h in headers_clean):
+        broker = "xtb"
+    elif any("price per share" in h for h in headers_clean) and any("ticker" in h for h in headers_clean):
+        broker = "revolut"
+    elif any("ib commission" in h for h in headers_clean) or (any("quantity" in h for h in headers_clean) and any("asset class" in h for h in headers_clean)):
+        broker = "ibkr"
+    
+    print(f"[CSV IMPORT] Detected broker: {broker} from headers: {headers_clean}")
+    
+    parsed_transactions = []
+    f.seek(0)
+    first_char = f.read(1)
+    if first_char != '\ufeff':
+        f.seek(0)
+        
+    dict_reader = csv.DictReader(f)
+    
+    for row_idx, row in enumerate(dict_reader):
+        try:
+            symbol = ""
+            tx_type = "BUY"
+            tx_date = ""
+            shares = 0.0
+            price = 0.0
+            fees = 0.0
+            currency = "USD"
+            
+            if broker == "xtb":
+                raw_time = row.get("Time") or row.get("time") or ""
+                raw_type = row.get("Type") or row.get("type") or ""
+                raw_symbol = row.get("Symbol") or row.get("symbol") or ""
+                raw_vol = row.get("Volume") or row.get("volume") or "0"
+                raw_price = row.get("Open price") or row.get("open price") or "0"
+                raw_comm = row.get("Commission") or row.get("commission") or "0"
+                
+                symbol = raw_symbol.strip().upper()
+                if symbol.endswith(".US"):
+                    symbol = symbol[:-3]
+                elif symbol.endswith(".PL"):
+                    symbol = symbol[:-3] + ".WA"
+                
+                tx_type = "SELL" if "sell" in raw_type.lower() else "BUY"
+                shares = float(raw_vol)
+                price = float(raw_price)
+                fees = float(raw_comm)
+                if raw_time:
+                    tx_date = raw_time.split()[0]
+                    
+            elif broker == "revolut":
+                raw_date = row.get("Date") or row.get("date") or ""
+                raw_ticker = row.get("Ticker") or row.get("ticker") or row.get("Symbol") or row.get("symbol") or ""
+                raw_type = row.get("Type") or row.get("type") or ""
+                raw_qty = row.get("Quantity") or row.get("quantity") or "0"
+                raw_price = row.get("Price per share") or row.get("price per share") or row.get("Price") or row.get("price") or "0"
+                raw_fees = row.get("Fees") or row.get("fees") or row.get("Commission") or row.get("commission") or "0"
+                raw_curr = row.get("Currency") or row.get("currency") or "USD"
+                
+                symbol = raw_ticker.strip().upper()
+                tx_type = "SELL" if "sell" in raw_type.lower() else "BUY"
+                shares = float(raw_qty)
+                price = float(raw_price)
+                fees = float(raw_fees)
+                currency = raw_curr.strip().upper()
+                
+                if raw_date:
+                    raw_date_clean = raw_date.split()[0]
+                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y"):
+                        try:
+                            dt = datetime.strptime(raw_date_clean, fmt)
+                            tx_date = dt.strftime("%Y-%m-%d")
+                            break
+                        except ValueError:
+                            continue
+                    if not tx_date:
+                        tx_date = raw_date_clean
+                        
+            elif broker == "ibkr":
+                raw_symbol = row.get("Symbol") or row.get("symbol") or ""
+                raw_datetime = row.get("Date/Time") or row.get("date/time") or row.get("time") or ""
+                raw_qty = row.get("Quantity") or row.get("quantity") or "0"
+                raw_price = row.get("Trade Price") or row.get("trade price") or row.get("price") or "0"
+                raw_comm = row.get("IB Commission") or row.get("ib commission") or row.get("commission") or "0"
+                raw_curr = row.get("Currency") or row.get("currency") or "USD"
+                
+                symbol = raw_symbol.strip().upper()
+                qty_val = float(raw_qty)
+                tx_type = "SELL" if qty_val < 0 else "BUY"
+                shares = abs(qty_val)
+                price = float(raw_price)
+                fees = abs(float(raw_comm))
+                currency = raw_curr.strip().upper()
+                
+                if raw_datetime:
+                    tx_date = raw_datetime.replace(",", "").split()[0]
+                    
+            else: # generic fallback
+                date_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("date", "time", "data"))), None)
+                ticker_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("ticker", "symbol", "instrument", "akcja", "walor"))), None)
+                type_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("type", "action", "transakcja", "operacja"))), None)
+                shares_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("shares", "quantity", "vol", "ilość", "ilosc"))), None)
+                price_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("price", "rate", "kurs", "cena"))), None)
+                fees_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("fee", "comm", "prov", "prowizja"))), None)
+                curr_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("curr", "waluta"))), None)
+                
+                symbol = row.get(ticker_key, "").strip().upper() if ticker_key else ""
+                raw_type = row.get(type_key, "") if type_key else ""
+                tx_type = "SELL" if any(x in raw_type.lower() for x in ("sell", "sprzedaj", "s")) else "BUY"
+                shares = float(row.get(shares_key, "0")) if shares_key else 0.0
+                price = float(row.get(price_key, "0")) if price_key else 0.0
+                fees = abs(float(row.get(fees_key, "0"))) if fees_key else 0.0
+                currency = row.get(curr_key, "USD").strip().upper() if curr_key else "USD"
+                
+                raw_date = row.get(date_key, "") if date_key else ""
+                if raw_date:
+                    raw_date_clean = raw_date.split()[0].replace(",", "")
+                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%Y/%m/%d"):
+                        try:
+                            dt = datetime.strptime(raw_date_clean, fmt)
+                            tx_date = dt.strftime("%Y-%m-%d")
+                            break
+                        except ValueError:
+                            continue
+                    if not tx_date:
+                        tx_date = raw_date_clean
+            
+            if not symbol or shares <= 0 or price <= 0:
+                continue
+                
+            if not tx_date or not re.match(r"^\d{4}-\d{2}-\d{2}$", tx_date):
+                tx_date = datetime.today().strftime("%Y-%m-%d")
+                
+            parsed_transactions.append({
+                "symbol": symbol,
+                "type": tx_type,
+                "date": tx_date,
+                "shares": shares,
+                "price": price,
+                "fees": fees,
+                "currency": currency,
+                "account": "Imported Account"
+            })
+            
+        except Exception as row_err:
+            print(f"[CSV IMPORT] Error parsing row {row_idx}: {row_err}")
+            continue
+            
+    return parsed_transactions, broker
+
+@app.post("/api/portfolio/{portfolio_id}/import-csv")
+async def import_portfolio_csv(portfolio_id: str, file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        try:
+            csv_content = content.decode("utf-8")
+        except Exception:
+            # Fallback to latin-1 / windows-1250 if UTF-8 fails (e.g. Polish Excel CSV)
+            csv_content = content.decode("latin-1")
+    except Exception as read_err:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(read_err)}")
+            
+    try:
+        transactions, broker = parse_transactions_csv(csv_content)
+        return {
+            "status": "ok",
+            "broker": broker,
+            "count": len(transactions),
+            "transactions": transactions
+        }
+    except ValueError as val_err:
+        raise HTTPException(status_code=400, detail=str(val_err))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error parsing CSV file: {str(e)}")
+
+AI_CACHE_TTL = 12 * 3600  # 12 hours
+ai_insights_cache = {}    # Key: (portfolio_id, base_currency, account, link_cash, lang) -> (timestamp, response)
+
+@app.get("/api/portfolio/{portfolio_id}/ai-insights")
+def get_portfolio_ai_insights_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    lang: str = "en",
+    force_refresh: bool = False,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    cache_key = (portfolio_id, base_currency, account, link_cash, lang)
+    now = time.time()
+    
+    if not force_refresh and cache_key in ai_insights_cache:
+        cached_time, cached_res = ai_insights_cache[cache_key]
+        if now - cached_time < AI_CACHE_TTL:
+            print(f"[AI INSIGHTS] Returning cached insights for portfolio {portfolio_id}")
+            return {"status": "ok", "insights": cached_res, "cached": True}
+            
+    try:
+        # 1. Fetch transactions and settings
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        
+        # 2. Run holdings calculations
+        holdings_res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
+        holdings = holdings_res.get("holdings", [])
+        summary = holdings_res.get("summary", {})
+        
+        # 3. Filter active stock holdings
+        active_holdings = []
+        weights_by_symbol = {}
+        total_value = summary.get("total_value", 0.0)
+        
+        for h in holdings:
+            symbol = h.get("symbol")
+            shares = h.get("shares", 0.0)
+            val = h.get("current_value_base", 0.0)
+            if symbol and symbol.upper() != "CASH" and shares > 0.0:
+                active_holdings.append({
+                    "symbol": symbol,
+                    "shares": shares
+                })
+                if total_value > 0:
+                    weights_by_symbol[symbol] = round(val / total_value, 4)
+                    
+        # 4. Currency allocations
+        allocation_by_currency = {}
+        for h in holdings:
+            curr = h.get("currency", "USD").upper()
+            val = h.get("current_value_base", 0.0)
+            if total_value > 0:
+                allocation_by_currency[curr] = allocation_by_currency.get(curr, 0.0) + (val / total_value)
+        # Round values
+        for c in allocation_by_currency:
+            allocation_by_currency[c] = round(allocation_by_currency[c], 4)
+            
+        # 5. Run analytics calculations
+        analytics_res = PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings)
+        
+        # Calculate average correlation
+        matrix = analytics_res.get("correlation_matrix", {}).get("matrix", {})
+        corr_vals = []
+        for s1, peers in matrix.items():
+            for s2, v in peers.items():
+                if s1 != s2 and v is not None:
+                    corr_vals.append(v)
+        avg_corr = sum(corr_vals) / len(corr_vals) if corr_vals else 0.0
+        
+        # 6. Fetch ex-dividend events
+        raw_events = PortfolioManager.get_upcoming_events(active_holdings)
+        ex_div_events = []
+        for ev in raw_events:
+            if ev.get("type") == "dividend":
+                ex_div_events.append({
+                    "symbol": ev.get("symbol"),
+                    "ex_date": ev.get("date"),
+                    "amount": ev.get("value")
+                })
+                
+        # 7. Compile state payload
+        portfolio_state = {
+            "base_currency": base_currency,
+            "total_holdings_count": len(active_holdings),
+            "weights_by_symbol": weights_by_symbol,
+            "allocation_by_currency": allocation_by_currency,
+            "portfolio_beta": round(analytics_res.get("beta", 1.0), 3),
+            "sharpe_ratio": round(analytics_res.get("sharpe_ratio", 0.0), 3),
+            "average_holding_correlation": round(avg_corr, 3),
+            "upcoming_ex_dividend_events": ex_div_events[:5]  # send top 5 events
+        }
+        
+        # 8. Generate insights using Gemini
+        insights_text = generate_insights(portfolio_state, lang)
+        
+        # 9. Save to cache
+        ai_insights_cache[cache_key] = (now, insights_text)
+        
+        return {"status": "ok", "insights": insights_text, "cached": False}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating AI insights: {str(e)}")
 
 # Serve Frontend static assets if compiled in production
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
