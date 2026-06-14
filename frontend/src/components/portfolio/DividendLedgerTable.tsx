@@ -22,11 +22,12 @@ export function DividendLedgerTable({
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest dividends first
 
-  // Filter dividends by Symbol, Account, or Date
+  // Filter dividends by Symbol, Account, or Date (ignoring future projected ones in ledger)
   const filteredDividends = useMemo(() => {
-    if (!searchQuery.trim()) return dividends;
+    const historical = dividends.filter(d => !d.is_upcoming);
+    if (!searchQuery.trim()) return historical;
     const q = searchQuery.toLowerCase().trim();
-    return dividends.filter(d => 
+    return historical.filter(d => 
       (d.symbol || '').toLowerCase().includes(q) || 
       (d.account || 'Default').toLowerCase().includes(q) ||
       (d.date || '').includes(q)

@@ -532,6 +532,51 @@ class PortfolioManager:
                 res = fut.result()
                 compiled_events.extend(res)
 
+        # Add historical dividend projections for any active holdings that do not have an upcoming dividend event
+        for h in active_holdings:
+            symbol = h["symbol"].upper().strip()
+            shares = h["shares"]
+            
+            # Check if this symbol already has a Dividend event in compiled_events
+            has_div_event = any(ev["symbol"] == symbol and ev["type"] == "Dividend" for ev in compiled_events)
+            
+            if not has_div_event:
+                # Project ex-dividend date from history
+                dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
+                if dividends_data:
+                    payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=365) <= dt <= today]
+                    if not payouts_recent:
+                        payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=730) <= dt <= today]
+                    
+                    for hist_ex_date, hist_payout in payouts_recent:
+                        projected_yr = today.year
+                        if hist_ex_date.month < today.month or (hist_ex_date.month == today.month and hist_ex_date.day < today.day):
+                            projected_yr = today.year + 1
+                        
+                        try:
+                            proj_date = date(projected_yr, hist_ex_date.month, hist_ex_date.day)
+                        except ValueError:
+                            proj_date = date(projected_yr, hist_ex_date.month, 28)
+                            
+                        # If it falls within the next 90 days
+                        if today <= proj_date <= today + timedelta(days=90):
+                            # Ensure we don't duplicate
+                            exists = any(ev["symbol"] == symbol and ev["type"] == "Dividend" and ev["date"] == proj_date.isoformat() for ev in compiled_events)
+                            if not exists:
+                                # Get currency from cache info or default
+                                cached_info = cls.get_cached_live_ticker(symbol)
+                                curr = cached_info.get("native_currency") or "USD"
+                                est_payout = shares * float(hist_payout)
+                                compiled_events.append({
+                                    "date": proj_date.isoformat(),
+                                    "symbol": symbol,
+                                    "type": "Dividend",
+                                    "description": f"Projected Ex-Dividend: {hist_payout:.2f}/share (Est.)",
+                                    "est_payout": round(est_payout, 2) if est_payout > 0 else None,
+                                    "last_dividend_value": float(hist_payout),
+                                    "currency": curr.upper().strip()
+                                })
+
         # Filter duplicates and sort
         unique_events = []
         seen = set()
@@ -624,6 +669,92 @@ class PortfolioManager:
                             "is_override": False,
                             "is_manual": False
                         })
+
+        # 1.1 Project future/upcoming dividends for the remainder of the current calendar year
+        today = date.today()
+        for symbol, txs in symbol_txs.items():
+            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
+            native_curr = ticker_info[symbol]["native_currency"]
+            accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
+            
+            for acc in accounts:
+                # Calculate current shares owned in this account up to today
+                current_shares = 0.0
+                for tx in txs:
+                    tx_acc = tx.get("account", "Default") or "Default"
+                    if tx_acc != acc:
+                        continue
+                    # Parse transaction date
+                    tx_date_str = tx.get("date", "")
+                    if tx_date_str:
+                        try:
+                            tx_dt = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                            if tx_dt > today:
+                                continue # Skip future transactions for current balance
+                        except:
+                            pass
+                    if tx["type"] == "BUY":
+                        current_shares += tx["shares"]
+                    elif tx["type"] == "SELL":
+                        current_shares -= tx["shares"]
+                        
+                if current_shares > 0.0001:
+                    # Find payouts in the last 2 years to deduce regular payout months
+                    payouts_recent = []
+                    if dividends_data:
+                        payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=365) <= dt <= today]
+                        if not payouts_recent:
+                            payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=730) <= dt <= today]
+                    
+                    for hist_ex_date, hist_payout in payouts_recent:
+                        # Only project for future dates in the current calendar year
+                        if hist_ex_date.month > today.month or (hist_ex_date.month == today.month and hist_ex_date.day >= today.day):
+                            try:
+                                proj_date = date(today.year, hist_ex_date.month, hist_ex_date.day)
+                            except ValueError:
+                                proj_date = date(today.year, hist_ex_date.month, 28)
+                            
+                            proj_date_str = proj_date.strftime("%Y-%m-%d")
+                            
+                            # Avoid double-counting: check if this symbol, acc, month already has a dividend in auto_list
+                            already_exists = False
+                            for ad in auto_list:
+                                if ad["symbol"] == symbol and ad["account"] == acc:
+                                    try:
+                                        ad_dt = datetime.strptime(ad["date"], "%Y-%m-%d").date()
+                                        if ad_dt.year == today.year and ad_dt.month == proj_date.month:
+                                            already_exists = True
+                                            break
+                                    except:
+                                        pass
+                                        
+                            if not already_exists:
+                                tax_rate = get_tax_rate(acc)
+                                gross_payout_native = current_shares * hist_payout
+                                net_payout_native = gross_payout_native * (1.0 - tax_rate)
+                                
+                                if native_curr == base_currency:
+                                    fx_rate_ex = 1.0
+                                else:
+                                    fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                                    
+                                gross_base = gross_payout_native * fx_rate_ex
+                                net_base = net_payout_native * fx_rate_ex
+                                net_native = net_payout_native
+                                
+                                auto_list.append({
+                                    "symbol": symbol,
+                                    "date": proj_date_str,
+                                    "account": acc,
+                                    "shares": round(current_shares, 4),
+                                    "payout_per_share": float(hist_payout),
+                                    "gross_base": round(gross_base, 2),
+                                    "net_base": round(net_base, 2),
+                                    "net_native": round(net_native, 2),
+                                    "is_override": False,
+                                    "is_manual": False,
+                                    "is_upcoming": True
+                                })
 
         # 2. Load custom overrides & manual dividends from settings
         overrides = portfolio_settings.get("dividends", []) if portfolio_settings else []

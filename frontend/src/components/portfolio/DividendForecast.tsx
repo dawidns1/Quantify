@@ -207,7 +207,7 @@ export function DividendForecast({
               position: 'relative'
             }}>
               {data.monthly_amounts.map((amount, idx) => {
-                const heightPercent = `${Math.max(5, (amount / maxMonthValue) * 100)}%`;
+                const heightPercent = amount > 0 ? `${(amount / maxMonthValue) * 100}%` : '0%';
                 const monthName = data.months[idx];
                 const isHovered = hoveredMonthIndex === idx;
 
@@ -241,23 +241,27 @@ export function DividendForecast({
                     )}
 
                     {/* Bar */}
-                    <div style={{
-                      width: '100%',
-                      height: heightPercent,
-                      background: isHovered 
-                        ? 'linear-gradient(to top, rgba(6, 182, 212, 0.8), rgba(16, 185, 129, 0.8))'
-                        : 'linear-gradient(to top, rgba(6, 182, 212, 0.35), rgba(16, 185, 129, 0.45))',
-                      boxShadow: isHovered 
-                        ? '0 0 12px rgba(6, 182, 212, 0.35)' 
-                        : 'none',
-                      border: isHovered
-                        ? '1px solid rgba(6, 182, 212, 0.8)'
-                        : '1px solid rgba(16, 185, 129, 0.15)',
-                      borderRadius: '4px 4px 0 0',
-                      transition: 'all 0.2s ease-in-out',
-                      zIndex: 1,
-                      position: 'relative'
-                    }} />
+                    {amount > 0 ? (
+                      <div style={{
+                        width: '100%',
+                        height: heightPercent,
+                        background: isHovered 
+                          ? 'linear-gradient(to top, rgba(6, 182, 212, 0.8), rgba(16, 185, 129, 0.8))'
+                          : 'linear-gradient(to top, rgba(6, 182, 212, 0.35), rgba(16, 185, 129, 0.45))',
+                        boxShadow: isHovered 
+                          ? '0 0 12px rgba(6, 182, 212, 0.35)' 
+                          : 'none',
+                        border: isHovered
+                          ? '1px solid rgba(6, 182, 212, 0.8)'
+                          : '1px solid rgba(16, 185, 129, 0.15)',
+                        borderRadius: '4px 4px 0 0',
+                        transition: 'all 0.2s ease-in-out',
+                        zIndex: 1,
+                        position: 'relative'
+                      }} />
+                    ) : (
+                      <div style={{ height: '0%', width: '100%' }} />
+                    )}
 
                     {/* Month Label */}
                     <span style={{

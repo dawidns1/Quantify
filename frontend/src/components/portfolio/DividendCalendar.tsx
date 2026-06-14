@@ -205,6 +205,7 @@ export function DividendCalendar({
           const heightPercent = (m.totalNet / maxMonthValue) * 100;
           const uniqueTickers = Array.from(new Set(m.payments.map(p => p.symbol.toUpperCase()))).slice(0, 3);
           const hasPayments = m.payments.length > 0;
+          const isAllUpcoming = hasPayments && m.payments.every(p => p.is_upcoming);
 
           return (
             <div 
@@ -231,8 +232,12 @@ export function DividendCalendar({
                   left: 0,
                   right: 0,
                   height: `${Math.max(4, heightPercent)}%`,
-                  background: 'linear-gradient(to top, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.01))',
-                  borderTop: '1px solid rgba(16, 185, 129, 0.15)',
+                  background: isAllUpcoming
+                    ? 'linear-gradient(to top, rgba(16, 185, 129, 0.03), rgba(16, 185, 129, 0.005))'
+                    : 'linear-gradient(to top, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.01))',
+                  borderTop: isAllUpcoming
+                    ? '1px dashed rgba(16, 185, 129, 0.25)'
+                    : '1px solid rgba(16, 185, 129, 0.15)',
                   zIndex: 0,
                   pointerEvents: 'none'
                 }} />
@@ -254,9 +259,11 @@ export function DividendCalendar({
                   fontSize: '0.85rem', 
                   fontWeight: 700, 
                   color: hasPayments ? 'var(--color-green)' : 'var(--text-muted)', 
-                  fontFamily: 'monospace' 
+                  fontFamily: 'monospace',
+                  opacity: isAllUpcoming ? 0.85 : 1
                 }}>
                   {m.totalNet > 0 ? formatCurrency(m.totalNet, baseCurrency) : '—'}
+                  {isAllUpcoming && <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginLeft: '3px', fontWeight: 500 }}>est.</span>}
                 </span>
                 
                 {hasPayments && (
