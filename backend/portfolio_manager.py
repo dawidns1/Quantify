@@ -237,6 +237,12 @@ class PortfolioManager:
         
         # Check L2 SQLite Cache
         sqlite_data = get_cached_live_price(symbol, cls.STOCK_CACHE_TTL)
+        
+        # If the cached company name is equal to the symbol itself, bypass the cache
+        # to trigger a fresh download and save the correct resolved name to the DB.
+        if sqlite_data and sqlite_data.get("company_name", "").upper().strip() == symbol.upper().strip():
+            sqlite_data = None
+            
         if sqlite_data:
             # Populate metadata cache
             meta_data = {

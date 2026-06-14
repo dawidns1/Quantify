@@ -140,7 +140,34 @@ class YFinanceProvider(BaseDataProvider):
             live_price = stock_ticker.fast_info.get("lastPrice")
             if live_price is None:
                 live_price = stock_ticker.info.get("currentPrice") or 0.0
-            company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName") or symbol
+                
+            company_name = None
+            try:
+                company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName")
+            except Exception:
+                pass
+                
+            if not company_name or company_name.upper().strip() == symbol.upper().strip():
+                try:
+                    import requests
+                    search_url = "https://query2.finance.yahoo.com/v1/finance/search"
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
+                    }
+                    search_params = {'q': symbol, 'quotesCount': 1, 'newsCount': 0}
+                    res = requests.get(search_url, headers=headers, params=search_params, timeout=5, verify=False)
+                    if res.status_code == 200:
+                        s_data = res.json()
+                        quotes = s_data.get("quotes", [])
+                        if quotes:
+                            q = quotes[0]
+                            company_name = q.get("longname") or q.get("shortname") or company_name
+                except Exception as search_err:
+                    print(f"Failed search fallback name fetch for {symbol}: {search_err}")
+                    
+            if not company_name:
+                company_name = symbol
+                
             native_currency = stock_ticker.fast_info.get("currency") or stock_ticker.info.get("currency") or "USD"
             quote_type = stock_ticker.fast_info.get("quoteType") or stock_ticker.info.get("quoteType")
             
