@@ -422,7 +422,7 @@ export function Sidebar({
             justifyContent: 'space-between', 
             alignItems: 'center',
             padding: '0.25rem 0.5rem',
-            marginTop: '0.5rem',
+            marginTop: '0.25rem',
             marginBottom: '0.35rem',
             borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
             paddingBottom: '0.25rem'
@@ -621,7 +621,7 @@ export function Sidebar({
         </div>
 
         {/* Watchlist Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', marginTop: '0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', marginTop: '0.375rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.375rem' }}>
           <div style={{ 
             fontSize: '0.62rem', 
             color: 'var(--text-muted)', 
