@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   History, 
   Plus, 
@@ -147,6 +147,74 @@ export function PortfolioView({
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
+  
+  // Dynamic Sticky Columns references & styling
+  const leftColRef = useRef<HTMLDivElement>(null);
+  const rightColRef = useRef<HTMLDivElement>(null);
+  const [leftStickyStyle, setLeftStickyStyle] = useState<React.CSSProperties>({ minWidth: 0 });
+  const [rightStickyStyle, setRightStickyStyle] = useState<React.CSSProperties>({ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight;
+      const isDesktop = window.innerWidth >= 1025;
+      const headerOffset = 20; // 1.25rem is 20px
+
+      if (!isDesktop) {
+        setLeftStickyStyle({ minWidth: 0 });
+        setRightStickyStyle({ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 });
+        return;
+      }
+
+      if (leftColRef.current) {
+        const leftHeight = leftColRef.current.getBoundingClientRect().height;
+        const topValue = leftHeight + headerOffset > vh 
+          ? `calc(100vh - ${leftHeight}px - 1.25rem)` 
+          : '1.25rem';
+        
+        setLeftStickyStyle({
+          minWidth: 0,
+          position: 'sticky',
+          top: topValue,
+          alignSelf: 'start'
+        });
+      }
+
+      if (rightColRef.current) {
+        const rightHeight = rightColRef.current.getBoundingClientRect().height;
+        const topValue = rightHeight + headerOffset > vh 
+          ? `calc(100vh - ${rightHeight}px - 1.25rem)` 
+          : '1.25rem';
+
+        setRightStickyStyle({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          minWidth: 0,
+          position: 'sticky',
+          top: topValue,
+          alignSelf: 'start'
+        });
+      }
+    };
+
+    // Run measurement
+    handleResize();
+
+    // Set up ResizeObserver to watch for dimension changes
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+
+    if (leftColRef.current) resizeObserver.observe(leftColRef.current);
+    if (rightColRef.current) resizeObserver.observe(rightColRef.current);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [holdings, widgets, subTab, loadingHoldings, loadingTransactions]);
   
   const handleMoveWidget = (fromIdx: number, toIdx: number) => {
     setWidgets(prev => {
@@ -880,7 +948,7 @@ export function PortfolioView({
                 ) : (
                   <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
                   {/* Left Column: Holdings Table */}
-                  <div className="sticky-column" style={{ minWidth: 0 }}>
+                  <div ref={leftColRef} className="sticky-column" style={leftStickyStyle}>
                     <HoldingsTable 
                       holdings={holdings}
                       summary={summary}
@@ -890,7 +958,7 @@ export function PortfolioView({
                     />
                   </div>
                   {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
+                  <div ref={rightColRef} style={rightStickyStyle}>
                     {/* Render active widgets in order */}
                     {widgets.map((widgetId, index) => {
                       const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;

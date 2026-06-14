@@ -996,9 +996,7 @@ body.low-perf .modal-content {
 
 @media (min-width: 1025px) {
   .sticky-column {
-    position: sticky;
-    top: 1rem;
-    align-self: start;
+    /* Dynamic sticky styling managed via React inline styles in PortfolioView.tsx */
   }
 }
 
