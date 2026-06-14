@@ -248,7 +248,7 @@
       "err_remove_self": "Nie możesz usunąć siebie z własnego portfela.",
       "err_failed_remove": "Nie udało się usunąć członka: ",
       "err_failed_update": "Nie udało się zaktualizować roli: ",
-      "placeholder_email": "Wprowadź zarejestrowany e-mail odbiorcy..."
+      "placeholder_email": "Wpisz e-mail..."
     },
     "feedback": {
       "title": "Zgłoś błąd / opinię",

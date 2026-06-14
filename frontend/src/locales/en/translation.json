@@ -248,7 +248,7 @@
       "err_remove_self": "You cannot remove yourself from your own portfolio.",
       "err_failed_remove": "Failed to remove member: ",
       "err_failed_update": "Failed to update role: ",
-      "placeholder_email": "Enter recipient's registered email..."
+      "placeholder_email": "Enter email..."
     },
     "feedback": {
       "title": "Feedback & Bug Report",
