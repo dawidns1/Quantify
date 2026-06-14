@@ -794,6 +794,8 @@ export function PortfolioView({
         onShareClick={() => setShowShareModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onFeedbackClick={() => setShowFeedbackModal(true)}
+        apiBaseUrl={apiBaseUrl}
+        onSelectStockSymbol={setSelectedPositionSymbol}
       />
 
       {/* MAIN CONTENT AREA */}

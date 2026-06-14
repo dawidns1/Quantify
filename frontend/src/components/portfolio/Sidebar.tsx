@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Settings,
   LogOut, 
@@ -10,7 +10,10 @@ import {
   Trash2, 
   CreditCard,
   Share2,
-  MessageSquare
+  MessageSquare,
+  Eye,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
@@ -37,6 +40,8 @@ interface SidebarProps {
   onShareClick?: () => void;
   onSettingsClick?: () => void;
   onFeedbackClick?: () => void;
+  apiBaseUrl: string;
+  onSelectStockSymbol: (symbol: string) => void;
 }
 
 export function Sidebar({
@@ -59,12 +64,82 @@ export function Sidebar({
   setBaseCurrency,
   onShareClick,
   onSettingsClick,
-  onFeedbackClick
+  onFeedbackClick,
+  apiBaseUrl,
+  onSelectStockSymbol,
 }: SidebarProps) {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
   const [allAssetsExpanded, setAllAssetsExpanded] = useState(true);
+
+  // Watchlist State & Logic
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    const cached = localStorage.getItem('quantifi_watchlist');
+    return cached ? JSON.parse(cached) : ['AAPL', 'MSFT', 'TSLA'];
+  });
+  const [prices, setPrices] = useState<Record<string, { price: number | null; currency: string; change_percent: number }>>({});
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [newSymbol, setNewSymbol] = useState('');
+
+  const fetchWatchlistPrices = async (symbolsList: string[]) => {
+    if (symbolsList.length === 0) {
+      setPrices({});
+      return;
+    }
+    setLoadingPrices(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/watchlist/prices?symbols=${symbolsList.join(',')}`);
+      if (response.ok) {
+        const data = await response.json();
+        const pricesMap: Record<string, { price: number | null; currency: string; change_percent: number }> = {};
+        data.forEach((item: any) => {
+          pricesMap[item.symbol] = {
+            price: item.price,
+            currency: item.currency,
+            change_percent: item.change_percent
+          };
+        });
+        setPrices(pricesMap);
+      }
+    } catch (err) {
+      console.error("Error fetching watchlist prices:", err);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWatchlistPrices(watchlist);
+    const interval = setInterval(() => {
+      fetchWatchlistPrices(watchlist);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [watchlist]);
+
+  const handleAddSymbol = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanSym = newSymbol.trim().toUpperCase();
+    if (!cleanSym) return;
+    if (watchlist.includes(cleanSym)) {
+      setNewSymbol('');
+      setShowAddInput(false);
+      return;
+    }
+    const updated = [...watchlist, cleanSym];
+    setWatchlist(updated);
+    localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
+    setNewSymbol('');
+    setShowAddInput(false);
+  };
+
+  const handleRemoveSymbol = (sym: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = watchlist.filter(s => s !== sym);
+    setWatchlist(updated);
+    localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
+  };
 
   const togglePortfolioExpand = (portfolioId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -415,6 +490,146 @@ export function Sidebar({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Watchlist Section */}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 0.8, padding: '0 0.5rem', minHeight: 0, borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.50rem', marginTop: '0.25rem' }}>
+        <div className="tree-section-header" style={{ marginTop: 0, paddingTop: 0 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Eye size={13} style={{ color: 'var(--color-primary)' }} />
+            {t('sidebar.watchlist', 'Watchlist')}
+          </span>
+          <button 
+            onClick={() => setShowAddInput(!showAddInput)}
+            title={t('sidebar.add_to_watchlist', 'Add to Watchlist')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2px',
+              borderRadius: '4px'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+          >
+            <Plus size={13} />
+          </button>
+        </div>
+
+        {/* Inline Add Ticker Form */}
+        {showAddInput && (
+          <form onSubmit={handleAddSymbol} style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem 0.5rem', marginBottom: '0.5rem' }}>
+            <input 
+              type="text"
+              value={newSymbol}
+              onChange={(e) => setNewSymbol(e.target.value)}
+              placeholder="e.g. TSLA, NVDA"
+              autoFocus
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--panel-border)',
+                borderRadius: '4px',
+                padding: '0.25rem 0.4rem',
+                fontSize: '0.75rem',
+                color: 'white',
+                outline: 'none'
+              }}
+            />
+            <button 
+              type="submit"
+              style={{
+                background: 'var(--color-primary)',
+                border: 'none',
+                borderRadius: '4px',
+                color: 'white',
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Add
+            </button>
+          </form>
+        )}
+
+        {/* Watchlist Scrollable List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '0.25rem' }} className="custom-scrollbar">
+          {watchlist.length === 0 ? (
+            <div style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+              {t('sidebar.watchlist_empty', 'Watchlist is empty')}
+            </div>
+          ) : (
+            watchlist.map((symbol) => {
+              const data = prices[symbol];
+              const price = data?.price;
+              const pct = data?.change_percent ?? 0;
+              const isPositive = pct >= 0;
+              
+              return (
+                <div 
+                  key={symbol}
+                  className="tree-node"
+                  style={{ justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}
+                  onClick={() => onSelectStockSymbol(symbol)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'white' }}>{symbol}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {price !== undefined && price !== null ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
+                        </span>
+                        <span style={{ 
+                          fontSize: '0.62rem', 
+                          fontWeight: 600,
+                          color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1px'
+                        }}>
+                          {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                          {isPositive ? '+' : ''}{pct.toFixed(2)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                        {loadingPrices ? '...' : 'N/A'}
+                      </span>
+                    )}
+                    
+                    <button
+                      onClick={(e) => handleRemoveSymbol(symbol, e)}
+                      title="Remove from Watchlist"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginLeft: '0.2rem'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

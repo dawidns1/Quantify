@@ -304,6 +304,47 @@ def get_stock_price(ticker: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching real-time price: {str(e)}")
 
+@app.get("/api/watchlist/prices")
+def get_watchlist_prices(symbols: str):
+    if not symbols:
+        return []
+    clean_symbols = [s.upper().strip() for s in symbols.split(",") if s.strip()]
+    results = []
+    
+    for sym in clean_symbols[:15]:
+        try:
+            ticker_obj = yf.Ticker(sym)
+            price = ticker_obj.fast_info.get('lastPrice')
+            if price is None:
+                price = ticker_obj.info.get('currentPrice')
+                
+            prev_close = ticker_obj.fast_info.get('previousClose')
+            if prev_close is None:
+                prev_close = ticker_obj.info.get('previousClose')
+                
+            change_pct = 0.0
+            if price is not None and prev_close:
+                change_pct = ((price - prev_close) / prev_close) * 100.0
+                
+            currency = ticker_obj.fast_info.get("currency") or ticker_obj.info.get("currency") or "USD"
+            
+            results.append({
+                "symbol": sym,
+                "price": price,
+                "currency": currency.upper().strip(),
+                "change_percent": change_pct
+            })
+        except Exception as e:
+            print(f"Error fetching watchlist price for {sym}: {e}")
+            results.append({
+                "symbol": sym,
+                "price": None,
+                "currency": "USD",
+                "change_percent": 0.0,
+                "error": str(e)
+            })
+    return results
+
 @app.get("/api/status")
 def get_status():
     file_path = os.path.join(DATA_DIR, 'status.json')
