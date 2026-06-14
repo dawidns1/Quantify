@@ -73,6 +73,17 @@ export function DividendForecast({
     return `${(val * 100).toFixed(2)}%`;
   };
 
+  const formatBarAmount = (val: number) => {
+    const formatted = new Intl.NumberFormat(i18n.language || 'en', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(val);
+    if (baseCurrency === 'USD') return `$${formatted}`;
+    if (baseCurrency === 'EUR') return `€${formatted}`;
+    if (baseCurrency === 'PLN') return `${formatted} zł`;
+    return `${formatted} ${baseCurrency}`;
+  };
+
   const maxMonthValue = useMemo(() => {
     if (!data || data.monthly_amounts.length === 0) return 1;
     const maxVal = Math.max(...data.monthly_amounts, 0);
@@ -210,7 +221,7 @@ export function DividendForecast({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-end',
-              height: '140px',
+              height: '220px',
               padding: '0 0.5rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
               gap: '4%',
@@ -248,6 +259,24 @@ export function DividendForecast({
                         borderRadius: '6px',
                         zIndex: 0
                       }} />
+                    )}
+
+                    {/* Amount Label above the bar */}
+                    {amount > 0 && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: `calc(${heightPercent} + 6px)`,
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',
+                        fontFamily: 'monospace',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        zIndex: 2,
+                        transition: 'bottom 0.2s ease-in-out, color 0.2s ease-in-out'
+                      }}>
+                        {formatBarAmount(amount)}
+                      </span>
                     )}
 
                     {/* Bar */}
