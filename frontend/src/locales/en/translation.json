@@ -67,7 +67,32 @@
     "action_history": "History",
     "action_delete": "Delete",
     "btn_add_tx": "Add Transaction",
-    "empty_state": "No holdings found. Add your first transaction to get started!"
+    "empty_state": "No holdings found. Add your first transaction to get started!",
+    "col_name": "Company Name",
+    "col_trend": "Trend",
+    "trend_days": "Trend (15d)",
+    "col_shares_owned": "Shares Owned",
+    "col_avg_cost": "Average Cost",
+    "col_local_price": "Local Price",
+    "col_dividends_net": "Dividends Net",
+    "col_asset_class": "Asset Class",
+    "col_weight": "Weight",
+    "col_fx_rate": "FX Rate",
+    "group_basic": "Basic Info",
+    "group_position": "Position Info",
+    "group_valuation": "Valuation",
+    "group_returns": "Returns",
+    "btn_customize_cols": "Customize Columns",
+    "config_columns": "Configure Portfolio Columns",
+    "config_columns_desc": "Ticker, Current Value, Gain/Loss & Actions are always visible",
+    "class_cash": "Cash",
+    "class_equity": "Equity",
+    "class_etf": "ETF",
+    "price_performance": "Price Performance",
+    "loading_price_details": "Loading price details...",
+    "no_price_history": "No price history available.",
+    "no_tx_found_for": "No transactions found for",
+    "col_ticker": "Ticker"
   },
   "ledger": {
     "header": "Transaction History Ledger",
@@ -99,7 +124,8 @@
     "tab_calendar": "Calendar View",
     "tab_payouts": "Dividend Payouts Ledger",
     "btn_add_div": "Add Virtual Dividend",
-    "empty_state": "No ex-dividend dates detected in the near future."
+    "empty_state": "No ex-dividend dates detected in the near future.",
+    "income_header": "Dividend Income Calendar"
   },
   "events": {
     "header": "Upcoming Corporate Events",
@@ -114,7 +140,16 @@
     "header_asset": "Asset Allocation",
     "header_sector": "Sector Weights",
     "header_currency": "Currency Exposures",
-    "no_data": "Add holdings to display allocation weights."
+    "no_data": "Add holdings to display allocation weights.",
+    "title": "Portfolio Allocation",
+    "by_class": "By Asset Class",
+    "by_ticker": "By Asset Ticker",
+    "by_currency": "By Currency",
+    "by_market": "By Market / Exchange",
+    "usa": "USA",
+    "poland": "Poland",
+    "germany": "Germany",
+    "more_tickers": "+ {{count}} more tickers"
   },
   "dashboard": {
     "empty_title": "Welcome to Quantify",
@@ -130,13 +165,23 @@
     "chart_days_365": "1Y",
     "chart_days_all": "ALL",
     "account_filter_all": "All Accounts",
-    "add_tx_shortcut": "Add Transaction"
+    "add_tx_shortcut": "Add Transaction",
+    "disclaimer_title": "Disclaimer",
+    "disclaimer_desc": "Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.",
+    "disclaimer_market_data": "Market data may be delayed and is provided \"as is\" without guarantees of accuracy or completeness.",
+    "viewer_readonly_warning": "You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.",
+    "toggle_cards": "Toggle Dashboard Cards",
+    "close_customizer": "Close Card Customizer",
+    "customize_cards": "Customize Dashboard Cards",
+    "viewer_empty_warning": "This portfolio is empty and you have read-only access.",
+    "search_history_placeholder": "Search history..."
   },
   "modals": {
     "common_close": "Close",
     "common_cancel": "Cancel",
     "common_save": "Save Changes",
     "common_delete": "Delete",
+    "common_confirm": "Confirm",
     "add_tx": {
       "title": "Add Portfolio Transaction",
       "edit_title": "Edit Portfolio Transaction",
@@ -244,5 +289,18 @@
       "btn_save": "Save Dividend",
       "btn_saving": "Saving..."
     }
+  },
+  "fx": {
+    "header": "Currency & FX Exposure Details",
+    "no_exposure": "This instrument is traded in your base currency ({{currency}}). There is no direct foreign exchange exposure.",
+    "avg_purchase_rate": "Avg Purchase Rate",
+    "current_spot_rate": "Current Spot Rate",
+    "exchange_rate_return": "Exchange Rate Return",
+    "decomposition_total_return": "Decomposition of Total Return ({{value}})",
+    "progress_label": "Stock {{stockShare}}% | FX {{fxShare}}%",
+    "asset_gain_title": "Asset Price Gain: {{value}}",
+    "fx_gain_title": "FX Exchange Rate Return: {{value}}",
+    "stock_return": "Stock Return",
+    "fx_return": "FX Return"
   }
 }

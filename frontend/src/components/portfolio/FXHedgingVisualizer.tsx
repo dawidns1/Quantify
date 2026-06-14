@@ -1,4 +1,5 @@
 import { Globe, ShieldAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Holding } from '../../types/portfolio';
 
 interface FXHedgingVisualizerProps {
@@ -7,6 +8,7 @@ interface FXHedgingVisualizerProps {
 }
 
 export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualizerProps) {
+  const { t } = useTranslation();
   const isForeign = holding.currency.toUpperCase() !== baseCurrency.toUpperCase();
   
   // Implied purchase FX rate
@@ -52,13 +54,13 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
     }}>
       <h4 style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
         <Globe size={14} style={{ color: 'var(--color-primary)' }} />
-        <span>Currency & FX Exposure Details</span>
+        <span>{t('fx.header')}</span>
       </h4>
 
       {!isForeign ? (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <ShieldAlert size={14} style={{ color: 'var(--text-muted)' }} />
-          <span>This instrument is traded in your base currency ({baseCurrency}). There is no direct foreign exchange exposure.</span>
+          <span>{t('fx.no_exposure', { currency: baseCurrency })}</span>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -66,25 +68,25 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
           {/* FX Rates Summary */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Avg Purchase Rate</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t('fx.avg_purchase_rate')}</span>
               <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 1 {holding.currency} = {purchaseFxRate.toFixed(4)} {baseCurrency}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Current Spot Rate</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t('fx.current_spot_rate')}</span>
               <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 1 {holding.currency} = {currentFxRate.toFixed(4)} {baseCurrency}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Exchange Rate Return</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t('fx.exchange_rate_return')}</span>
               <span style={{ 
                 fontSize: '0.9rem', 
                 fontWeight: 700, 
                 fontFamily: 'monospace',
                 color: fxChangePercent >= 0 ? 'var(--color-green)' : 'var(--color-red)'
-              }}>
+               }}>
                 {fxChangePercent >= 0 ? '+' : ''}{fxChangePercent.toFixed(2)}%
               </span>
             </div>
@@ -93,8 +95,8 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
           {/* Progress Exposure Split Bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.2rem' }}>
             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>Decomposition of Total Return ({formatCurrency(totalGainBase, baseCurrency)})</span>
-              <span>Stock {assetShare.toFixed(0)}% | FX {fxShare.toFixed(0)}%</span>
+              <span>{t('fx.decomposition_total_return', { value: formatCurrency(totalGainBase, baseCurrency) })}</span>
+              <span>{t('fx.progress_label', { stockShare: assetShare.toFixed(0), fxShare: fxShare.toFixed(0) })}</span>
             </span>
             <div style={{ height: '8px', borderRadius: '4px', display: 'flex', overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
               <div 
@@ -103,15 +105,15 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
                   background: assetGainBase >= 0 ? 'var(--color-primary)' : 'rgba(59, 130, 246, 0.4)',
                   transition: 'width 0.4s ease'
                 }} 
-                title={`Asset Price Gain: ${formatCurrency(assetGainBase, baseCurrency)}`}
+                title={t('fx.asset_gain_title', { value: formatCurrency(assetGainBase, baseCurrency) }) || ''}
               />
               <div 
                 style={{ 
-                  width: `${fxShare}%`, 
+                  width: `${100 - assetShare}%`, 
                   background: fxGainBase >= 0 ? 'var(--color-green)' : 'var(--color-red)',
                   transition: 'width 0.4s ease'
                 }} 
-                title={`FX Exchange Rate Return: ${formatCurrency(fxGainBase, baseCurrency)}`}
+                title={t('fx.fx_gain_title', { value: formatCurrency(fxGainBase, baseCurrency) }) || ''}
               />
             </div>
           </div>
@@ -121,13 +123,13 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />
               <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                Stock Return: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{formatCurrency(assetGainBase, baseCurrency)}</strong>
+                {t('fx.stock_return')}: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{formatCurrency(assetGainBase, baseCurrency)}</strong>
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: fxGainBase >= 0 ? 'var(--color-green)' : 'var(--color-red)' }} />
               <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                FX Return: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{formatCurrency(fxGainBase, baseCurrency)}</strong>
+                {t('fx.fx_return')}: <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{formatCurrency(fxGainBase, baseCurrency)}</strong>
               </span>
             </div>
           </div>

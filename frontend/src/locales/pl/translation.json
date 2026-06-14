@@ -67,7 +67,32 @@
     "action_history": "Szczegóły",
     "action_delete": "Usuń",
     "btn_add_tx": "Dodaj transakcję",
-    "empty_state": "Brak aktywów w portfelu. Dodaj swoją pierwszą transakcję, aby rozpocząć!"
+    "empty_state": "Brak aktywów w portfelu. Dodaj swoją pierwszą transakcję, aby rozpocząć!",
+    "col_name": "Nazwa spółki",
+    "col_trend": "Trend",
+    "trend_days": "Trend (15d)",
+    "col_shares_owned": "Posiadane akcje",
+    "col_avg_cost": "Średni koszt",
+    "col_local_price": "Kurs lokalny",
+    "col_dividends_net": "Dywidendy netto",
+    "col_asset_class": "Klasa aktywów",
+    "col_weight": "Udział w portfelu",
+    "col_fx_rate": "Kurs walutowy",
+    "group_basic": "Podstawowe informacje",
+    "group_position": "Informacje o pozycji",
+    "group_valuation": "Wycena",
+    "group_returns": "Stopy zwrotu",
+    "btn_customize_cols": "Dostosuj kolumny",
+    "config_columns": "Konfiguruj kolumny portfela",
+    "config_columns_desc": "Ticker, bieżąca wartość, zysk/strata i akcje są zawsze widoczne",
+    "class_cash": "Gotówka",
+    "class_equity": "Akcje",
+    "class_etf": "Fundusze ETF",
+    "price_performance": "Historia kursu",
+    "loading_price_details": "Ładowanie szczegółów kursu...",
+    "no_price_history": "Brak dostępnej historii kursów.",
+    "no_tx_found_for": "Nie znaleziono transakcji dla",
+    "col_ticker": "Ticker"
   },
   "ledger": {
     "header": "Księga Historycznych Transakcji",
@@ -99,7 +124,8 @@
     "tab_calendar": "Kalendarz",
     "tab_payouts": "Księga Wypłaconych Dywidend",
     "btn_add_div": "Dodaj dywidendę wirtualną",
-    "empty_state": "Nie wykryto żadnych dywidend w najbliższym czasie."
+    "empty_state": "Nie wykryto żadnych dywidend w najbliższym czasie.",
+    "income_header": "Kalendarz dochodów z dywidend"
   },
   "events": {
     "header": "Nadchodzące Wydarzenia",
@@ -114,7 +140,16 @@
     "header_asset": "Alokacja Aktywów",
     "header_sector": "Udział Sektorów",
     "header_currency": "Ekspozycja Walutowa",
-    "no_data": "Dodaj transakcje, aby wyświetlić wagi alokacji."
+    "no_data": "Dodaj transakcje, aby wyświetlić wagi alokacji.",
+    "title": "Alokacja portfela",
+    "by_class": "Według klasy aktywów",
+    "by_ticker": "Według aktywów",
+    "by_currency": "Według waluty",
+    "by_market": "Według giełdy / rynku",
+    "usa": "USA",
+    "poland": "Polska",
+    "germany": "Niemcy",
+    "more_tickers": "+ {{count}} więcej aktywów"
   },
   "dashboard": {
     "empty_title": "Witaj w Quantify",
@@ -130,13 +165,23 @@
     "chart_days_365": "1R",
     "chart_days_all": "MAX",
     "account_filter_all": "Wszystkie konta",
-    "add_tx_shortcut": "Dodaj transakcję"
+    "add_tx_shortcut": "Dodaj transakcję",
+    "disclaimer_title": "Zastrzeżenie",
+    "disclaimer_desc": "Quantify jest narzędziem do śledzenia portfela dostarczanym wyłącznie w celach edukacyjnych i informacyjnych. Nie udzielamy porad finansowych, inwestycyjnych ani podatkowych.",
+    "disclaimer_market_data": "Dane rynkowe mogą być opóźnione i są dostarczane w stanie, w jakim się znajdują, bez gwarancji dokładności lub kompletności.",
+    "viewer_readonly_warning": "Masz uprawnienia tylko do podglądu (Obserwator) tego portfela. Dodawanie, edycja i usuwanie transakcji jest zablokowane.",
+    "toggle_cards": "Włącz/wyłącz karty pulpitu",
+    "close_customizer": "Zamknij konfigurator kart",
+    "customize_cards": "Dostosuj karty pulpitu",
+    "viewer_empty_warning": "Ten portfel jest pusty i masz do niego dostęp tylko do odczytu.",
+    "search_history_placeholder": "Szukaj w historii..."
   },
   "modals": {
     "common_close": "Zamknij",
     "common_cancel": "Anuluj",
     "common_save": "Zapisz zmiany",
     "common_delete": "Usuń",
+    "common_confirm": "Potwierdź",
     "add_tx": {
       "title": "Dodaj transakcję do portfela",
       "edit_title": "Edytuj transakcję",
@@ -244,5 +289,18 @@
       "btn_save": "Zapisz dywidendę",
       "btn_saving": "Zapisywanie..."
     }
+  },
+  "fx": {
+    "header": "Szczegóły ekspozycji walutowej i kursowej",
+    "no_exposure": "Ten instrument jest notowany w Twojej walucie bazowej ({{currency}}). Brak bezpośredniej ekspozycji na ryzyko kursowe.",
+    "avg_purchase_rate": "Średni kurs zakupu",
+    "current_spot_rate": "Bieżący kurs średni",
+    "exchange_rate_return": "Wynik na różnicach kursowych",
+    "decomposition_total_return": "Dekompozycja całkowitej stopy zwrotu ({{value}})",
+    "progress_label": "Instrument {{stockShare}}% | Waluta {{fxShare}}%",
+    "asset_gain_title": "Zysk na wycenie aktywa: {{value}}",
+    "fx_gain_title": "Zysk na różnicach kursowych: {{value}}",
+    "stock_return": "Zwrot z aktywa",
+    "fx_return": "Zwrot z waluty"
   }
 }
