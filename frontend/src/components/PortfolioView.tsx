@@ -907,9 +907,7 @@ export function PortfolioView({
 
               {/* OVERVIEW TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'overview' ? 'block' : 'none',
-                opacity: loadingHoldings ? 0.6 : 1,
-                transition: 'opacity 0.15s ease-in-out'
+                display: subTab === 'overview' ? 'block' : 'none'
               }}>
                 {portfolioTransactions.length === 0 && !loadingTransactions ? (
                   <div className="glass-panel" style={{ padding: '3rem 2rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.04) 0%, rgba(236, 72, 153, 0.04) 100%)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px' }}>
@@ -1120,9 +1118,7 @@ export function PortfolioView({
 
               {/* LEDGER TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'ledger' ? 'block' : 'none',
-                opacity: loadingTransactions ? 0.6 : 1,
-                transition: 'opacity 0.15s ease-in-out'
+                display: subTab === 'ledger' ? 'block' : 'none'
               }}>
                 <LedgerTable 
                   transactions={transactions}
@@ -1135,9 +1131,7 @@ export function PortfolioView({
 
               {/* DIVIDENDS TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'dividends' ? 'block' : 'none',
-                opacity: loadingHoldings ? 0.6 : 1,
-                transition: 'opacity 0.15s ease-in-out'
+                display: subTab === 'dividends' ? 'block' : 'none'
               }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }} className="portfolio-grid">
                   <div style={{ minWidth: 0, height: '100%' }}>
