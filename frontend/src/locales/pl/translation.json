@@ -248,7 +248,9 @@
       "err_remove_self": "Nie możesz usunąć siebie z własnego portfela.",
       "err_failed_remove": "Nie udało się usunąć członka: ",
       "err_failed_update": "Nie udało się zaktualizować roli: ",
-      "placeholder_email": "Wpisz e-mail..."
+      "placeholder_email": "Wpisz e-mail...",
+      "invite_join_success": "Pomyślnie dołączono do portfela: ",
+      "invite_join_failed": "Nie udało się dołączyć do portfela: "
     },
     "feedback": {
       "title": "Zgłoś błąd / opinię",

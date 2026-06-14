@@ -15,6 +15,17 @@ const API_BASE_URL = rawApiUrl.replace(/\/$/, "");
 function App() {
   const { user, loading: authLoading, recoveryMode, signOut } = useAuth();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite');
+    if (inviteToken) {
+      localStorage.setItem('pending_portfolio_invite', inviteToken);
+      // Clean up URL parameter to keep it neat
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   const [settings] = useState<{
     lowPerformanceMode: boolean;
   }>(() => {

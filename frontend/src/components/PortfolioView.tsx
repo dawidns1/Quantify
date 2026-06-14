@@ -66,7 +66,8 @@ import {
   createPortfolio,
   renamePortfolio,
   deletePortfolio,
-  updatePortfolioSettings
+  updatePortfolioSettings,
+  joinPortfolioViaInviteToken
 } from '../services/supabaseService';
 import { 
   deleteTransaction as deleteTransactionService 
@@ -219,6 +220,38 @@ export function PortfolioView({
       window.removeEventListener('resize', handleResize);
     };
   }, [holdings, widgets, subTab, loadingHoldings, loadingTransactions]);
+
+  // Effect to process pending invitation links upon component mount and portfolio list loading
+  useEffect(() => {
+    const processInvite = async () => {
+      const inviteToken = localStorage.getItem('pending_portfolio_invite');
+      if (!inviteToken) return;
+
+      // Clean up immediately to avoid duplicate network submissions
+      localStorage.removeItem('pending_portfolio_invite');
+
+      try {
+        const result = await joinPortfolioViaInviteToken(inviteToken);
+        if (result && result.success) {
+          // Trigger portfolios list refresh
+          await loadPortfolios();
+          
+          // Switch view focus to newly joined portfolio
+          setActivePortfolioId(result.portfolio_id);
+          setActivePortfolioRole(result.role);
+          
+          alert((t('modals.share.invite_join_success') || 'Successfully joined portfolio: ') + result.portfolio_name);
+        }
+      } catch (err: any) {
+        console.error('Error joining portfolio via invite link:', err);
+        alert((t('modals.share.invite_join_failed') || 'Failed to join portfolio from invite link: ') + (err.message || err));
+      }
+    };
+
+    if (user && portfolios.length > 0) {
+      processInvite();
+    }
+  }, [user, portfolios.length]);
   
   const handleMoveWidget = (fromIdx: number, toIdx: number) => {
     setWidgets(prev => {

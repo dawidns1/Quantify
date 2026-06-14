@@ -162,3 +162,52 @@ export async function updatePortfolioSettings(portfolioId: string, settings: any
 
   if (error) throw error;
 }
+
+export async function fetchActiveInvitation(portfolioId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('portfolio_invitations')
+    .select()
+    .eq('portfolio_id', portfolioId)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function createInvitationLink(
+  portfolioId: string,
+  role: 'editor' | 'viewer',
+  userId: string
+): Promise<any> {
+  // First deactivate any existing active invitations for this portfolio
+  await supabase
+    .from('portfolio_invitations')
+    .update({ is_active: false })
+    .eq('portfolio_id', portfolioId);
+
+  const { data, error } = await supabase
+    .from('portfolio_invitations')
+    .insert({
+      portfolio_id: portfolioId,
+      role,
+      created_by: userId
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function revokeInvitationLink(portfolioId: string): Promise<void> {
+  const { error } = await supabase
+    .from('portfolio_invitations')
+    .update({ is_active: false })
+    .eq('portfolio_id', portfolioId);
+  if (error) throw error;
+}
+
+export async function joinPortfolioViaInviteToken(inviteToken: string): Promise<any> {
+  const { data, error } = await supabase.rpc('join_portfolio_via_invite_token', { invite_token: inviteToken });
+  if (error) throw error;
+  return data;
+}
