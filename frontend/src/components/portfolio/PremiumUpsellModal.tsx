@@ -88,7 +88,7 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
                 Upgrade Successful!
               </h3>
               <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
-                Welcome to <strong>Quantify Premium</strong>. Limits have been removed!
+                Welcome to <strong>QuantiFi Premium</strong>. Limits have been removed!
               </p>
             </div>
           ) : (
@@ -115,7 +115,7 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
               {/* Title & Limits Reason */}
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Upgrade to Quantify Premium
+                  Upgrade to QuantiFi Premium
                 </h3>
                 <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                   {reason === 'portfolio' && (

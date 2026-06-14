@@ -153,7 +153,7 @@
     "more_tickers": "+ {{count}} more tickers"
   },
   "dashboard": {
-    "empty_title": "Welcome to Quantify",
+    "empty_title": "Welcome to QuantiFi",
     "empty_desc": "Your portfolio is currently empty. Get started by adding a transaction manually, or load a sample demo portfolio to immediately explore all advanced charts, dividend tracking, and risk analytics.",
     "btn_load_demo": "Load Demo Portfolio",
     "btn_loading_demo": "Loading Demo...",
@@ -168,7 +168,7 @@
     "account_filter_all": "All Accounts",
     "add_tx_shortcut": "Add Transaction",
     "disclaimer_title": "Disclaimer",
-    "disclaimer_desc": "Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.",
+    "disclaimer_desc": "QuantiFi is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.",
     "disclaimer_market_data": "Market data may be delayed and is provided \"as is\" without guarantees of accuracy or completeness.",
     "viewer_readonly_warning": "You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.",
     "toggle_cards": "Toggle Dashboard Cards",
@@ -259,16 +259,16 @@
       "label_email": "Your Contact Email",
       "placeholder_message": "Tell us what happened, what you liked, or what you would like to see changed...",
       "success_title": "Feedback Submitted!",
-      "success_desc": "Thank you for helping us improve Quantify. Your input has been logged and backed up.",
+      "success_desc": "Thank you for helping us improve QuantiFi. Your input has been logged and backed up.",
       "direct_contact": "You can also contact the developer directly at dawidns1@gmail.com",
-      "desc": "Help us improve Quantify. Report bugs, suggest new features, or ask a question directly to the developer.",
+      "desc": "Help us improve QuantiFi. Report bugs, suggest new features, or ask a question directly to the developer.",
       "err_message": "Please enter a message.",
       "label_category_short": "Category",
       "label_email_opt": "Contact Email (Optional)",
       "placeholder_email": "name@example.com",
       "placeholder_message_short": "Describe your feedback, request, or details of the bug...",
       "success_title_short": "Thank You!",
-      "success_desc_short": "Your feedback has been submitted successfully. We appreciate your help in making Quantify better!",
+      "success_desc_short": "Your feedback has been submitted successfully. We appreciate your help in making QuantiFi better!",
       "btn_send": "Send Feedback",
       "btn_sending": "Submitting..."
     },
@@ -338,6 +338,6 @@
     "trade_shares": "Shares",
     "empty_title": "No Assets to Rebalance",
     "empty_desc": "Add stock transactions in your ledger first to enable the Target Allocation planner.",
-    "copy_header": "Quantify Rebalancing Plan"
+    "copy_header": "QuantiFi Rebalancing Plan"
   }
 }

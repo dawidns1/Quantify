@@ -109,7 +109,7 @@ export async function inviteMemberByEmail(
     .single();
 
   if (profileError || !profile) {
-    throw new Error("No user found with this email. They must log in to Quantify at least once first.");
+    throw new Error("No user found with this email. They must log in to QuantiFi at least once first.");
   }
 
   // Check if user is already a member

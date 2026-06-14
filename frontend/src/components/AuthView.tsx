@@ -192,7 +192,7 @@ export function AuthView() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
           <img 
             src="/favicon.png" 
-            alt="Quantify Logo" 
+            alt="QuantiFi Logo" 
             style={{ 
               width: '48px', 
               height: '48px', 
@@ -203,7 +203,7 @@ export function AuthView() {
           />
           <div>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 0.25rem 0' }}>
-              Quant<span className="gradient-text">ify</span>
+              Quanti<span className="gradient-text">Fi</span>
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
               {recoveryMode 

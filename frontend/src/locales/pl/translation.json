@@ -153,7 +153,7 @@
     "more_tickers": "+ {{count}} więcej aktywów"
   },
   "dashboard": {
-    "empty_title": "Witaj w Quantify",
+    "empty_title": "Witaj w QuantiFi",
     "empty_desc": "Twój portfel jest obecnie pusty. Zacznij od dodania transakcji ręcznie, lub załaduj portfel demonstracyjny, aby natychmiast zapoznać się z zaawansowanymi wykresami, kalendarzem dywidend oraz analizą ryzyka.",
     "btn_load_demo": "Załaduj portfel demo",
     "btn_loading_demo": "Ładowanie demo...",
@@ -168,7 +168,7 @@
     "account_filter_all": "Wszystkie konta",
     "add_tx_shortcut": "Dodaj transakcję",
     "disclaimer_title": "Zastrzeżenie",
-    "disclaimer_desc": "Quantify jest narzędziem do śledzenia portfela dostarczanym wyłącznie w celach edukacyjnych i informacyjnych. Nie udzielamy porad finansowych, inwestycyjnych ani podatkowych.",
+    "disclaimer_desc": "QuantiFi jest narzędziem do śledzenia portfela dostarczanym wyłącznie w celach edukacyjnych i informacyjnych. Nie udzielamy porad finansowych, inwestycyjnych ani podatkowych.",
     "disclaimer_market_data": "Dane rynkowe mogą być opóźnione i są dostarczane w stanie, w jakim się znajdują, bez gwarancji dokładności lub kompletności.",
     "viewer_readonly_warning": "Masz uprawnienia tylko do podglądu (Obserwator) tego portfela. Dodawanie, edycja i usuwanie transakcji jest zablokowane.",
     "toggle_cards": "Włącz/wyłącz karty pulpitu",
@@ -259,16 +259,16 @@
       "label_email": "Twój adres e-mail",
       "placeholder_message": "Opisz nam co się stało, co Ci się podoba, lub co chciałbyś zmienić w aplikacji...",
       "success_title": "Zgłoszenie wysłane!",
-      "success_desc": "Dziękujemy za pomoc w rozwoju Quantify. Twój głos został zapisany w systemie.",
+      "success_desc": "Dziękujemy za pomoc w rozwoju QuantiFi. Twój głos został zapisany w systemie.",
       "direct_contact": "Możesz również skontaktować się bezpośrednio pisząc na dawidns1@gmail.com",
-      "desc": "Pomóż nam ulepszyć Quantify. Zgłaszaj błędy, sugeruj nowe funkcje lub zadaj pytanie bezpośrednio twórcy.",
+      "desc": "Pomóż nam ulepszyć QuantiFi. Zgłaszaj błędy, sugeruj nowe funkcje lub zadaj pytanie bezpośrednio twórcy.",
       "err_message": "Wprowadź treść wiadomości.",
       "label_category_short": "Kategoria",
       "label_email_opt": "E-mail kontaktowy (Opcjonalnie)",
       "placeholder_email": "nazwa@example.com",
       "placeholder_message_short": "Opisz swoją opinię, sugestię lub szczegóły błędu...",
       "success_title_short": "Dziękujemy!",
-      "success_desc_short": "Twoja opinia została pomyślnie wysłana. Doceniamy Twoją pomoc w ulepszaniu Quantify!",
+      "success_desc_short": "Twoja opinia została pomyślnie wysłana. Doceniamy Twoją pomoc w ulepszaniu QuantiFi!",
       "btn_send": "Wyślij opinię",
       "btn_sending": "Wysyłanie..."
     },
@@ -338,6 +338,6 @@
     "trade_shares": "Akcje",
     "empty_title": "Brak aktywów do rebalansowania",
     "empty_desc": "Dodaj najpierw transakcje kupna akcji w księdze, aby móc planować wagi celowe.",
-    "copy_header": "Plan rebalansowania Quantify"
+    "copy_header": "Plan rebalansowania QuantiFi"
   }
 }

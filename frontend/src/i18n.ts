@@ -16,7 +16,7 @@ i18n
         translation: plTranslation
       }
     },
-    lng: localStorage.getItem('quantify_language') || 'en',
+    lng: localStorage.getItem('quantifi_language') || 'en',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false // React already escapes values
@@ -24,7 +24,7 @@ i18n
     detection: {
       order: ['localStorage'],
       caches: ['localStorage'],
-      lookupLocalStorage: 'quantify_language'
+      lookupLocalStorage: 'quantifi_language'
     }
   });
 

@@ -144,7 +144,7 @@ export function RebalancingPlanner({
     if (tradePlan.length === 0) return;
 
     const baseCurr = summary?.base_currency || 'USD';
-    let text = `${t('rebalance.copy_header', 'Quantify Rebalancing Plan')} (${baseCurr}):\n`;
+    let text = `${t('rebalance.copy_header', 'QuantiFi Rebalancing Plan')} (${baseCurr}):\n`;
     
     tradePlan.forEach(t => {
       const formattedDiff = new Intl.NumberFormat(i18n.language || 'en', { style: 'currency', currency: baseCurr }).format(Math.abs(t.valDiff));

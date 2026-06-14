@@ -844,7 +844,7 @@ export function PortfolioView({
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', border: '1px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', marginBottom: '1.25rem' }}>
                       <Plus size={30} />
                     </div>
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>{t('dashboard.empty_title', 'Welcome to Quantify!')}</h3>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>{t('dashboard.empty_title', 'Welcome to QuantiFi!')}</h3>
                     <p style={{ margin: '0 0 2rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', maxWidth: '480px', lineHeight: 1.5 }}>
                       {t('dashboard.empty_desc', 'Your portfolio is currently empty. Get started by adding a transaction manually, or load a sample demo portfolio to immediately explore all advanced charts, dividend tracking, and risk analytics.')}
                     </p>
@@ -1133,7 +1133,7 @@ export function PortfolioView({
             lineHeight: '1.45'
           }}>
             <div>
-              <strong>{t('dashboard.disclaimer_title', 'Disclaimer')}:</strong> {t('dashboard.disclaimer_desc', 'Quantify is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.')}
+              <strong>{t('dashboard.disclaimer_title', 'Disclaimer')}:</strong> {t('dashboard.disclaimer_desc', 'QuantiFi is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.')}
             </div>
             <div>
               {t('dashboard.disclaimer_market_data', 'Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.')}

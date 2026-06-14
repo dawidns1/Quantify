@@ -80,7 +80,7 @@ export function Sidebar({
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
         <img 
           src="/favicon.png" 
-          alt="Quantify Logo" 
+          alt="QuantiFi Logo" 
           style={{
             width: '32px',
             height: '32px',
@@ -90,8 +90,8 @@ export function Sidebar({
           }}
         />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.03em', background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            QUANTIFY
+          <span style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.01em', color: '#ffffff' }}>
+            Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
           </span>
           <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {t('sidebar.portfolio_intelligence', 'Portfolio Intelligence')}
