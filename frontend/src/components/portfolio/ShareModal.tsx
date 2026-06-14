@@ -251,14 +251,14 @@ export function ShareModal({
                 <button 
                   onClick={handleCopyLink} 
                   className="glow-btn"
-                  style={{ height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.82rem', background: copiedLink ? 'var(--color-green)' : undefined }}
+                  style={{ height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.82rem', background: copiedLink ? 'var(--color-green)' : undefined, justifyContent: 'center' }}
                 >
                   {copiedLink ? t('modals.share.copied') : t('modals.share.btn_copy')}
                 </button>
                 <button 
                   onClick={handleRevokeLink} 
                   className="glow-btn"
-                  style={{ height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.82rem', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--color-red)', border: '1px solid var(--color-red)' }}
+                  style={{ height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.82rem', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--color-red)', border: '1px solid var(--color-red)', justifyContent: 'center' }}
                 >
                   {t('modals.share.action_revoke')}
                 </button>
@@ -281,7 +281,7 @@ export function ShareModal({
                   onClick={handleGenerateLink} 
                   disabled={creatingLink}
                   className="glow-btn" 
-                  style={{ flex: 1.2, height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                  style={{ flex: 1.2, height: '38px', padding: '0 1rem', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center' }}
                 >
                   {creatingLink ? 'Generating...' : 'Generate Invite Link'}
                 </button>

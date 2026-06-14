@@ -363,7 +363,7 @@ export function DividendForecast({
                     {monthFullLabel(monthName)}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 700, color: 'white' }}>
-                    <span>{t('dividends.total', 'Total')}:</span>
+                    <span>{t('dividends.total_net', 'Total Net')}:</span>
                     <span style={{ color: 'var(--color-green)' }}>{formatCurrency(monthAmount)}</span>
                   </div>
                   {contributions.length > 0 && (

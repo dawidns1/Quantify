@@ -367,7 +367,7 @@ export function DividendCalendar({
                 ))}
               </div>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Total Net:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{t('dividends.total_net', 'Total Net')}:</span>
                 <span style={{ color: 'var(--color-green)' }}>{formatCurrency(m.totalNet, baseCurrency)}</span>
               </div>
             </div>
