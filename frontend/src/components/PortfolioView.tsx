@@ -1224,12 +1224,14 @@ export function PortfolioView({
       />
 
       {/* COLLABORATIVE SHARING DIALOG MODAL */}
-      <ShareModal 
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        activePortfolioId={activePortfolioId}
-        showCustomConfirm={showCustomConfirm}
-      />
+      {showShareModal && (
+        <ShareModal 
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          activePortfolioId={activePortfolioId}
+          showCustomConfirm={showCustomConfirm}
+        />
+      )}
 
       {/* PORTFOLIO SETTINGS MODAL */}
       <SettingsModal 

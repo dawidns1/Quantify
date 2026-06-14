@@ -153,19 +153,19 @@ export function ShareModal({
                 type="email"
                 placeholder={t('modals.share.placeholder_email')}
                 className="input-field"
-                style={{ width: '100%' }}
+                style={{ width: '100%', height: '38px', boxSizing: 'border-box', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.85rem' }}
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 required
               />
             </div>
 
-            <div className="form-group" style={{ flex: 1 }}>
+            <div className="form-group" style={{ flex: 1.2 }}>
               <label className="form-label" htmlFor="invite-role">{t('modals.share.label_role')}</label>
               <select
                 id="invite-role"
                 className="input-field"
-                style={{ width: '100%', cursor: 'pointer' }}
+                style={{ width: '100%', height: '38px', boxSizing: 'border-box', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
               >
@@ -174,7 +174,7 @@ export function ShareModal({
               </select>
             </div>
 
-            <button type="submit" className="glow-btn" style={{ padding: '0.55rem 1rem', height: '38px', borderRadius: '6px' }}>
+            <button type="submit" className="glow-btn" style={{ padding: '0 1.25rem', height: '38px', boxSizing: 'border-box', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {t('modals.share.invite_btn')}
             </button>
           </form>
