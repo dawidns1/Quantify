@@ -154,7 +154,7 @@ export function DividendLedgerTable({
       </div>
 
       {/* Table Container */}
-      <div style={{ overflowX: 'auto' }}>
+      <div className="custom-scrollbar" style={{ overflowX: 'auto' }}>
         <table className="portfolio-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr>
