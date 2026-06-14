@@ -15,6 +15,7 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
+import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
@@ -78,10 +79,61 @@ export function Sidebar({
     const cached = localStorage.getItem('quantifi_watchlist');
     return cached ? JSON.parse(cached) : ['AAPL', 'MSFT', 'TSLA'];
   });
-  const [prices, setPrices] = useState<Record<string, { price: number | null; currency: string; change_percent: number }>>({});
+  const [prices, setPrices] = useState<Record<string, { price: number | null; currency: string; change_percent: number; is_market_open: boolean }>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
+
+  const fetchWatchlistFromDb = async () => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+      
+      const { data, error } = await supabase
+        .from('watchlists')
+        .select('symbols')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+        
+      if (error) {
+        console.error("Error fetching watchlist from db:", error);
+      }
+        
+      if (data && data.symbols) {
+        setWatchlist(data.symbols);
+        localStorage.setItem('quantifi_watchlist', JSON.stringify(data.symbols));
+      }
+    } catch (err) {
+      console.log("Supabase watchlist fetch failed, using local storage:", err);
+    }
+  };
+
+  const syncWatchlistToDb = async (updatedList: string[]) => {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) return;
+      
+      const { error } = await supabase
+        .from('watchlists')
+        .upsert({ 
+          user_id: currentUser.id, 
+          symbols: updatedList, 
+          updated_at: new Date().toISOString() 
+        });
+        
+      if (error) {
+        console.log("Supabase watchlist sync failed:", error);
+      }
+    } catch (err) {
+      console.log("Supabase watchlist sync error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchWatchlistFromDb();
+    }
+  }, [user]);
 
   const fetchWatchlistPrices = async (symbolsList: string[]) => {
     if (symbolsList.length === 0) {
@@ -93,12 +145,13 @@ export function Sidebar({
       const response = await fetch(`${apiBaseUrl}/api/watchlist/prices?symbols=${symbolsList.join(',')}`);
       if (response.ok) {
         const data = await response.json();
-        const pricesMap: Record<string, { price: number | null; currency: string; change_percent: number }> = {};
+        const pricesMap: Record<string, { price: number | null; currency: string; change_percent: number; is_market_open: boolean }> = {};
         data.forEach((item: any) => {
           pricesMap[item.symbol] = {
             price: item.price,
             currency: item.currency,
-            change_percent: item.change_percent
+            change_percent: item.change_percent,
+            is_market_open: item.is_market_open
           };
         });
         setPrices(pricesMap);
@@ -130,6 +183,7 @@ export function Sidebar({
     const updated = [...watchlist, cleanSym];
     setWatchlist(updated);
     localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
+    syncWatchlistToDb(updated);
     setNewSymbol('');
     setShowAddInput(false);
   };
@@ -139,6 +193,7 @@ export function Sidebar({
     const updated = watchlist.filter(s => s !== sym);
     setWatchlist(updated);
     localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
+    syncWatchlistToDb(updated);
   };
 
   const togglePortfolioExpand = (portfolioId: string, e: React.MouseEvent) => {
@@ -579,14 +634,26 @@ export function Sidebar({
                   style={{ justifyContent: 'space-between', padding: '0.4rem 0.5rem' }}
                   onClick={() => onSelectStockSymbol(symbol)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'white' }}>{symbol}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>{symbol}</span>
+                    {data !== undefined && (
+                      <span 
+                        style={{ 
+                          width: '5px', 
+                          height: '5px', 
+                          borderRadius: '50%', 
+                          backgroundColor: data.is_market_open ? 'var(--color-green)' : 'rgba(255, 255, 255, 0.2)',
+                          display: 'inline-block' 
+                        }} 
+                        title={data.is_market_open ? t('sidebar.market_open', 'Market Open') : t('sidebar.market_closed', 'Market Closed')}
+                      />
+                    )}
                   </div>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
                     {price !== undefined && price !== null ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.75rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.72rem', lineHeight: '1.1' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                           {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
                         </span>
                         <span style={{ 
@@ -618,7 +685,8 @@ export function Sidebar({
                         padding: '2px',
                         display: 'flex',
                         alignItems: 'center',
-                        marginLeft: '0.2rem'
+                        marginLeft: '0.1rem',
+                        fontSize: '0.7rem'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'}
                       onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}

@@ -328,11 +328,16 @@ def get_watchlist_prices(symbols: str):
                 
             currency = ticker_obj.fast_info.get("currency") or ticker_obj.info.get("currency") or "USD"
             
+            timezone = ticker_obj.fast_info.get("timezone") or "UTC"
+            exchange = ticker_obj.fast_info.get("exchange") or ""
+            is_open = PortfolioManager.is_market_open(timezone, exchange)
+            
             results.append({
                 "symbol": sym,
                 "price": price,
                 "currency": currency.upper().strip(),
-                "change_percent": change_pct
+                "change_percent": change_pct,
+                "is_market_open": is_open
             })
         except Exception as e:
             print(f"Error fetching watchlist price for {sym}: {e}")
@@ -341,6 +346,7 @@ def get_watchlist_prices(symbols: str):
                 "price": None,
                 "currency": "USD",
                 "change_percent": 0.0,
+                "is_market_open": False,
                 "error": str(e)
             })
     return results
