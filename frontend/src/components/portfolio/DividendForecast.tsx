@@ -36,6 +36,7 @@ export function DividendForecast({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const holdingsKey = JSON.stringify(holdings.map(h => ({ symbol: h.symbol, shares: h.shares })));
 
@@ -190,7 +191,16 @@ export function DividendForecast({
           </div>
 
           {/* Bar Chart Container */}
-          <div style={{ position: 'relative', marginTop: '0.5rem' }}>
+          <div 
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setTooltipPos({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+              });
+            }}
+            style={{ position: 'relative', marginTop: '0.5rem' }}
+          >
             <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '1rem', letterSpacing: '0.5px' }}>
               {t('dividends.monthly_projection', 'Monthly Cash Flow Projections')}
             </span>
@@ -301,9 +311,11 @@ export function DividendForecast({
               return (
                 <div style={{
                   position: 'absolute',
-                  top: '10px',
-                  left: hoveredMonthIndex > 6 ? '10px' : 'auto',
-                  right: hoveredMonthIndex <= 6 ? '10px' : 'auto',
+                  left: `${tooltipPos.x}px`,
+                  top: `${tooltipPos.y}px`,
+                  transform: hoveredMonthIndex > 6
+                    ? 'translate(-105%, -105%)' 
+                    : 'translate(15px, -105%)',
                   background: 'rgba(11, 15, 28, 0.95)',
                   backdropFilter: 'blur(8px)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',

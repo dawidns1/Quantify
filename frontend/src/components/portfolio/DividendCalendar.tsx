@@ -19,6 +19,8 @@ export function DividendCalendar({
 }: DividendCalendarProps) {
   const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -78,10 +80,6 @@ export function DividendCalendar({
     return monthlyData.reduce((sum, m) => sum + m.totalNet, 0);
   }, [monthlyData]);
 
-  const maxMonthValue = useMemo(() => {
-    const maxVal = Math.max(...monthlyData.map(m => m.totalNet), 0);
-    return maxVal === 0 ? 1 : maxVal;
-  }, [monthlyData]);
 
   const handlePrevYear = () => {
     const idx = availableYears.indexOf(selectedYear);
@@ -195,21 +193,35 @@ export function DividendCalendar({
       </div>
 
       {/* 12-Month Grid */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-        gap: '0.75rem',
-        marginTop: '0.25rem'
-      }}>
+      <div 
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setTooltipPos({
+            x: e.clientX - rect.left + 10,
+            y: e.clientY - rect.top - 10
+          });
+        }}
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
+          gap: '0.75rem',
+          marginTop: '0.25rem',
+          position: 'relative'
+        }}
+      >
         {monthlyData.map(m => {
-          const heightPercent = (m.totalNet / maxMonthValue) * 100;
           const uniqueTickers = Array.from(new Set(m.payments.map(p => p.symbol.toUpperCase()))).slice(0, 3);
           const hasPayments = m.payments.length > 0;
           const isAllUpcoming = hasPayments && m.payments.every(p => p.is_upcoming);
+          
+          const totalPaid = m.payments.filter(p => !p.is_upcoming).reduce((sum, p) => sum + (p.net_base || p.payout_net_base || 0), 0);
+          const totalUpcoming = m.payments.filter(p => p.is_upcoming).reduce((sum, p) => sum + (p.net_base || p.payout_net_base || 0), 0);
 
           return (
             <div 
               key={m.index} 
+              onMouseEnter={() => setHoveredMonthIndex(m.index)}
+              onMouseLeave={() => setHoveredMonthIndex(null)}
               style={{
                 background: hasPayments ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.005)',
                 border: '1px solid rgba(255, 255, 255, 0.04)',
@@ -224,25 +236,6 @@ export function DividendCalendar({
               }}
               className="calendar-month-card"
             >
-              {/* Mini chart bar at the bottom back */}
-              {hasPayments && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: `${Math.max(4, heightPercent)}%`,
-                  background: isAllUpcoming
-                    ? 'linear-gradient(to top, rgba(16, 185, 129, 0.03), rgba(16, 185, 129, 0.005))'
-                    : 'linear-gradient(to top, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.01))',
-                  borderTop: isAllUpcoming
-                    ? '1px dashed rgba(16, 185, 129, 0.25)'
-                    : '1px solid rgba(16, 185, 129, 0.15)',
-                  zIndex: 0,
-                  pointerEvents: 'none'
-                }} />
-              )}
-
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: hasPayments ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                   {m.name}
@@ -267,15 +260,119 @@ export function DividendCalendar({
                 </span>
                 
                 {hasPayments && (
-                  <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'flex', gap: '2px', flexWrap: 'wrap', marginTop: '2px' }}>
-                    {uniqueTickers.join(', ')}
-                    {uniqueTickers.length < m.payments.length && '...'}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                    {totalPaid > 0 && totalUpcoming > 0 ? (
+                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ 
+                          width: '5px', 
+                          height: '5px', 
+                          borderRadius: '50%', 
+                          background: 'linear-gradient(90deg, var(--color-green) 50%, rgba(6, 182, 212, 0.7) 50%)',
+                          flexShrink: 0
+                        }} />
+                        <span>
+                          Paid: <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalPaid, baseCurrency)}</span> | Est: <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(totalUpcoming, baseCurrency)}</span>
+                        </span>
+                      </span>
+                    ) : isAllUpcoming ? (
+                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ 
+                          width: '5px', 
+                          height: '5px', 
+                          borderRadius: '50%', 
+                          background: 'rgba(6, 182, 212, 0.7)',
+                          flexShrink: 0
+                        }} />
+                        <span>Projected Payout</span>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.58rem', color: 'var(--color-green)', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ 
+                          width: '5px', 
+                          height: '5px', 
+                          borderRadius: '50%', 
+                          background: 'var(--color-green)',
+                          flexShrink: 0
+                        }} />
+                        <span>Received</span>
+                      </span>
+                    )}
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+                      {uniqueTickers.join(', ')}
+                      {uniqueTickers.length < m.payments.length && '...'}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
           );
         })}
+
+        {/* Dynamic Tooltip Box following cursor */}
+        {hoveredMonthIndex !== null && (() => {
+          const m = monthlyData[hoveredMonthIndex];
+          if (m.payments.length === 0) return null;
+          
+          const sortedPayments = [...m.payments].sort((a, b) => {
+            if (a.is_upcoming !== b.is_upcoming) {
+              return a.is_upcoming ? 1 : -1;
+            }
+            return (b.net_base || b.payout_net_base || 0) - (a.net_base || a.payout_net_base || 0);
+          });
+
+          return (
+            <div style={{
+              position: 'absolute',
+              left: `${tooltipPos.x}px`,
+              top: `${tooltipPos.y}px`,
+              transform: hoveredMonthIndex % 4 >= 2
+                ? 'translate(-100%, -100%)' 
+                : 'translate(10px, -100%)',
+              background: 'rgba(11, 15, 28, 0.96)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '8px',
+              padding: '0.65rem 0.85rem',
+              zIndex: 100,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              minWidth: '180px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4rem',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap'
+            }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.25rem' }}>
+                {m.name} {selectedYear}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                {sortedPayments.map((p, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.68rem', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontWeight: 700, color: 'white' }}>{p.symbol}</span>
+                      <span style={{ 
+                        fontSize: '0.55rem', 
+                        color: p.is_upcoming ? 'var(--text-muted)' : 'var(--color-green)',
+                        background: p.is_upcoming ? 'rgba(255,255,255,0.04)' : 'rgba(16, 185, 129, 0.08)',
+                        padding: '1px 3px',
+                        borderRadius: '3px'
+                      }}>
+                        {p.is_upcoming ? t('calendar.projected', 'Est.') : t('calendar.received', 'Paid')}
+                      </span>
+                    </div>
+                    <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                      {formatCurrency(p.net_base || p.payout_net_base || 0, baseCurrency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Total Net:</span>
+                <span style={{ color: 'var(--color-green)' }}>{formatCurrency(m.totalNet, baseCurrency)}</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
