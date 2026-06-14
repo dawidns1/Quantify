@@ -30,8 +30,8 @@ interface SidebarProps {
   onDeletePortfolio: (id: string) => void;
   sidebarOpen?: boolean;
   onCloseSidebar?: () => void;
-  subTab: 'overview' | 'ledger' | 'dividends';
-  setSubTab: (tab: 'overview' | 'ledger' | 'dividends') => void;
+  subTab: 'overview' | 'ledger' | 'dividends' | 'rebalance';
+  setSubTab: (tab: 'overview' | 'ledger' | 'dividends' | 'rebalance') => void;
   baseCurrency: 'PLN' | 'USD' | 'EUR';
   setBaseCurrency: (val: 'PLN' | 'USD' | 'EUR') => void;
   onShareClick?: () => void;
@@ -200,7 +200,8 @@ export function Sidebar({
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'ledger', label: 'Ledger' },
-            { id: 'dividends', label: 'Dividends' }
+            { id: 'dividends', label: 'Dividends' },
+            { id: 'rebalance', label: 'Rebalance' }
           ].map((tab) => (
             <button
               key={tab.id}

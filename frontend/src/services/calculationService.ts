@@ -208,3 +208,53 @@ export async function fetchPortfolioAnalytics(
   return response.json();
 }
 
+export async function fetchDividendForecast(
+  apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
+  baseCurrency: string,
+  account: string,
+  linkCash: boolean
+): Promise<{
+  forward_annual_income: number;
+  forward_yield: number;
+  yield_on_cost: number;
+  months: string[];
+  monthly_amounts: number[];
+  ticker_contributions: Record<string, number[]>;
+}> {
+  const headers: Record<string, string> = {};
+  if (jwtToken) {
+    headers['Authorization'] = `Bearer ${jwtToken}`;
+  }
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (supabaseUrl) {
+    headers['x-supabase-url'] = supabaseUrl;
+  }
+  if (supabaseAnonKey) {
+    headers['x-supabase-anon-key'] = supabaseAnonKey;
+  }
+
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash)
+  });
+
+  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/dividend-forecast?${queryParams.toString()}`, {
+    method: 'GET',
+    headers
+  });
+
+  if (!response.ok) {
+    let errMsg = 'Failed to fetch dividend forecast';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+

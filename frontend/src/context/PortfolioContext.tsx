@@ -117,7 +117,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         }
       } catch (e) {}
     }
-    return ['metrics', 'chart', 'events', 'allocation', 'analytics', 'dividend_calendar'];
+    return ['metrics', 'chart', 'events', 'allocation', 'analytics'];
   });
 
   const [showWidgetManager, setShowWidgetManager] = useState<boolean>(false);

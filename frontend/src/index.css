@@ -994,6 +994,14 @@ body.low-perf .modal-content {
   }
 }
 
+@media (min-width: 1025px) {
+  .sticky-column {
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+  }
+}
+
 .portfolio-section-title {
   font-size: 1.15rem;
   font-weight: 600;

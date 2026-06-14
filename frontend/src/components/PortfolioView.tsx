@@ -56,6 +56,8 @@ import { AddDividendModal } from './portfolio/AddDividendModal';
 import { UpcomingEvents } from './portfolio/UpcomingEvents';
 import { PortfolioAnalytics } from './portfolio/PortfolioAnalytics';
 import { DividendCalendar } from './portfolio/DividendCalendar';
+import { DividendForecast } from './portfolio/DividendForecast';
+import { RebalancingPlanner } from './portfolio/RebalancingPlanner';
 import { FXHedgingVisualizer } from './portfolio/FXHedgingVisualizer';
 
 import { 
@@ -123,12 +125,12 @@ export function PortfolioView({
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends'>(() => {
+  const [subTab, setSubTabState] = useState<'overview' | 'ledger' | 'dividends' | 'rebalance'>(() => {
     const cached = localStorage.getItem('portfolio_sub_tab');
-    return (cached === 'overview' || cached === 'ledger' || cached === 'dividends') ? cached : 'overview';
+    return (cached === 'overview' || cached === 'ledger' || cached === 'dividends' || cached === 'rebalance') ? cached : 'overview';
   });
 
-  const setSubTab = (tab: 'overview' | 'ledger' | 'dividends') => {
+  const setSubTab = (tab: 'overview' | 'ledger' | 'dividends' | 'rebalance') => {
     triggerRandomUpsell();
     setSubTabState(tab);
     localStorage.setItem('portfolio_sub_tab', tab);
@@ -878,7 +880,7 @@ export function PortfolioView({
                 ) : (
                   <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
                   {/* Left Column: Holdings Table */}
-                  <div style={{ minWidth: 0 }}>
+                  <div className="sticky-column" style={{ minWidth: 0 }}>
                     <HoldingsTable 
                       holdings={holdings}
                       summary={summary}
@@ -953,17 +955,7 @@ export function PortfolioView({
                               onClose={onClose}
                             />
                           );
-                        case 'dividend_calendar':
-                          return (
-                            <DividendCalendar 
-                              key="dividend_calendar"
-                              dividends={dividendsList}
-                              baseCurrency={summary.base_currency}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                            />
-                          );
+
                         default:
                           return null;
                       }
@@ -991,8 +983,7 @@ export function PortfolioView({
                             { id: 'chart', name: t('dashboard.performance_chart', 'Performance Chart') },
                             { id: 'events', name: t('events.header', 'Upcoming Corporate Events') },
                             { id: 'allocation', name: t('allocation.title', 'Portfolio Allocation') },
-                            { id: 'analytics', name: t('analytics.header', 'Performance & Risk') },
-                            { id: 'dividend_calendar', name: t('calendar.header', 'Dividend Calendar') }
+                            { id: 'analytics', name: t('analytics.header', 'Performance & Risk') }
                           ].map(widget => {
                             const isVisible = widgets.includes(widget.id);
                             return (
@@ -1074,6 +1065,26 @@ export function PortfolioView({
                 opacity: loadingHoldings ? 0.6 : 1,
                 transition: 'opacity 0.15s ease-in-out'
               }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }} className="portfolio-grid">
+                  <div style={{ minWidth: 0 }}>
+                    <DividendForecast 
+                      apiBaseUrl={apiBaseUrl}
+                      activePortfolioId={activePortfolioId}
+                      session={session}
+                      baseCurrency={summary.base_currency}
+                      account={selectedAccount}
+                      linkCash={linkCash}
+                      holdings={holdings}
+                    />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <DividendCalendar 
+                      dividends={dividendsList}
+                      baseCurrency={summary.base_currency}
+                    />
+                  </div>
+                </div>
+
                 <DividendLedgerTable 
                   dividends={dividendsList}
                   activePortfolioRole={activePortfolioRole}
@@ -1083,6 +1094,26 @@ export function PortfolioView({
                     setShowAddDividendModal(true);
                   }}
                   onDeleteDividendClick={handleDeleteDividend}
+                />
+              </div>
+
+              {/* REBALANCE TAB CONTENT */}
+              <div style={{ 
+                display: subTab === 'rebalance' ? 'block' : 'none',
+                opacity: loadingHoldings ? 0.6 : 1,
+                transition: 'opacity 0.15s ease-in-out'
+              }}>
+                <RebalancingPlanner 
+                  holdings={holdings}
+                  summary={summary}
+                  portfolio={portfolios.find(p => p.id === activePortfolioId) || null}
+                  activePortfolioRole={activePortfolioRole}
+                  onSaveSettings={async (updatedSettings) => {
+                    if (activePortfolioId) {
+                      await updatePortfolioSettings(activePortfolioId, updatedSettings);
+                      setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+                    }
+                  }}
                 />
               </div>
             </>

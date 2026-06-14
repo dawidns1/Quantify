@@ -574,6 +574,28 @@ def get_portfolio_analytics_jwt(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating portfolio analytics: {str(e)}")
 
+@app.get("/api/portfolio/{portfolio_id}/dividend-forecast")
+def get_portfolio_dividend_forecast_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    try:
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        return PortfolioManager.calculate_dividend_forecast(transactions, base_currency, account, link_cash, settings)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating dividend forecast: {str(e)}")
+
 @app.get("/api/portfolio/{portfolio_id}/upcoming-events")
 def get_upcoming_events_jwt(
     portfolio_id: str,
