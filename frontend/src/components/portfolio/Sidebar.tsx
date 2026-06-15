@@ -343,68 +343,52 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Base Currency Picker */}
-      <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <Coins size={12} style={{ color: 'var(--color-primary)' }} />
-          <span>{t('sidebar.base_currency', 'Base Currency')}</span>
-        </div>
-        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
-          {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
-            <button
-              key={curr}
-              onClick={() => setBaseCurrency(curr)}
-              style={{
-                flex: 1,
-                background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
-                color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
-                border: 'none',
-                padding: '0.3rem 0',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)'
-              }}
-            >
-              {curr}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* View Mode Picker */}
       <div style={{ padding: '0.25rem 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem' }}>
         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <Layers size={12} style={{ color: 'var(--color-primary)' }} />
           <span>{t('sidebar.view_mode', 'View Mode')}</span>
         </div>
-        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '6px', padding: '2px' }}>
+        <div style={{ 
+          display: 'flex', 
+          background: 'rgba(255, 255, 255, 0.02)', 
+          border: '1px solid rgba(255, 255, 255, 0.05)', 
+          borderRadius: '8px', 
+          padding: '3px',
+          gap: '3px'
+        }}>
           {[
-            { id: 'overview', label: 'Overview' },
-            { id: 'ledger', label: 'Ledger' },
-            { id: 'dividends', label: 'Dividends' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSubTab(tab.id as any)}
-              style={{
-                flex: 1,
-                background: subTab === tab.id ? 'var(--color-primary)' : 'transparent',
-                color: subTab === tab.id ? 'white' : 'var(--text-secondary)',
-                border: 'none',
-                padding: '0.3rem 0',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)',
-                textAlign: 'center'
-              }}
-            >
-              {t('sidebar.' + tab.id, tab.label)}
-            </button>
-          ))}
+            { id: 'overview', label: 'Overview', activeBg: 'linear-gradient(135deg, rgba(6, 182, 212, 0.16) 0%, rgba(6, 182, 212, 0.05) 100%)', activeBorder: 'rgba(6, 182, 212, 0.35)', activeColor: '#22d3ee', shadow: '0 2px 10px rgba(6, 182, 212, 0.12)' },
+            { id: 'ledger', label: 'Ledger', activeBg: 'linear-gradient(135deg, rgba(236, 72, 153, 0.16) 0%, rgba(236, 72, 153, 0.05) 100%)', activeBorder: 'rgba(236, 72, 153, 0.35)', activeColor: '#f472b6', shadow: '0 2px 10px rgba(236, 72, 153, 0.12)' },
+            { id: 'dividends', label: 'Dividends', activeBg: 'linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(16, 185, 129, 0.05) 100%)', activeBorder: 'rgba(16, 185, 129, 0.35)', activeColor: '#34d399', shadow: '0 2px 10px rgba(16, 185, 129, 0.12)' }
+          ].map((tab) => {
+            const isActive = subTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setSubTab(tab.id as any)}
+                style={{
+                  flex: 1,
+                  background: isActive ? tab.activeBg : 'transparent',
+                  color: isActive ? tab.activeColor : 'var(--text-secondary)',
+                  border: isActive ? `1px solid ${tab.activeBorder}` : '1px solid transparent',
+                  boxShadow: isActive ? tab.shadow : 'none',
+                  padding: '0.35rem 0',
+                  fontSize: '0.72rem',
+                  fontWeight: isActive ? 700 : 600,
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {t('sidebar.' + tab.id, tab.label)}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -849,6 +833,36 @@ export function Sidebar({
               })
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Base Currency Picker */}
+      <div style={{ padding: '0.4rem 0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', flexShrink: 0 }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'center' }}>
+          <Coins size={11} style={{ color: 'var(--color-primary)' }} />
+          <span>{t('sidebar.base_currency', 'Base Currency')}</span>
+        </div>
+        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '6px', padding: '2px', width: '100%', maxWidth: '180px', margin: '0 auto' }}>
+          {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
+            <button
+              key={curr}
+              onClick={() => setBaseCurrency(curr)}
+              style={{
+                flex: 1,
+                background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
+                color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '0.25rem 0',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+            >
+              {curr}
+            </button>
+          ))}
         </div>
       </div>
 
