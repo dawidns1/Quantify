@@ -149,6 +149,7 @@ export function PortfolioView({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [dividendViewMode, setDividendViewMode] = useState<'both' | 'forecast' | 'calendar'>('both');
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
@@ -1169,24 +1170,109 @@ export function PortfolioView({
               <div style={{ 
                 display: subTab === 'dividends' ? 'block' : 'none'
               }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }} className="portfolio-grid">
-                  <div style={{ minWidth: 0, height: '100%' }}>
-                    <DividendForecast 
-                      apiBaseUrl={apiBaseUrl}
-                      activePortfolioId={activePortfolioId}
-                      session={session}
-                      baseCurrency={summary.base_currency}
-                      account={selectedAccount}
-                      linkCash={linkCash}
-                      holdings={holdings}
-                    />
+                {/* Dividends View Switcher Toolbar */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '0.75rem',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <h3 className="portfolio-section-title" style={{ margin: 0 }}>
+                    {t('dividends.dashboard_title', 'Dividend Dashboard')}
+                  </h3>
+                  
+                  {/* Glassmorphic Segmented Control Switcher */}
+                  <div style={{
+                    display: 'flex',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: '8px',
+                    padding: '3px',
+                    gap: '2px'
+                  }}>
+                    <button
+                      onClick={() => setDividendViewMode('both')}
+                      style={{
+                        background: dividendViewMode === 'both' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        border: 'none',
+                        color: dividendViewMode === 'both' ? 'white' : 'var(--text-muted)',
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('dividends.view_both', 'Show Both')}
+                    </button>
+                    <button
+                      onClick={() => setDividendViewMode('forecast')}
+                      style={{
+                        background: dividendViewMode === 'forecast' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        border: 'none',
+                        color: dividendViewMode === 'forecast' ? 'white' : 'var(--text-muted)',
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('dividends.view_forecast', '12m Forecast')}
+                    </button>
+                    <button
+                      onClick={() => setDividendViewMode('calendar')}
+                      style={{
+                        background: dividendViewMode === 'calendar' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        border: 'none',
+                        color: dividendViewMode === 'calendar' ? 'white' : 'var(--text-muted)',
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('dividends.view_calendar', 'Calendar')}
+                    </button>
                   </div>
-                  <div style={{ minWidth: 0, height: '100%' }}>
-                    <DividendCalendar 
-                      dividends={dividendsList}
-                      baseCurrency={summary.base_currency}
-                    />
-                  </div>
+                </div>
+
+                <div 
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: dividendViewMode === 'both' ? '1.2fr 1fr' : '1fr', 
+                    gap: '0.75rem', 
+                    marginBottom: '0.75rem' 
+                  }} 
+                  className="portfolio-grid"
+                >
+                  {(dividendViewMode === 'both' || dividendViewMode === 'forecast') && (
+                    <div style={{ minWidth: 0, height: '100%' }}>
+                      <DividendForecast 
+                        apiBaseUrl={apiBaseUrl}
+                        activePortfolioId={activePortfolioId}
+                        session={session}
+                        baseCurrency={summary.base_currency}
+                        account={selectedAccount}
+                        linkCash={linkCash}
+                        holdings={holdings}
+                      />
+                    </div>
+                  )}
+                  {(dividendViewMode === 'both' || dividendViewMode === 'calendar') && (
+                    <div style={{ minWidth: 0, height: '100%' }}>
+                      <DividendCalendar 
+                        dividends={dividendsList}
+                        baseCurrency={summary.base_currency}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <DividendLedgerTable 
