@@ -109,7 +109,7 @@ export function DividendCalendar({
       gap: '1rem'
     }}>
       {/* Header with Year Switcher */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.6rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
           <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>

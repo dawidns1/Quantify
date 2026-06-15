@@ -1190,12 +1190,34 @@ export function PortfolioView({
                     border: '1px solid rgba(255, 255, 255, 0.06)',
                     borderRadius: '8px',
                     padding: '3px',
-                    gap: '2px'
+                    gap: '2px',
+                    position: 'relative',
+                    width: '320px',
+                    boxSizing: 'border-box'
                   }}>
+                    {/* Sliding active pill indicator */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '3px',
+                      bottom: '3px',
+                      left: dividendViewMode === 'both' 
+                        ? '3px' 
+                        : dividendViewMode === 'forecast' 
+                          ? 'calc(33.33% + 1px)' 
+                          : 'calc(66.66% + 1px)',
+                      width: 'calc(33.33% - 4px)',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      zIndex: 0
+                    }} />
+
                     <button
                       onClick={() => setDividendViewMode('both')}
                       style={{
-                        background: dividendViewMode === 'both' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        flex: 1,
+                        background: 'transparent',
                         border: 'none',
                         color: dividendViewMode === 'both' ? 'white' : 'var(--text-muted)',
                         padding: '0.35rem 0.75rem',
@@ -1203,7 +1225,11 @@ export function PortfolioView({
                         fontWeight: 600,
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        transition: 'var(--transition-smooth)'
+                        zIndex: 1,
+                        position: 'relative',
+                        transition: 'color 0.25s ease',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {t('dividends.view_both', 'Show Both')}
@@ -1211,7 +1237,8 @@ export function PortfolioView({
                     <button
                       onClick={() => setDividendViewMode('forecast')}
                       style={{
-                        background: dividendViewMode === 'forecast' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        flex: 1,
+                        background: 'transparent',
                         border: 'none',
                         color: dividendViewMode === 'forecast' ? 'white' : 'var(--text-muted)',
                         padding: '0.35rem 0.75rem',
@@ -1219,7 +1246,11 @@ export function PortfolioView({
                         fontWeight: 600,
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        transition: 'var(--transition-smooth)'
+                        zIndex: 1,
+                        position: 'relative',
+                        transition: 'color 0.25s ease',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {t('dividends.view_forecast', '12m Forecast')}
@@ -1227,7 +1258,8 @@ export function PortfolioView({
                     <button
                       onClick={() => setDividendViewMode('calendar')}
                       style={{
-                        background: dividendViewMode === 'calendar' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        flex: 1,
+                        background: 'transparent',
                         border: 'none',
                         color: dividendViewMode === 'calendar' ? 'white' : 'var(--text-muted)',
                         padding: '0.35rem 0.75rem',
@@ -1235,7 +1267,11 @@ export function PortfolioView({
                         fontWeight: 600,
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        transition: 'var(--transition-smooth)'
+                        zIndex: 1,
+                        position: 'relative',
+                        transition: 'color 0.25s ease',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {t('dividends.view_calendar', 'Calendar')}
@@ -1244,11 +1280,13 @@ export function PortfolioView({
                 </div>
 
                 <div 
+                  key={dividendViewMode}
                   style={{ 
                     display: 'grid', 
                     gridTemplateColumns: dividendViewMode === 'both' ? '1.2fr 1fr' : '1fr', 
                     gap: '0.75rem', 
-                    marginBottom: '0.75rem' 
+                    marginBottom: '0.75rem',
+                    animation: 'fadeIn 0.25s ease-out'
                   }} 
                   className="portfolio-grid"
                 >
