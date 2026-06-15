@@ -1589,3 +1589,59 @@ select option {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.01);
 }
+
+/* Real-time price and value update highlight flashes */
+@keyframes flash-up-glow {
+  0% {
+    background-color: rgba(16, 185, 129, 0.22);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.15);
+    border-radius: 4px;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes flash-down-glow {
+  0% {
+    background-color: rgba(239, 68, 68, 0.22);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.15);
+    border-radius: 4px;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes flash-neutral-glow {
+  0% {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.flash-up {
+  animation: flash-up-glow 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 -3px;
+}
+
+.flash-down {
+  animation: flash-down-glow 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 -3px;
+}
+
+.flash-neutral {
+  animation: flash-neutral-glow 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 -3px;
+}

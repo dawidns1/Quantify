@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Eye, Briefcase, Scale } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
+import { AnimateOnChange } from './AnimateOnChange';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -174,28 +175,44 @@ export function HoldingsTable({
       sortField: 'shares',
       align: 'right',
       renderHeader: () => t('holdings.col_shares', 'Shares'),
-      renderCell: (h) => formatShares(h.shares)
+      renderCell: (h) => (
+        <AnimateOnChange value={h.shares} contextId={h.symbol}>
+          {formatShares(h.shares)}
+        </AnimateOnChange>
+      )
     },
     avg_cost: {
       label: t('holdings.col_avg_cost', 'Average Cost'),
       sortField: 'avg_cost_local',
       align: 'right',
       renderHeader: () => t('holdings.col_avg_price', 'Avg Price'),
-      renderCell: (h) => formatCurrency(h.avg_cost_local, h.currency)
+      renderCell: (h) => (
+        <AnimateOnChange value={h.avg_cost_local} contextId={h.symbol}>
+          {formatCurrency(h.avg_cost_local, h.currency)}
+        </AnimateOnChange>
+      )
     },
     price: {
       label: t('holdings.col_local_price', 'Local Price'),
       sortField: 'current_price_local',
       align: 'right',
       renderHeader: () => t('holdings.col_cur_price', 'Price'),
-      renderCell: (h) => formatCurrency(h.current_price_local, h.currency)
+      renderCell: (h) => (
+        <AnimateOnChange value={h.current_price_local} contextId={h.symbol}>
+          {formatCurrency(h.current_price_local, h.currency)}
+        </AnimateOnChange>
+      )
     },
     cost: {
       label: t('holdings.col_cost_basis', 'Cost Basis'),
       sortField: 'cost_basis_base',
       align: 'right',
       renderHeader: (baseCurrency) => `${t('holdings.col_cost_basis', 'Cost Basis')} (${baseCurrency})`,
-      renderCell: (h, baseCurrency) => formatCurrency(h.cost_basis_base, baseCurrency)
+      renderCell: (h, baseCurrency) => (
+        <AnimateOnChange value={h.cost_basis_base} contextId={h.symbol}>
+          {formatCurrency(h.cost_basis_base, baseCurrency)}
+        </AnimateOnChange>
+      )
     },
     dividends: {
       label: t('holdings.col_dividends_net', 'Dividends Net'),
@@ -204,7 +221,9 @@ export function HoldingsTable({
       renderHeader: () => t('metrics.dividends', 'Dividends'),
       renderCell: (h, baseCurrency) => (
         <span title={`${t('metrics.gross', 'Gross')}: ${formatCurrency(h.dividends_base || 0, baseCurrency)}`} style={{ color: 'var(--color-green)' }}>
-          {formatCurrency(h.dividends_net_base || 0, baseCurrency)}
+          <AnimateOnChange value={h.dividends_net_base} contextId={h.symbol}>
+            {formatCurrency(h.dividends_net_base || 0, baseCurrency)}
+          </AnimateOnChange>
         </span>
       )
     },
@@ -215,14 +234,14 @@ export function HoldingsTable({
       renderHeader: () => t('holdings.col_day_change', 'Day Change'),
       renderCell: (h, baseCurrency) => {
         return h.day_change_percent !== undefined ? (
-          <>
+          <AnimateOnChange value={h.day_change_percent} contextId={h.symbol} style={{ display: 'block' }}>
             <div className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
               {h.day_change_percent >= 0 ? '+' : ''}{h.day_change_percent.toFixed(2)}%
             </div>
             <div style={{ fontSize: '0.72rem' }} className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'}>
               {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(h.day_change_value_base || 0, baseCurrency)}
             </div>
-          </>
+          </AnimateOnChange>
         ) : (
           <span style={{ color: 'var(--text-muted)' }}>—</span>
         );
@@ -247,7 +266,11 @@ export function HoldingsTable({
       renderCell: (h) => {
         const total = summary.total_value_base || 1;
         const wt = (h.current_value_base / total) * 100;
-        return <span style={{ fontFamily: 'monospace' }}>{wt.toFixed(2)}%</span>;
+        return (
+          <AnimateOnChange value={wt} contextId={h.symbol}>
+            <span style={{ fontFamily: 'monospace' }}>{wt.toFixed(2)}%</span>
+          </AnimateOnChange>
+        );
       }
     },
     fx_rate: {
@@ -255,7 +278,11 @@ export function HoldingsTable({
       sortField: 'fx_rate',
       align: 'right',
       renderHeader: () => t('holdings.col_fx_rate', 'FX Rate'),
-      renderCell: (h) => <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{h.fx_rate?.toFixed(4) || '1.0000'}</span>
+      renderCell: (h) => (
+        <AnimateOnChange value={h.fx_rate} contextId={h.symbol}>
+          <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{h.fx_rate?.toFixed(4) || '1.0000'}</span>
+        </AnimateOnChange>
+      )
     }
   };
 
@@ -633,15 +660,19 @@ export function HoldingsTable({
 
                     {/* Fixed ending columns */}
                     <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                      {formatCurrency(h.current_value_base, summary.base_currency)}
+                      <AnimateOnChange value={h.current_value_base} contextId={h.symbol}>
+                        {formatCurrency(h.current_value_base, summary.base_currency)}
+                      </AnimateOnChange>
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                      <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
-                        {valIsProfit ? '+' : ''}{formatCurrency(h.gain_base, summary.base_currency)}
-                      </div>
-                      <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
-                        {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
-                      </div>
+                      <AnimateOnChange value={h.gain_base} contextId={h.symbol} style={{ display: 'block' }}>
+                        <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+                          {valIsProfit ? '+' : ''}{formatCurrency(h.gain_base, summary.base_currency)}
+                        </div>
+                        <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
+                          {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+                        </div>
+                      </AnimateOnChange>
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {activePortfolioRole === 'viewer' ? (

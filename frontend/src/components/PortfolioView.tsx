@@ -1009,6 +1009,7 @@ export function PortfolioView({
                             <MetricsBanner 
                               key="metrics"
                               summary={summary}
+                              activePortfolioId={activePortfolioId}
                               onMoveUp={onMoveUp}
                               onMoveDown={onMoveDown}
                               onClose={onClose}

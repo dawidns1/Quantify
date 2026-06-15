@@ -21,6 +21,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
 import type { Portfolio } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
+import { AnimateOnChange } from './AnimateOnChange';
 
 interface SidebarProps {
   signOut: () => Promise<void>;
@@ -798,20 +799,24 @@ export function Sidebar({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
                       {price !== undefined && price !== null ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'end', fontSize: '0.72rem', lineHeight: '1.1' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                            {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
-                          </span>
-                          <span style={{ 
-                            fontSize: '0.62rem', 
-                            fontWeight: 600,
-                            color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '1px'
-                          }}>
-                            {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                            {isPositive ? '+' : ''}{pct.toFixed(2)}%
-                          </span>
+                          <AnimateOnChange value={price} contextId={symbol}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                              {price.toFixed(2)} <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{data.currency}</span>
+                            </span>
+                          </AnimateOnChange>
+                          <AnimateOnChange value={pct} contextId={symbol}>
+                            <span style={{ 
+                              fontSize: '0.62rem', 
+                              fontWeight: 600,
+                              color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '1px'
+                            }}>
+                              {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                              {isPositive ? '+' : ''}{pct.toFixed(2)}%
+                            </span>
+                          </AnimateOnChange>
                         </div>
                       ) : (
                         <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
