@@ -32,7 +32,12 @@ export function DividendForecast({
   holdings
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
-  const [data, setData] = useState<ForecastData | null>(null);
+  const [data, setData] = useState<ForecastData | null>(() => {
+    if (!activePortfolioId) return null;
+    const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
+    const cached = localStorage.getItem(cacheKey);
+    return cached ? JSON.parse(cached) : null;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
@@ -43,12 +48,19 @@ export function DividendForecast({
   useEffect(() => {
     if (!activePortfolioId) return;
 
+    const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setData(JSON.parse(cached));
+    }
+
     setLoading(true);
     setError(null);
     const jwtToken = session?.access_token || null;
 
     fetchDividendForecast(apiBaseUrl, jwtToken, activePortfolioId, baseCurrency, account, linkCash)
       .then((res) => {
+        localStorage.setItem(cacheKey, JSON.stringify(res));
         setData(res);
       })
       .catch((err) => {
@@ -169,7 +181,7 @@ export function DividendForecast({
           <span>{t('dividends.no_forecast_data', 'No forward dividend data available. Add dividend-paying assets to see projections.')}</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1 }}>
           {/* Key Metrics row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             {/* Metric 1 */}
@@ -210,7 +222,7 @@ export function DividendForecast({
                 y: e.clientY - rect.top
               });
             }}
-            style={{ position: 'relative', marginTop: '0.5rem' }}
+            style={{ position: 'relative', marginTop: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}
           >
             <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '1rem', letterSpacing: '0.5px' }}>
               {t('dividends.monthly_projection', 'Monthly Cash Flow Projections')}
@@ -220,8 +232,9 @@ export function DividendForecast({
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-end',
-              height: '220px',
+              alignItems: 'stretch',
+              flex: 1,
+              minHeight: '220px',
               padding: '0 0.5rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
               gap: '4%',

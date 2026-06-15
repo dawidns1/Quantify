@@ -21,6 +21,7 @@ export function DividendCalendar({
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [isTooltipRightHalf, setIsTooltipRightHalf] = useState(false);
 
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -196,9 +197,11 @@ export function DividendCalendar({
       <div 
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          setIsTooltipRightHalf(x > rect.width * 0.65);
           setTooltipPos({
-            x: e.clientX - rect.left + 10,
-            y: e.clientY - rect.top - 10
+            x,
+            y: e.clientY - rect.top
           });
         }}
         style={{ 
@@ -325,8 +328,8 @@ export function DividendCalendar({
               position: 'absolute',
               left: `${tooltipPos.x}px`,
               top: `${tooltipPos.y}px`,
-              transform: hoveredMonthIndex % 4 >= 2
-                ? 'translate(-100%, -100%)' 
+              transform: isTooltipRightHalf
+                ? 'translate(-105%, -100%)' 
                 : 'translate(10px, -100%)',
               background: 'rgba(11, 15, 28, 0.96)',
               backdropFilter: 'blur(8px)',

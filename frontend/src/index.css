@@ -179,6 +179,35 @@ body::before {
   box-shadow: none;
 }
 
+.glass-btn {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  border: 1px solid var(--panel-border);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.glass-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.glass-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.glass-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .input-field {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--panel-border);

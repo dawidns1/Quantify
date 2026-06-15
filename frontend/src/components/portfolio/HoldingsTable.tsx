@@ -395,33 +395,18 @@ export function HoldingsTable({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {onRebalanceClick && (
             <button
-              className="glow-btn"
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.8rem',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer'
-              }}
+              className="glass-btn"
               onClick={onRebalanceClick}
             >
               <Scale size={14} /> {t('holdings.btn_rebalance', 'Rebalance')}
             </button>
           )}
           <button 
-            className="glow-btn"
+            className="glass-btn"
             style={{ 
-              background: showColumnPicker ? 'var(--color-primary)' : 'rgba(255,255,255,0.03)', 
-              color: 'var(--text-primary)',
-              padding: '0.45rem 0.85rem', fontSize: '0.8rem',
-              border: '1px dashed var(--panel-border)',
-              boxShadow: 'none',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem'
+              background: showColumnPicker ? 'var(--color-primary)' : undefined, 
+              borderColor: showColumnPicker ? 'var(--color-primary)' : undefined,
+              borderStyle: 'dashed'
             }}
             onClick={() => setShowColumnPicker(!showColumnPicker)}
           >

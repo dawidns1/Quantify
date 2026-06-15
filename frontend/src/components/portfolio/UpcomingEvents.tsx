@@ -175,7 +175,7 @@ export function UpcomingEvents({
           <span>{t('events.empty_state', 'No upcoming events found for active holdings.')}</span>
         </div>
       ) : (
-        <div style={{ 
+        <div className="custom-scrollbar" style={{ 
           display: 'flex', 
           flexDirection: 'column', 
           gap: '0.5rem', 
