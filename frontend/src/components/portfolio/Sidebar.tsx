@@ -89,6 +89,17 @@ export function Sidebar({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setShowCurrencyDropdown(false);
+      setShowLanguageDropdown(false);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Debounced search for watchlist suggestions
   useEffect(() => {
@@ -836,81 +847,174 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Base Currency Picker */}
-      <div style={{ padding: '0.4rem 0.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', flexShrink: 0 }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'center' }}>
-          <Coins size={11} style={{ color: 'var(--color-primary)' }} />
-          <span>{t('sidebar.base_currency', 'Base Currency')}</span>
-        </div>
-        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '6px', padding: '2px', width: '100%', maxWidth: '180px', margin: '0 auto' }}>
-          {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
-            <button
-              key={curr}
-              onClick={() => setBaseCurrency(curr)}
-              style={{
-                flex: 1,
-                background: baseCurrency === curr ? 'var(--color-primary)' : 'transparent',
-                color: baseCurrency === curr ? 'white' : 'var(--text-secondary)',
-                border: 'none',
-                padding: '0.25rem 0',
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)'
-              }}
-            >
-              {curr}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer / Language Selector */}
-      <div style={{ 
-        padding: '0.6rem 0.5rem', 
+      {/* Footer Settings Area (Currency & Language Dropups) */}
+      <div style={{
+        padding: '0.6rem 0.75rem',
         borderTop: '1px solid rgba(255, 255, 255, 0.04)',
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         alignItems: 'center',
         gap: '0.5rem',
-        fontSize: '0.7rem',
-        color: 'var(--text-muted)',
-        flexShrink: 0
+        fontSize: '0.72rem',
+        color: 'var(--text-secondary)',
+        flexShrink: 0,
+        position: 'relative'
       }}>
-        <button 
-          onClick={() => i18n.changeLanguage('en')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: i18n.language.startsWith('en') ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: i18n.language.startsWith('en') ? 'bold' : 'normal',
-            textDecoration: i18n.language.startsWith('en') ? 'underline' : 'none',
-            cursor: 'pointer',
-            padding: '2px 4px',
-            fontSize: '0.7rem',
-            transition: 'var(--transition-smooth)'
-          }}
-        >
-          EN
-        </button>
-        <span style={{ opacity: 0.3 }}>|</span>
-        <button 
-          onClick={() => i18n.changeLanguage('pl')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: i18n.language.startsWith('pl') ? 'var(--text-primary)' : 'var(--text-muted)',
-            fontWeight: i18n.language.startsWith('pl') ? 'bold' : 'normal',
-            textDecoration: i18n.language.startsWith('pl') ? 'underline' : 'none',
-            cursor: 'pointer',
-            padding: '2px 4px',
-            fontSize: '0.7rem',
-            transition: 'var(--transition-smooth)'
-          }}
-        >
-          PL
-        </button>
+        {/* Base Currency Dropup */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowCurrencyDropdown(!showCurrencyDropdown);
+              setShowLanguageDropdown(false);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              padding: '0.2rem 0.4rem',
+              borderRadius: '4px',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              transition: 'var(--transition-smooth)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+            onMouseLeave={(e) => { if (!showCurrencyDropdown) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            <Coins size={12} style={{ color: 'var(--color-primary)' }} />
+            <span>{baseCurrency}</span>
+            <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▲</span>
+          </button>
+
+          {showCurrencyDropdown && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              marginBottom: '4px',
+              background: 'rgba(15, 22, 40, 0.95)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '6px',
+              padding: '4px',
+              boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              minWidth: '70px'
+            }}>
+              {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
+                <div
+                  key={curr}
+                  onClick={() => {
+                    setBaseCurrency(curr);
+                    setShowCurrencyDropdown(false);
+                  }}
+                  style={{
+                    padding: '0.3rem 0.5rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    color: baseCurrency === curr ? 'var(--color-primary)' : 'var(--text-secondary)',
+                    fontWeight: baseCurrency === curr ? 700 : 500,
+                    background: baseCurrency === curr ? 'rgba(255,255,255,0.03)' : 'transparent',
+                    fontSize: '0.7rem',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = baseCurrency === curr ? 'rgba(255,255,255,0.03)' : 'transparent'}
+                >
+                  {curr}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Language Dropup */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowLanguageDropdown(!showLanguageDropdown);
+              setShowCurrencyDropdown(false);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              padding: '0.2rem 0.4rem',
+              borderRadius: '4px',
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              transition: 'var(--transition-smooth)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+            onMouseLeave={(e) => { if (!showLanguageDropdown) e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            <Globe size={12} style={{ color: 'var(--color-primary)' }} />
+            <span>{i18n.language.substring(0, 2).toUpperCase()}</span>
+            <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▲</span>
+          </button>
+
+          {showLanguageDropdown && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              right: 0,
+              marginBottom: '4px',
+              background: 'rgba(15, 22, 40, 0.95)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '6px',
+              padding: '4px',
+              boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              minWidth: '70px'
+            }}>
+              {[
+                { code: 'en', label: 'English' },
+                { code: 'pl', label: 'Polski' }
+              ].map((lang) => {
+                const isSelected = i18n.language.startsWith(lang.code);
+                return (
+                  <div
+                    key={lang.code}
+                    onClick={() => {
+                      i18n.changeLanguage(lang.code);
+                      setShowLanguageDropdown(false);
+                    }}
+                    style={{
+                      padding: '0.3rem 0.5rem',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
+                      fontWeight: isSelected ? 700 : 500,
+                      background: isSelected ? 'rgba(255,255,255,0.03)' : 'transparent',
+                      fontSize: '0.7rem',
+                      transition: 'var(--transition-smooth)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255,255,255,0.03)' : 'transparent'}
+                  >
+                    {lang.label}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

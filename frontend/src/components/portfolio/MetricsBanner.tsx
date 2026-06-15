@@ -42,7 +42,7 @@ export function MetricsBanner({
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} /> {t('metrics.header', 'Portfolio Metrics')}
         </h4>

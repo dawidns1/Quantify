@@ -180,77 +180,78 @@ export function PerformanceChart({
 
   return (
     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+      {/* Header Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
         </h4>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          {/* Date range selection pills */}
-          {!loadingChart && chartData && (
-            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-              {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setSelectedRange(r)}
-                  style={{
-                    background: selectedRange === r ? 'var(--color-primary)' : 'transparent',
-                    color: selectedRange === r ? 'white' : 'var(--text-secondary)',
-                    border: 'none',
-                    padding: '0.15rem 0.4rem',
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Widget Controls */}
-          {(onMoveUp || onMoveDown || onClose) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.25rem', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '0.25rem' }}>
-              {onMoveUp && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title="Move Up" 
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <ChevronUp size={14} />
-                </button>
-              )}
-              {onMoveDown && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title="Move Down" 
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <ChevronDown size={14} />
-                </button>
-              )}
-              {onClose && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onClose(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title="Hide Card" 
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Widget Controls */}
+        {(onMoveUp || onMoveDown || onClose) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            {onMoveUp && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                title="Move Up" 
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <ChevronUp size={14} />
+              </button>
+            )}
+            {onMoveDown && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                title="Move Down" 
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <ChevronDown size={14} />
+              </button>
+            )}
+            {onClose && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onClose(); }} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+                title="Hide Card" 
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Date range selection pills */}
+      {!loadingChart && chartData && (
+        <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '0.1rem 0' }}>
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+            {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setSelectedRange(r)}
+                style={{
+                  background: selectedRange === r ? 'var(--color-primary)' : 'transparent',
+                  color: selectedRange === r ? 'white' : 'var(--text-secondary)',
+                  border: 'none',
+                  padding: '0.15rem 0.45rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)'
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div style={{ height: '200px', position: 'relative' }}>
         {loadingChart && !chartDataFormatted ? (
