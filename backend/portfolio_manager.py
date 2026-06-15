@@ -1874,8 +1874,27 @@ class PortfolioManager:
                 return 0.0
             return 0.19
             
-        tax_rate = get_tax_rate(account) if account and account != "All" else 0.19
-        
+        # Setup local transactions list filtered by account if needed
+        local_txs = transactions
+        if account and account.lower() != "all":
+            local_txs = [tx for tx in transactions if tx.get("account", "Default").lower() == account.lower()]
+            
+        # Calculate current shares per symbol per account
+        symbol_account_shares = {}
+        for tx in local_txs:
+            sym = tx["symbol"].upper().strip()
+            if sym.startswith("CASH_"):
+                continue
+            acc = tx.get("account", "Default") or "Default"
+            tx_type = tx.get("type", "BUY")
+            tx_shares = float(tx.get("shares", 0.0))
+            
+            symbol_account_shares.setdefault(sym, {}).setdefault(acc, 0.0)
+            if tx_type == "BUY":
+                symbol_account_shares[sym][acc] += tx_shares
+            elif tx_type == "SELL":
+                symbol_account_shares[sym][acc] = max(0.0, symbol_account_shares[sym][acc] - tx_shares)
+
         # Initialize results structures
         ticker_contributions = {}
         monthly_totals = [0.0] * 12
@@ -1926,9 +1945,15 @@ class PortfolioManager:
             if payouts_recent:
                 # We have recent payouts! Map them to the next 12 months
                 for ex_date, native_payout in payouts_recent:
-                    # Deduce net payment in base currency
-                    gross_payout_base = shares * native_payout * fx_rate
-                    net_payout_base = gross_payout_base * (1.0 - tax_rate)
+                    # Calculate net payout by summing payouts per account with their respective tax rates
+                    net_payout_base = 0.0
+                    acc_shares_map = symbol_account_shares.get(symbol, {})
+                    for acc, acc_shares in acc_shares_map.items():
+                        if acc_shares <= 0.0001:
+                            continue
+                        acc_tax_rate = get_tax_rate(acc)
+                        gross_payout_base = acc_shares * native_payout * fx_rate
+                        net_payout_base += gross_payout_base * (1.0 - acc_tax_rate)
                     
                     # Find which month of next 12 months matches this ex_date's month
                     for i, (y, m) in enumerate(month_keys):
@@ -1957,7 +1982,15 @@ class PortfolioManager:
                         pass
                 
                 if div_rate > 0.0:
-                    expected_annual_net = shares * div_rate * fx_rate * (1.0 - tax_rate)
+                    # Calculate expected annual net using account-specific shares & tax rates
+                    expected_annual_net = 0.0
+                    acc_shares_map = symbol_account_shares.get(symbol, {})
+                    for acc, acc_shares in acc_shares_map.items():
+                        if acc_shares <= 0.0001:
+                            continue
+                        acc_tax_rate = get_tax_rate(acc)
+                        expected_annual_net += acc_shares * div_rate * fx_rate * (1.0 - acc_tax_rate)
+
                     # Distribute quarterly starting next month
                     start_m = (current_month % 12) + 1
                     payout_months = {start_m, ((start_m + 3 - 1) % 12) + 1, ((start_m + 6 - 1) % 12) + 1, ((start_m + 9 - 1) % 12) + 1}
