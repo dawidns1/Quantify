@@ -284,9 +284,23 @@ export function Sidebar({
           }}
         />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.01em', color: '#ffffff' }}>
-            Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.01em', color: '#ffffff' }}>
+              Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
+            </span>
+            <span style={{
+              padding: '0.08rem 0.3rem',
+              fontSize: '0.52rem',
+              fontWeight: 700,
+              borderRadius: '4px',
+              background: 'rgba(6, 182, 212, 0.12)',
+              color: '#06b6d4',
+              border: '1px solid rgba(6, 182, 212, 0.25)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              lineHeight: 1
+            }}>Beta</span>
+          </div>
           <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {t('sidebar.portfolio_intelligence', 'Portfolio Intelligence')}
           </span>
