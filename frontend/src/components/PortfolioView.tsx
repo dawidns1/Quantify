@@ -18,18 +18,20 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip as ChartTooltip,
   Legend,
   Filler
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   ChartTooltip,
   Legend,
@@ -809,6 +811,112 @@ export function PortfolioView({
     }
   };
 
+  const financialsChartData = useMemo(() => {
+    if (!selectedStockDetails?.financials || selectedStockDetails.financials.length === 0) return null;
+
+    // Sort ascending chronologically
+    const sortedFin = [...selectedStockDetails.financials].sort((a: any, b: any) => a.year.localeCompare(b.year));
+    
+    const labels = sortedFin.map((fin: any) => fin.year.substring(0, 4));
+    const revenues = sortedFin.map((fin: any) => fin.revenue);
+    const ebitdas = sortedFin.map((fin: any) => fin.ebitda);
+    const netIncomes = sortedFin.map((fin: any) => fin.net_income);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: t('financials.revenue', 'Revenue'),
+          data: revenues,
+          backgroundColor: 'rgba(59, 130, 246, 0.75)', // primary blue
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: t('financials.ebitda', 'EBITDA'),
+          data: ebitdas,
+          backgroundColor: 'rgba(168, 85, 247, 0.75)', // purple
+          borderColor: 'rgb(168, 85, 247)',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: t('financials.net_income', 'Net Income'),
+          data: netIncomes,
+          backgroundColor: 'rgba(16, 185, 129, 0.75)', // green/emerald
+          borderColor: 'rgb(16, 185, 129)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }
+      ]
+    };
+  }, [selectedStockDetails?.financials, t]);
+
+  const financialsChartOptions = useMemo(() => {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 150 },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: 'rgba(255, 255, 255, 0.6)',
+            font: { family: 'Outfit', size: 10 }
+          }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            color: 'rgba(255, 255, 255, 0.6)',
+            font: { family: 'Outfit', size: 9 },
+            callback: function(value: any) {
+              return formatFinancialValue(value, selectedStockDetails?.overview?.currency || 'USD');
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top' as const,
+          labels: {
+            color: 'rgba(255, 255, 255, 0.8)',
+            font: { family: 'Outfit', size: 10 },
+            boxWidth: 12,
+            padding: 10
+          }
+        },
+        tooltip: {
+          mode: 'index' as const,
+          intersect: false,
+          backgroundColor: 'rgba(15, 23, 42, 0.96)',
+          titleColor: '#ffffff',
+          bodyColor: '#f1f5f9',
+          borderColor: 'rgba(255, 255, 255, 0.15)',
+          borderWidth: 1,
+          padding: 8,
+          cornerRadius: 6,
+          titleFont: { family: 'Outfit', size: 10, weight: 'bold' as const },
+          bodyFont: { family: 'Outfit', size: 10 },
+          callbacks: {
+            label: function(context: any) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                label += formatFinancialValue(context.parsed.y, selectedStockDetails?.overview?.currency || 'USD');
+              }
+              return label;
+            }
+          }
+        }
+      }
+    };
+  }, [selectedStockDetails?.overview?.currency, formatFinancialValue]);
+
   const handleModalSort = (field: string) => {
     if (modalSortField === field) {
       setModalSortAsc(!modalSortAsc);
@@ -1516,7 +1624,7 @@ export function PortfolioView({
         <>
           <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
           <div className="modal-overlay-container">
-            <div className="modal-content" style={{ maxWidth: '850px', width: '95%' }}>
+            <div className="modal-content custom-scrollbar" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
               <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
                   <History size={22} className="gradient-text" /> 
@@ -1774,8 +1882,8 @@ export function PortfolioView({
                         </div>
                       </div>
 
-                      {/* Right: Annual Financial Results Table */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {/* Right: Annual Financial Results Graph */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%', minHeight: '220px' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
@@ -1785,33 +1893,13 @@ export function PortfolioView({
                             No past annual results available.
                           </div>
                         ) : (
-                          <div style={{ border: '1px solid var(--panel-border)', borderRadius: '8px', overflow: 'hidden', background: 'rgba(0,0,0,0.1)' }}>
-                            <table className="screener-table" style={{ fontSize: '0.78rem', margin: 0, width: '100%' }}>
-                              <thead>
-                                <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                                  <th style={{ padding: '0.35rem 0.5rem' }}>Year</th>
-                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Revenue</th>
-                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>EBITDA</th>
-                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Net Income</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {selectedStockDetails.financials.map((fin: any) => (
-                                  <tr key={fin.year} className="interactive-row-modal">
-                                    <td style={{ padding: '0.35rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{fin.year.substring(0, 4)}</td>
-                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
-                                      {formatFinancialValue(fin.revenue, selectedStockDetails.overview?.currency)}
-                                    </td>
-                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                      {formatFinancialValue(fin.ebitda, selectedStockDetails.overview?.currency)}
-                                    </td>
-                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: (fin.net_income || 0) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
-                                      {formatFinancialValue(fin.net_income, selectedStockDetails.overview?.currency)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          <div style={{ flex: 1, height: '200px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
+                            {financialsChartData && (
+                              <Bar 
+                                options={financialsChartOptions}
+                                data={financialsChartData}
+                              />
+                            )}
                           </div>
                         )}
                       </div>
