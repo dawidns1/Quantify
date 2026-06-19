@@ -17,7 +17,8 @@ import {
   Coins,
   Layers,
   Search,
-  X
+  X,
+  Star
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -48,6 +49,8 @@ interface SidebarProps {
   onFeedbackClick?: () => void;
   apiBaseUrl: string;
   onSelectStockSymbol: (symbol: string) => void;
+  onAddTransactionClick?: (symbol: string) => void;
+  activePortfolioRole?: 'owner' | 'editor' | 'viewer';
 }
 
 export function Sidebar({
@@ -73,6 +76,8 @@ export function Sidebar({
   onFeedbackClick,
   apiBaseUrl,
   onSelectStockSymbol,
+  onAddTransactionClick,
+  activePortfolioRole = 'viewer'
 }: SidebarProps) {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
@@ -120,8 +125,23 @@ export function Sidebar({
   const handleSelectGlobalSearchSymbol = (symbol: string) => {
     onSelectStockSymbol(symbol);
     setGlobalSearchQuery('');
+    setGlobalSearchSuggestions([]);
     setShowGlobalSuggestions(false);
     if (onCloseSidebar) onCloseSidebar();
+  };
+
+  const toggleWatchlistSymbol = (symbolToToggle: string) => {
+    const upper = symbolToToggle.toUpperCase();
+    setWatchlist(prev => {
+      let next;
+      if (prev.includes(upper)) {
+        next = prev.filter(s => s !== upper);
+      } else {
+        next = [...prev, upper];
+      }
+      localStorage.setItem('quantifi_watchlist', JSON.stringify(next));
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -453,32 +473,38 @@ export function Sidebar({
       <div style={{ padding: '0 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem', position: 'relative', flexShrink: 0 }}>
         <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           <Search size={12} style={{ color: 'var(--color-primary)' }} />
-          <span>{t('sidebar.lookup_symbol', 'Symbol Lookup')}</span>
+          <span>{t('sidebar.search_title', 'Search')}</span>
         </div>
         <div style={{ position: 'relative' }}>
           <input
             type="text"
             value={globalSearchQuery}
             onChange={(e) => setGlobalSearchQuery(e.target.value)}
-            onFocus={() => {
+            onFocus={(e) => {
+              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+              e.currentTarget.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.18)';
               if (globalSearchSuggestions.length > 0) setShowGlobalSuggestions(true);
             }}
-            onBlur={() => {
-              // Delay hides suggestions so clicks on suggestion items can trigger first
+            onBlur={(e) => {
+              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.03)';
+              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.18)';
+              e.currentTarget.style.boxShadow = '0 0 10px rgba(6, 182, 212, 0.03)';
               setTimeout(() => setShowGlobalSuggestions(false), 200);
             }}
             placeholder={t('sidebar.search_placeholder', 'Search symbol (e.g. AAPL, TSLA)...')}
             style={{
               width: '100%',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--panel-border)',
+              background: 'rgba(6, 182, 212, 0.03)',
+              border: '1px solid rgba(6, 182, 212, 0.18)',
               borderRadius: '8px',
               padding: '0.45rem 0.65rem 0.45rem 1.8rem',
               fontSize: '0.78rem',
               color: 'white',
               outline: 'none',
               boxSizing: 'border-box',
-              transition: 'var(--transition-smooth)'
+              transition: 'all 0.25s ease',
+              boxShadow: '0 0 10px rgba(6, 182, 212, 0.03)'
             }}
           />
           <Search size={13} style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -526,47 +552,116 @@ export function Sidebar({
                 overflowY: 'auto'
               }}
             >
-              {globalSearchSuggestions.map((s) => (
-                <div
-                  key={s.symbol}
-                  className="suggestion-item"
-                  onClick={() => handleSelectGlobalSearchSymbol(s.symbol)}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.78rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '2px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: 'white' }}>{s.symbol}</span>
-                    <span style={{
-                      fontSize: '0.65rem',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      padding: '1px 5px',
-                      borderRadius: '3px',
-                      color: 'var(--text-muted)'
-                    }}>{s.exchange}</span>
+              {globalSearchSuggestions.map((s) => {
+                const isInWatchlist = watchlist.includes(s.symbol.toUpperCase());
+                return (
+                  <div
+                    key={s.symbol}
+                    className="suggestion-item"
+                    onClick={() => handleSelectGlobalSearchSymbol(s.symbol)}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {/* Left Column: Symbol Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1, marginRight: '0.75rem' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 700, color: 'white', fontSize: '0.78rem' }}>{s.symbol}</span>
+                        <span style={{
+                          fontSize: '0.62rem',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          color: 'var(--text-muted)'
+                        }}>{s.exchange}</span>
+                      </div>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        textAlign: 'left'
+                      }} title={s.name}>{s.name}</span>
+                    </div>
+
+                    {/* Right Column: Contextual Action Buttons */}
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                      {/* Add/Remove from Watchlist Star Button */}
+                      <button
+                        onClick={() => toggleWatchlistSymbol(s.symbol)}
+                        title={isInWatchlist ? t('sidebar.remove_from_watchlist', 'Remove from Watchlist') : t('sidebar.add_to_watchlist', 'Add to Watchlist')}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid var(--panel-border)',
+                          borderRadius: '4px',
+                          color: isInWatchlist ? '#eab308' : 'var(--text-muted)',
+                          padding: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'var(--transition-smooth)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                          e.currentTarget.style.borderColor = 'var(--panel-border)';
+                        }}
+                      >
+                        <Star size={12} fill={isInWatchlist ? '#eab308' : 'transparent'} color={isInWatchlist ? '#eab308' : 'var(--text-muted)'} />
+                      </button>
+
+                      {/* Add Transaction Plus Button */}
+                      {activePortfolioRole !== 'viewer' && onAddTransactionClick && (
+                        <button
+                          onClick={() => {
+                            onAddTransactionClick(s.symbol);
+                            setGlobalSearchQuery('');
+                            setGlobalSearchSuggestions([]);
+                            setShowGlobalSuggestions(false);
+                            if (onCloseSidebar) onCloseSidebar();
+                          }}
+                          title={t('dashboard.add_tx_shortcut', 'Add Transaction')}
+                          style={{
+                            background: 'rgba(6, 182, 212, 0.06)',
+                            border: '1px solid rgba(6, 182, 212, 0.15)',
+                            borderRadius: '4px',
+                            color: 'var(--color-primary)',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'var(--transition-smooth)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
+                            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+                            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.15)';
+                          }}
+                        >
+                          <Plus size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <span style={{
-                    fontSize: '0.7rem',
-                    color: 'var(--text-muted)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    width: '100%',
-                    textAlign: 'left'
-                  }} title={s.name}>{s.name}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -905,22 +1000,47 @@ export function Sidebar({
                   </div>
                 )}
               </div>
-              <button 
-                type="submit"
-                style={{
-                  background: 'var(--color-primary)',
-                  border: 'none',
-                  borderRadius: '4px',
-                  color: 'white',
-                  padding: '0.25rem 0.5rem',
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                Add
-              </button>
+              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
+                <button 
+                  type="submit"
+                  style={{
+                    background: 'var(--color-primary)',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: 'white',
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowAddInput(false);
+                    setNewSymbol('');
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                  }}
+                  title={t('common.cancel', 'Cancel')}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '4px',
+                    color: 'var(--text-muted)',
+                    padding: '0.25rem 0.4rem',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
             </form>
           )}
 

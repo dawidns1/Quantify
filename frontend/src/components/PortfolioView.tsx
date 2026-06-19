@@ -1003,6 +1003,11 @@ export function PortfolioView({
         onFeedbackClick={() => setShowFeedbackModal(true)}
         apiBaseUrl={apiBaseUrl}
         onSelectStockSymbol={setSelectedPositionSymbol}
+        onAddTransactionClick={(symbol) => {
+          setQuickActionData({ symbol, type: 'BUY' });
+          setShowAddModal(true);
+        }}
+        activePortfolioRole={activePortfolioRole}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -1703,7 +1708,7 @@ export function PortfolioView({
                       <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
                       <input 
                         type="text" 
-                        placeholder={t('dashboard.search_history_placeholder', 'Search history...')} 
+                        placeholder={t('dashboard.search_tx_history_placeholder', 'Search transactions...')} 
                         value={modalSearchQuery}
                         onChange={(e) => setModalSearchQuery(e.target.value)}
                         className="input-field"
