@@ -78,6 +78,49 @@ import {
 
 import { usePortfolio } from '../context/PortfolioContext';
 
+const formatCurrency = (val: number, currency: string) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val);
+};
+
+const formatShares = (shares: number) => {
+  return (Math.round(shares * 10000) / 10000).toString();
+};
+
+const formatFinancialValue = (val: number | null, currencyStr = 'USD') => {
+  if (val === null || val === undefined) return '—';
+  const absVal = Math.abs(val);
+  let formatted = '';
+  if (absVal >= 1e12) {
+    formatted = `${(val / 1e12).toFixed(2)}T`;
+  } else if (absVal >= 1e9) {
+    formatted = `${(val / 1e9).toFixed(2)}B`;
+  } else if (absVal >= 1e6) {
+    formatted = `${(val / 1e6).toFixed(2)}M`;
+  } else {
+    formatted = val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+  
+  const curr = currencyStr || 'USD';
+  try {
+    const parts = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: curr,
+    }).formatToParts(1);
+    const symbol = parts.find(p => p.type === 'currency')?.value || '$';
+    if (curr.toUpperCase() === 'PLN') {
+      return `${formatted} zł`;
+    }
+    return `${symbol}${formatted}`;
+  } catch (e) {
+    return `$${formatted}`;
+  }
+};
+
 interface PortfolioViewProps {
   apiBaseUrl: string;
   signOut: () => Promise<void>;
@@ -768,48 +811,6 @@ export function PortfolioView({
     return holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()) || null;
   }, [holdings, selectedPositionSymbol]);
 
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val);
-  };
-
-  const formatShares = (shares: number) => {
-    return (Math.round(shares * 10000) / 10000).toString();
-  };
-
-  const formatFinancialValue = (val: number | null, currencyStr = 'USD') => {
-    if (val === null || val === undefined) return '—';
-    const absVal = Math.abs(val);
-    let formatted = '';
-    if (absVal >= 1e12) {
-      formatted = `${(val / 1e12).toFixed(2)}T`;
-    } else if (absVal >= 1e9) {
-      formatted = `${(val / 1e9).toFixed(2)}B`;
-    } else if (absVal >= 1e6) {
-      formatted = `${(val / 1e6).toFixed(2)}M`;
-    } else {
-      formatted = val.toLocaleString('en-US', { maximumFractionDigits: 2 });
-    }
-    
-    const curr = currencyStr || 'USD';
-    try {
-      const parts = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: curr,
-      }).formatToParts(1);
-      const symbol = parts.find(p => p.type === 'currency')?.value || '$';
-      if (curr.toUpperCase() === 'PLN') {
-        return `${formatted} zł`;
-      }
-      return `${symbol}${formatted}`;
-    } catch (e) {
-      return `$${formatted}`;
-    }
-  };
 
   const financialsChartData = useMemo(() => {
     if (!selectedStockDetails?.financials || selectedStockDetails.financials.length === 0) return null;
@@ -1724,17 +1725,30 @@ export function PortfolioView({
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('metrics.total_return', 'Total Return')}</span>
-                      <span style={{ 
-                        fontSize: '1.2rem', 
-                        fontWeight: 700, 
-                        fontFamily: 'monospace',
-                        color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)'
+                      <div style={{ 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        lineHeight: 1.15
                       }}>
-                        {holdingDetails.gain_base >= 0 ? '+' : ''}{formatCurrency(holdingDetails.gain_base, summary.base_currency)}
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, marginLeft: '4px' }}>
+                        <span style={{ 
+                          fontSize: '1.2rem', 
+                          fontWeight: 700, 
+                          fontFamily: 'monospace',
+                          color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)'
+                        }}>
+                          {holdingDetails.gain_base >= 0 ? '+' : ''}{formatCurrency(holdingDetails.gain_base, summary.base_currency)}
+                        </span>
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: 600, 
+                          fontFamily: 'monospace',
+                          color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)',
+                          opacity: 0.85,
+                          marginTop: '2px'
+                        }}>
                           ({holdingDetails.gain_base >= 0 ? '+' : ''}{holdingDetails.gain_percent.toFixed(2)}%)
                         </span>
-                      </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1798,20 +1812,54 @@ export function PortfolioView({
                 )}
 
                 {/* COMPANY KEY METRICS & ANNUAL FINANCIALS */}
-                {!loadingDetails && selectedStockDetails && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.85rem',
-                    background: 'rgba(255, 255, 255, 0.015)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    borderRadius: '12px',
-                    padding: '1.15rem'
-                  }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-                      {t('holdings.company_profile_metrics', 'Company Profile & Key Financials')}
-                    </span>
-                    
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderRadius: '12px',
+                  padding: '1.15rem',
+                  minHeight: '272px'
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                    {t('holdings.company_profile_metrics', 'Company Profile & Key Financials')}
+                  </span>
+                  
+                  {loadingDetails || !selectedStockDetails ? (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                      gap: '1.25rem',
+                      alignItems: 'start'
+                    }}>
+                      {/* Left: Key Financial Ratios Skeleton Grid */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '0.65rem'
+                      }}>
+                        {Array.from({ length: 8 }).map((_, idx) => (
+                          <div key={idx} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.02)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '48px' }} className="pulse">
+                            <div style={{ width: '60%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginBottom: '8px' }} />
+                            <div style={{ width: '40%', height: '14px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Right: Annual Financial Results Skeleton Graph */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%', minHeight: '220px' }} className="pulse">
+                        <div style={{ width: '120px', height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginBottom: '0.25rem' }} />
+                        <div style={{ flex: 1, height: '200px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }}>
+                          <div style={{ width: '16px', height: '30%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
+                          <div style={{ width: '16px', height: '50%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
+                          <div style={{ width: '16px', height: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
+                          <div style={{ width: '16px', height: '40%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
+                          <div style={{ width: '16px', height: '80%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -1904,8 +1952,8 @@ export function PortfolioView({
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
