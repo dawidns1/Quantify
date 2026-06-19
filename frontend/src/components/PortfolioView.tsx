@@ -334,6 +334,7 @@ export function PortfolioView({
 
   const [selectedPositionSymbol, setSelectedPositionSymbol] = useState<string | null>(null);
   const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
+  const stockDetailsCacheRef = useRef<Record<string, any>>({});
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
 
   const [modalSortField, setModalSortField] = useState<string>('date');
@@ -353,20 +354,47 @@ export function PortfolioView({
       setSelectedStockDetails(null);
       return;
     }
-    setLoadingDetails(true);
-    fetch(`${apiBaseUrl}/api/stocks/${selectedPositionSymbol}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch stock details");
-        return res.json();
-      })
-      .then(data => {
-        setSelectedStockDetails(data);
-        setLoadingDetails(false);
-      })
-      .catch(err => {
-        console.error("Error fetching stock details:", err);
-        setLoadingDetails(false);
-      });
+
+    const cached = stockDetailsCacheRef.current[selectedPositionSymbol];
+    if (cached) {
+      setSelectedStockDetails(cached);
+      setLoadingDetails(false);
+      
+      // Silent background validation to fetch fresh data
+      fetch(`${apiBaseUrl}/api/stocks/${selectedPositionSymbol}`)
+        .then(res => {
+          if (res.ok) return res.json();
+        })
+        .then(data => {
+          if (data) {
+            stockDetailsCacheRef.current[selectedPositionSymbol] = data;
+            setSelectedStockDetails((prev: any) => {
+              // Ensure the user hasn't switched to another symbol in the meantime
+              if (prev && selectedPositionSymbol && prev.overview?.symbol === data.overview?.symbol) {
+                return data;
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(err => console.error("Silent background refresh error:", err));
+    } else {
+      setLoadingDetails(true);
+      fetch(`${apiBaseUrl}/api/stocks/${selectedPositionSymbol}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch stock details");
+          return res.json();
+        })
+        .then(data => {
+          stockDetailsCacheRef.current[selectedPositionSymbol] = data;
+          setSelectedStockDetails(data);
+          setLoadingDetails(false);
+        })
+        .catch(err => {
+          console.error("Error fetching stock details:", err);
+          setLoadingDetails(false);
+        });
+    }
   }, [selectedPositionSymbol, apiBaseUrl]);
 
   const modalChartData = useMemo(() => {
@@ -422,7 +450,7 @@ export function PortfolioView({
     return {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 150 },
+      animation: false as const,
       scales: {
         x: {
           grid: { display: false },
@@ -858,7 +886,7 @@ export function PortfolioView({
     return {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 150 },
+      animation: false as const,
       scales: {
         x: {
           grid: { display: false },
