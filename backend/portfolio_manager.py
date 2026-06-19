@@ -73,7 +73,7 @@ class PortfolioManager:
         elif "America/New_York" in timezone_str or exchange_str in ["NMS", "NYQ", "ASE"]:
             # US: 09:30 - 16:00
             return 9.5 <= time_float < 16.0
-        elif "CCY" in exchange_str or "forex" in exchange_str.lower() or timezone_str == "UTC":
+        elif "CCY" in exchange_str or "forex" in exchange_str.lower():
             return True
         else:
             return 9.0 <= time_float < 17.5
