@@ -237,7 +237,79 @@ def get_stock_detail(ticker: str):
         try:
             print(f"[{clean_ticker}] Detail cache missing or stale. Fetching on-demand...")
             collector = StockDataCollector()
-            ticker_obj = yf.Ticker(clean_ticker)
+            
+            # Subclass to cache preloaded fields in a thread-safe local instance
+            class SnappyTicker(yf.Ticker):
+                def __init__(self, symbol, info_val, hist_val, fin_val, est_val):
+                    super().__init__(symbol)
+                    self._preloaded_info = info_val
+                    self._preloaded_hist = hist_val
+                    self._preloaded_fin = fin_val
+                    self._preloaded_est = est_val
+                
+                @property
+                def info(self):
+                    return self._preloaded_info if self._preloaded_info is not None else super().info
+                
+                def history(self, *args, **kwargs):
+                    if kwargs.get('period') == '3y' or (len(args) > 0 and args[0] == '3y'):
+                        return self._preloaded_hist if self._preloaded_hist is not None else super().history(*args, **kwargs)
+                    return super().history(*args, **kwargs)
+                
+                @property
+                def financials(self):
+                    return self._preloaded_fin if self._preloaded_fin is not None else super().financials
+                
+                @property
+                def revenue_estimate(self):
+                    return self._preloaded_est if self._preloaded_est is not None else super().revenue_estimate
+
+            raw_ticker = yf.Ticker(clean_ticker)
+            
+            # Parallel preloading of yfinance data
+            import concurrent.futures
+            
+            def load_info():
+                try:
+                    return raw_ticker.info
+                except Exception as e:
+                    print(f"[{clean_ticker}] Error preloading info: {e}")
+                    return {}
+
+            def load_history():
+                try:
+                    return raw_ticker.history(period="3y")
+                except Exception as e:
+                    print(f"[{clean_ticker}] Error preloading history: {e}")
+                    return None
+
+            def load_financials():
+                try:
+                    return raw_ticker.financials
+                except Exception as e:
+                    print(f"[{clean_ticker}] Error preloading financials: {e}")
+                    return None
+
+            def load_estimates():
+                try:
+                    return raw_ticker.revenue_estimate
+                except Exception as e:
+                    return None
+
+            print(f"[{clean_ticker}] Preloading yfinance data concurrently...")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                future_info = executor.submit(load_info)
+                future_hist = executor.submit(load_history)
+                future_fin = executor.submit(load_financials)
+                future_est = executor.submit(load_estimates)
+                
+                preloaded_info = future_info.result()
+                preloaded_hist = future_hist.result()
+                preloaded_fin = future_fin.result()
+                preloaded_est = future_est.result()
+            print(f"[{clean_ticker}] Preloading complete.")
+            
+            ticker_obj = SnappyTicker(clean_ticker, preloaded_info, preloaded_hist, preloaded_fin, preloaded_est)
             
             # Retrieve cached overview metrics from screener_data.json if available
             overview = None

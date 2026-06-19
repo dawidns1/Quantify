@@ -10,7 +10,8 @@ import {
   Search,
   LayoutGrid,
   Layout,
-  Scale
+  Scale,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -336,6 +337,7 @@ export function PortfolioView({
   const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
   const stockDetailsCacheRef = useRef<Record<string, any>>({});
   const [loadingDetails, setLoadingDetails] = useState<boolean>(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
 
   const [modalSortField, setModalSortField] = useState<string>('date');
   const [modalSortAsc, setModalSortAsc] = useState<boolean>(false);
@@ -347,14 +349,17 @@ export function PortfolioView({
     setModalSortAsc(false);
     setModalSearchQuery('');
     setModalRange('1M');
+    setDetailsError(null);
   }, [selectedPositionSymbol]);
 
   useEffect(() => {
     if (!selectedPositionSymbol) {
       setSelectedStockDetails(null);
+      setDetailsError(null);
       return;
     }
 
+    setDetailsError(null);
     const cached = stockDetailsCacheRef.current[selectedPositionSymbol];
     if (cached) {
       setSelectedStockDetails(cached);
@@ -392,6 +397,7 @@ export function PortfolioView({
         })
         .catch(err => {
           console.error("Error fetching stock details:", err);
+          setDetailsError(err.message || "Failed to load company details");
           setLoadingDetails(false);
         });
     }
@@ -1879,7 +1885,30 @@ export function PortfolioView({
                     {t('holdings.company_profile_metrics', 'Company Profile & Key Financials')}
                   </span>
                   
-                  {loadingDetails || !selectedStockDetails ? (
+                  {detailsError ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '2.5rem 1.5rem',
+                      textAlign: 'center',
+                      gap: '0.65rem',
+                      color: 'var(--color-red)',
+                      minHeight: '214px',
+                      background: 'rgba(239, 68, 68, 0.03)',
+                      border: '1px dashed rgba(239, 68, 68, 0.15)',
+                      borderRadius: '8px'
+                    }}>
+                      <AlertTriangle size={28} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                        {t('holdings.details_failed_to_load', 'Failed to load company profile and key financials.')}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {detailsError}
+                      </span>
+                    </div>
+                  ) : loadingDetails || !selectedStockDetails ? (
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',

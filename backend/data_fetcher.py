@@ -335,101 +335,111 @@ class StockDataCollector:
                 return []
             hist.index = hist.index.tz_localize(None)
             
+            
             # 2. Historical Annual Financials
-            financials = ticker_obj.financials
-            if financials is None or financials.empty or 'Total Revenue' not in financials.index:
-                return []
-                
-            rev_series = financials.loc['Total Revenue']
-            df_fin = pd.DataFrame(rev_series).rename(columns={'Total Revenue': 'Revenue'})
-            df_fin.index = pd.to_datetime(df_fin.index)
-            df_fin = df_fin.sort_index()
-            
-            # Extract net income safely
-            net_inc_keys = ['Net Income', 'Net Income Common Stockholders', 'Net Income From Continuing Ops', 'Net Income from Continuing Operations']
-            net_inc_series = None
-            for k in net_inc_keys:
-                if k in financials.index:
-                    net_inc_series = financials.loc[k]
-                    break
-            
-            if net_inc_series is not None:
-                df_net_inc = pd.DataFrame(net_inc_series).rename(columns={net_inc_series.name: 'Net_Income'})
-                df_net_inc.index = pd.to_datetime(df_net_inc.index)
-                df_net_inc = df_net_inc.sort_index()
-                # Merge into df_fin
-                df_fin = pd.merge(df_fin, df_net_inc, left_index=True, right_index=True, how='left')
-            else:
-                df_fin['Net_Income'] = np.nan
-                
-            df_fin = df_fin.dropna(subset=['Revenue'])
-            
-            if len(df_fin) < 2:
-                return []
-                
-            # YoY Annual Revenue Growth
-            df_fin['Revenue_YoY_Growth'] = df_fin['Revenue'].pct_change()
-            
-            # Calculate Forward Revenue and Forward YoY Growth by shifting chronologically backwards
-            df_fin['Forward_Revenue'] = df_fin['Revenue'].shift(-1)
-            df_fin['Forward_Revenue_YoY_Growth'] = df_fin['Revenue_YoY_Growth'].shift(-1)
-            
-            # Retrieve analyst consensus revenue estimate and growth for current year (0y) as forward indicators
-            rev_0y = None
-            growth_0y = None
+            has_financials = True
+            financials = None
             try:
-                rev_est = ticker_obj.revenue_estimate
-                if rev_est is not None and not rev_est.empty and '0y' in rev_est.index:
-                    rev_0y = rev_est.loc['0y', 'avg']
-                    growth_0y = rev_est.loc['0y', 'growth']
+                financials = ticker_obj.financials
             except Exception:
-                pass
+                has_financials = False
+
+            if financials is None or financials.empty or 'Total Revenue' not in financials.index:
+                has_financials = False
                 
-            if rev_0y is not None and pd.notna(rev_0y):
-                df_fin.iloc[-1, df_fin.columns.get_loc('Forward_Revenue')] = rev_0y
-            if growth_0y is not None and pd.notna(growth_0y):
-                df_fin.iloc[-1, df_fin.columns.get_loc('Forward_Revenue_YoY_Growth')] = growth_0y
+            if has_financials:
+                try:
+                    rev_series = financials.loc['Total Revenue']
+                    df_fin = pd.DataFrame(rev_series).rename(columns={'Total Revenue': 'Revenue'})
+                    df_fin.index = pd.to_datetime(df_fin.index)
+                    df_fin = df_fin.sort_index()
+                    
+                    # Extract net income safely
+                    net_inc_keys = ['Net Income', 'Net Income Common Stockholders', 'Net Income From Continuing Ops', 'Net Income from Continuing Operations']
+                    net_inc_series = None
+                    for k in net_inc_keys:
+                        if k in financials.index:
+                            net_inc_series = financials.loc[k]
+                            break
+                    
+                    if net_inc_series is not None:
+                        df_net_inc = pd.DataFrame(net_inc_series).rename(columns={net_inc_series.name: 'Net_Income'})
+                        df_net_inc.index = pd.to_datetime(df_net_inc.index)
+                        df_net_inc = df_net_inc.sort_index()
+                        # Merge into df_fin
+                        df_fin = pd.merge(df_fin, df_net_inc, left_index=True, right_index=True, how='left')
+                    else:
+                        df_fin['Net_Income'] = np.nan
+                        
+                    df_fin = df_fin.dropna(subset=['Revenue'])
+                    if len(df_fin) < 2:
+                        has_financials = False
+                except Exception:
+                    has_financials = False
             
             # Create daily layout
             df_daily = pd.DataFrame(index=hist.index)
             df_daily['Price'] = hist['Close']
+            df_daily['SMA_50'] = df_daily['Price'].rolling(window=50).mean()
+            df_daily['SMA_200'] = df_daily['Price'].rolling(window=200).mean()
             
-            # Match quarterly reporting delay (90 days lag for annual financials)
-            df_fin_reported = df_fin.copy()
-            df_fin_reported.index = df_fin_reported.index + pd.Timedelta(days=90)
-            
-            # Standardize indexes to datetime64[ns]
-            df_daily.index = pd.to_datetime(df_daily.index).tz_localize(None).astype('datetime64[ns]')
-            df_fin_reported.index = pd.to_datetime(df_fin_reported.index).tz_localize(None).astype('datetime64[ns]')
-            
-            # Merge daily prices with reported financials
-            df_merged = pd.merge_asof(df_daily, df_fin_reported, left_index=True, right_index=True, direction='backward')
-            
-            # Calculate daily indicators
-            if not shares or shares <= 0:
-                shares = 1.0
+            if has_financials:
+                # YoY Annual Revenue Growth
+                df_fin['Revenue_YoY_Growth'] = df_fin['Revenue'].pct_change()
                 
-            df_merged['Revenue_Per_Share'] = df_merged['Revenue'] / shares
-            df_merged['Trailing_PS'] = df_merged['Price'] / df_merged['Revenue_Per_Share']
-            
-            # Calculate daily historical Forward P/S and Forward PSG (PSSG)
-            df_merged['Forward_Revenue_Per_Share'] = df_merged['Forward_Revenue'] / shares
-            df_merged['Forward_PS'] = df_merged['Price'] / df_merged['Forward_Revenue_Per_Share']
-            df_merged['Forward_PSG'] = df_merged['Forward_PS'] / (df_merged['Forward_Revenue_YoY_Growth'] * 100)
-            
-            df_merged['Trailing_PSG'] = df_merged['Trailing_PS'] / (df_merged['Revenue_YoY_Growth'] * 100)
-            
-            # Calculate daily Trailing P/E
-            df_merged['Net_Income_Per_Share'] = df_merged['Net_Income'] / shares
-            df_merged['Trailing_PE'] = df_merged['Price'] / df_merged['Net_Income_Per_Share']
-            
-            # Calculate daily technical moving averages (SMA 50, SMA 200)
-            df_merged['SMA_50'] = df_merged['Price'].rolling(window=50).mean()
-            df_merged['SMA_200'] = df_merged['Price'].rolling(window=200).mean()
-            
-            # Replace NaNs/Infs with None for JSON compatibility
-            df_merged = df_merged.replace([np.inf, -np.inf], np.nan)
-            df_merged = df_merged.dropna(subset=['Revenue', 'Trailing_PS'])
+                # Calculate Forward Revenue and Forward YoY Growth
+                df_fin['Forward_Revenue'] = df_fin['Revenue'].shift(-1)
+                df_fin['Forward_Revenue_YoY_Growth'] = df_fin['Revenue_YoY_Growth'].shift(-1)
+                
+                # Retrieve analyst estimates
+                rev_0y = None
+                growth_0y = None
+                try:
+                    rev_est = ticker_obj.revenue_estimate
+                    if rev_est is not None and not rev_est.empty and '0y' in rev_est.index:
+                        rev_0y = rev_est.loc['0y', 'avg']
+                        growth_0y = rev_est.loc['0y', 'growth']
+                except Exception:
+                    pass
+                    
+                if rev_0y is not None and pd.notna(rev_0y):
+                    df_fin.iloc[-1, df_fin.columns.get_loc('Forward_Revenue')] = rev_0y
+                if growth_0y is not None and pd.notna(growth_0y):
+                    df_fin.iloc[-1, df_fin.columns.get_loc('Forward_Revenue_YoY_Growth')] = growth_0y
+                
+                # Match quarterly reporting delay (90 days lag)
+                df_fin_reported = df_fin.copy()
+                df_fin_reported.index = df_fin_reported.index + pd.Timedelta(days=90)
+                
+                # Standardize indexes
+                df_daily.index = pd.to_datetime(df_daily.index).tz_localize(None).astype('datetime64[ns]')
+                df_fin_reported.index = pd.to_datetime(df_fin_reported.index).tz_localize(None).astype('datetime64[ns]')
+                
+                # Merge daily prices with reported financials
+                df_merged = pd.merge_asof(df_daily, df_fin_reported, left_index=True, right_index=True, direction='backward')
+                
+                if not shares or shares <= 0:
+                    shares = 1.0
+                    
+                df_merged['Revenue_Per_Share'] = df_merged['Revenue'] / shares
+                df_merged['Trailing_PS'] = df_merged['Price'] / df_merged['Revenue_Per_Share']
+                df_merged['Forward_Revenue_Per_Share'] = df_merged['Forward_Revenue'] / shares
+                df_merged['Forward_PS'] = df_merged['Price'] / df_merged['Forward_Revenue_Per_Share']
+                df_merged['Forward_PSG'] = df_merged['Forward_PS'] / (df_merged['Forward_Revenue_YoY_Growth'] * 100)
+                df_merged['Trailing_PSG'] = df_merged['Trailing_PS'] / (df_merged['Revenue_YoY_Growth'] * 100)
+                
+                df_merged['Net_Income_Per_Share'] = df_merged['Net_Income'] / shares
+                df_merged['Trailing_PE'] = df_merged['Price'] / df_merged['Net_Income_Per_Share']
+                df_merged = df_merged.replace([np.inf, -np.inf], np.nan)
+            else:
+                df_merged = df_daily.copy()
+                df_merged['Trailing_PS'] = np.nan
+                df_merged['Forward_PS'] = np.nan
+                df_merged['Trailing_PSG'] = np.nan
+                df_merged['Forward_PSG'] = np.nan
+                df_merged['Trailing_PE'] = np.nan
+                
+            df_merged = df_merged.dropna(subset=['Price'])
             
             # Format output
             historical_points = []
