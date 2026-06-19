@@ -1148,16 +1148,14 @@ body.low-perf .modal-content {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(5, 7, 13, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(8, 12, 24, 0.85);
   z-index: 999;
   
-  /* Promote to GPU graphics layer to isolate repaints on typing from triggering re-blurs */
+  /* Promote to GPU graphics layer to isolate repaints */
   will-change: opacity;
   transform: translate3d(0, 0, 0);
   
-  /* Animate background color instead of opacity to avoid Chromium repaint/re-blur stutter */
+  /* Animate background color instead of opacity to avoid Chromium repaint stutter */
   animation: fadeInBackdrop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
