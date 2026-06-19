@@ -1660,7 +1660,7 @@ export function PortfolioView({
           <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
           <div className="modal-overlay-container">
             <div className="modal-content" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 1.75rem 0.75rem 1.75rem', flexWrap: 'wrap', gap: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.04)', background: 'rgba(18, 24, 38, 0.4)' }}>
+              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 1.75rem 0.75rem 1.75rem', flexWrap: 'wrap', gap: '0.75rem', background: 'rgba(18, 24, 38, 0.2)' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
                   <History size={22} className="gradient-text" /> 
                   <span style={{ fontWeight: 700 }}>{selectedPositionSymbol}</span>
@@ -1921,10 +1921,10 @@ export function PortfolioView({
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                       gap: '1.25rem',
-                      alignItems: 'stretch'
+                      alignItems: 'start'
                     }}>
                       {/* Left: Key Financial Ratios Skeleton Grid */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Key Financial Ratios
                         </span>
@@ -1943,11 +1943,11 @@ export function PortfolioView({
                       </div>
                       
                       {/* Right: Annual Financial Results Skeleton Graph */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
-                        <div style={{ flex: 1, minHeight: '220px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
+                        <div style={{ height: '220px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
                           <div style={{ width: '16px', height: '30%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '50%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
@@ -1961,10 +1961,10 @@ export function PortfolioView({
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                       gap: '1.25rem',
-                      alignItems: 'stretch'
+                      alignItems: 'start'
                     }}>
                       {/* Left: Key Financial Ratios */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Key Financial Ratios
                         </span>
@@ -2033,17 +2033,17 @@ export function PortfolioView({
                       </div>
 
                       {/* Right: Annual Financial Results Graph */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
                         
                         {(!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
-                          <div style={{ flex: 1, minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                          <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
                             No past annual results available.
                           </div>
                         ) : (
-                          <div style={{ flex: 1, minHeight: '220px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
+                          <div style={{ height: '220px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
                             {financialsChartData && (
                               <Bar 
                                 options={financialsChartOptions}
