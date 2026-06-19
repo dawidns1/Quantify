@@ -1938,7 +1938,7 @@ export function PortfolioView({
                           gap: '0.65rem'
                         }}>
                           {Array.from({ length: 8 }).map((_, idx) => (
-                            <div key={idx} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.02)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '46px' }} className="pulse">
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.02)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }} className="pulse">
                               <div style={{ width: '60%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', marginBottom: '8px' }} />
                               <div style={{ width: '40%', height: '14px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }} />
                             </div>
@@ -1951,7 +1951,7 @@ export function PortfolioView({
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
-                        <div style={{ height: '215px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
+                        <div style={{ height: '239px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
                           <div style={{ width: '16px', height: '30%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '50%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
@@ -1978,56 +1978,56 @@ export function PortfolioView({
                           gap: '0.65rem'
                         }}>
                           {/* P/E Ratio */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/E Ratio (Trailing)</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.trailing_pe ? selectedStockDetails.overview.trailing_pe.toFixed(2) : '—'}
                             </span>
                           </div>
                           {/* Forward P/E */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/E Ratio (Forward)</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.forward_pe ? selectedStockDetails.overview.forward_pe.toFixed(2) : '—'}
                             </span>
                           </div>
                           {/* PEG Ratio */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>PEG Ratio</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.peg_ratio ? selectedStockDetails.overview.peg_ratio.toFixed(2) : '—'}
                             </span>
                           </div>
                           {/* P/B Ratio */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/B Ratio</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.price_to_book ? selectedStockDetails.overview.price_to_book.toFixed(2) : '—'}
                             </span>
                           </div>
                           {/* Profit Margin */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Profit Margin</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.profit_margin ? `${(selectedStockDetails.overview.profit_margin * 100).toFixed(2)}%` : '—'}
                             </span>
                           </div>
                           {/* Return on Equity */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>ROE</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.roe ? `${(selectedStockDetails.overview.roe * 100).toFixed(2)}%` : '—'}
                             </span>
                           </div>
                           {/* Dividend Yield */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Div Yield</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.dividend_yield ? `${(selectedStockDetails.overview.dividend_yield * 100).toFixed(2)}%` : '0.00%'}
                             </span>
                           </div>
                           {/* Beta */}
-                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem', height: '52px', boxSizing: 'border-box' }}>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Beta (5Y Monthly)</span>
                             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                               {selectedStockDetails.overview?.beta ? selectedStockDetails.overview.beta.toFixed(2) : '—'}
@@ -2043,11 +2043,11 @@ export function PortfolioView({
                         </span>
                         
                         {(!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
-                          <div style={{ height: '215px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                          <div style={{ height: '239px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
                             No past annual results available.
                           </div>
                         ) : (
-                          <div style={{ height: '215px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
+                          <div style={{ height: '239px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
                             {financialsChartData && (
                               <Bar 
                                 options={financialsChartOptions}

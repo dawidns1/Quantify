@@ -15,7 +15,9 @@ import {
   TrendingUp,
   TrendingDown,
   Coins,
-  Layers
+  Layers,
+  Search,
+  X
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -91,6 +93,36 @@ export function Sidebar({
   const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+
+  // Global search state
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [globalSearchSuggestions, setGlobalSearchSuggestions] = useState<any[]>([]);
+  const [showGlobalSuggestions, setShowGlobalSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (!globalSearchQuery || globalSearchQuery.trim().length < 2) {
+      setGlobalSearchSuggestions([]);
+      setShowGlobalSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(globalSearchQuery)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setGlobalSearchSuggestions(data);
+          setShowGlobalSuggestions(true);
+        })
+        .catch((e) => console.error('Error fetching global lookup suggestions:', e));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [globalSearchQuery, apiBaseUrl]);
+
+  const handleSelectGlobalSearchSymbol = (symbol: string) => {
+    onSelectStockSymbol(symbol);
+    setGlobalSearchQuery('');
+    setShowGlobalSuggestions(false);
+    if (onCloseSidebar) onCloseSidebar();
+  };
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -414,6 +446,129 @@ export function Sidebar({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Global Symbol Search / Lookup */}
+      <div style={{ padding: '0 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem', position: 'relative', flexShrink: 0 }}>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Search size={12} style={{ color: 'var(--color-primary)' }} />
+          <span>{t('sidebar.lookup_symbol', 'Symbol Lookup')}</span>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={globalSearchQuery}
+            onChange={(e) => setGlobalSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (globalSearchSuggestions.length > 0) setShowGlobalSuggestions(true);
+            }}
+            onBlur={() => {
+              // Delay hides suggestions so clicks on suggestion items can trigger first
+              setTimeout(() => setShowGlobalSuggestions(false), 200);
+            }}
+            placeholder={t('sidebar.search_placeholder', 'Search symbol (e.g. AAPL, TSLA)...')}
+            style={{
+              width: '100%',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '8px',
+              padding: '0.45rem 0.65rem 0.45rem 1.8rem',
+              fontSize: '0.78rem',
+              color: 'white',
+              outline: 'none',
+              boxSizing: 'border-box',
+              transition: 'var(--transition-smooth)'
+            }}
+          />
+          <Search size={13} style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          {globalSearchQuery && (
+            <button
+              onClick={() => {
+                setGlobalSearchQuery('');
+                setGlobalSearchSuggestions([]);
+                setShowGlobalSuggestions(false);
+              }}
+              style={{
+                position: 'absolute',
+                right: '0.65rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+          
+          {/* Suggestions Dropdown */}
+          {showGlobalSuggestions && globalSearchSuggestions.length > 0 && (
+            <div
+              className="search-suggestions-dropdown custom-scrollbar"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                zIndex: 2000,
+                marginTop: '4px',
+                maxHeight: '200px',
+                background: 'rgba(18, 24, 38, 0.98)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '8px',
+                overflowY: 'auto'
+              }}
+            >
+              {globalSearchSuggestions.map((s) => (
+                <div
+                  key={s.symbol}
+                  className="suggestion-item"
+                  onClick={() => handleSelectGlobalSearchSymbol(s.symbol)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '2px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{s.symbol}</span>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      padding: '1px 5px',
+                      borderRadius: '3px',
+                      color: 'var(--text-muted)'
+                    }}>{s.exchange}</span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    width: '100%',
+                    textAlign: 'left'
+                  }} title={s.name}>{s.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
