@@ -1745,7 +1745,8 @@ export function PortfolioView({
                     background: 'rgba(255, 255, 255, 0.02)',
                     padding: '1rem 1.25rem',
                     borderRadius: '12px',
-                    border: '1px solid rgba(255, 255, 255, 0.05)'
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    flexShrink: 0
                   }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('holdings.col_shares_owned', 'Shares Owned')}</span>
@@ -1796,7 +1797,7 @@ export function PortfolioView({
                 )}
 
                 {/* Simplified Interactive Details Chart */}
-                <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)' }}>
+                <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)', flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
@@ -1872,10 +1873,12 @@ export function PortfolioView({
                 </div>
 
                  {holdingDetails && (
-                  <FXHedgingVisualizer 
-                    holding={holdingDetails} 
-                    baseCurrency={summary.base_currency} 
-                  />
+                  <div style={{ flexShrink: 0 }}>
+                    <FXHedgingVisualizer 
+                      holding={holdingDetails} 
+                      baseCurrency={summary.base_currency} 
+                    />
+                  </div>
                 )}
 
                 {/* COMPANY KEY METRICS & ANNUAL FINANCIALS */}
@@ -1887,7 +1890,8 @@ export function PortfolioView({
                   border: '1px solid rgba(255, 255, 255, 0.05)',
                   borderRadius: '12px',
                   padding: '1.15rem',
-                  minHeight: '272px'
+                  minHeight: '272px',
+                  flexShrink: 0
                 }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
                     {t('holdings.company_profile_metrics', 'Company Profile & Key Financials')}
@@ -2058,7 +2062,7 @@ export function PortfolioView({
                 </div>
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (
-                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0, flexShrink: 0 }}>
                     {t('holdings.no_tx_found_for', 'No transactions found for')} {selectedPositionSymbol}.
                   </p>
                 ) : (
@@ -2067,7 +2071,8 @@ export function PortfolioView({
                     overflowY: 'auto',
                     border: '1px solid var(--panel-border)',
                     borderRadius: '10px',
-                    background: 'rgba(0, 0, 0, 0.15)'
+                    background: 'rgba(0, 0, 0, 0.15)',
+                    flexShrink: 0
                   }}>
                     <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                       <thead>
@@ -2151,7 +2156,7 @@ export function PortfolioView({
                   </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem', flexShrink: 0 }}>
                   <button
                     onClick={() => setSelectedPositionSymbol(null)}
                     className="glow-btn"
