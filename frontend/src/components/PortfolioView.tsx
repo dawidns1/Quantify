@@ -1659,8 +1659,8 @@ export function PortfolioView({
         <>
           <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
           <div className="modal-overlay-container">
-            <div className="modal-content custom-scrollbar" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div className="modal-content" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+              <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 1.75rem 0.75rem 1.75rem', flexWrap: 'wrap', gap: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.04)', background: 'rgba(18, 24, 38, 0.4)' }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
                   <History size={22} className="gradient-text" /> 
                   <span style={{ fontWeight: 700 }}>{selectedPositionSymbol}</span>
@@ -1727,7 +1727,15 @@ export function PortfolioView({
                 </div>
               </div>
  
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="custom-scrollbar" style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '1.25rem 1.75rem 1.75rem 1.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+                willChange: 'scroll-position'
+              }}>
                 {/* Quick Summary Dashboard */}
                 {holdingDetails && (
                   <div style={{ 
