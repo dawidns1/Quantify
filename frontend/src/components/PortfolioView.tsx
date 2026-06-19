@@ -1921,10 +1921,10 @@ export function PortfolioView({
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                       gap: '1.25rem',
-                      alignItems: 'start'
+                      alignItems: 'stretch'
                     }}>
                       {/* Left: Key Financial Ratios Skeleton Grid */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Key Financial Ratios
                         </span>
@@ -1943,11 +1943,11 @@ export function PortfolioView({
                       </div>
                       
                       {/* Right: Annual Financial Results Skeleton Graph */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
-                        <div style={{ height: '250px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
+                        <div style={{ flex: 1, minHeight: '220px', background: 'rgba(0, 0, 0, 0.08)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', padding: '1.5rem 1rem 0.75rem 1rem' }} className="pulse">
                           <div style={{ width: '16px', height: '30%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '50%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
                           <div style={{ width: '16px', height: '70%', background: 'rgba(255,255,255,0.04)', borderRadius: '3px 3px 0 0' }} />
@@ -1961,10 +1961,10 @@ export function PortfolioView({
                       display: 'grid',
                       gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                       gap: '1.25rem',
-                      alignItems: 'start'
+                      alignItems: 'stretch'
                     }}>
                       {/* Left: Key Financial Ratios */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Key Financial Ratios
                         </span>
@@ -2033,17 +2033,17 @@ export function PortfolioView({
                       </div>
 
                       {/* Right: Annual Financial Results Graph */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', height: '100%' }}>
                         <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
                           Past Annual Results
                         </span>
                         
                         {(!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
-                          <div style={{ height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                          <div style={{ flex: 1, minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
                             No past annual results available.
                           </div>
                         ) : (
-                          <div style={{ height: '250px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
+                          <div style={{ flex: 1, minHeight: '220px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
                             {financialsChartData && (
                               <Bar 
                                 options={financialsChartOptions}
