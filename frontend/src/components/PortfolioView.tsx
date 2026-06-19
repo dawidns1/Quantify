@@ -779,6 +779,36 @@ export function PortfolioView({
     return (Math.round(shares * 10000) / 10000).toString();
   };
 
+  const formatFinancialValue = (val: number | null, currencyStr = 'USD') => {
+    if (val === null || val === undefined) return '—';
+    const absVal = Math.abs(val);
+    let formatted = '';
+    if (absVal >= 1e12) {
+      formatted = `${(val / 1e12).toFixed(2)}T`;
+    } else if (absVal >= 1e9) {
+      formatted = `${(val / 1e9).toFixed(2)}B`;
+    } else if (absVal >= 1e6) {
+      formatted = `${(val / 1e6).toFixed(2)}M`;
+    } else {
+      formatted = val.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+    
+    const curr = currencyStr || 'USD';
+    try {
+      const parts = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: curr,
+      }).formatToParts(1);
+      const symbol = parts.find(p => p.type === 'currency')?.value || '$';
+      if (curr.toUpperCase() === 'PLN') {
+        return `${formatted} zł`;
+      }
+      return `${symbol}${formatted}`;
+    } catch (e) {
+      return `$${formatted}`;
+    }
+  };
+
   const handleModalSort = (field: string) => {
     if (modalSortField === field) {
       setModalSortAsc(!modalSortAsc);
@@ -1504,6 +1534,7 @@ export function PortfolioView({
                         const symbol = selectedPositionSymbol;
                         setSelectedPositionSymbol(null);
                         setQuickActionData({ symbol: symbol!, type: 'BUY' });
+                        setShowAddModal(true);
                       }}
                       className="glow-btn"
                       style={{
@@ -1651,11 +1682,141 @@ export function PortfolioView({
                   </div>
                 </div>
 
-                {holdingDetails && (
+                 {holdingDetails && (
                   <FXHedgingVisualizer 
                     holding={holdingDetails} 
                     baseCurrency={summary.base_currency} 
                   />
+                )}
+
+                {/* COMPANY KEY METRICS & ANNUAL FINANCIALS */}
+                {!loadingDetails && selectedStockDetails && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem',
+                    background: 'rgba(255, 255, 255, 0.015)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    borderRadius: '12px',
+                    padding: '1.15rem'
+                  }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                      {t('holdings.company_profile_metrics', 'Company Profile & Key Financials')}
+                    </span>
+                    
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                      gap: '1.25rem',
+                      alignItems: 'start'
+                    }}>
+                      {/* Left: Key Financial Ratios Grid */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '0.65rem'
+                      }}>
+                        {/* P/E Ratio */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/E Ratio (Trailing)</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.trailing_pe ? selectedStockDetails.overview.trailing_pe.toFixed(2) : '—'}
+                          </span>
+                        </div>
+                        {/* Forward P/E */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/E Ratio (Forward)</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.forward_pe ? selectedStockDetails.overview.forward_pe.toFixed(2) : '—'}
+                          </span>
+                        </div>
+                        {/* PEG Ratio */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>PEG Ratio</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.peg_ratio ? selectedStockDetails.overview.peg_ratio.toFixed(2) : '—'}
+                          </span>
+                        </div>
+                        {/* P/B Ratio */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>P/B Ratio</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.price_to_book ? selectedStockDetails.overview.price_to_book.toFixed(2) : '—'}
+                          </span>
+                        </div>
+                        {/* Profit Margin */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Profit Margin</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.profit_margin ? `${(selectedStockDetails.overview.profit_margin * 100).toFixed(2)}%` : '—'}
+                          </span>
+                        </div>
+                        {/* Return on Equity */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>ROE</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.roe ? `${(selectedStockDetails.overview.roe * 100).toFixed(2)}%` : '—'}
+                          </span>
+                        </div>
+                        {/* Dividend Yield */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Div Yield</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.dividend_yield ? `${(selectedStockDetails.overview.dividend_yield * 100).toFixed(2)}%` : '0.00%'}
+                          </span>
+                        </div>
+                        {/* Beta */}
+                        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase' }}>Beta (5Y Monthly)</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                            {selectedStockDetails.overview?.beta ? selectedStockDetails.overview.beta.toFixed(2) : '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right: Annual Financial Results Table */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', letterSpacing: '0.5px', marginBottom: '0.25rem' }}>
+                          Past Annual Results
+                        </span>
+                        
+                        {(!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
+                          <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                            No past annual results available.
+                          </div>
+                        ) : (
+                          <div style={{ border: '1px solid var(--panel-border)', borderRadius: '8px', overflow: 'hidden', background: 'rgba(0,0,0,0.1)' }}>
+                            <table className="screener-table" style={{ fontSize: '0.78rem', margin: 0, width: '100%' }}>
+                              <thead>
+                                <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
+                                  <th style={{ padding: '0.35rem 0.5rem' }}>Year</th>
+                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Revenue</th>
+                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>EBITDA</th>
+                                  <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Net Income</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedStockDetails.financials.map((fin: any) => (
+                                  <tr key={fin.year} className="interactive-row-modal">
+                                    <td style={{ padding: '0.35rem 0.5rem', fontFamily: 'monospace', fontWeight: 600 }}>{fin.year.substring(0, 4)}</td>
+                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                                      {formatFinancialValue(fin.revenue, selectedStockDetails.overview?.currency)}
+                                    </td>
+                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                      {formatFinancialValue(fin.ebitda, selectedStockDetails.overview?.currency)}
+                                    </td>
+                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: (fin.net_income || 0) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
+                                      {formatFinancialValue(fin.net_income, selectedStockDetails.overview?.currency)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {positionTransactionsFilteredAndSorted.length === 0 ? (

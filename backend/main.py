@@ -217,13 +217,19 @@ def get_stock_detail(ticker: str):
     clean_ticker = ticker.upper().strip()
     file_path = os.path.join(DETAILS_DIR, f"{clean_ticker}.json")
     
-    # Check if we need to fetch/regenerate details (missing or >24 hours old)
+    # Check if we need to fetch/regenerate details (missing, >24 hours old, or missing financials key)
     should_fetch = not os.path.exists(file_path)
     if not should_fetch:
         try:
-            file_age = time.time() - os.path.getmtime(file_path)
-            if file_age > 86400:  # 24 hours
-                should_fetch = True
+            with open(file_path, 'r') as f:
+                cached_data = json.load(f)
+                if "financials" not in cached_data:
+                    should_fetch = True
+            
+            if not should_fetch:
+                file_age = time.time() - os.path.getmtime(file_path)
+                if file_age > 86400:  # 24 hours
+                    should_fetch = True
         except Exception:
             should_fetch = True
             
@@ -253,13 +259,15 @@ def get_stock_detail(ticker: str):
                 
             shares = overview.get("market_cap", 0) / overview.get("price", 1) if overview.get("price") else 1.0
             history_data = collector.fetch_historical_detail(ticker_obj, shares)
+            financials_data = collector.fetch_annual_financials(ticker_obj)
             
             if len(history_data) > 0 or not os.path.exists(file_path):
                 payload = {
                     "symbol": clean_ticker,
                     "name": overview.get("name"),
                     "overview": overview,
-                    "history": history_data
+                    "history": history_data,
+                    "financials": financials_data
                 }
                 with open(file_path, 'w') as f:
                     json.dump(payload, f, indent=2)

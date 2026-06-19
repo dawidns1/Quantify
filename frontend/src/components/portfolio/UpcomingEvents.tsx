@@ -191,86 +191,83 @@ export function UpcomingEvents({
                 key={`${event.symbol}-${event.type}-${event.date}-${idx}`}
                 style={{ 
                   display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.75rem', 
-                  padding: '0.45rem 0.6rem', 
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  padding: '0.5rem 0.65rem', 
                   background: 'rgba(255, 255, 255, 0.015)',
                   border: '1px solid rgba(255, 255, 255, 0.04)',
                   borderRadius: '6px',
-                  fontSize: '0.8rem'
                 }}
               >
-                {/* Date Badge */}
-                <div style={{ 
-                  fontSize: '0.72rem', 
-                  fontWeight: 700, 
-                  color: 'var(--text-secondary)',
-                  width: '45px',
-                  flexShrink: 0
-                }}>
-                  {formatDate(event.date)}
-                </div>
+                {/* Line 1: Badges & Estimates */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                    {/* Date Badge */}
+                    <div style={{ 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      color: 'var(--text-secondary)',
+                      flexShrink: 0
+                    }}>
+                      {formatDate(event.date)}
+                    </div>
+    
+                    {/* Ticker Pill */}
+                    <div className="ticker-badge" style={{ 
+                      fontWeight: 700, 
+                      fontSize: '0.68rem',
+                      padding: '0.08rem 0.35rem',
+                      borderRadius: '4px',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      color: 'var(--text-primary)',
+                      textAlign: 'center',
+                      flexShrink: 0
+                    }}>
+                      {event.symbol}
+                    </div>
+    
+                    {/* Event Type Badge */}
+                    <div style={{ 
+                      fontSize: '0.65rem', 
+                      fontWeight: 600, 
+                      padding: '0.08rem 0.3rem', 
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      flexShrink: 0,
+                      background: isDividend ? 'rgba(16, 185, 129, 0.08)' : 'rgba(139, 92, 246, 0.08)',
+                      color: isDividend ? 'var(--color-green)' : '#a78bfa',
+                      border: isDividend ? '1px solid rgba(16, 185, 129, 0.12)' : '1px solid rgba(139, 92, 246, 0.12)'
+                    }}>
+                      {isDividend ? t('events.ex_dividend', 'Ex-Dividend') : t('events.earnings_release', 'Earnings')}
+                    </div>
+                  </div>
 
-                {/* Ticker Pill */}
-                <div className="ticker-badge" style={{ 
-                  fontWeight: 700, 
-                  fontSize: '0.72rem',
-                  padding: '0.15rem 0.4rem',
-                  borderRadius: '4px',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: 'var(--text-primary)',
-                  width: '60px',
-                  textAlign: 'center',
-                  flexShrink: 0
-                }}>
-                  {event.symbol}
-                </div>
-
-                {/* Event Type Badge */}
-                <div style={{ 
-                  fontSize: '0.68rem', 
-                  fontWeight: 600, 
-                  padding: '0.1rem 0.35rem', 
-                  borderRadius: '4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.02em',
-                  flexShrink: 0,
-                  background: isDividend ? 'rgba(16, 185, 129, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                  color: isDividend ? 'var(--color-green)' : '#a78bfa',
-                  border: isDividend ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(139, 92, 246, 0.15)'
-                }}>
-                  {isDividend ? t('events.ex_dividend', 'Ex-Dividend') : t('events.earnings_release', 'Earnings Release')}
-                </div>
-
-                {/* Description and Estimated Payout */}
-                <div style={{ 
-                  flex: 1, 
-                  minWidth: 0, 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  whiteSpace: 'nowrap',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.76rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={event.description}>
-                    {event.description}
-                  </span>
                   {isDividend && event.est_payout !== undefined && event.est_payout !== null && (
-                    <span style={{ 
+                    <div style={{ 
                       fontWeight: 700, 
                       color: 'var(--color-green)',
-                      fontSize: '0.76rem',
+                      fontSize: '0.74rem',
                       flexShrink: 0,
                       textShadow: '0 0 6px rgba(16, 185, 129, 0.15)'
                     }}>
                       {t('events.est', 'Est')}: {formatPayout(event.est_payout, event.currency)}
-                    </span>
+                    </div>
                   )}
+                </div>
+
+                {/* Line 2: Detailed Description */}
+                <div style={{ 
+                  fontSize: '0.74rem',
+                  color: 'var(--text-muted)',
+                  paddingLeft: '2px',
+                  lineHeight: '1.3',
+                  wordBreak: 'break-word'
+                }}>
+                  <span title={event.description}>
+                    {event.description}
+                  </span>
                 </div>
               </div>
             );

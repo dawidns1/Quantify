@@ -450,6 +450,47 @@ class StockDataCollector:
             print(f"[{symbol}] Error computing historical details: {e}")
             return []
 
+    def fetch_annual_financials(self, ticker_obj: yf.Ticker) -> list:
+        """
+        Fetches annual income statement data (Revenue, Net Income, EBITDA, Gross Profit) for the past 3-4 years.
+        Returns a list of dicts ordered chronologically.
+        """
+        symbol = ticker_obj.ticker
+        try:
+            financials = ticker_obj.financials
+            if financials is None or financials.empty:
+                return []
+            
+            idx_names = financials.index
+            rev_key = next((k for k in ['Total Revenue', 'Revenue'] if k in idx_names), None)
+            net_inc_key = next((k for k in ['Net Income', 'Net Income Common Stockholders', 'Net Income From Continuing Ops', 'Net Income from Continuing Operations'] if k in idx_names), None)
+            ebitda_key = next((k for k in ['EBITDA', 'Normalized EBITDA'] if k in idx_names), None)
+            gross_profit_key = next((k for k in ['Gross Profit', 'GrossProfit'] if k in idx_names), None)
+            
+            points = []
+            for col in financials.columns:
+                date_str = str(col).split(" ")[0] # extract YYYY-MM-DD
+                
+                rev_val = financials.loc[rev_key, col] if (rev_key and pd.notna(financials.loc[rev_key, col])) else None
+                net_inc_val = financials.loc[net_inc_key, col] if (net_inc_key and pd.notna(financials.loc[net_inc_key, col])) else None
+                ebitda_val = financials.loc[ebitda_key, col] if (ebitda_key and pd.notna(financials.loc[ebitda_key, col])) else None
+                gross_profit_val = financials.loc[gross_profit_key, col] if (gross_profit_key and pd.notna(financials.loc[gross_profit_key, col])) else None
+                
+                points.append({
+                    "year": date_str,
+                    "revenue": float(rev_val) if rev_val is not None else None,
+                    "net_income": float(net_inc_val) if net_inc_val is not None else None,
+                    "ebitda": float(ebitda_val) if ebitda_val is not None else None,
+                    "gross_profit": float(gross_profit_val) if gross_profit_val is not None else None
+                })
+            
+            # Sort chronologically (oldest first)
+            points.sort(key=lambda x: x["year"])
+            return points
+        except Exception as e:
+            print(f"[{symbol}] Error fetching annual financials: {e}")
+            return []
+
 # ==========================================
 # 3. Supabase Upload Helper
 # ==========================================

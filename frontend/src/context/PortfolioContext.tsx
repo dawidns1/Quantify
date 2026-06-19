@@ -251,6 +251,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     selectedAccount
   };
 
+  const holdingsRequestIdRef = useRef(0);
+  const chartRequestIdRef = useRef(0);
+  const analyticsRequestIdRef = useRef(0);
+
   // --- Computed Sub-States ---
   const portfolioAccountsMap = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -294,6 +298,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
     if (!silent) setLoadingHoldings(true);
+    const requestId = ++holdingsRequestIdRef.current;
     try {
       const jwtToken = session?.access_token || null;
       const result = await fetchHoldingsService(
@@ -305,8 +310,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         linkCash
       );
 
-      // Prevent race conditions: check if parameters changed in the meantime
+      // Prevent race conditions: check if parameters changed or newer request started
       if (
+        requestId < holdingsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency ||
         accountFilter !== latestParamsRef.current.selectedAccount
@@ -326,6 +332,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       console.error('Error fetching holdings:', err);
     } finally {
       if (
+        requestId === holdingsRequestIdRef.current &&
         activePortfolioId === latestParamsRef.current.activePortfolioId &&
         curr === latestParamsRef.current.baseCurrency &&
         accountFilter === latestParamsRef.current.selectedAccount
@@ -363,6 +370,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       return;
     }
     setLoadingChart(true);
+    const requestId = ++chartRequestIdRef.current;
     try {
       const jwtToken = session?.access_token || null;
       const data = await fetchHistoricalPerformanceService(
@@ -376,6 +384,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
       // Prevent race conditions
       if (
+        requestId < chartRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency ||
         accountFilter !== latestParamsRef.current.selectedAccount
@@ -389,6 +398,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       console.error('Error fetching historical performance:', err);
     } finally {
       if (
+        requestId === chartRequestIdRef.current &&
         activePortfolioId === latestParamsRef.current.activePortfolioId &&
         curr === latestParamsRef.current.baseCurrency &&
         accountFilter === latestParamsRef.current.selectedAccount
@@ -407,6 +417,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       return;
     }
     setLoadingAnalytics(true);
+    const requestId = ++analyticsRequestIdRef.current;
     try {
       const jwtToken = session?.access_token || null;
       const data = await fetchPortfolioAnalyticsService(
@@ -420,6 +431,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
       // Prevent race conditions
       if (
+        requestId < analyticsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency ||
         accountFilter !== latestParamsRef.current.selectedAccount
@@ -433,6 +445,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       console.error('Error fetching portfolio analytics:', err);
     } finally {
       if (
+        requestId === analyticsRequestIdRef.current &&
         activePortfolioId === latestParamsRef.current.activePortfolioId &&
         curr === latestParamsRef.current.baseCurrency &&
         accountFilter === latestParamsRef.current.selectedAccount
