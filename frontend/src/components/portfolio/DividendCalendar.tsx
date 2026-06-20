@@ -8,6 +8,7 @@ interface DividendCalendarProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onClose?: () => void;
+  viewMode?: 'both' | 'calendar' | 'forecast';
 }
 
 export function DividendCalendar({ 
@@ -15,7 +16,8 @@ export function DividendCalendar({
   baseCurrency,
   onMoveUp,
   onMoveDown,
-  onClose
+  onClose,
+  viewMode
 }: DividendCalendarProps) {
   const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
@@ -204,13 +206,7 @@ export function DividendCalendar({
             y: e.clientY - rect.top
           });
         }}
-        style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', 
-          gap: '0.75rem',
-          marginTop: '0.25rem',
-          position: 'relative'
-        }}
+        className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : ''}`}
       >
         {monthlyData.map(m => {
           const uniqueTickers = Array.from(new Set(m.payments.map(p => p.symbol.toUpperCase()))).slice(0, 3);

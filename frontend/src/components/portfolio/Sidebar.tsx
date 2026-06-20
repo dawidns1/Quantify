@@ -91,11 +91,7 @@ export function Sidebar({
   });
   const [prices, setPrices] = useState<Record<string, { price: number | null; currency: string; change_percent: number; is_market_open: boolean }>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
-  const [showAddInput, setShowAddInput] = useState(false);
-  const [newSymbol, setNewSymbol] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
@@ -140,6 +136,7 @@ export function Sidebar({
         next = [...prev, upper];
       }
       localStorage.setItem('quantifi_watchlist', JSON.stringify(next));
+      syncWatchlistToDb(next);
       return next;
     });
   };
@@ -152,53 +149,6 @@ export function Sidebar({
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
-
-  // Debounced search for watchlist suggestions
-  useEffect(() => {
-    if (isSuggestionSelected) return;
-
-    if (newSymbol.trim().length < 2) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      fetch(`${apiBaseUrl}/api/portfolio/search?q=${newSymbol}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (newSymbol.trim().length < 2) {
-            setSuggestions([]);
-            setShowSuggestions(false);
-            return;
-          }
-          setSuggestions(data || []);
-          setShowSuggestions(data && data.length > 0);
-        })
-        .catch((err) => {
-          console.error('Error fetching watchlist suggestions:', err);
-        });
-    }, 300);
-
-    return () => clearTimeout(delayDebounce);
-  }, [newSymbol, apiBaseUrl, isSuggestionSelected]);
-
-  const handleSelectWatchlistSuggestion = (s: any) => {
-    const sym = s.symbol.toUpperCase().trim();
-    setIsSuggestionSelected(true);
-    setShowSuggestions(false);
-    
-    if (!watchlist.includes(sym)) {
-      const updated = [...watchlist, sym];
-      setWatchlist(updated);
-      localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
-      syncWatchlistToDb(updated);
-    }
-    
-    setNewSymbol('');
-    setShowAddInput(false);
-    setIsSuggestionSelected(false);
-  };
 
   const fetchWatchlistFromDb = async () => {
     try {
@@ -287,22 +237,7 @@ export function Sidebar({
     return () => clearInterval(interval);
   }, [watchlist]);
 
-  const handleAddSymbol = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanSym = newSymbol.trim().toUpperCase();
-    if (!cleanSym) return;
-    if (watchlist.includes(cleanSym)) {
-      setNewSymbol('');
-      setShowAddInput(false);
-      return;
-    }
-    const updated = [...watchlist, cleanSym];
-    setWatchlist(updated);
-    localStorage.setItem('quantifi_watchlist', JSON.stringify(updated));
-    syncWatchlistToDb(updated);
-    setNewSymbol('');
-    setShowAddInput(false);
-  };
+
 
   const handleRemoveSymbol = (sym: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -469,203 +404,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Global Symbol Search / Lookup */}
-      <div style={{ padding: '0 0.5rem', margin: '0 0.5rem 0.5rem 0.5rem', position: 'relative', flexShrink: 0 }}>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <Search size={12} style={{ color: 'var(--color-primary)' }} />
-          <span>{t('sidebar.search_title', 'Search')}</span>
-        </div>
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={globalSearchQuery}
-            onChange={(e) => setGlobalSearchQuery(e.target.value)}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
-              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)';
-              e.currentTarget.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.18)';
-              if (globalSearchSuggestions.length > 0) setShowGlobalSuggestions(true);
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.03)';
-              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.18)';
-              e.currentTarget.style.boxShadow = '0 0 10px rgba(6, 182, 212, 0.03)';
-              setTimeout(() => setShowGlobalSuggestions(false), 200);
-            }}
-            placeholder={t('sidebar.search_placeholder', 'Search symbol (e.g. AAPL, TSLA)...')}
-            style={{
-              width: '100%',
-              background: 'rgba(6, 182, 212, 0.03)',
-              border: '1px solid rgba(6, 182, 212, 0.18)',
-              borderRadius: '8px',
-              padding: '0.45rem 0.65rem 0.45rem 1.8rem',
-              fontSize: '0.78rem',
-              color: 'white',
-              outline: 'none',
-              boxSizing: 'border-box',
-              transition: 'all 0.25s ease',
-              boxShadow: '0 0 10px rgba(6, 182, 212, 0.03)'
-            }}
-          />
-          <Search size={13} style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          {globalSearchQuery && (
-            <button
-              onClick={() => {
-                setGlobalSearchQuery('');
-                setGlobalSearchSuggestions([]);
-                setShowGlobalSuggestions(false);
-              }}
-              style={{
-                position: 'absolute',
-                right: '0.65rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: 0,
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <X size={13} />
-            </button>
-          )}
-          
-          {/* Suggestions Dropdown */}
-          {showGlobalSuggestions && globalSearchSuggestions.length > 0 && (
-            <div
-              className="search-suggestions-dropdown custom-scrollbar"
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 2000,
-                marginTop: '4px',
-                maxHeight: '200px',
-                background: 'rgba(18, 24, 38, 0.98)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                overflowY: 'auto'
-              }}
-            >
-              {globalSearchSuggestions.map((s) => {
-                const isInWatchlist = watchlist.includes(s.symbol.toUpperCase());
-                return (
-                  <div
-                    key={s.symbol}
-                    className="suggestion-item"
-                    onClick={() => handleSelectGlobalSearchSymbol(s.symbol)}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {/* Left Column: Symbol Details */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1, marginRight: '0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, color: 'white', fontSize: '0.78rem' }}>{s.symbol}</span>
-                        <span style={{
-                          fontSize: '0.62rem',
-                          background: 'rgba(255, 255, 255, 0.08)',
-                          padding: '1px 4px',
-                          borderRadius: '3px',
-                          color: 'var(--text-muted)'
-                        }}>{s.exchange}</span>
-                      </div>
-                      <span style={{
-                        fontSize: '0.7rem',
-                        color: 'var(--text-muted)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        textAlign: 'left'
-                      }} title={s.name}>{s.name}</span>
-                    </div>
 
-                    {/* Right Column: Contextual Action Buttons */}
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                      {/* Add/Remove from Watchlist Star Button */}
-                      <button
-                        onClick={() => toggleWatchlistSymbol(s.symbol)}
-                        title={isInWatchlist ? t('sidebar.remove_from_watchlist', 'Remove from Watchlist') : t('sidebar.add_to_watchlist', 'Add to Watchlist')}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid var(--panel-border)',
-                          borderRadius: '4px',
-                          color: isInWatchlist ? '#eab308' : 'var(--text-muted)',
-                          padding: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'var(--transition-smooth)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                          e.currentTarget.style.borderColor = 'rgba(234, 179, 8, 0.3)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                          e.currentTarget.style.borderColor = 'var(--panel-border)';
-                        }}
-                      >
-                        <Star size={12} fill={isInWatchlist ? '#eab308' : 'transparent'} color={isInWatchlist ? '#eab308' : 'var(--text-muted)'} />
-                      </button>
-
-                      {/* Add Transaction Plus Button */}
-                      {activePortfolioRole !== 'viewer' && onAddTransactionClick && (
-                        <button
-                          onClick={() => {
-                            onAddTransactionClick(s.symbol);
-                            setGlobalSearchQuery('');
-                            setGlobalSearchSuggestions([]);
-                            setShowGlobalSuggestions(false);
-                            if (onCloseSidebar) onCloseSidebar();
-                          }}
-                          title={t('dashboard.add_tx_shortcut', 'Add Transaction')}
-                          style={{
-                            background: 'rgba(6, 182, 212, 0.06)',
-                            border: '1px solid rgba(6, 182, 212, 0.15)',
-                            borderRadius: '4px',
-                            color: 'var(--color-primary)',
-                            padding: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'var(--transition-smooth)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
-                            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
-                            e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.15)';
-                          }}
-                        >
-                          <Plus size={12} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Unified scrollbox container for Assets and Watchlist */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', minHeight: 0 }} className="custom-scrollbar">
@@ -880,6 +619,204 @@ export function Sidebar({
           </div>
         </div>
 
+        {/* Global Symbol Search / Lookup */}
+        <div style={{ padding: '0 0.5rem', margin: '0.5rem 0.5rem 0.25rem 0.5rem', position: 'relative', flexShrink: 0 }}>
+          <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Search size={12} style={{ color: 'var(--color-primary)' }} />
+            <span>{t('sidebar.search_title', 'Search')}</span>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={globalSearchQuery}
+              onChange={(e) => setGlobalSearchQuery(e.target.value)}
+              onFocus={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+                e.currentTarget.style.boxShadow = '0 0 12px rgba(6, 182, 212, 0.18)';
+                if (globalSearchSuggestions.length > 0) setShowGlobalSuggestions(true);
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.03)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.18)';
+                e.currentTarget.style.boxShadow = '0 0 10px rgba(6, 182, 212, 0.03)';
+                setTimeout(() => setShowGlobalSuggestions(false), 200);
+              }}
+              placeholder={t('sidebar.search_placeholder', 'Search symbol (e.g. AAPL, TSLA)...')}
+              style={{
+                width: '100%',
+                background: 'rgba(6, 182, 212, 0.03)',
+                border: '1px solid rgba(6, 182, 212, 0.18)',
+                borderRadius: '8px',
+                padding: '0.45rem 0.65rem 0.45rem 1.8rem',
+                fontSize: '0.78rem',
+                color: 'white',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'all 0.25s ease',
+                boxShadow: '0 0 10px rgba(6, 182, 212, 0.03)'
+              }}
+            />
+            <Search size={13} style={{ position: 'absolute', left: '0.65rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            {globalSearchQuery && (
+              <button
+                onClick={() => {
+                  setGlobalSearchQuery('');
+                  setGlobalSearchSuggestions([]);
+                  setShowGlobalSuggestions(false);
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '0.65rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={13} />
+              </button>
+            )}
+            
+            {/* Suggestions Dropdown */}
+            {showGlobalSuggestions && globalSearchSuggestions.length > 0 && (
+              <div
+                className="search-suggestions-dropdown custom-scrollbar"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 2000,
+                  marginTop: '4px',
+                  maxHeight: '200px',
+                  background: 'rgba(18, 24, 38, 0.98)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '8px',
+                  overflowY: 'auto'
+                }}
+              >
+                {globalSearchSuggestions.map((s) => {
+                  const isInWatchlist = watchlist.includes(s.symbol.toUpperCase());
+                  return (
+                    <div
+                      key={s.symbol}
+                      className="suggestion-item"
+                      onClick={() => handleSelectGlobalSearchSymbol(s.symbol)}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Left Column: Symbol Details */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1, marginRight: '0.75rem' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, color: 'white', fontSize: '0.78rem' }}>{s.symbol}</span>
+                          <span style={{
+                            fontSize: '0.62rem',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            padding: '1px 4px',
+                            borderRadius: '3px',
+                            color: 'var(--text-muted)'
+                          }}>{s.exchange}</span>
+                        </div>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          color: 'var(--text-muted)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          textAlign: 'left'
+                        }} title={s.name}>{s.name}</span>
+                      </div>
+
+                      {/* Right Column: Contextual Action Buttons */}
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                        {/* Add/Remove from Watchlist Star Button */}
+                        <button
+                          onClick={() => toggleWatchlistSymbol(s.symbol)}
+                          title={isInWatchlist ? t('sidebar.remove_from_watchlist', 'Remove from Watchlist') : t('sidebar.add_to_watchlist', 'Add to Watchlist')}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--panel-border)',
+                            borderRadius: '4px',
+                            color: isInWatchlist ? '#eab308' : 'var(--text-muted)',
+                            padding: '4px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'var(--transition-smooth)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                            e.currentTarget.style.borderColor = 'rgba(234, 179, 8, 0.3)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            e.currentTarget.style.borderColor = 'var(--panel-border)';
+                          }}
+                        >
+                          <Star size={12} fill={isInWatchlist ? '#eab308' : 'transparent'} color={isInWatchlist ? '#eab308' : 'var(--text-muted)'} />
+                        </button>
+
+                        {/* Add Transaction Plus Button */}
+                        {activePortfolioRole !== 'viewer' && onAddTransactionClick && (
+                          <button
+                            onClick={() => {
+                              onAddTransactionClick(s.symbol);
+                              setGlobalSearchQuery('');
+                              setGlobalSearchSuggestions([]);
+                              setShowGlobalSuggestions(false);
+                              if (onCloseSidebar) onCloseSidebar();
+                            }}
+                            title={t('dashboard.add_tx_shortcut', 'Add Transaction')}
+                            style={{
+                              background: 'rgba(6, 182, 212, 0.06)',
+                              border: '1px solid rgba(6, 182, 212, 0.15)',
+                              borderRadius: '4px',
+                              color: 'var(--color-primary)',
+                              padding: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'var(--transition-smooth)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
+                              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+                              e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.15)';
+                            }}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Watchlist Section */}
         <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', marginTop: '0.375rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.375rem' }}>
           <div style={{ 
@@ -900,149 +837,7 @@ export function Sidebar({
               <Eye size={12} style={{ color: 'var(--color-primary)' }} />
               <span>{t('sidebar.watchlist', 'Watchlist')}</span>
             </div>
-            <button 
-              onClick={() => setShowAddInput(!showAddInput)}
-              title={t('sidebar.add_to_watchlist', 'Add to Watchlist')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '2px',
-                borderRadius: '4px'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-            >
-              <Plus size={13} />
-            </button>
           </div>
-
-          {/* Inline Add Ticker Form */}
-          {showAddInput && (
-            <form onSubmit={handleAddSymbol} style={{ display: 'flex', gap: '0.25rem', padding: '0.25rem 0.5rem', marginBottom: '0.5rem', position: 'relative' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input 
-                  type="text"
-                  value={newSymbol}
-                  onChange={(e) => setNewSymbol(e.target.value)}
-                  placeholder="e.g. TSLA, NVDA"
-                  autoFocus
-                  style={{
-                    width: '100%',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: '4px',
-                    padding: '0.25rem 0.4rem',
-                    fontSize: '0.75rem',
-                    color: 'white',
-                    outline: 'none'
-                  }}
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <div 
-                    className="search-suggestions-dropdown" 
-                    style={{ 
-                      position: 'absolute', 
-                      top: '100%', 
-                      left: 0, 
-                      right: 0, 
-                      zIndex: 2000, 
-                      maxHeight: '150px',
-                      background: 'rgba(18, 24, 38, 0.98)',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '8px',
-                      overflowY: 'auto'
-                    }}
-                  >
-                    {suggestions.map((s) => (
-                      <div 
-                        key={s.symbol}
-                        className="suggestion-item" 
-                        onClick={() => handleSelectWatchlistSuggestion(s)}
-                        style={{
-                          padding: '0.4rem 0.6rem',
-                          fontSize: '0.75rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          gap: '2px',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-                          cursor: 'pointer',
-                          textAlign: 'left'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 700, color: 'white' }}>{s.symbol}</span>
-                          <span style={{ 
-                            fontSize: '0.6rem', 
-                            background: 'rgba(255, 255, 255, 0.08)', 
-                            padding: '1px 4px', 
-                            borderRadius: '3px',
-                            color: 'var(--text-muted)'
-                          }}>{s.exchange}</span>
-                        </div>
-                        <span style={{ 
-                          fontSize: '0.65rem', 
-                          color: 'var(--text-muted)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          width: '100%',
-                          textAlign: 'left'
-                        }} title={s.name}>{s.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '0.2rem', flexShrink: 0 }}>
-                <button 
-                  type="submit"
-                  style={{
-                    background: 'var(--color-primary)',
-                    border: 'none',
-                    borderRadius: '4px',
-                    color: 'white',
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '0.7rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setShowAddInput(false);
-                    setNewSymbol('');
-                    setSuggestions([]);
-                    setShowSuggestions(false);
-                  }}
-                  title={t('common.cancel', 'Cancel')}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: '4px',
-                    color: 'var(--text-muted)',
-                    padding: '0.25rem 0.4rem',
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            </form>
-          )}
 
           {/* Watchlist Scrollable List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem' }}>

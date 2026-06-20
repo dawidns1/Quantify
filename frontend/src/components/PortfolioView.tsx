@@ -1486,6 +1486,7 @@ export function PortfolioView({
                       <DividendCalendar 
                         dividends={dividendsList}
                         baseCurrency={summary.base_currency}
+                        viewMode={dividendViewMode}
                       />
                     </div>
                   )}
@@ -1702,26 +1703,7 @@ export function PortfolioView({
                       <span>{t('dashboard.add_tx_shortcut', 'Add Transaction')}</span>
                     </button>
                   )}
-                  {/* Modal Search Bar */}
-                  {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
-                      <input 
-                        type="text" 
-                        placeholder={t('dashboard.search_tx_history_placeholder', 'Search transactions...')} 
-                        value={modalSearchQuery}
-                        onChange={(e) => setModalSearchQuery(e.target.value)}
-                        className="input-field"
-                        style={{ 
-                          paddingLeft: '26px', 
-                          fontSize: '0.72rem', 
-                          height: '28px', 
-                          width: '150px',
-                          borderRadius: '6px'
-                        }}
-                      />
-                    </div>
-                  )}
+
                   <button 
                     onClick={() => setSelectedPositionSymbol(null)}
                     className="modal-close-btn"
@@ -2062,6 +2044,69 @@ export function PortfolioView({
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Transaction History Section Header & Search */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginTop: '0.9rem', 
+                  marginBottom: '0.45rem', 
+                  flexShrink: 0 
+                }}>
+                  <span style={{ 
+                    fontSize: '0.68rem', 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase', 
+                    color: 'var(--text-muted)', 
+                    letterSpacing: '0.5px' 
+                  }}>
+                    {t('holdings.transaction_history', 'Transaction History')}
+                  </span>
+                  
+                  {/* Modal Search Bar positioned right around the table */}
+                  {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <Search size={13} style={{ position: 'absolute', left: '8px', color: 'var(--text-muted)' }} />
+                      <input 
+                        type="text" 
+                        placeholder={t('dashboard.search_tx_history_placeholder', 'Search transactions...')} 
+                        value={modalSearchQuery}
+                        onChange={(e) => setModalSearchQuery(e.target.value)}
+                        className="input-field"
+                        style={{ 
+                          paddingLeft: '26px', 
+                          fontSize: '0.72rem', 
+                          height: '26px', 
+                          width: '165px',
+                          borderRadius: '6px',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid var(--panel-border)',
+                          color: 'white',
+                          outline: 'none'
+                        }}
+                      />
+                      {modalSearchQuery && (
+                        <button
+                          onClick={() => setModalSearchQuery('')}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
