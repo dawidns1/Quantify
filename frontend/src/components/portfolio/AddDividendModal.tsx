@@ -231,7 +231,6 @@ export function AddDividendModal({
             <button 
               onClick={onClose}
               className="modal-close-btn"
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
             >
               <X size={18} />
             </button>
@@ -293,7 +292,7 @@ export function AddDividendModal({
                     setFormSymbol(e.target.value);
                     setIsSuggestionSelected(false);
                   }}
-                  style={{ textTransform: 'uppercase', cursor: editingDividend ? 'not-allowed' : 'text' }}
+                  style={{ width: '100%', textTransform: 'uppercase', cursor: editingDividend ? 'not-allowed' : 'text' }}
                 />
 
                 {/* Autocomplete Dropdown List */}
@@ -325,7 +324,7 @@ export function AddDividendModal({
                   disabled={isOverrideMode}
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
-                  style={{ cursor: isOverrideMode ? 'not-allowed' : 'text' }}
+                  style={{ width: '100%', cursor: isOverrideMode ? 'not-allowed' : 'text' }}
                 />
               </div>
             </div>
@@ -338,13 +337,14 @@ export function AddDividendModal({
                   className="input-field"
                   disabled
                   value={formAccount}
-                  style={{ cursor: 'not-allowed' }}
+                  style={{ width: '100%', cursor: 'not-allowed' }}
                 />
               ) : (
                 <select
                   className="input-field"
                   value={formAccount}
                   onChange={(e) => setFormAccount(e.target.value)}
+                  style={{ width: '100%', cursor: 'pointer' }}
                 >
                   {uniqueAccounts.map(acc => (
                     <option key={acc} value={acc}>{acc}</option>
@@ -368,6 +368,7 @@ export function AddDividendModal({
                   value={formShares}
                   onChange={(e) => setFormShares(e.target.value)}
                   required
+                  style={{ width: '100%' }}
                 />
               </div>
 
@@ -382,6 +383,7 @@ export function AddDividendModal({
                   value={formPayout}
                   onChange={(e) => setFormPayout(e.target.value)}
                   required
+                  style={{ width: '100%' }}
                 />
               </div>
             </div>

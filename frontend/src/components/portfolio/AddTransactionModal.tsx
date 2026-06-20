@@ -347,7 +347,6 @@ export function AddTransactionModal({
             <button 
               onClick={onClose}
               className="modal-close-btn"
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
             >
               <X size={20} />
             </button>

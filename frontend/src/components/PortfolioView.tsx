@@ -1790,7 +1790,6 @@ export function PortfolioView({
                   <button 
                     onClick={() => setSelectedPositionSymbol(null)}
                     className="modal-close-btn"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
                   >
                     <X size={20} />
                   </button>
@@ -2326,7 +2325,6 @@ export function PortfolioView({
                 <button 
                   onClick={() => setCustomModal(null)}
                   className="modal-close-btn"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                 >
                   <X size={20} />
                 </button>

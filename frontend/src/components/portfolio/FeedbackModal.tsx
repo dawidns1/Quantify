@@ -83,7 +83,6 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               type="button"
               onClick={onClose}
               className="modal-close-btn"
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.25rem' }}
             >
               <X size={18} />
             </button>

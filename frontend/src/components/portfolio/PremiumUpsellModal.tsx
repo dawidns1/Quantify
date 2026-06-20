@@ -63,7 +63,7 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
             <button 
               onClick={onClose}
               className="modal-close-btn"
-              style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: '1.25rem', right: '1.25rem' }}
             >
               <X size={20} />
             </button>
