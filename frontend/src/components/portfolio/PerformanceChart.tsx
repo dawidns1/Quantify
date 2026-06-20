@@ -25,6 +25,33 @@ ChartJS.register(
   Filler
 );
 
+// Custom Chart.js plugin to draw vertical guide line on hover
+const verticalLinePlugin = {
+  id: 'verticalLine',
+  afterDraw: (chart: any) => {
+    if (chart.tooltip && chart.tooltip.getActiveElements().length) {
+      const activePoint = chart.tooltip.getActiveElements()[0];
+      const ctx = chart.ctx;
+      const x = activePoint.element.x;
+      const topY = chart.scales.y.top;
+      const bottomY = chart.scales.y.bottom;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1;
+      
+      const dataset = chart.data.datasets[activePoint.datasetIndex];
+      const strokeColor = dataset.borderColor || 'rgba(6, 182, 212, 0.4)';
+      ctx.strokeStyle = typeof strokeColor === 'string' ? strokeColor : 'rgba(6, 182, 212, 0.4)';
+      ctx.setLineDash([4, 4]); // dashed line
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+
 interface PerformanceChartProps {
   chartData: { dates: string[]; nav: number[]; cost_basis: number[] } | null;
   loadingChart: boolean;
@@ -152,7 +179,10 @@ export function PerformanceChart({
           tension: 0.15,
           borderWidth: 2,
           pointRadius: 0,
-          pointHoverRadius: 4
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#06b6d4',
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 1.5
         },
         {
           label: 'Cost Basis',
@@ -275,6 +305,7 @@ export function PerformanceChart({
             <Line 
               options={chartOptions}
               data={chartDataFormatted}
+              plugins={[verticalLinePlugin]}
             />
             {loadingChart && (
               <div style={{

@@ -39,6 +39,33 @@ ChartJS.register(
   Filler
 );
 
+// Custom Chart.js plugin to draw vertical guide line on hover
+const verticalLinePlugin = {
+  id: 'verticalLine',
+  afterDraw: (chart: any) => {
+    if (chart.tooltip && chart.tooltip.getActiveElements().length) {
+      const activePoint = chart.tooltip.getActiveElements()[0];
+      const ctx = chart.ctx;
+      const x = activePoint.element.x;
+      const topY = chart.scales.y.top;
+      const bottomY = chart.scales.y.bottom;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      ctx.lineWidth = 1;
+      
+      const dataset = chart.data.datasets[activePoint.datasetIndex];
+      const strokeColor = dataset.borderColor || 'rgba(16, 185, 129, 0.4)';
+      ctx.strokeStyle = typeof strokeColor === 'string' ? strokeColor : 'rgba(16, 185, 129, 0.4)';
+      ctx.setLineDash([4, 4]); // dashed line
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -444,7 +471,10 @@ export function PortfolioView({
           borderColor: accentColor,
           borderWidth: 1.75,
           pointRadius: 0,
-          pointHoverRadius: 4,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: accentColor,
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 1.5,
           pointHitRadius: 10,
           tension: 0.15
         }
@@ -1932,6 +1962,7 @@ export function PortfolioView({
                       <Line 
                         options={modalChartOptions}
                         data={modalChartFormatted}
+                        plugins={[verticalLinePlugin]}
                       />
                     ) : (
                       <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
