@@ -1683,6 +1683,8 @@ export function PortfolioView({
         }}
         holdingSymbols={holdings.map(h => h.symbol)}
         apiBaseUrl={apiBaseUrl}
+        linkCash={linkCash}
+        setLinkCash={setLinkCash}
       />
 
       {/* CSV IMPORT DIALOG MODAL */}

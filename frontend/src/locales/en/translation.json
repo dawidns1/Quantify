@@ -200,7 +200,8 @@
       "label_currency": "Transaction Currency",
       "label_account": "Account",
       "placeholder_symbol": "e.g. AAPL, MSFT, CDR.WA",
-      "placeholder_account": "e.g. mBank, XTB, IBKR"
+      "placeholder_account": "e.g. mBank, XTB, IBKR",
+      "link_cash_desc": "Link cash balance (auto-adjust cash position for stock transactions)"
     },
     "settings": {
       "title": "Portfolio Settings",
@@ -293,7 +294,8 @@
       "err_shares": "Shares must be a positive number.",
       "err_payout": "Payout per share must be a positive number.",
       "btn_save": "Save Dividend",
-      "btn_saving": "Saving..."
+      "btn_saving": "Saving...",
+      "link_cash_desc": "Link cash balance (auto-adjust cash position for dividend payouts)"
     }
   },
   "fx": {

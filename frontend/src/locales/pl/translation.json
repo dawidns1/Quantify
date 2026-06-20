@@ -200,7 +200,8 @@
       "label_currency": "Waluta transakcji",
       "label_account": "Konto",
       "placeholder_symbol": "np. AAPL, MSFT, CDR.WA",
-      "placeholder_account": "np. mBank, XTB, IBKR"
+      "placeholder_account": "np. mBank, XTB, IBKR",
+      "link_cash_desc": "Powiąż saldo gotówkowe (automatycznie dostosuj pozycję gotówkową dla transakcji akcji)"
     },
     "settings": {
       "title": "Ustawienia Portfela",
@@ -293,7 +294,8 @@
       "err_shares": "Ilość akcji musi być liczbą dodatnią.",
       "err_payout": "Wypłata na akcję musi być liczbą dodatnią.",
       "btn_save": "Zapisz dywidendę",
-      "btn_saving": "Zapisywanie..."
+      "btn_saving": "Zapisywanie...",
+      "link_cash_desc": "Powiąż saldo gotówkowe (automatycznie dostosuj pozycję gotówkową dla wypłat dywidend)"
     }
   },
   "fx": {

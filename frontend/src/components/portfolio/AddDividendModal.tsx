@@ -14,6 +14,8 @@ interface AddDividendModalProps {
   onSaveSuccess: (updatedSettings: any) => void;
   holdingSymbols?: string[];
   apiBaseUrl?: string;
+  linkCash: boolean;
+  setLinkCash: (val: boolean) => void;
 }
 
 export function AddDividendModal({
@@ -25,7 +27,9 @@ export function AddDividendModal({
   portfolioSettings,
   onSaveSuccess,
   holdingSymbols = [],
-  apiBaseUrl = 'http://localhost:8000'
+  apiBaseUrl = 'http://localhost:8000',
+  linkCash,
+  setLinkCash
 }: AddDividendModalProps) {
   const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
@@ -380,6 +384,20 @@ export function AddDividendModal({
                   required
                 />
               </div>
+            </div>
+
+             {/* Link Cash Balance checkbox inside the dividend modal */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.5rem', marginBottom: '0.5rem', padding: '0 0.25rem' }}>
+              <input 
+                id="form-link-cash-div"
+                type="checkbox" 
+                checked={linkCash}
+                onChange={(e) => setLinkCash(e.target.checked)}
+                style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+              />
+              <label htmlFor="form-link-cash-div" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
+                {t('modals.add_div.link_cash_desc', 'Link cash balance (auto-adjust cash position for dividend payouts)')}
+              </label>
             </div>
 
             {isOverrideMode && (
