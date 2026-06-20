@@ -9,6 +9,7 @@ interface LedgerTableProps {
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onImportCSVClick?: () => void;
+  style?: React.CSSProperties;
 }
 
 export function LedgerTable({
@@ -16,7 +17,8 @@ export function LedgerTable({
   activePortfolioRole,
   onEditTransaction,
   onDeleteTransaction,
-  onImportCSVClick
+  onImportCSVClick,
+  style
 }: LedgerTableProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,7 +130,7 @@ export function LedgerTable({
   };
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: 'var(--card-padding, 1rem)' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: 'var(--card-padding, 1rem)', ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('ledger.header', 'Transaction History Ledger')}</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -188,7 +190,7 @@ export function LedgerTable({
           <p>{t('ledger.no_matches', 'No transactions match your search query.')}</p>
         </div>
       ) : (
-        <div className="table-wrapper">
+        <div className="table-wrapper" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <table className="screener-table">
             <thead>
               <tr>

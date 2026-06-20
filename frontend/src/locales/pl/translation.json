@@ -106,6 +106,7 @@
     "col_fees": "Prowizje",
     "col_value": "Wartość netto",
     "col_account": "Rachunek",
+    "col_return": "Zwrot",
     "col_actions": "Akcje",
     "action_delete": "Usuń",
     "btn_add_tx": "Dodaj transakcję",

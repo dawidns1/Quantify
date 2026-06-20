@@ -1,5 +1,6 @@
 import os
 import time
+import math
 import pandas as pd
 from datetime import date, timedelta
 import yfinance as yf
@@ -20,6 +21,47 @@ YF_SESSION.verify = False
 YF_SESSION.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
 })
+
+FALLBACK_RATES = {
+    "USDPLN": 4.0, "EURPLN": 4.3, 
+    "PLNUSD": 0.25, "PLNEUR": 0.23,
+    "USDEUR": 0.92, "EURUSD": 1.08
+}
+
+def guess_native_currency(symbol: str) -> str:
+    symbol = symbol.upper().strip()
+    suffix = symbol.split(".")[-1] if "." in symbol else ""
+    if suffix in {"DE", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI", "EE", "HE", "OL", "IC"}:
+        return "EUR"
+    if suffix == "WA":
+        return "PLN"
+    if suffix == "L":
+        return "GBP"
+    if suffix == "SW":
+        return "CHF"
+    if suffix in {"TO", "V"}:
+        return "CAD"
+    if suffix == "AX":
+        return "AUD"
+    if suffix == "HK":
+        return "HKD"
+    if suffix == "SA":
+        return "BRL"
+    if suffix == "MX":
+        return "MXN"
+    if suffix in {"KS", "KQ"}:
+        return "KRW"
+    if suffix == "T":
+        return "JPY"
+    if suffix in {"NS", "BO"}:
+        return "INR"
+    if suffix == "SG":
+        return "SGD"
+    if suffix == "ST":
+        return "SEK"
+    if suffix == "CO":
+        return "DKK"
+    return "USD"
 
 class BaseDataProvider:
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
@@ -110,11 +152,12 @@ class YFinanceProvider(BaseDataProvider):
                 except Exception as sym_err:
                     print(f"Error parsing live bulk data for {sym}: {sym_err}")
                 
+                guessed_currency = guess_native_currency(sym)
                 res["stocks"][sym] = {
                     "live_price": live_price,
                     "previous_close": previous_close,
                     "company_name": sym,
-                    "native_currency": "USD"  # Will resolve default base values
+                    "native_currency": guessed_currency
                 }
                 
             for pair in fx_pairs:
@@ -137,6 +180,10 @@ class YFinanceProvider(BaseDataProvider):
                         rate = float(non_nan_series.iloc[-1])
                 except Exception as pair_err:
                     print(f"Error parsing live FX bulk data for {pair}: {pair_err}")
+                
+                if not rate or rate == 1.0 or math.isnan(rate):
+                    base_pair = pair.replace("=X", "")
+                    rate = FALLBACK_RATES.get(base_pair, 1.0)
                 res["fx"][pair] = rate
                 
         except Exception as e:
@@ -201,7 +248,7 @@ class YFinanceProvider(BaseDataProvider):
             except Exception:
                 native_currency = None
             if not native_currency:
-                native_currency = info_dict.get("currency") or "USD"
+                native_currency = info_dict.get("currency") or guess_native_currency(symbol)
                 
             try:
                 quote_type = fast.get("quoteType")
@@ -232,11 +279,18 @@ class YFinanceProvider(BaseDataProvider):
                 exchange = info_dict.get("exchange") or ""
         except Exception as e:
             print(f"YFinance live ticker download failed for {symbol}: {e}")
+            live_price = 0.0
+            company_name = symbol
+            native_currency = guess_native_currency(symbol)
+            quote_type = None
+            previous_close = 0.0
+            timezone = "Unknown"
+            exchange = ""
             
         return {
             "live_price": float(live_price) if live_price else 0.0,
             "company_name": company_name,
-            "native_currency": native_currency.upper().strip() if native_currency else "USD",
+            "native_currency": native_currency.upper().strip() if native_currency else guess_native_currency(symbol),
             "quote_type": quote_type,
             "previous_close": float(previous_close) if previous_close else 0.0,
             "timezone": timezone,

@@ -106,6 +106,7 @@
     "col_fees": "Fees",
     "col_value": "Net Value",
     "col_account": "Account",
+    "col_return": "Return",
     "col_actions": "Actions",
     "action_delete": "Delete",
     "btn_add_tx": "Add Transaction",

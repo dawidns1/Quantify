@@ -237,9 +237,7 @@ export function PortfolioView({
 
   useEffect(() => {
     const handleResize = () => {
-      const vh = window.innerHeight;
       const isDesktop = window.innerWidth >= 1025;
-      const headerOffset = 20; // 1.25rem is 20px
 
       if (!isDesktop) {
         setLeftStickyStyle({ minWidth: 0 });
@@ -247,36 +245,24 @@ export function PortfolioView({
         return;
       }
 
-      if (leftColRef.current) {
-        const leftHeight = leftColRef.current.getBoundingClientRect().height;
-        const topValue = leftHeight + headerOffset > vh 
-          ? `calc(100vh - ${leftHeight}px - 1.25rem)` 
-          : '1.25rem';
-        
-        setLeftStickyStyle({
-          minWidth: 0,
-          position: 'sticky',
-          top: topValue,
-          alignSelf: 'start'
-        });
-      }
+      setLeftStickyStyle({
+        minWidth: 0,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0
+      });
 
-      if (rightColRef.current) {
-        const rightHeight = rightColRef.current.getBoundingClientRect().height;
-        const topValue = rightHeight + headerOffset > vh 
-          ? `calc(100vh - ${rightHeight}px - 1.25rem)` 
-          : '1.25rem';
-
-        setRightStickyStyle({
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          minWidth: 0,
-          position: 'sticky',
-          top: topValue,
-          alignSelf: 'start'
-        });
-      }
+      setRightStickyStyle({
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.75rem',
+        minWidth: 0,
+        height: '100%',
+        overflowY: 'auto',
+        paddingRight: '6px',
+        minHeight: 0
+      });
     };
 
     // Run measurement
@@ -820,12 +806,28 @@ export function PortfolioView({
       );
     }
     
-    // 3. Map with totalLocal
+    // 3. Map with totalLocal and return metrics
+    const holding = holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
+    const currentPrice = holding?.current_price_local || 0;
+
     const listWithTotals = list.map(tx => {
       const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+      
+      let gainVal = 0;
+      let gainPct = 0;
+      
+      if (tx.type === 'BUY' && currentPrice > 0) {
+        const costBasis = (tx.shares * tx.price) + tx.fees;
+        const currentValue = tx.shares * currentPrice;
+        gainVal = currentValue - costBasis;
+        gainPct = costBasis > 0 ? (gainVal / costBasis) * 100 : 0;
+      }
+
       return {
         ...tx,
-        totalLocal
+        totalLocal,
+        gainVal,
+        gainPct
       };
     });
     
@@ -840,6 +842,9 @@ export function PortfolioView({
       } else if (modalSortField === 'type') {
         valA = a.type;
         valB = b.type;
+      } else if (modalSortField === 'account') {
+        valA = a.account || 'Default';
+        valB = b.account || 'Default';
       } else if (modalSortField === 'shares') {
         valA = a.shares;
         valB = b.shares;
@@ -852,6 +857,9 @@ export function PortfolioView({
       } else if (modalSortField === 'total') {
         valA = a.totalLocal;
         valB = b.totalLocal;
+      } else if (modalSortField === 'return') {
+        valA = a.gainVal;
+        valB = b.gainVal;
       } else {
         valA = a.date;
         valB = b.date;
@@ -869,7 +877,7 @@ export function PortfolioView({
     });
     
     return listWithTotals;
-  }, [transactions, selectedPositionSymbol, modalSearchQuery, modalSortField, modalSortAsc]);
+  }, [transactions, holdings, selectedPositionSymbol, modalSearchQuery, modalSortField, modalSortAsc]);
 
   // Find holding details for the selected position modal
   const holdingDetails = useMemo(() => {
@@ -1044,7 +1052,7 @@ export function PortfolioView({
 
       {/* MAIN CONTENT AREA */}
       <main className="main-content">
-        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative' }}>
+        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Glowing Neon Top Progress Bar */}
           {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
@@ -1232,7 +1240,11 @@ export function PortfolioView({
 
               {/* OVERVIEW TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'overview' ? 'block' : 'none'
+                display: subTab === 'overview' ? 'flex' : 'none',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+                height: '100%'
               }}>
                 {portfolioTransactions.length === 0 && !loadingTransactions ? (
                   <div className="glass-panel" style={{ padding: '3rem 2rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.04) 0%, rgba(236, 72, 153, 0.04) 100%)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px' }}>
@@ -1273,7 +1285,15 @@ export function PortfolioView({
                     </div>
                   </div>
                 ) : (
-                  <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+                  <div className="portfolio-grid" style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '2fr 1fr', 
+                    gap: '0.75rem', 
+                    marginTop: '0.25rem',
+                    flex: 1,
+                    minHeight: 0,
+                    height: '100%'
+                  }}>
                   {/* Left Column: Holdings Table */}
                   <div ref={leftColRef} className="sticky-column" style={leftStickyStyle}>
                     <HoldingsTable 
@@ -1442,9 +1462,12 @@ export function PortfolioView({
                 )}
               </div>
 
-              {/* LEDGER TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'ledger' ? 'block' : 'none'
+                display: subTab === 'ledger' ? 'flex' : 'none',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+                height: '100%'
               }}>
                 <LedgerTable 
                   transactions={transactions}
@@ -1452,12 +1475,16 @@ export function PortfolioView({
                   onEditTransaction={handleStartEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
                   onImportCSVClick={() => setShowImportModal(true)}
+                  style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
                 />
               </div>
 
-              {/* DIVIDENDS TAB CONTENT */}
               <div style={{ 
-                display: subTab === 'dividends' ? 'block' : 'none'
+                display: subTab === 'dividends' ? 'flex' : 'none',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+                height: '100%'
               }}>
                 {/* Dividends View Switcher Toolbar */}
                 <div style={{
@@ -2242,25 +2269,25 @@ export function PortfolioView({
                     <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                          <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
                           </th>
-                          <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
                           </th>
-                          <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_shares', 'Shares')} {renderModalSortArrow('shares')}
                           </th>
-                          <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_price', 'Price')} {renderModalSortArrow('price')}
                           </th>
-                          <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_fees', 'Fees')} {renderModalSortArrow('fees')}
                           </th>
-                          <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                          <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
                             {t('ledger.col_value', 'Total')} {renderModalSortArrow('total')}
                           </th>
-                          {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center' }}>{t('ledger.col_actions', 'Actions')}</th>}
+                          {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>{t('ledger.col_actions', 'Actions')}</th>}
                         </tr>
                       </thead>
                       <tbody>

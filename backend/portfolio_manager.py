@@ -328,8 +328,16 @@ class PortfolioManager:
         # Check L2 SQLite Cache
         sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
         if sqlite_data:
-            cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
-            return sqlite_data["live_price"]
+            cached_rate = sqlite_data["live_price"]
+            base_pair = pair.replace("=X", "")
+            src_curr = base_pair[:3]
+            dst_curr = base_pair[3:]
+            if cached_rate == 1.0 and src_curr != dst_curr:
+                # Cache contains invalid 1.0 rate, let's bypass cache to recalculate/re-download
+                pass
+            else:
+                cls._live_fx_cache[pair] = (sqlite_data["last_updated"], cached_rate)
+                return cached_rate
                 
         rate = None
         try:
@@ -1116,9 +1124,15 @@ class PortfolioManager:
         for symbol in symbol_txs.keys():
             info = cls.get_cached_live_ticker(symbol)
             native_currency = info["native_currency"]
-            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0)
-            # and it is not a cash currency symbol.
-            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]):
+            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
+            # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
+            suffix = symbol.split(".")[-1] if "." in symbol else ""
+            is_non_us_ticker = suffix in {
+                "DE", "WA", "L", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI",
+                "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
+                "SG", "ST", "CO", "EE", "HE", "OL", "IC"
+            }
+            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
                 
@@ -1561,9 +1575,15 @@ class PortfolioManager:
         for symbol in symbol_txs.keys():
             info = cls.get_cached_live_ticker(symbol)
             native_currency = info["native_currency"]
-            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0)
-            # and it is not a cash currency symbol.
-            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]):
+            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
+            # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
+            suffix = symbol.split(".")[-1] if "." in symbol else ""
+            is_non_us_ticker = suffix in {
+                "DE", "WA", "L", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI",
+                "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
+                "SG", "ST", "CO", "EE", "HE", "OL", "IC"
+            }
+            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
             ticker_info_tmp[symbol] = {

@@ -471,7 +471,7 @@ export function HoldingsTable({
   };
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)', height: '100%', minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -685,7 +685,7 @@ export function HoldingsTable({
           <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{t('holdings.empty_state_desc', 'Click "Add Transaction" below to register purchases.')}</p>
         </div>
       ) : (
-        <div className="table-wrapper">
+        <div className="table-wrapper" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <table 
             className="screener-table" 
             style={{ 
