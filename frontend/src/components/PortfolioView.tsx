@@ -1646,26 +1646,7 @@ export function PortfolioView({
             </>
           )}
 
-          {/* Legal Compliance & Market Data Disclaimer Footer */}
-          <footer style={{ 
-            marginTop: '2.5rem', 
-            padding: '1.25rem 0', 
-            borderTop: '1px solid var(--panel-border)', 
-            textAlign: 'center', 
-            fontSize: '0.72rem', 
-            color: 'var(--text-muted)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.35rem',
-            lineHeight: '1.45'
-          }}>
-            <div>
-              <strong>{t('dashboard.disclaimer_title', 'Disclaimer')}:</strong> {t('dashboard.disclaimer_desc', 'QuantiFi is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.')}
-            </div>
-            <div>
-              {t('dashboard.disclaimer_market_data', 'Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.')}
-            </div>
-          </footer>
+
 
         </div>
       </main>

@@ -94,6 +94,7 @@ export function Sidebar({
 
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
   // Global search state
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -1012,6 +1013,33 @@ export function Sidebar({
           )}
         </div>
 
+        {/* Disclaimer Link Trigger */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => {
+              setShowDisclaimerModal(true);
+              setShowCurrencyDropdown(false);
+              setShowLanguageDropdown(false);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: '0.72rem',
+              fontWeight: 500,
+              padding: '0.2rem 0.4rem',
+              borderRadius: '4px',
+              transition: 'var(--transition-smooth)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            title={t('sidebar.disclaimer_tooltip', 'View Legal Disclaimer')}
+          >
+            {t('dashboard.disclaimer_title', 'Disclaimer')}
+          </button>
+        </div>
+
         {/* Language Dropup */}
         <div style={{ position: 'relative' }}>
           <button
@@ -1093,6 +1121,66 @@ export function Sidebar({
           )}
         </div>
       </div>
+
+      {showDisclaimerModal && (
+        <>
+          <div 
+            onClick={() => setShowDisclaimerModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(5, 7, 13, 0.8)',
+              zIndex: 9999,
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(18, 24, 38, 0.98)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            width: '90%',
+            maxWidth: '420px',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+            zIndex: 10000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+          }}>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>
+              {t('dashboard.disclaimer_title', 'Disclaimer')}
+            </h4>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <p>
+                {t('dashboard.disclaimer_desc', 'QuantiFi is a portfolio tracking tool provided for educational and informational purposes only. We do not provide financial, investment, or tax advice.')}
+              </p>
+              <p>
+                {t('dashboard.disclaimer_market_data', 'Market data may be delayed and is provided "as is" without guarantees of accuracy or completeness.')}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDisclaimerModal(false)}
+              className="glow-btn"
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.45rem 1rem',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                border: 'none',
+                fontWeight: 600,
+                alignSelf: 'flex-end'
+              }}
+            >
+              {t('common.close', 'Close')}
+            </button>
+          </div>
+        </>
+      )}
     </aside>
   );
 }
