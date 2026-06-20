@@ -14,11 +14,26 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then((reg) => {
-            console.log('ServiceWorker registered successfully with scope: ', reg.scope);
-          }).catch((err) => {
-            console.error('ServiceWorker registration failed: ', err);
-          });
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            // Unregister any active service workers on localhost to prevent caching issues in development
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+              let hasUnregistered = false;
+              for (let registration of registrations) {
+                registration.unregister();
+                hasUnregistered = true;
+              }
+              if (hasUnregistered) {
+                console.log('Unregistered service worker on localhost');
+                window.location.reload();
+              }
+            });
+          } else {
+            navigator.serviceWorker.register('/sw.js').then((reg) => {
+              console.log('ServiceWorker registered successfully with scope: ', reg.scope);
+            }).catch((err) => {
+              console.error('ServiceWorker registration failed: ', err);
+            });
+          }
         });
       }
     </script>
