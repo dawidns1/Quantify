@@ -225,14 +225,6 @@ export function PreferencesModal({
             {/* Footer Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
               <button 
-                onClick={onClose}
-                className="cancel-btn"
-                style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: '6px' }}
-              >
-                {t('modals.common_cancel', 'Cancel')}
-              </button>
-              
-              <button 
                 onClick={handleSave}
                 disabled={saving || successMsg}
                 className="glow-btn"

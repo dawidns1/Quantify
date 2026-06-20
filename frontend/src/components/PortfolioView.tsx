@@ -227,7 +227,28 @@ export function PortfolioView({
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [dividendViewMode, setDividendViewMode] = useState<'both' | 'forecast' | 'calendar'>('both');
+  const [showDivForecast, setShowDivForecast] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_show_div_forecast') !== 'false';
+  });
+  const [showDivCalendar, setShowDivCalendar] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_show_div_calendar') !== 'false';
+  });
+
+  const handleToggleDivForecast = () => {
+    setShowDivForecast(prev => {
+      const next = !prev;
+      localStorage.setItem('portfolio_show_div_forecast', next ? 'true' : 'false');
+      return next;
+    });
+  };
+
+  const handleToggleDivCalendar = () => {
+    setShowDivCalendar(prev => {
+      const next = !prev;
+      localStorage.setItem('portfolio_show_div_calendar', next ? 'true' : 'false');
+      return next;
+    });
+  };
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
@@ -1604,151 +1625,172 @@ export function PortfolioView({
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0,
-                height: '100%'
+                height: '100%',
+                position: 'relative'
               }}>
-                {/* Dividends View Switcher Toolbar */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '0.75rem',
-                  gap: '0.75rem',
-                  flexWrap: 'wrap'
-                }}>
-                  <h3 className="portfolio-section-title" style={{ margin: 0 }}>
-                    {t('dividends.dashboard_title', 'Dividend Dashboard')}
-                  </h3>
-                  
-                  {/* Glassmorphic Segmented Control Switcher */}
-                  <div style={{
-                    display: 'flex',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                    borderRadius: '8px',
-                    padding: '3px',
-                    gap: '2px',
-                    position: 'relative',
-                    width: '320px',
-                    boxSizing: 'border-box'
-                  }}>
-                    {/* Sliding active pill indicator */}
-                    <div style={{
+                {/* Floating Expand Forecast Button when collapsed */}
+                {!showDivForecast && (
+                  <div 
+                    onClick={handleToggleDivForecast}
+                    style={{
                       position: 'absolute',
-                      top: '3px',
-                      bottom: '3px',
-                      left: dividendViewMode === 'both' 
-                        ? '3px' 
-                        : dividendViewMode === 'forecast' 
-                          ? 'calc(33.33% + 1px)' 
-                          : 'calc(66.66% + 1px)',
-                      width: 'calc(33.33% - 4px)',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: '6px',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      zIndex: 0
-                    }} />
-
-                    <button
-                      onClick={() => setDividendViewMode('both')}
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        color: dividendViewMode === 'both' ? 'white' : 'var(--text-muted)',
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        zIndex: 1,
-                        position: 'relative',
-                        transition: 'color 0.25s ease',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {t('dividends.view_both', 'Show Both')}
-                    </button>
-                    <button
-                      onClick={() => setDividendViewMode('forecast')}
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        color: dividendViewMode === 'forecast' ? 'white' : 'var(--text-muted)',
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        zIndex: 1,
-                        position: 'relative',
-                        transition: 'color 0.25s ease',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {t('dividends.view_forecast', '12m Forecast')}
-                    </button>
-                    <button
-                      onClick={() => setDividendViewMode('calendar')}
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        color: dividendViewMode === 'calendar' ? 'white' : 'var(--text-muted)',
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        zIndex: 1,
-                        position: 'relative',
-                        transition: 'color 0.25s ease',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {t('dividends.view_calendar', 'Calendar')}
-                    </button>
+                      left: '0px',
+                      top: '100px',
+                      width: '14px',
+                      height: '36px',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid var(--panel-border)',
+                      borderLeft: 'none',
+                      borderRadius: '0 6px 6px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      zIndex: 1000,
+                      boxShadow: '4px 0 16px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    title={t('dividends.show_forecast_tooltip', 'Expand Forecast')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'white';
+                      e.currentTarget.style.width = '18px';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                      e.currentTarget.style.width = '14px';
+                    }}
+                  >
+                    <span style={{ fontSize: '0.6rem' }}>▶</span>
                   </div>
-                </div>
+                )}
 
-                <div 
-                  key={dividendViewMode}
-                  style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: dividendViewMode === 'both' ? '1.2fr 1fr' : '1fr', 
-                    gap: '0.75rem', 
-                    marginBottom: '0.75rem',
-                    animation: 'fadeIn 0.25s ease-out'
-                  }} 
-                  className="portfolio-grid"
-                >
-                  {(dividendViewMode === 'both' || dividendViewMode === 'forecast') && (
-                    <div style={{ minWidth: 0, height: '100%' }}>
-                      <DividendForecast 
-                        apiBaseUrl={apiBaseUrl}
-                        activePortfolioId={activePortfolioId}
-                        session={session}
-                        baseCurrency={summary.base_currency}
-                        account={selectedAccount}
-                        linkCash={linkCash}
-                        holdings={holdings}
-                      />
-                    </div>
-                  )}
-                  {(dividendViewMode === 'both' || dividendViewMode === 'calendar') && (
-                    <div style={{ minWidth: 0, height: '100%' }}>
-                      <DividendCalendar 
-                        dividends={dividendsList}
-                        baseCurrency={summary.base_currency}
-                        viewMode={dividendViewMode}
-                      />
-                    </div>
-                  )}
-                </div>
+                {/* Floating Expand Calendar Button when collapsed */}
+                {!showDivCalendar && (
+                  <div 
+                    onClick={handleToggleDivCalendar}
+                    style={{
+                      position: 'absolute',
+                      right: '0px',
+                      top: '100px',
+                      width: '14px',
+                      height: '36px',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid var(--panel-border)',
+                      borderRight: 'none',
+                      borderRadius: '6px 0 0 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      zIndex: 1000,
+                      boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    title={t('dividends.show_calendar_tooltip', 'Expand Calendar')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'white';
+                      e.currentTarget.style.width = '18px';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                      e.currentTarget.style.width = '14px';
+                    }}
+                  >
+                    <span style={{ fontSize: '0.6rem' }}>◀</span>
+                  </div>
+                )}
+
+                {/* Collapsible Split-Pane Grid for Dividends */}
+                {(showDivForecast || showDivCalendar) && (
+                  <div 
+                    style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
+                      gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
+                      marginBottom: '0.3rem',
+                      animation: 'fadeIn 0.25s ease-out'
+                    }} 
+                    className="portfolio-grid"
+                  >
+                    {showDivForecast && (
+                      <div style={{ minWidth: 0, height: '100%' }}>
+                        <DividendForecast 
+                          apiBaseUrl={apiBaseUrl}
+                          activePortfolioId={activePortfolioId}
+                          session={session}
+                          baseCurrency={summary.base_currency}
+                          account={selectedAccount}
+                          linkCash={linkCash}
+                          holdings={holdings}
+                          onClose={handleToggleDivForecast}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Divider between Forecast and Calendar */}
+                    {(showDivForecast && showDivCalendar) && (
+                      <div 
+                        onClick={handleToggleDivCalendar}
+                        className="divider-line-hover"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          height: '100%',
+                          width: '100%',
+                          zIndex: 10
+                        }}
+                        title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
+                      >
+                        <div 
+                          className="divider-line"
+                          style={{
+                            width: '2px',
+                            height: '100%',
+                            background: 'var(--panel-border)',
+                            borderRadius: '1px',
+                            transition: 'background-color 0.2s'
+                          }}
+                        />
+                        <div 
+                          className="divider-pill"
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '12px',
+                            height: '32px',
+                            background: 'rgba(15, 23, 42, 0.95)',
+                            border: '1px solid var(--panel-border)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.55rem',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <span>▶</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {showDivCalendar && (
+                      <div style={{ minWidth: 0, height: '100%' }}>
+                        <DividendCalendar 
+                          dividends={dividendsList}
+                          baseCurrency={summary.base_currency}
+                          onClose={handleToggleDivCalendar}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <DividendLedgerTable 
                   dividends={dividendsList}
@@ -1759,7 +1801,7 @@ export function PortfolioView({
                     setShowAddDividendModal(true);
                   }}
                   onDeleteDividendClick={handleDeleteDividend}
-                  style={{ flex: 1, minHeight: 0, marginTop: '0.5rem' }}
+                  style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
                   onScrollToBottomChange={setIsDividendLedgerAtBottom}
                 />
               </div>

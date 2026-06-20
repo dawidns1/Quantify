@@ -11,6 +11,7 @@ interface DividendForecastProps {
   account: string;
   linkCash: boolean;
   holdings: any[];
+  onClose?: () => void;
 }
 
 interface ForecastData {
@@ -29,7 +30,8 @@ export function DividendForecast({
   baseCurrency,
   account,
   linkCash,
-  holdings
+  holdings,
+  onClose
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<ForecastData | null>(() => {
@@ -158,10 +160,24 @@ export function DividendForecast({
       borderRadius: '12px',
       position: 'relative'
     }}>
-      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-        <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
-        {t('dividends.forecast_title', '12-Month Forward Dividend Forecast')}
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+          <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
+          {t('dividends.forecast_title', '12-Month Forward Dividend Forecast')}
+        </h3>
+        {onClose && (
+          <button 
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }} 
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} 
+            title="Hide Card"
+            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+          >
+            <span style={{ fontSize: '0.75rem' }}>✕</span>
+          </button>
+        )}
+      </div>
 
       {!hasDividends || !data ? (
         <div style={{
