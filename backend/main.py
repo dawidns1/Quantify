@@ -329,7 +329,9 @@ def get_stock_detail(ticker: str):
             if not overview:
                 overview = collector.fetch_stock_overview(ticker_obj)
                 
-            shares = overview.get("market_cap", 0) / overview.get("price", 1) if overview.get("price") else 1.0
+            market_cap_safe = overview.get("market_cap") or 0.0
+            price_safe = overview.get("price") or 1.0
+            shares = market_cap_safe / price_safe if price_safe else 1.0
             history_data = collector.fetch_historical_detail(ticker_obj, shares)
             financials_data = collector.fetch_annual_financials(ticker_obj)
             
