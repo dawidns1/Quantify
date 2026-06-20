@@ -13,28 +13,26 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            // Unregister any active service workers on localhost to prevent caching issues in development
-            navigator.serviceWorker.getRegistrations().then((registrations) => {
-              let hasUnregistered = false;
-              for (let registration of registrations) {
-                registration.unregister();
-                hasUnregistered = true;
-              }
-              if (hasUnregistered) {
-                console.log('Unregistered service worker on localhost');
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // Unregister immediately on localhost to prevent caching issues in development
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            if (registrations.length > 0) {
+              const promises = registrations.map((r) => r.unregister());
+              Promise.all(promises).then(() => {
+                console.log('Unregistered active service workers on localhost');
                 window.location.reload();
-              }
-            });
-          } else {
+              });
+            }
+          });
+        } else {
+          window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').then((reg) => {
               console.log('ServiceWorker registered successfully with scope: ', reg.scope);
             }).catch((err) => {
               console.error('ServiceWorker registration failed: ', err);
             });
-          }
-        });
+          });
+        }
       }
     </script>
   </body>
