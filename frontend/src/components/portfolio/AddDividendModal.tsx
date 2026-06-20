@@ -281,7 +281,7 @@ export function AddDividendModal({
                 <label className="form-label">{t('modals.add_div.label_symbol')}</label>
                 <input
                   type="text"
-                  className="form-input"
+                  className="input-field"
                   disabled={!!editingDividend}
                   placeholder="e.g. AAPL"
                   value={formSymbol}
@@ -317,7 +317,7 @@ export function AddDividendModal({
                 <label className="form-label">{t('modals.add_div.label_date')}</label>
                 <input
                   type="date"
-                  className="form-input"
+                  className="input-field"
                   disabled={isOverrideMode}
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
@@ -331,14 +331,14 @@ export function AddDividendModal({
               {isOverrideMode ? (
                 <input
                   type="text"
-                  className="form-input"
+                  className="input-field"
                   disabled
                   value={formAccount}
                   style={{ cursor: 'not-allowed' }}
                 />
               ) : (
                 <select
-                  className="form-input"
+                  className="input-field"
                   value={formAccount}
                   onChange={(e) => setFormAccount(e.target.value)}
                 >
@@ -359,7 +359,7 @@ export function AddDividendModal({
                 <input
                   type="number"
                   step="any"
-                  className="form-input"
+                  className="input-field"
                   placeholder="0.00"
                   value={formShares}
                   onChange={(e) => setFormShares(e.target.value)}
@@ -373,7 +373,7 @@ export function AddDividendModal({
                 <input
                   type="number"
                   step="any"
-                  className="form-input"
+                  className="input-field"
                   placeholder="0.00"
                   value={formPayout}
                   onChange={(e) => setFormPayout(e.target.value)}

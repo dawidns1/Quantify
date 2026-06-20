@@ -198,7 +198,7 @@
       "label_date": "Data transakcji",
       "label_fees": "Prowizje maklerskie / opłaty",
       "label_currency": "Waluta transakcji",
-      "label_account": "Nazwa konta / Broker",
+      "label_account": "Konto",
       "placeholder_symbol": "np. AAPL, MSFT, CDR.WA",
       "placeholder_account": "np. mBank, XTB, IBKR"
     },

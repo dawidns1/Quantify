@@ -508,7 +508,7 @@ export function AddTransactionModal({
               </div>
 
               <div className="form-group" style={{ position: 'relative' }}>
-                <label className="form-label" htmlFor="form-account">{t('modals.add_tx.label_account', 'Account Name / Broker')}</label>
+                <label className="form-label" htmlFor="form-account">{t('modals.add_tx.label_account', 'Account')}</label>
                 <input 
                   id="form-account"
                   type="text" 

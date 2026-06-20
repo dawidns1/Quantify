@@ -198,7 +198,7 @@
       "label_date": "Transaction Date",
       "label_fees": "Brokerage Fees / Commission",
       "label_currency": "Transaction Currency",
-      "label_account": "Account Name / Broker",
+      "label_account": "Account",
       "placeholder_symbol": "e.g. AAPL, MSFT, CDR.WA",
       "placeholder_account": "e.g. mBank, XTB, IBKR"
     },
