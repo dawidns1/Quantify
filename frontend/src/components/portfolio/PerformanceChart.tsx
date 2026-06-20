@@ -159,6 +159,10 @@ export const PerformanceChart = memo(function PerformanceChart({
           }
         }
       },
+      hover: {
+        mode: 'index' as const,
+        intersect: false
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -196,10 +200,10 @@ export const PerformanceChart = memo(function PerformanceChart({
           tension: 0.15,
           borderWidth: 2,
           pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: '#06b6d4',
-          pointHoverBorderColor: '#ffffff',
-          pointHoverBorderWidth: 1.5
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#ffffff',
+          pointHoverBorderColor: '#06b6d4',
+          pointHoverBorderWidth: 2
         },
         {
           label: 'Cost Basis',
@@ -210,10 +214,10 @@ export const PerformanceChart = memo(function PerformanceChart({
           tension: 0.1,
           borderWidth: 1.5,
           pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: 'rgba(239, 68, 68, 0.85)',
-          pointHoverBorderColor: '#ffffff',
-          pointHoverBorderWidth: 1.5
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#ffffff',
+          pointHoverBorderColor: 'rgba(239, 68, 68, 0.85)',
+          pointHoverBorderWidth: 2
         }
       ]
     };

@@ -475,10 +475,10 @@ export function PortfolioView({
           borderColor: accentColor,
           borderWidth: 1.75,
           pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: accentColor,
-          pointHoverBorderColor: '#ffffff',
-          pointHoverBorderWidth: 1.5,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#ffffff',
+          pointHoverBorderColor: accentColor,
+          pointHoverBorderWidth: 2,
           pointHitRadius: 10,
           tension: 0.15
         }
@@ -507,6 +507,10 @@ export function PortfolioView({
             font: { family: 'Outfit', size: 9 }
           }
         }
+      },
+      hover: {
+        mode: 'index' as const,
+        intersect: false
       },
       plugins: {
         legend: { display: false },
