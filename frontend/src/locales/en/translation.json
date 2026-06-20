@@ -197,7 +197,7 @@
       "label_price": "Price",
       "label_date": "Transaction Date",
       "label_fees": "Fees",
-      "label_currency": "Transaction Currency",
+      "label_currency": "Currency",
       "label_account": "Account",
       "placeholder_symbol": "e.g. AAPL, MSFT, CDR.WA",
       "placeholder_account": "e.g. mBank, XTB, IBKR",

@@ -492,7 +492,7 @@ export function AddTransactionModal({
               </div>
               
               <div className="form-group">
-                <label className="form-label" htmlFor="form-currency">{t('modals.add_tx.label_currency', 'Transaction Currency')}</label>
+                <label className="form-label" htmlFor="form-currency">{t('modals.add_tx.label_currency', 'Currency')}</label>
                 <select 
                   id="form-currency"
                   className="input-field"
