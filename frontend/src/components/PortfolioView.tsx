@@ -218,6 +218,7 @@ export function PortfolioView({
   const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingDividend, setEditingDividend] = useState<any | null>(null);
+  const [isDividendLedgerAtBottom, setIsDividendLedgerAtBottom] = useState(false);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1640,6 +1641,7 @@ export function PortfolioView({
                   }}
                   onDeleteDividendClick={handleDeleteDividend}
                   style={{ flex: 1, minHeight: 0, marginTop: '0.5rem' }}
+                  onScrollToBottomChange={setIsDividendLedgerAtBottom}
                 />
               </div>
 
@@ -2481,13 +2483,18 @@ export function PortfolioView({
             boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
             zIndex: 99,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            outline: 'none'
+            outline: 'none',
+            opacity: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 0 : 1,
+            pointerEvents: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 'none' : 'auto',
+            transform: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 'scale(0)' : 'scale(1)'
           }}
           onMouseEnter={(e) => {
+            if (subTab === 'dividends' && isDividendLedgerAtBottom) return;
             e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
             e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
           }}
           onMouseLeave={(e) => {
+            if (subTab === 'dividends' && isDividendLedgerAtBottom) return;
             e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
             e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
           }}

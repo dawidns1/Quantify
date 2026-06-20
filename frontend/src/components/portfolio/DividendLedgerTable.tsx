@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, Edit2, Trash2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +9,7 @@ interface DividendLedgerTableProps {
   onEditDividendClick: (div: any) => void;
   onDeleteDividendClick: (div: any) => void;
   style?: React.CSSProperties;
+  onScrollToBottomChange?: (isAtBottom: boolean) => void;
 }
 
 export function DividendLedgerTable({
@@ -17,12 +18,33 @@ export function DividendLedgerTable({
   baseCurrency,
   onEditDividendClick,
   onDeleteDividendClick,
-  style
+  style,
+  onScrollToBottomChange
 }: DividendLedgerTableProps) {
+  const wasAtBottomRef = useRef(false);
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest dividends first
+
+  useEffect(() => {
+    wasAtBottomRef.current = false;
+    if (onScrollToBottomChange) {
+      onScrollToBottomChange(false);
+    }
+  }, [dividends.length, searchQuery, onScrollToBottomChange]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isScrollable = target.scrollHeight > target.clientHeight;
+    const isAtBottom = isScrollable && (target.scrollHeight - target.scrollTop <= target.clientHeight + 10);
+    if (isAtBottom !== wasAtBottomRef.current) {
+      wasAtBottomRef.current = isAtBottom;
+      if (onScrollToBottomChange) {
+        onScrollToBottomChange(isAtBottom);
+      }
+    }
+  };
 
   // Filter dividends by Symbol, Account, or Date (ignoring future projected ones in ledger)
   const filteredDividends = useMemo(() => {
@@ -157,7 +179,11 @@ export function DividendLedgerTable({
       </div>
 
       {/* Table Container */}
-      <div className="custom-scrollbar" style={{ overflowX: 'auto', flex: 1, minHeight: 0, overflowY: 'auto', border: '1px solid var(--panel-border)', borderRadius: '8px' }}>
+      <div 
+        className="custom-scrollbar" 
+        onScroll={handleScroll}
+        style={{ overflowX: 'auto', flex: 1, minHeight: 0, overflowY: 'auto', border: '1px solid var(--panel-border)', borderRadius: '8px' }}
+      >
         <table className="portfolio-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr>
