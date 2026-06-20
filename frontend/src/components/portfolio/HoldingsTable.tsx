@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Eye, Briefcase, Scale } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,58 @@ export function HoldingsTable({
   onRebalanceClick
 }: HoldingsTableProps) {
   const { t } = useTranslation();
+
+  // Column width resizing states
+  const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+    try {
+      const cached = localStorage.getItem('portfolio_holdings_col_widths');
+      return cached ? JSON.parse(cached) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const activeDragCol = useRef<string | null>(null);
+  const startX = useRef<number>(0);
+  const startWidth = useRef<number>(0);
+
+  const handleMouseDown = (e: React.MouseEvent, colId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    activeDragCol.current = colId;
+    startX.current = e.clientX;
+    const thElement = (e.target as HTMLElement).closest('th');
+    if (thElement) {
+      startWidth.current = thElement.getBoundingClientRect().width;
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!activeDragCol.current) return;
+    const deltaX = e.clientX - startX.current;
+    const newWidth = Math.max(50, startWidth.current + deltaX);
+    setColWidths((prev) => {
+      const next = { ...prev, [activeDragCol.current!]: newWidth };
+      localStorage.setItem('portfolio_holdings_col_widths', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleMouseUp = () => {
+    activeDragCol.current = null;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   // Sorting states
   const [holdingsSortField, setHoldingsSortField] = useState<string>(() => {
@@ -634,11 +686,30 @@ export function HoldingsTable({
         </div>
       ) : (
         <div className="table-wrapper">
-          <table className="screener-table">
+          <table 
+            className="screener-table" 
+            style={{ 
+              tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto',
+              width: '100%' 
+            }}
+          >
             <thead>
               <tr>
-                <th onClick={() => handleHoldingsSort('symbol')} style={{ userSelect: 'none' }}>
+                <th 
+                  onClick={() => handleHoldingsSort('symbol')} 
+                  style={{ 
+                    userSelect: 'none',
+                    position: 'relative',
+                    width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                    minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                    maxWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
+                  }}
+                >
                   {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
+                  <div 
+                    className={`col-resizer ${activeDragCol.current === 'symbol' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'symbol')}
+                  />
                 </th>
                 
                 {/* Dynamically render headers */}
@@ -651,21 +722,66 @@ export function HoldingsTable({
                       onClick={() => handleHoldingsSort(colId)} 
                       style={{ 
                         textAlign: col.align, 
-                        userSelect: 'none' 
+                        userSelect: 'none',
+                        position: 'relative',
+                        width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
+                        minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
+                        maxWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                       }}
                     >
                       {col.renderHeader(summary.base_currency)} {renderSortArrow(colId)}
+                      <div 
+                        className={`col-resizer ${activeDragCol.current === colId ? 'resizing' : ''}`}
+                        onMouseDown={(e) => handleMouseDown(e, colId)}
+                      />
                     </th>
                   );
                 })}
 
-                <th onClick={() => handleHoldingsSort('current_value_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                <th 
+                  onClick={() => handleHoldingsSort('current_value_base')} 
+                  style={{ 
+                    textAlign: 'right', 
+                    userSelect: 'none',
+                    position: 'relative',
+                    width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
+                    minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
+                    maxWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
+                  }}
+                >
                   {t('holdings.col_current', 'Current')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
+                  <div 
+                    className={`col-resizer ${activeDragCol.current === 'current_value_base' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'current_value_base')}
+                  />
                 </th>
-                <th onClick={() => handleHoldingsSort('gain_base')} style={{ textAlign: 'right', userSelect: 'none' }}>
+                <th 
+                  onClick={() => handleHoldingsSort('gain_base')} 
+                  style={{ 
+                    textAlign: 'right', 
+                    userSelect: 'none',
+                    position: 'relative',
+                    width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
+                    minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
+                    maxWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
+                  }}
+                >
                   {t('holdings.col_gain_loss', 'Gain/Loss')} {renderSortArrow('gain_base')}
+                  <div 
+                    className={`col-resizer ${activeDragCol.current === 'gain_base' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'gain_base')}
+                  />
                 </th>
-                <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
+                <th 
+                  style={{ 
+                    textAlign: 'center', 
+                    cursor: 'default', 
+                    background: 'rgba(255, 255, 255, 0.01)',
+                    width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                    maxWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
+                  }}
+                >
                   {t('holdings.col_actions', 'Actions')}
                 </th>
               </tr>
@@ -683,9 +799,19 @@ export function HoldingsTable({
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    {/* Fixed Ticker column with div wrapper for flex alignment */}
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {/* Fixed Ticker column with div wrapper for flex a                    {/* Fixed Ticker column with div wrapper for flex alignment */}
+                    <td 
+                      style={{ 
+                        fontWeight: 600, 
+                        color: 'var(--text-primary)',
+                        width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                        minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                        maxWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                        overflow: colWidths['symbol'] ? 'hidden' : 'visible',
+                        textOverflow: colWidths['symbol'] ? 'ellipsis' : 'clip'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden' }}>
                         {h.is_live && (
                           <span 
                             title="Market Session is Live"
@@ -701,17 +827,7 @@ export function HoldingsTable({
                             }} 
                           />
                         )}
-                        <span>{h.symbol}</span>
-                        <span style={{ 
-                          fontSize: '0.65rem', 
-                          color: 'var(--text-muted)', 
-                          background: 'rgba(255, 255, 255, 0.04)', 
-                          padding: '1px 4px', 
-                          borderRadius: '4px',
-                          marginLeft: '2px'
-                        }}>
-                          {h.currency}
-                        </span>
+                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{h.symbol}</span>
                       </div>
                     </td>
 
@@ -724,7 +840,12 @@ export function HoldingsTable({
                           key={colId} 
                           style={{ 
                             textAlign: col.align, 
-                            fontFamily: ['shares', 'avg_cost', 'price', 'cost', 'dividends', 'day_change', 'weight', 'fx_rate'].includes(colId) ? 'monospace' : 'inherit'
+                            fontFamily: ['shares', 'avg_cost', 'price', 'cost', 'dividends', 'day_change', 'weight', 'fx_rate'].includes(colId) ? 'monospace' : 'inherit',
+                            width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
+                            minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
+                            maxWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
+                            overflow: colWidths[colId] ? 'hidden' : 'visible',
+                            textOverflow: colWidths[colId] ? 'ellipsis' : 'clip'
                           }}
                         >
                           {col.renderCell(h, summary.base_currency)}
@@ -733,12 +854,33 @@ export function HoldingsTable({
                     })}
 
                     {/* Fixed ending columns */}
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                    <td 
+                      style={{ 
+                        textAlign: 'right', 
+                        fontFamily: 'monospace', 
+                        fontWeight: 600,
+                        width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
+                        minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
+                        maxWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
+                        overflow: colWidths['current_value_base'] ? 'hidden' : 'visible',
+                        textOverflow: colWidths['current_value_base'] ? 'ellipsis' : 'clip'
+                      }}
+                    >
                       <AnimateOnChange value={h.current_value_base} contextId={h.symbol}>
                         {formatCurrency(h.current_value_base, summary.base_currency)}
                       </AnimateOnChange>
                     </td>
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                    <td 
+                      style={{ 
+                        textAlign: 'right', 
+                        fontFamily: 'monospace',
+                        width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
+                        minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
+                        maxWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
+                        overflow: colWidths['gain_base'] ? 'hidden' : 'visible',
+                        textOverflow: colWidths['gain_base'] ? 'ellipsis' : 'clip'
+                      }}
+                    >
                       <AnimateOnChange value={h.gain_base} contextId={h.symbol} style={{ display: 'block' }}>
                         <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
                           {valIsProfit ? '+' : ''}{formatCurrency(h.gain_base, summary.base_currency)}
@@ -748,7 +890,16 @@ export function HoldingsTable({
                         </div>
                       </AnimateOnChange>
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td 
+                      style={{ 
+                        textAlign: 'center',
+                        width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                        minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                        maxWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                        overflow: colWidths['actions'] ? 'hidden' : 'visible',
+                        textOverflow: colWidths['actions'] ? 'ellipsis' : 'clip'
+                      }}
+                    >
                       {activePortfolioRole === 'viewer' ? (
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       ) : (

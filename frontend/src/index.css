@@ -336,7 +336,7 @@ body::before {
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-secondary);
   font-weight: 600;
-  padding: 0.6rem 1.25rem;
+  padding: 0.6rem 0.75rem;
   border-bottom: 1px solid var(--panel-border);
   user-select: none;
   cursor: pointer;
@@ -356,7 +356,7 @@ body::before {
 }
 
 .screener-table td {
-  padding: 0.45rem 1.25rem;
+  padding: 0.45rem 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   white-space: nowrap;
 }
@@ -1707,5 +1707,30 @@ select option {
 .spinner-ring {
   animation: spin-spinner 0.8s infinite linear;
 }
+
+/* Draggable Table Column Resizers */
+.screener-table th {
+  position: relative;
+}
+
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  user-select: none;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.col-resizer:hover,
+.col-resizer.resizing {
+  background-color: var(--color-primary);
+  opacity: 0.5;
+}
+
 
 
