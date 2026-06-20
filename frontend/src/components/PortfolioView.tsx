@@ -66,6 +66,8 @@ const verticalLinePlugin = {
   }
 };
 
+const modalChartPlugins = [verticalLinePlugin];
+
 import { PortfolioAllocation } from './portfolio/PortfolioAllocation';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -1962,7 +1964,7 @@ export function PortfolioView({
                       <Line 
                         options={modalChartOptions}
                         data={modalChartFormatted}
-                        plugins={[verticalLinePlugin]}
+                        plugins={modalChartPlugins}
                       />
                     ) : (
                       <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>

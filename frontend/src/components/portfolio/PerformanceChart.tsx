@@ -52,6 +52,22 @@ const verticalLinePlugin = {
   }
 };
 
+// Register custom top positioner to place the tooltip cleanly at the top of the chart area
+(Tooltip.positioners as any).top = function(this: any, items: any) {
+  if (!items || items.length === 0) return false;
+  const x = items[0].element.x;
+  const chart = this.chart;
+  const topY = chart.scales.y.top;
+  return {
+    x,
+    y: topY - 6,
+    xAlign: 'center',
+    yAlign: 'bottom'
+  };
+};
+
+const performanceChartPlugins = [verticalLinePlugin];
+
 interface PerformanceChartProps {
   chartData: { dates: string[]; nav: number[]; cost_basis: number[] } | null;
   loadingChart: boolean;
@@ -147,6 +163,8 @@ export function PerformanceChart({
       plugins: {
         legend: { display: false },
         tooltip: {
+          position: 'top' as any,
+          caretSize: 0,
           backgroundColor: 'rgba(10, 15, 30, 0.95)',
           titleColor: 'white',
           titleFont: { family: 'Outfit', size: 11, weight: 'bold' as const },
@@ -193,7 +211,10 @@ export function PerformanceChart({
           tension: 0.1,
           borderWidth: 1.5,
           pointRadius: 0,
-          pointHoverRadius: 0
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: 'rgba(239, 68, 68, 0.85)',
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 1.5
         }
       ]
     };
@@ -305,7 +326,7 @@ export function PerformanceChart({
             <Line 
               options={chartOptions}
               data={chartDataFormatted}
-              plugins={[verticalLinePlugin]}
+              plugins={performanceChartPlugins}
             />
             {loadingChart && (
               <div style={{
