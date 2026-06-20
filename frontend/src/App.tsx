@@ -38,9 +38,25 @@ function App() {
   useEffect(() => {
     if (settings.lowPerformanceMode) {
       document.body.classList.add('low-perf');
-    } else {
-      document.body.classList.remove('low-perf');
+      return;
     }
+    document.body.classList.remove('low-perf');
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const card = (e.target as HTMLElement).closest('.glass-panel, .glow-card') as HTMLElement;
+      if (card) {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
   }, [settings.lowPerformanceMode]);
 
   if (authLoading) {
