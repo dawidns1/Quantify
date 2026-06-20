@@ -410,7 +410,7 @@ export function Sidebar({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', minHeight: 0 }} className="custom-scrollbar">
         
         {/* Assets Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.65rem 0.75rem' }}>
           <div style={{ 
             fontSize: '0.62rem', 
             color: 'var(--text-muted)', 
@@ -420,11 +420,7 @@ export function Sidebar({
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            padding: '0.25rem 0.5rem',
-            marginTop: '0.25rem',
-            marginBottom: '0.35rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-            paddingBottom: '0.25rem'
+            marginBottom: '0.35rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Briefcase size={12} style={{ color: 'var(--color-primary)' }} />
@@ -620,7 +616,7 @@ export function Sidebar({
         </div>
 
         {/* Global Symbol Search / Lookup */}
-        <div style={{ padding: '0 0.5rem', margin: '0.5rem 0.5rem 0.25rem 0.5rem', position: 'relative', flexShrink: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.65rem 0.75rem', position: 'relative', flexShrink: 0, borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
           <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Search size={12} style={{ color: 'var(--color-primary)' }} />
             <span>{t('sidebar.search_title', 'Search')}</span>
@@ -818,7 +814,7 @@ export function Sidebar({
         </div>
 
         {/* Watchlist Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '0 0.5rem', marginTop: '0.375rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.375rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.65rem 0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
           <div style={{ 
             fontSize: '0.62rem', 
             color: 'var(--text-muted)', 
@@ -828,10 +824,7 @@ export function Sidebar({
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            padding: '0.25rem 0.5rem',
-            marginBottom: '0.35rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-            paddingBottom: '0.25rem'
+            marginBottom: '0.35rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Eye size={12} style={{ color: 'var(--color-primary)' }} />
