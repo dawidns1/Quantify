@@ -75,6 +75,16 @@ export function PerformanceChart({
     };
   }, [chartData, selectedRange]);
 
+  const performanceIndicator = useMemo(() => {
+    if (!filteredData || !filteredData.nav || filteredData.nav.length < 2) return null;
+    const startNAV = filteredData.nav[0];
+    const endNAV = filteredData.nav[filteredData.nav.length - 1];
+    const changeVal = endNAV - startNAV;
+    const changePct = startNAV !== 0 ? (changeVal / startNAV) * 100 : 0;
+    const isPositive = changeVal >= 0;
+    return { changeVal, changePct, isPositive };
+  }, [filteredData]);
+
   // Memoized Chart Options
   const chartOptions = useMemo(() => {
     return {
@@ -100,41 +110,28 @@ export function PerformanceChart({
           }
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.08)' },
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
           ticks: { 
             color: 'rgba(255, 255, 255, 0.75)', 
-            font: { family: 'Outfit', size: 9 } 
+            font: { family: 'Outfit', size: 9 }
           }
         }
       },
       plugins: {
-        legend: {
-          display: true,
-          position: 'top' as const,
-          labels: { 
-            color: 'rgba(255, 255, 255, 0.9)', 
-            font: { family: 'Outfit', size: 10, weight: 'bold' as const }, 
-            boxWidth: 15, 
-            usePointStyle: true,
-            pointStyle: 'line',
-            padding: 8
-          }
-        },
+        legend: { display: false },
         tooltip: {
-          mode: 'index' as const,
-          intersect: false,
-          backgroundColor: 'rgba(15, 23, 42, 0.96)',
-          titleColor: '#ffffff',
-          bodyColor: '#f1f5f9',
-          borderColor: 'rgba(255, 255, 255, 0.15)',
-          borderWidth: 1,
-          padding: 10,
-          cornerRadius: 6,
+          backgroundColor: 'rgba(10, 15, 30, 0.95)',
+          titleColor: 'white',
           titleFont: { family: 'Outfit', size: 11, weight: 'bold' as const },
-          bodyFont: { family: 'Outfit', size: 11 },
-          animation: {
-            duration: 0
-          }
+          bodyColor: 'rgba(255, 255, 255, 0.85)',
+          bodyFont: { family: 'Outfit', size: 10 },
+          borderColor: 'rgba(6, 182, 212, 0.25)',
+          borderWidth: 1,
+          padding: 8,
+          cornerRadius: 6,
+          displayColors: true,
+          mode: 'index' as const,
+          intersect: false
         }
       }
     };
@@ -142,33 +139,31 @@ export function PerformanceChart({
 
   // Memoized Chart Data
   const chartDataFormatted = useMemo(() => {
-    if (!filteredData || !filteredData.dates || filteredData.dates.length === 0) return null;
+    if (!filteredData) return null;
     return {
       labels: filteredData.dates,
       datasets: [
         {
           label: 'NAV',
           data: filteredData.nav,
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6, 182, 212, 0.05)',
           fill: true,
-          backgroundColor: 'rgba(6, 182, 212, 0.04)',
-          borderColor: '#06b6d4', // Glowing cyan
-          borderWidth: 1.75,
-          pointRadius: 0, 
-          pointHoverRadius: 4,
-          pointHitRadius: 10,
-          tension: 0.15
+          tension: 0.15,
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 4
         },
         {
           label: 'Cost Basis',
           data: filteredData.cost_basis,
-          fill: false,
-          borderColor: 'rgba(255, 255, 255, 0.65)',
-          borderWidth: 1.25,
+          borderColor: 'rgba(239, 68, 68, 0.65)',
           borderDash: [4, 4],
+          fill: false,
+          tension: 0.1,
+          borderWidth: 1.5,
           pointRadius: 0,
-          pointHoverRadius: 3,
-          pointHitRadius: 8,
-          tension: 0.05
+          pointHoverRadius: 0
         }
       ]
     };
@@ -181,10 +176,27 @@ export function PerformanceChart({
   return (
     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       {/* Header Row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
-        </h4>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
+          </h4>
+          {!loadingChart && performanceIndicator && (
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              fontFamily: 'monospace',
+              color: performanceIndicator.isPositive ? 'var(--color-green)' : 'var(--color-red)',
+              background: performanceIndicator.isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              border: `1px solid ${performanceIndicator.isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`,
+              marginLeft: '4px'
+            }}>
+              {performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changeVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changePct.toFixed(2)}%)
+            </span>
+          )}
+        </div>
         
         {/* Widget Controls */}
         {(onMoveUp || onMoveDown || onClose) && (
