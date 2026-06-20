@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Eye, Briefcase, Scale } from 'lucide-react';
+import { Eye, Briefcase, Scale, Layout } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
@@ -11,6 +11,8 @@ interface HoldingsTableProps {
   onQuickAction: (symbol: string, type: 'BUY' | 'SELL') => void;
   onSelectPositionSymbol: (symbol: string) => void;
   onRebalanceClick?: () => void;
+  onToggleDashboardCards?: () => void;
+  isDashboardCardsVisible?: boolean;
 }
 
 export function HoldingsTable({
@@ -19,7 +21,9 @@ export function HoldingsTable({
   activePortfolioRole,
   onQuickAction,
   onSelectPositionSymbol,
-  onRebalanceClick
+  onRebalanceClick,
+  onToggleDashboardCards,
+  isDashboardCardsVisible = true
 }: HoldingsTableProps) {
   const { t } = useTranslation();
 
@@ -508,6 +512,52 @@ export function HoldingsTable({
               }}
             >
               <Scale size={14} /> {t('holdings.btn_rebalance', 'Rebalance')}
+            </button>
+          )}
+          {onToggleDashboardCards && (
+            <button 
+              className="glass-btn action-btn-toggle-cards"
+              onClick={onToggleDashboardCards}
+              style={{
+                background: isDashboardCardsVisible ? 'rgba(6, 182, 212, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                borderColor: isDashboardCardsVisible ? 'rgba(6, 182, 212, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                color: isDashboardCardsVisible ? 'white' : 'var(--text-muted)',
+                fontWeight: 500,
+                borderRadius: '6px',
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.78rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: isDashboardCardsVisible ? '0 0 10px rgba(6, 182, 212, 0.03)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (!isDashboardCardsVisible) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                } else {
+                  e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
+                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
+                }
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isDashboardCardsVisible) {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.color = 'var(--text-muted)';
+                } else {
+                  e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
+                  e.currentTarget.style.color = 'white';
+                }
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <Layout size={14} /> {isDashboardCardsVisible ? t('holdings.btn_hide_cards', 'Hide Cards') : t('holdings.btn_show_cards', 'Show Cards')}
             </button>
           )}
           <button 

@@ -94,7 +94,9 @@
     "no_price_history": "No price history available.",
     "no_tx_found_for": "No transactions found for",
     "col_ticker": "Ticker",
-    "btn_rebalance": "Rebalance"
+    "btn_rebalance": "Rebalance",
+    "btn_hide_cards": "Hide Cards",
+    "btn_show_cards": "Show Cards"
   },
   "ledger": {
     "header": "Transaction History Ledger",

@@ -94,7 +94,9 @@
     "no_price_history": "Brak dostępnej historii kursów.",
     "no_tx_found_for": "Nie znaleziono transakcji dla",
     "col_ticker": "Ticker",
-    "btn_rebalance": "Rebalansuj"
+    "btn_rebalance": "Rebalansuj",
+    "btn_hide_cards": "Ukryj karty",
+    "btn_show_cards": "Pokaż karty"
   },
   "ledger": {
     "header": "Księga Historycznych Transakcji",

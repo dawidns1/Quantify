@@ -230,6 +230,21 @@ export function PortfolioView({
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
+  const [showDashboardCards, setShowDashboardCards] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_show_dashboard_cards') !== 'false';
+  });
+
+  const handleToggleDashboardCards = () => {
+    setShowDashboardCards(prev => {
+      const next = !prev;
+      localStorage.setItem('portfolio_show_dashboard_cards', next ? 'true' : 'false');
+      if (next && widgets.length === 0) {
+        setShowWidgetManager(true);
+      }
+      return next;
+    });
+  };
+
   // Dynamic Sticky Columns references & styling
   const leftColRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
@@ -1286,28 +1301,34 @@ export function PortfolioView({
                     </div>
                   </div>
                 ) : (
-                  <div className="portfolio-grid" style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '2fr 1fr', 
-                    gap: '0.75rem', 
-                    marginTop: '0.25rem',
-                    flex: 1,
-                    minHeight: 0,
-                    height: '100%'
-                  }}>
-                  {/* Left Column: Holdings Table */}
-                  <div ref={leftColRef} className="sticky-column" style={leftStickyStyle}>
-                    <HoldingsTable 
-                      holdings={holdings}
-                      summary={summary}
-                      activePortfolioRole={activePortfolioRole}
-                      onQuickAction={handleQuickAction}
-                      onSelectPositionSymbol={setSelectedPositionSymbol}
-                      onRebalanceClick={() => setShowRebalanceModal(true)}
-                    />
-                  </div>
-                  {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
-                  <div ref={rightColRef} style={rightStickyStyle}>
+                  (() => {
+                    const isRightColumnOpen = showDashboardCards && (widgets.length > 0 || showWidgetManager);
+                    return (
+                      <div className="portfolio-grid" style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: isRightColumnOpen ? '2fr 1fr' : '1fr', 
+                        gap: '0.75rem', 
+                        marginTop: '0.25rem',
+                        flex: 1,
+                        minHeight: 0,
+                        height: '100%'
+                      }}>
+                      {/* Left Column: Holdings Table */}
+                      <div ref={leftColRef} className="sticky-column" style={leftStickyStyle}>
+                        <HoldingsTable 
+                          holdings={holdings}
+                          summary={summary}
+                          activePortfolioRole={activePortfolioRole}
+                          onQuickAction={handleQuickAction}
+                          onSelectPositionSymbol={setSelectedPositionSymbol}
+                          onRebalanceClick={() => setShowRebalanceModal(true)}
+                          onToggleDashboardCards={handleToggleDashboardCards}
+                          isDashboardCardsVisible={isRightColumnOpen}
+                        />
+                      </div>
+                      {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
+                      {isRightColumnOpen && (
+                        <div ref={rightColRef} style={rightStickyStyle}>
                     {/* Render active widgets in order */}
                     {widgets.map((widgetId, index) => {
                       const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
@@ -1459,7 +1480,10 @@ export function PortfolioView({
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
+                    );
+                  })()
                 )}
               </div>
 
