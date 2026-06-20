@@ -89,10 +89,8 @@ body::before {
 }
 
 .glass-panel {
-  background: rgba(13, 20, 35, 0.45); /* Translucent dark background for glassmorphism */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05); /* Sleek thin border */
+  background: rgba(13, 20, 35, 0.85); /* Solid dark backing for maximum scrolling performance */
+  border: 1px solid rgba(255, 255, 255, 0.06); /* Sleek thin border */
   border-radius: 12px;
   padding: var(--card-padding, 1rem);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
@@ -111,7 +109,7 @@ body::before {
 
 .glass-panel.interactive:hover {
   border-color: rgba(6, 182, 212, 0.25);
-  background: rgba(13, 20, 35, 0.55);
+  background: rgba(13, 20, 35, 0.90);
   transform: translateY(-2px);
   box-shadow: 0 12px 40px 0 rgba(6, 182, 212, 0.08), 0 8px 32px 0 rgba(0, 0, 0, 0.35);
 }
