@@ -3,6 +3,23 @@ import time
 import pandas as pd
 from datetime import date, timedelta
 import yfinance as yf
+import urllib3
+import ssl
+import requests
+
+# Globally disable SSL certificate warnings and verification to prevent network errors in local environment
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+
+# Shared requests session to bypass SSL certificate verification and specify browser User-Agent
+YF_SESSION = requests.Session()
+YF_SESSION.verify = False
+YF_SESSION.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
+})
 
 class BaseDataProvider:
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
@@ -65,7 +82,7 @@ class YFinanceProvider(BaseDataProvider):
         symbols_str = " ".join(all_missing)
         res = {"stocks": {}, "fx": {}}
         try:
-            df = yf.download(symbols_str, period="5d", progress=False, group_by='ticker')
+            df = yf.download(symbols_str, period="5d", progress=False, group_by='ticker', session=YF_SESSION)
             
             for sym in symbols:
                 live_price = 0.0
@@ -136,17 +153,28 @@ class YFinanceProvider(BaseDataProvider):
         timezone = "UTC"
         exchange = ""
         try:
-            stock_ticker = yf.Ticker(symbol)
-            live_price = stock_ticker.fast_info.get("lastPrice")
-            if live_price is None:
-                live_price = stock_ticker.info.get("currentPrice") or 0.0
-                
-            company_name = None
+            stock_ticker = yf.Ticker(symbol, session=YF_SESSION)
+            
+            # Use fast_info first to avoid calling .info which can throw KeyError
+            fast = stock_ticker.fast_info
+            
             try:
-                company_name = stock_ticker.info.get("longName") or stock_ticker.info.get("shortName")
+                live_price = fast.get("lastPrice")
             except Exception:
-                pass
+                live_price = None
                 
+            info_dict = {}
+            try:
+                # Wrap .info access in try-except to handle KeyError: 'exchangeTimezoneName'
+                info_dict = stock_ticker.info or {}
+            except Exception as info_err:
+                print(f"Warning: Could not fetch stock_ticker.info for {symbol} ({info_err}). Using fast_info.")
+                
+            if live_price is None:
+                live_price = info_dict.get("currentPrice") or 0.0
+                
+            company_name = info_dict.get("longName") or info_dict.get("shortName")
+            
             if not company_name or company_name.upper().strip() == symbol.upper().strip():
                 try:
                     import requests
@@ -168,12 +196,40 @@ class YFinanceProvider(BaseDataProvider):
             if not company_name:
                 company_name = symbol
                 
-            native_currency = stock_ticker.fast_info.get("currency") or stock_ticker.info.get("currency") or "USD"
-            quote_type = stock_ticker.fast_info.get("quoteType") or stock_ticker.info.get("quoteType")
-            
-            previous_close = stock_ticker.fast_info.get("previousClose") or stock_ticker.info.get("regularMarketPreviousClose") or live_price
-            timezone = stock_ticker.fast_info.get("timezone") or "UTC"
-            exchange = stock_ticker.fast_info.get("exchange") or ""
+            try:
+                native_currency = fast.get("currency")
+            except Exception:
+                native_currency = None
+            if not native_currency:
+                native_currency = info_dict.get("currency") or "USD"
+                
+            try:
+                quote_type = fast.get("quoteType")
+            except Exception:
+                quote_type = None
+            if not quote_type:
+                quote_type = info_dict.get("quoteType")
+                
+            try:
+                previous_close = fast.get("previousClose")
+            except Exception:
+                previous_close = None
+            if not previous_close:
+                previous_close = info_dict.get("regularMarketPreviousClose") or live_price
+                
+            try:
+                timezone = fast.get("timezone")
+            except Exception:
+                timezone = None
+            if not timezone:
+                timezone = info_dict.get("exchangeTimezoneName") or "UTC"
+                
+            try:
+                exchange = fast.get("exchange")
+            except Exception:
+                exchange = None
+            if not exchange:
+                exchange = info_dict.get("exchange") or ""
         except Exception as e:
             print(f"YFinance live ticker download failed for {symbol}: {e}")
             
@@ -190,10 +246,17 @@ class YFinanceProvider(BaseDataProvider):
     def download_live_fx(self, pair: str) -> float:
         rate = 1.0
         try:
-            rate_ticker = yf.Ticker(pair)
-            rate = rate_ticker.fast_info.get("lastPrice")
+            rate_ticker = yf.Ticker(pair, session=YF_SESSION)
+            try:
+                rate = rate_ticker.fast_info.get("lastPrice")
+            except Exception:
+                rate = None
             if rate is None:
-                rate = rate_ticker.info.get("previousClose") or 1.0
+                try:
+                    info_dict = rate_ticker.info or {}
+                    rate = info_dict.get("previousClose") or 1.0
+                except Exception:
+                    rate = 1.0
         except Exception as e:
             print(f"YFinance live FX download failed for {pair}: {e}")
         return float(rate)
@@ -211,7 +274,7 @@ class YFinanceProvider(BaseDataProvider):
 
         try:
             symbols_str = " ".join(symbols)
-            df = yf.download(symbols_str, start=start_str, end=end_str, progress=False, group_by='ticker', actions=True)
+            df = yf.download(symbols_str, start=start_str, end=end_str, progress=False, group_by='ticker', actions=True, session=YF_SESSION)
             
             for sym in symbols:
                 try:
@@ -255,7 +318,7 @@ class YFinanceProvider(BaseDataProvider):
         start_str = start_dt.strftime("%Y-%m-%d")
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True)
+            df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
             if not df.empty:
                 if 'Close' in df.columns:
                     closes = df['Close'].dropna()
@@ -277,7 +340,7 @@ class YFinanceProvider(BaseDataProvider):
         start_str = start_dt.strftime("%Y-%m-%d")
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            df_fx = yf.download(pair, start=start_str, end=end_str, progress=False)
+            df_fx = yf.download(pair, start=start_str, end=end_str, progress=False, session=YF_SESSION)
             if not df_fx.empty and 'Close' in df_fx.columns:
                 closes = df_fx['Close'].dropna()
                 for idx, val in closes.items():

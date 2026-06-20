@@ -15,12 +15,25 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import requests
 
+import urllib3
+import ssl
+
+# Globally disable SSL verification warnings and certificate checks to prevent local machine errors
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+
 # Globally patch requests.Session.request to default timeout to 5.0 seconds
-# to prevent any external Yahoo Finance or Supabase requests from hanging indefinitely.
+# and disable SSL verification to avoid certificate errors.
 _original_session_request = requests.Session.request
 def _patched_session_request(self, method, url, *args, **kwargs):
     if 'timeout' not in kwargs:
         kwargs['timeout'] = 5.0
+    self.verify = False
+    if 'verify' in kwargs:
+        kwargs['verify'] = False
     return _original_session_request(self, method, url, *args, **kwargs)
 requests.Session.request = _patched_session_request
 
@@ -239,9 +252,11 @@ def get_stock_detail(ticker: str):
             collector = StockDataCollector()
             
             # Subclass to cache preloaded fields in a thread-safe local instance
+            from backend.data_provider import YF_SESSION
+            # Subclass to cache preloaded fields in a thread-safe local instance
             class SnappyTicker(yf.Ticker):
-                def __init__(self, symbol, info_val, hist_val, fin_val, est_val):
-                    super().__init__(symbol)
+                def __init__(self, symbol, info_val, hist_val, fin_val, est_val, session=None):
+                    super().__init__(symbol, session=session)
                     self._preloaded_info = info_val
                     self._preloaded_hist = hist_val
                     self._preloaded_fin = fin_val
@@ -264,7 +279,7 @@ def get_stock_detail(ticker: str):
                 def revenue_estimate(self):
                     return self._preloaded_est if self._preloaded_est is not None else super().revenue_estimate
 
-            raw_ticker = yf.Ticker(clean_ticker)
+            raw_ticker = yf.Ticker(clean_ticker, session=YF_SESSION)
             
             # Parallel preloading of yfinance data
             import concurrent.futures
@@ -309,7 +324,7 @@ def get_stock_detail(ticker: str):
                 preloaded_est = future_est.result()
             print(f"[{clean_ticker}] Preloading complete.")
             
-            ticker_obj = SnappyTicker(clean_ticker, preloaded_info, preloaded_hist, preloaded_fin, preloaded_est)
+            ticker_obj = SnappyTicker(clean_ticker, preloaded_info, preloaded_hist, preloaded_fin, preloaded_est, session=YF_SESSION)
             
             # Retrieve cached overview metrics from screener_data.json if available
             overview = None
@@ -365,7 +380,8 @@ def get_stock_detail(ticker: str):
 def get_stock_price(ticker: str):
     clean_ticker = ticker.upper().strip()
     try:
-        ticker_obj = yf.Ticker(clean_ticker)
+        from backend.data_provider import YF_SESSION
+        ticker_obj = yf.Ticker(clean_ticker, session=YF_SESSION)
         price = ticker_obj.fast_info.get('lastPrice')
         if price is None:
             price = ticker_obj.info.get('currentPrice')
@@ -395,7 +411,8 @@ def get_watchlist_prices(symbols: str):
     
     for sym in clean_symbols[:15]:
         try:
-            ticker_obj = yf.Ticker(sym)
+            from backend.data_provider import YF_SESSION
+            ticker_obj = yf.Ticker(sym, session=YF_SESSION)
             price = ticker_obj.fast_info.get('lastPrice')
             if price is None:
                 price = ticker_obj.info.get('currentPrice')

@@ -582,7 +582,8 @@ def run_screener_collection(ticker_provider: TickerProvider, max_tickers=None):
         update_status(f"Fetching data for {symbol}...", progress=progress_idx, total=total_tickers, is_running=True)
         
         try:
-            ticker_obj = yf.Ticker(symbol)
+            from backend.data_provider import YF_SESSION
+            ticker_obj = yf.Ticker(symbol, session=YF_SESSION)
             # Fetch overview indicators
             metrics = collector.fetch_stock_overview(ticker_obj)
             

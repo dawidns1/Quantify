@@ -220,7 +220,8 @@ def calculate_beta(daily_nav: list, daily_cash_flows: dict, benchmark_symbol: st
     end_str = (datetime.strptime(portfolio_dates[-1], "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
     
     try:
-        df = yf.download(benchmark_symbol, start=start_str, end=end_str, progress=False)
+        from backend.data_provider import YF_SESSION
+        df = yf.download(benchmark_symbol, start=start_str, end=end_str, progress=False, session=YF_SESSION)
         if df.empty or 'Close' not in df.columns:
             return 1.0
             
@@ -278,7 +279,8 @@ def calculate_correlation_matrix(symbols: list, days: int = 365) -> dict:
     
     try:
         # Download prices in bulk
-        df = yf.download(" ".join(symbols), start=start_str, end=end_str, progress=False)
+        from backend.data_provider import YF_SESSION
+        df = yf.download(" ".join(symbols), start=start_str, end=end_str, progress=False, session=YF_SESSION)
         if df.empty:
             return {}
             

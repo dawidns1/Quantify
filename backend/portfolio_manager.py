@@ -1116,7 +1116,9 @@ class PortfolioManager:
         for symbol in symbol_txs.keys():
             info = cls.get_cached_live_ticker(symbol)
             native_currency = info["native_currency"]
-            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
+            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0)
+            # and it is not a cash currency symbol.
+            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
                 
@@ -1559,7 +1561,9 @@ class PortfolioManager:
         for symbol in symbol_txs.keys():
             info = cls.get_cached_live_ticker(symbol)
             native_currency = info["native_currency"]
-            if not native_currency or (native_currency == "USD" and symbol not in ["USD", "PLN", "EUR"]):
+            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0)
+            # and it is not a cash currency symbol.
+            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
             ticker_info_tmp[symbol] = {
