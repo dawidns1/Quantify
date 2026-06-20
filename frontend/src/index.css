@@ -10,6 +10,7 @@
   --panel-bg: rgba(13, 17, 28, 0.7);
   --panel-border: rgba(255, 255, 255, 0.06);
   --panel-glow: rgba(59, 130, 246, 0.05);
+  --card-padding: 1rem;
 
   --text-primary: hsl(0, 0%, 96%);
   --text-secondary: hsl(215, 15%, 70%);
@@ -91,7 +92,7 @@ body::before {
   background: rgba(13, 20, 35, 0.82); /* Opaque dark background for high contrast & performance */
   border: 1px solid var(--panel-border);
   border-radius: 12px;
-  padding: 1rem;
+  padding: var(--card-padding, 1rem);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   transition: border-color 0.2s ease;
 }
@@ -1558,9 +1559,18 @@ select option {
   }
 
   .main-content {
-    padding: 1rem;
+    padding: 0.5rem;
     height: 100vh;
     overflow-y: auto;
+    --card-padding: 0.5rem;
+  }
+
+  .screener-table th {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .screener-table td {
+    padding: 0.45rem 0.6rem;
   }
 }
 

@@ -419,7 +419,7 @@ export function HoldingsTable({
   };
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: '1rem' }}>
+    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
