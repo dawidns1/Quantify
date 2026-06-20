@@ -1639,6 +1639,7 @@ export function PortfolioView({
                     setShowAddDividendModal(true);
                   }}
                   onDeleteDividendClick={handleDeleteDividend}
+                  style={{ flex: 1, minHeight: 0, marginTop: '0.5rem' }}
                 />
               </div>
 

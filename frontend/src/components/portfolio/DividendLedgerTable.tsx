@@ -8,6 +8,7 @@ interface DividendLedgerTableProps {
   baseCurrency: string;
   onEditDividendClick: (div: any) => void;
   onDeleteDividendClick: (div: any) => void;
+  style?: React.CSSProperties;
 }
 
 export function DividendLedgerTable({
@@ -15,7 +16,8 @@ export function DividendLedgerTable({
   activePortfolioRole,
   baseCurrency,
   onEditDividendClick,
-  onDeleteDividendClick
+  onDeleteDividendClick,
+  style
 }: DividendLedgerTableProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,7 +117,7 @@ export function DividendLedgerTable({
   const isViewer = activePortfolioRole === 'viewer';
 
   return (
-    <div className="glass-panel" style={{ padding: 'var(--card-padding, 1rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div className="glass-panel" style={{ padding: 'var(--card-padding, 1rem)', display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, minHeight: 0, ...style }}>
       
       {/* Search and Action Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -155,7 +157,7 @@ export function DividendLedgerTable({
       </div>
 
       {/* Table Container */}
-      <div className="custom-scrollbar" style={{ overflowX: 'auto', maxHeight: '560px', overflowY: 'auto', border: '1px solid var(--panel-border)', borderRadius: '8px' }}>
+      <div className="custom-scrollbar" style={{ overflowX: 'auto', flex: 1, minHeight: 0, overflowY: 'auto', border: '1px solid var(--panel-border)', borderRadius: '8px' }}>
         <table className="portfolio-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr>
