@@ -219,6 +219,10 @@
       "tax_exempt": "Zwolnione z podatku",
       "tax_suffix": "% podatku",
       "analytics_title": "Konfiguracja analizy",
+      "cost_basis_title": "Konfiguracja kalkulacji kosztów",
+      "cost_basis_method": "Metoda wyceny kosztów (Cost Basis)",
+      "average_cost": "Średni koszt nabycia (Average Cost)",
+      "fifo": "FIFO (Pierwsze weszło, pierwsze wyszło)",
       "btn_save": "Zapisz ustawienia",
       "btn_saving": "Zapisywanie...",
       "btn_saved": "Zapisano!"

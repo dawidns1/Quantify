@@ -1272,29 +1272,65 @@ class PortfolioManager:
         total_dividends_base = 0.0
         total_dividends_net_base = 0.0
         
+        # Get portfolio settings cost basis method
+        cost_basis_method = "average_cost"
+        if portfolio_settings and isinstance(portfolio_settings, dict):
+            cost_basis_method = portfolio_settings.get("cost_basis_method") or portfolio_settings.get("costBasisMethod") or "average_cost"
+
         # Calculate stock holdings
         for symbol, txs in symbol_txs.items():
             shares_owned = 0.0
             cost_basis_base = 0.0
             
-            for tx in txs:
-                tx_shares = tx["shares"]
-                tx_price = tx["price"]
-                tx_fees = tx["fees"]
-                tx_curr = tx["currency"].upper().strip()
-                fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
-                
-                tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
-                
-                if tx["type"] == "BUY":
-                    cost_basis_base += tx_cost_base
-                    shares_owned += tx_shares
-                elif tx["type"] == "SELL":
-                    if shares_owned > 0:
-                        cost_basis_base = cost_basis_base * max(0.0, (shares_owned - tx_shares)) / shares_owned
-                    shares_owned = max(0.0, shares_owned - tx_shares)
-                    if shares_owned == 0.0:
-                        cost_basis_base = 0.0
+            if cost_basis_method == "fifo":
+                buy_lots = []
+                for tx in txs:
+                    tx_shares = tx["shares"]
+                    tx_price = tx["price"]
+                    tx_fees = tx["fees"]
+                    tx_curr = tx["currency"].upper().strip()
+                    fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
+                    
+                    tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
+                    
+                    if tx["type"] == "BUY":
+                        buy_lots.append({"shares": tx_shares, "cost_base": tx_cost_base})
+                    elif tx["type"] == "SELL":
+                        sell_shares = tx_shares
+                        while sell_shares > 1e-9 and buy_lots:
+                            lot = buy_lots[0]
+                            if lot["shares"] <= sell_shares + 1e-9:
+                                sell_shares -= lot["shares"]
+                                buy_lots.pop(0)
+                            else:
+                                ratio = (lot["shares"] - sell_shares) / lot["shares"]
+                                lot["shares"] -= sell_shares
+                                lot["cost_base"] *= ratio
+                                sell_shares = 0.0
+                shares_owned = sum(lot["shares"] for lot in buy_lots)
+                cost_basis_base = sum(lot["cost_base"] for lot in buy_lots)
+                if shares_owned < 1e-9:
+                    shares_owned = 0.0
+                    cost_basis_base = 0.0
+            else:
+                for tx in txs:
+                    tx_shares = tx["shares"]
+                    tx_price = tx["price"]
+                    tx_fees = tx["fees"]
+                    tx_curr = tx["currency"].upper().strip()
+                    fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
+                    
+                    tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
+                    
+                    if tx["type"] == "BUY":
+                        cost_basis_base += tx_cost_base
+                        shares_owned += tx_shares
+                    elif tx["type"] == "SELL":
+                        if shares_owned > 0:
+                            cost_basis_base = cost_basis_base * max(0.0, (shares_owned - tx_shares)) / shares_owned
+                        shares_owned = max(0.0, shares_owned - tx_shares)
+                        if shares_owned == 0.0:
+                            cost_basis_base = 0.0
                         
             if shares_owned > 0.0:
                 info = ticker_info[symbol]
@@ -1541,8 +1577,13 @@ class PortfolioManager:
             except Exception:
                 pass
                 
+        cost_basis_method = "average_cost"
+        if portfolio_settings and isinstance(portfolio_settings, dict):
+            cost_basis_method = portfolio_settings.get("cost_basis_method") or portfolio_settings.get("costBasisMethod") or "average_cost"
+
         stock_shares = {}
         stock_cost_base = {}
+        stock_buy_lots = {}
         cash_balances_running = {}
         
         realized_gains_running_base = 0.0
@@ -1655,19 +1696,51 @@ class PortfolioManager:
                     if tx_type == "BUY":
                         stock_cost_base[sym][tx_account] += tx_cost_base
                         stock_shares[sym][tx_account] += shares
+                        if cost_basis_method == "fifo":
+                            stock_buy_lots.setdefault(sym, {}).setdefault(tx_account, []).append({
+                                "shares": shares,
+                                "cost_base": tx_cost_base
+                            })
                     elif tx_type == "SELL":
                         curr_shares = stock_shares[sym][tx_account]
-                        if curr_shares > 0:
-                            shares_to_sell = min(curr_shares, shares)
-                            cost_of_sold_shares = (stock_cost_base[sym][tx_account] / curr_shares) * shares_to_sell
+                        if cost_basis_method == "fifo":
+                            lots = stock_buy_lots.setdefault(sym, {}).setdefault(tx_account, [])
+                            sell_shares = shares
+                            cost_of_sold_shares = 0.0
+                            while sell_shares > 1e-9 and lots:
+                                lot = lots[0]
+                                if lot["shares"] <= sell_shares + 1e-9:
+                                    cost_of_sold_shares += lot["cost_base"]
+                                    sell_shares -= lot["shares"]
+                                    lots.pop(0)
+                                else:
+                                    ratio = sell_shares / lot["shares"]
+                                    cost_of_sold_shares += lot["cost_base"] * ratio
+                                    lot["cost_base"] *= (1.0 - ratio)
+                                    lot["shares"] -= sell_shares
+                                    sell_shares = 0.0
+                            
                             sale_value_base = (shares * price - fees) * fx_tx_to_base
                             realized_gain = sale_value_base - cost_of_sold_shares
                             realized_gains_running_base += realized_gain
                             
-                            stock_cost_base[sym][tx_account] = stock_cost_base[sym][tx_account] * max(0.0, (curr_shares - shares)) / curr_shares
-                        stock_shares[sym][tx_account] = max(0.0, curr_shares - shares)
-                        if stock_shares[sym][tx_account] == 0.0:
-                            stock_cost_base[sym][tx_account] = 0.0
+                            stock_shares[sym][tx_account] = sum(lot["shares"] for lot in lots)
+                            stock_cost_base[sym][tx_account] = sum(lot["cost_base"] for lot in lots)
+                            if stock_shares[sym][tx_account] < 1e-9:
+                                stock_shares[sym][tx_account] = 0.0
+                                stock_cost_base[sym][tx_account] = 0.0
+                        else:
+                            if curr_shares > 0:
+                                shares_to_sell = min(curr_shares, shares)
+                                cost_of_sold_shares = (stock_cost_base[sym][tx_account] / curr_shares) * shares_to_sell
+                                sale_value_base = (shares * price - fees) * fx_tx_to_base
+                                realized_gain = sale_value_base - cost_of_sold_shares
+                                realized_gains_running_base += realized_gain
+                                
+                                stock_cost_base[sym][tx_account] = stock_cost_base[sym][tx_account] * max(0.0, (curr_shares - shares)) / curr_shares
+                            stock_shares[sym][tx_account] = max(0.0, curr_shares - shares)
+                            if stock_shares[sym][tx_account] == 0.0:
+                                stock_cost_base[sym][tx_account] = 0.0
                             
                     if link_cash:
                         amount = shares * price

@@ -23,6 +23,7 @@ export function SettingsModal({
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
   const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
+  const [costBasisMethod, setCostBasisMethod] = useState<'average_cost' | 'fifo'>('average_cost');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
@@ -48,6 +49,7 @@ export function SettingsModal({
       setAccountTaxRates(initialRates);
       setRiskFreeRate(portfolio.settings?.risk_free_rate !== undefined ? portfolio.settings.risk_free_rate : 2.0);
       setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
+      setCostBasisMethod(portfolio.settings?.cost_basis_method || 'average_cost');
       setErrorMsg(null);
       setSuccessMsg(false);
     }
@@ -82,7 +84,8 @@ export function SettingsModal({
         ...portfolio.settings,
         accountTaxRates,
         risk_free_rate: riskFreeRate,
-        beta_benchmark: betaBenchmark
+        beta_benchmark: betaBenchmark,
+        cost_basis_method: costBasisMethod
       };
       await updatePortfolioSettings(portfolio.id, updatedSettings);
       setSuccessMsg(true);
@@ -206,6 +209,37 @@ export function SettingsModal({
                   );
                 })
               )}
+            </div>
+
+            {/* Cost Basis Configuration */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
+                {t('modals.settings.cost_basis_title')}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {t('modals.settings.cost_basis_method')}
+                </label>
+                <select
+                  disabled={isViewer}
+                  value={costBasisMethod}
+                  onChange={(e) => setCostBasisMethod(e.target.value as 'average_cost' | 'fifo')}
+                  style={{
+                    padding: '0.5rem',
+                    fontSize: '0.82rem',
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  <option value="average_cost">{t('modals.settings.average_cost')}</option>
+                  <option value="fifo">{t('modals.settings.fifo')}</option>
+                </select>
+              </div>
             </div>
 
             {/* Analytics Configuration */}

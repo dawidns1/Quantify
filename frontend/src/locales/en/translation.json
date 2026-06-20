@@ -219,6 +219,10 @@
       "tax_exempt": "Tax-Exempt",
       "tax_suffix": "% Tax",
       "analytics_title": "Analytics Configuration",
+      "cost_basis_title": "Cost Basis Configuration",
+      "cost_basis_method": "Cost Basis Calculation Method",
+      "average_cost": "Average Cost Basis",
+      "fifo": "FIFO (First-In, First-Out)",
       "btn_save": "Save Settings",
       "btn_saving": "Saving...",
       "btn_saved": "Saved!"
