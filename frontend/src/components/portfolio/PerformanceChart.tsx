@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Activity, ChevronUp, ChevronDown, X } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -52,17 +52,24 @@ const verticalLinePlugin = {
   }
 };
 
-// Register custom top positioner to place the tooltip cleanly at the top of the chart area
+// Register custom top positioner to place the tooltip cleanly at the top of the chart area and to the side of the vertical line
 (Tooltip.positioners as any).top = function(this: any, items: any) {
   if (!items || items.length === 0) return false;
   const x = items[0].element.x;
   const chart = this.chart;
   const topY = chart.scales.y.top;
+  
+  // Offset to the left if in the right half of the chart, otherwise offset to the right
+  const isRightHalf = x > chart.width / 2;
+  const offset = 10;
+  const tooltipX = isRightHalf ? x - offset : x + offset;
+  const xAlign = isRightHalf ? 'right' : 'left';
+  
   return {
-    x,
-    y: topY - 6,
-    xAlign: 'center',
-    yAlign: 'bottom'
+    x: tooltipX,
+    y: topY + 4,
+    xAlign,
+    yAlign: 'top'
   };
 };
 
@@ -77,7 +84,7 @@ interface PerformanceChartProps {
   onClose?: () => void;
 }
 
-export function PerformanceChart({
+export const PerformanceChart = memo(function PerformanceChart({
   chartData,
   loadingChart,
   baseCurrency,
@@ -133,16 +140,8 @@ export function PerformanceChart({
     return {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 200 // fast, responsive duration
-      },
-      transitions: {
-        active: {
-          animation: {
-            duration: 0 // snap tooltips instantly
-          }
-        }
-      },
+      animation: false as const,
+      normalized: true as const,
       scales: {
         x: {
           grid: { display: false },
@@ -354,4 +353,4 @@ export function PerformanceChart({
       </div>
     </div>
   );
-}
+});
