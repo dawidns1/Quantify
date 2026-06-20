@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Check, Save, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updatePortfolioSettings } from '../../services/supabaseService';
+import { searchAssets } from '../../services/calculationService';
 
 interface AddDividendModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface AddDividendModalProps {
   uniqueAccounts: string[];
   portfolioSettings: any;
   onSaveSuccess: (updatedSettings: any) => void;
+  holdingSymbols?: string[];
+  apiBaseUrl?: string;
 }
 
 export function AddDividendModal({
@@ -20,7 +23,9 @@ export function AddDividendModal({
   activePortfolioId,
   uniqueAccounts,
   portfolioSettings,
-  onSaveSuccess
+  onSaveSuccess,
+  holdingSymbols = [],
+  apiBaseUrl = 'http://localhost:8000'
 }: AddDividendModalProps) {
   const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
@@ -30,6 +35,48 @@ export function AddDividendModal({
   const [formPayout, setFormPayout] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+
+  // Debounced search for suggestions
+  useEffect(() => {
+    if (isSuggestionSelected) {
+      return;
+    }
+
+    if (formSymbol.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      searchAssets(apiBaseUrl, formSymbol)
+        .then((data) => {
+          if (formSymbol.trim().length < 2) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+          }
+          setSuggestions(data || []);
+          setShowSuggestions(data && data.length > 0);
+        })
+        .catch((err) => {
+          console.error('Error fetching suggestions:', err);
+        });
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [formSymbol, apiBaseUrl, isSuggestionSelected]);
+
+  const handleSelectSuggestion = (s: any) => {
+    setFormSymbol(s.symbol.toUpperCase());
+    setIsSuggestionSelected(true);
+    setShowSuggestions(false);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -194,9 +241,43 @@ export function AddDividendModal({
               </div>
             )}
 
+            {holdingSymbols.length > 0 && !editingDividend && (
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  {t('modals.add_div.quick_select', 'Quick Select Holding Asset:')}
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.2rem' }}>
+                  {holdingSymbols.map(sym => (
+                    <button
+                      key={sym}
+                      type="button"
+                      onClick={() => {
+                        setFormSymbol(sym);
+                        setIsSuggestionSelected(true);
+                        setShowSuggestions(false);
+                      }}
+                      style={{
+                        background: formSymbol.toUpperCase() === sym.toUpperCase() ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: formSymbol.toUpperCase() === sym.toUpperCase() ? '1px solid var(--color-primary)' : '1px solid var(--panel-border)',
+                        borderRadius: '4px',
+                        padding: '0.25rem 0.55rem',
+                        fontSize: '0.72rem',
+                        color: formSymbol.toUpperCase() === sym.toUpperCase() ? 'white' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontWeight: formSymbol.toUpperCase() === sym.toUpperCase() ? 600 : 400,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {sym}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               {/* Ticker Symbol */}
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label">{t('modals.add_div.label_symbol')}</label>
                 <input
                   type="text"
@@ -204,9 +285,31 @@ export function AddDividendModal({
                   disabled={!!editingDividend}
                   placeholder="e.g. AAPL"
                   value={formSymbol}
-                  onChange={(e) => setFormSymbol(e.target.value)}
+                  onChange={(e) => {
+                    setFormSymbol(e.target.value);
+                    setIsSuggestionSelected(false);
+                  }}
                   style={{ textTransform: 'uppercase', cursor: editingDividend ? 'not-allowed' : 'text' }}
                 />
+
+                {/* Autocomplete Dropdown List */}
+                {showSuggestions && (
+                  <div className="search-suggestions-dropdown" style={{ top: '100%', left: 0, right: 0 }}>
+                    {suggestions.map((s) => (
+                      <div 
+                        key={s.symbol} 
+                        className="suggestion-item" 
+                        onClick={() => handleSelectSuggestion(s)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className="suggestion-symbol">{s.symbol}</span>
+                          <span className="suggestion-badge">{s.exchange}</span>
+                        </div>
+                        <span className="suggestion-name" title={s.name}>{s.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Date */}

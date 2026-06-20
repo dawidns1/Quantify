@@ -1681,6 +1681,8 @@ export function PortfolioView({
           fetchHoldings(baseCurrency, selectedAccount);
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         }}
+        holdingSymbols={holdings.map(h => h.symbol)}
+        apiBaseUrl={apiBaseUrl}
       />
 
       {/* CSV IMPORT DIALOG MODAL */}

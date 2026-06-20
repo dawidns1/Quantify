@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Eye, Briefcase, Scale } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
@@ -32,43 +32,73 @@ export function HoldingsTable({
   });
 
   // Customizable Columns states
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [showColumnPicker, setShowColumnPicker] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    const cached = localStorage.getItem('portfolio_visible_columns');
+  const [visibleColumnsDesktop, setVisibleColumnsDesktop] = useState<string[]>(() => {
+    const cached = localStorage.getItem('portfolio_visible_columns_desktop');
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error('Error parsing visible columns from localStorage', e);
-      }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
     }
     return ['name', 'shares', 'price', 'sparkline', 'day_change', 'cost'];
   });
 
+  const [visibleColumnsMobile, setVisibleColumnsMobile] = useState<string[]>(() => {
+    const cached = localStorage.getItem('portfolio_visible_columns_mobile');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return ['price', 'day_change'];
+  });
+
+  const visibleColumns = isMobile ? visibleColumnsMobile : visibleColumnsDesktop;
+
   const toggleColumn = (id: string) => {
-    setVisibleColumns((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      localStorage.setItem('portfolio_visible_columns', JSON.stringify(next));
-      return next;
-    });
+    if (isMobile) {
+      setVisibleColumnsMobile((prev) => {
+        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        localStorage.setItem('portfolio_visible_columns_mobile', JSON.stringify(next));
+        return next;
+      });
+    } else {
+      setVisibleColumnsDesktop((prev) => {
+        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        localStorage.setItem('portfolio_visible_columns_desktop', JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const moveColumn = (id: string, direction: 'left' | 'right') => {
-    const idx = visibleColumns.indexOf(id);
+    const columns = isMobile ? visibleColumnsMobile : visibleColumnsDesktop;
+    const setColumns = isMobile ? setVisibleColumnsMobile : setVisibleColumnsDesktop;
+    const storageKey = isMobile ? 'portfolio_visible_columns_mobile' : 'portfolio_visible_columns_desktop';
+
+    const idx = columns.indexOf(id);
     if (idx === -1) return;
     const nextIdx = direction === 'left' ? idx - 1 : idx + 1;
-    if (nextIdx < 0 || nextIdx >= visibleColumns.length) return;
+    if (nextIdx < 0 || nextIdx >= columns.length) return;
 
-    const next = [...visibleColumns];
+    const next = [...columns];
     const temp = next[idx];
     next[idx] = next[nextIdx];
     next[nextIdx] = temp;
 
-    setVisibleColumns(next);
-    localStorage.setItem('portfolio_visible_columns', JSON.stringify(next));
+    setColumns(next);
+    localStorage.setItem(storageKey, JSON.stringify(next));
   };
 
   const formatCurrency = (val: number, currency: string) => {
@@ -395,20 +425,79 @@ export function HoldingsTable({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {onRebalanceClick && (
             <button
-              className="glass-btn"
+              className="glass-btn action-btn-rebalance"
               onClick={onRebalanceClick}
+              style={{
+                background: 'rgba(6, 182, 212, 0.06)',
+                border: '1px solid rgba(6, 182, 212, 0.25)',
+                color: 'var(--color-primary)',
+                fontWeight: 600,
+                borderRadius: '6px',
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.78rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 0 10px rgba(6, 182, 212, 0.03)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
+                e.currentTarget.style.boxShadow = '0 0 15px rgba(6, 182, 212, 0.1)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
+                e.currentTarget.style.boxShadow = '0 0 10px rgba(6, 182, 212, 0.03)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >
               <Scale size={14} /> {t('holdings.btn_rebalance', 'Rebalance')}
             </button>
           )}
           <button 
-            className="glass-btn"
-            style={{ 
-              background: showColumnPicker ? 'var(--color-primary)' : undefined, 
-              borderColor: showColumnPicker ? 'var(--color-primary)' : undefined,
-              borderStyle: 'dashed'
-            }}
+            className="glass-btn action-btn-customize"
             onClick={() => setShowColumnPicker(!showColumnPicker)}
+            style={{
+              background: showColumnPicker ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+              borderColor: showColumnPicker ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.08)',
+              color: showColumnPicker ? 'white' : 'var(--text-muted)',
+              fontWeight: 500,
+              borderRadius: '6px',
+              padding: '0.45rem 0.85rem',
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: showColumnPicker ? '0 0 15px rgba(6, 182, 212, 0.1)' : 'none'
+            }}
+            onMouseEnter={(e) => {
+              if (!showColumnPicker) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              } else {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.18)';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+              }
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              if (!showColumnPicker) {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.color = 'var(--text-muted)';
+              } else {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
+              }
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
             <Eye size={14} /> {t('holdings.btn_customize_cols', 'Customize Columns')}
           </button>
