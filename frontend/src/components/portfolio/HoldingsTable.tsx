@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Eye, Briefcase, Scale, Layout } from 'lucide-react';
+import { Briefcase, SlidersHorizontal } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
@@ -10,9 +10,6 @@ interface HoldingsTableProps {
   activePortfolioRole: string;
   onQuickAction: (symbol: string, type: 'BUY' | 'SELL') => void;
   onSelectPositionSymbol: (symbol: string) => void;
-  onRebalanceClick?: () => void;
-  onToggleDashboardCards?: () => void;
-  isDashboardCardsVisible?: boolean;
 }
 
 export function HoldingsTable({
@@ -20,10 +17,7 @@ export function HoldingsTable({
   summary,
   activePortfolioRole,
   onQuickAction,
-  onSelectPositionSymbol,
-  onRebalanceClick,
-  onToggleDashboardCards,
-  isDashboardCardsVisible = true
+  onSelectPositionSymbol
 }: HoldingsTableProps) {
   const { t } = useTranslation();
 
@@ -478,132 +472,6 @@ export function HoldingsTable({
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)', height: '100%', minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          {onRebalanceClick && (
-            <button
-              className="glass-btn action-btn-rebalance"
-              onClick={onRebalanceClick}
-              style={{
-                background: 'rgba(6, 182, 212, 0.06)',
-                border: '1px solid rgba(6, 182, 212, 0.25)',
-                color: 'var(--color-primary)',
-                fontWeight: 600,
-                borderRadius: '6px',
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.78rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 0 10px rgba(6, 182, 212, 0.03)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
-                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
-                e.currentTarget.style.boxShadow = '0 0 15px rgba(6, 182, 212, 0.1)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
-                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
-                e.currentTarget.style.boxShadow = '0 0 10px rgba(6, 182, 212, 0.03)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Scale size={14} /> {t('holdings.btn_rebalance', 'Rebalance')}
-            </button>
-          )}
-          {onToggleDashboardCards && (
-            <button 
-              className="glass-btn action-btn-toggle-cards"
-              onClick={onToggleDashboardCards}
-              style={{
-                background: isDashboardCardsVisible ? 'rgba(6, 182, 212, 0.06)' : 'rgba(255, 255, 255, 0.03)',
-                borderColor: isDashboardCardsVisible ? 'rgba(6, 182, 212, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                color: isDashboardCardsVisible ? 'white' : 'var(--text-muted)',
-                fontWeight: 500,
-                borderRadius: '6px',
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.78rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: isDashboardCardsVisible ? '0 0 10px rgba(6, 182, 212, 0.03)' : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (!isDashboardCardsVisible) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
-                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
-                }
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                if (!isDashboardCardsVisible) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                  e.currentTarget.style.color = 'var(--text-muted)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
-                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
-                  e.currentTarget.style.color = 'white';
-                }
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <Layout size={14} /> {isDashboardCardsVisible ? t('holdings.btn_hide_cards', 'Hide Cards') : t('holdings.btn_show_cards', 'Show Cards')}
-            </button>
-          )}
-          <button 
-            className="glass-btn action-btn-customize"
-            onClick={() => setShowColumnPicker(!showColumnPicker)}
-            style={{
-              background: showColumnPicker ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.03)',
-              borderColor: showColumnPicker ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.08)',
-              color: showColumnPicker ? 'white' : 'var(--text-muted)',
-              fontWeight: 500,
-              borderRadius: '6px',
-              padding: '0.45rem 0.85rem',
-              fontSize: '0.78rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: showColumnPicker ? '0 0 15px rgba(6, 182, 212, 0.1)' : 'none'
-            }}
-            onMouseEnter={(e) => {
-              if (!showColumnPicker) {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              } else {
-                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.18)';
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-              }
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              if (!showColumnPicker) {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                e.currentTarget.style.color = 'var(--text-muted)';
-              } else {
-                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.12)';
-                e.currentTarget.style.borderColor = 'var(--color-primary)';
-              }
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <Eye size={14} /> {t('holdings.btn_customize_cols', 'Customize Columns')}
-          </button>
-        </div>
       </div>
 
       {showColumnPicker && (
@@ -823,10 +691,54 @@ export function HoldingsTable({
                     cursor: 'default', 
                     background: 'rgba(255, 255, 255, 0.01)',
                     width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
+                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                    position: 'relative'
                   }}
                 >
-                  {t('holdings.col_actions', 'Actions')}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>
+                    <span>{t('holdings.col_actions', 'Actions')}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowColumnPicker(!showColumnPicker);
+                      }}
+                      title={t('holdings.btn_customize_cols', 'Customize Columns')}
+                      style={{
+                        position: 'absolute',
+                        right: '4px',
+                        background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'white';
+                        if (!showColumnPicker) {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!showColumnPicker) {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                        } else {
+                          e.currentTarget.style.color = 'var(--color-primary)';
+                          e.currentTarget.style.background = 'rgba(6, 182, 212, 0.15)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        }
+                      }}
+                    >
+                      <SlidersHorizontal size={13} />
+                    </button>
+                  </div>
                 </th>
               </tr>
             </thead>

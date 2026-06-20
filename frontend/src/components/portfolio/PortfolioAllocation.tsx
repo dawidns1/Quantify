@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { PieChart, Coins, Globe, Layers, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { useMemo, memo } from 'react';
+import { PieChart, Coins, Globe, Layers, ChevronUp, ChevronDown, X, Scale } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 
@@ -9,14 +9,16 @@ interface PortfolioAllocationProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onClose?: () => void;
+  onRebalanceClick?: () => void;
 }
 
-export function PortfolioAllocation({ 
+export const PortfolioAllocation = memo(function PortfolioAllocation({ 
   holdings, 
   summary,
   onMoveUp,
   onMoveDown,
-  onClose
+  onClose,
+  onRebalanceClick
 }: PortfolioAllocationProps) {
   const { t } = useTranslation();
 
@@ -81,6 +83,38 @@ export function PortfolioAllocation({
           <PieChart size={16} className="gradient-text" /> {t('allocation.title', 'Portfolio Allocation')}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          {onRebalanceClick && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onRebalanceClick(); }} 
+              style={{ 
+                background: 'rgba(6, 182, 212, 0.08)', 
+                border: '1px solid rgba(6, 182, 212, 0.25)', 
+                color: 'var(--color-primary)', 
+                cursor: 'pointer', 
+                padding: '2px 8px', 
+                borderRadius: '4px',
+                display: 'flex', 
+                alignItems: 'center',
+                gap: '0.25rem',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                marginRight: '0.25rem',
+                transition: 'all 0.2s'
+              }} 
+              title={t('holdings.btn_rebalance', 'Rebalance')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.16)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
+              }} 
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.25)';
+              }}
+            >
+              <Scale size={11} />
+              <span>{t('holdings.btn_rebalance', 'Rebalance')}</span>
+            </button>
+          )}
           {onMoveUp && (
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
@@ -247,4 +281,4 @@ export function PortfolioAllocation({
       )}
     </div>
   );
-}
+});

@@ -229,6 +229,21 @@
       "btn_saving": "Saving...",
       "btn_saved": "Saved!"
     },
+    "preferences": {
+      "title": "Application Preferences",
+      "subtitle": "Configure global settings for your session.",
+      "label_language": "App Language",
+      "label_currency": "Base Currency",
+      "label_density": "Table Row Density",
+      "density_comfortable": "Comfortable",
+      "density_compact": "Compact",
+      "label_performance": "Performance Mode",
+      "performance_normal": "Normal",
+      "performance_low": "Low Performance (Max Speed)",
+      "btn_save": "Save Preferences",
+      "btn_saving": "Saving...",
+      "btn_saved": "Saved!"
+    },
     "share": {
       "title": "Share Portfolio Access",
       "btn_invite": "Send Invitation",

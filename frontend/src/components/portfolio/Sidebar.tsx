@@ -14,11 +14,11 @@ import {
   Eye,
   TrendingUp,
   TrendingDown,
-  Coins,
   Layers,
   Search,
   X,
-  Star
+  Star,
+  SlidersHorizontal
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -42,11 +42,10 @@ interface SidebarProps {
   onCloseSidebar?: () => void;
   subTab: 'overview' | 'ledger' | 'dividends';
   setSubTab: (tab: 'overview' | 'ledger' | 'dividends') => void;
-  baseCurrency: 'PLN' | 'USD' | 'EUR';
-  setBaseCurrency: (val: 'PLN' | 'USD' | 'EUR') => void;
   onShareClick?: () => void;
   onSettingsClick?: () => void;
   onFeedbackClick?: () => void;
+  onPreferencesClick?: () => void;
   apiBaseUrl: string;
   onSelectStockSymbol: (symbol: string) => void;
   onAddTransactionClick?: (symbol: string) => void;
@@ -69,18 +68,17 @@ export function Sidebar({
   onCloseSidebar,
   subTab,
   setSubTab,
-  baseCurrency,
-  setBaseCurrency,
   onShareClick,
   onSettingsClick,
   onFeedbackClick,
+  onPreferencesClick,
   apiBaseUrl,
   onSelectStockSymbol,
   onAddTransactionClick,
   activePortfolioRole = 'viewer'
 }: SidebarProps) {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
   const [allAssetsExpanded, setAllAssetsExpanded] = useState(true);
 
@@ -92,8 +90,6 @@ export function Sidebar({
   const [prices, setPrices] = useState<Record<string, { price: number | null; currency: string; change_percent: number; is_market_open: boolean }>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
-  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
   // Global search state
@@ -142,14 +138,7 @@ export function Sidebar({
     });
   };
 
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setShowCurrencyDropdown(false);
-      setShowLanguageDropdown(false);
-    };
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
+
 
   const fetchWatchlistFromDb = async () => {
     try {
@@ -316,6 +305,32 @@ export function Sidebar({
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', flexShrink: 0 }}>
+            <button 
+              onClick={onPreferencesClick}
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: 'var(--text-secondary)',
+                borderRadius: '4px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+              title={t('sidebar.preferences', 'App Preferences')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+              }}
+            >
+              <SlidersHorizontal size={13} />
+            </button>
             <button 
               onClick={onFeedbackClick}
               style={{
@@ -925,102 +940,22 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Footer Settings Area (Currency & Language Dropups) */}
+      {/* Footer Settings Area (Disclaimer only) */}
       <div style={{
         padding: '0.6rem 0.75rem',
         borderTop: '1px solid rgba(255, 255, 255, 0.04)',
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: '0.5rem',
         fontSize: '0.72rem',
         color: 'var(--text-secondary)',
         flexShrink: 0,
         position: 'relative'
       }}>
-        {/* Base Currency Dropup */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowCurrencyDropdown(!showCurrencyDropdown);
-              setShowLanguageDropdown(false);
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              padding: '0.2rem 0.4rem',
-              borderRadius: '4px',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              transition: 'var(--transition-smooth)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
-            onMouseLeave={(e) => { if (!showCurrencyDropdown) e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          >
-            <Coins size={12} style={{ color: 'var(--color-primary)' }} />
-            <span>{baseCurrency}</span>
-            <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▲</span>
-          </button>
-
-          {showCurrencyDropdown && (
-            <div style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: 0,
-              marginBottom: '4px',
-              background: 'rgba(15, 22, 40, 0.95)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '6px',
-              padding: '4px',
-              boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.5)',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              minWidth: '70px'
-            }}>
-              {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
-                <div
-                  key={curr}
-                  onClick={() => {
-                    setBaseCurrency(curr);
-                    setShowCurrencyDropdown(false);
-                  }}
-                  style={{
-                    padding: '0.3rem 0.5rem',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    color: baseCurrency === curr ? 'var(--color-primary)' : 'var(--text-secondary)',
-                    fontWeight: baseCurrency === curr ? 700 : 500,
-                    background: baseCurrency === curr ? 'rgba(255,255,255,0.03)' : 'transparent',
-                    fontSize: '0.7rem',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = baseCurrency === curr ? 'rgba(255,255,255,0.03)' : 'transparent'}
-                >
-                  {curr}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Disclaimer Link Trigger */}
         <div style={{ position: 'relative' }}>
           <button
-            onClick={() => {
-              setShowDisclaimerModal(true);
-              setShowCurrencyDropdown(false);
-              setShowLanguageDropdown(false);
-            }}
+            onClick={() => setShowDisclaimerModal(true)}
             style={{
               background: 'transparent',
               border: 'none',
@@ -1038,87 +973,6 @@ export function Sidebar({
           >
             {t('dashboard.disclaimer_title', 'Disclaimer')}
           </button>
-        </div>
-
-        {/* Language Dropup */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowLanguageDropdown(!showLanguageDropdown);
-              setShowCurrencyDropdown(false);
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-              padding: '0.2rem 0.4rem',
-              borderRadius: '4px',
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              transition: 'var(--transition-smooth)'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
-            onMouseLeave={(e) => { if (!showLanguageDropdown) e.currentTarget.style.color = 'var(--text-secondary)'; }}
-          >
-            <Globe size={12} style={{ color: 'var(--color-primary)' }} />
-            <span>{i18n.language.substring(0, 2).toUpperCase()}</span>
-            <span style={{ fontSize: '0.55rem', opacity: 0.7 }}>▲</span>
-          </button>
-
-          {showLanguageDropdown && (
-            <div style={{
-              position: 'absolute',
-              bottom: '100%',
-              right: 0,
-              marginBottom: '4px',
-              background: 'rgba(15, 22, 40, 0.95)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '6px',
-              padding: '4px',
-              boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.5)',
-              zIndex: 1000,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '2px',
-              minWidth: '70px'
-            }}>
-              {[
-                { code: 'en', label: 'English' },
-                { code: 'pl', label: 'Polski' }
-              ].map((lang) => {
-                const isSelected = i18n.language.startsWith(lang.code);
-                return (
-                  <div
-                    key={lang.code}
-                    onClick={() => {
-                      i18n.changeLanguage(lang.code);
-                      setShowLanguageDropdown(false);
-                    }}
-                    style={{
-                      padding: '0.3rem 0.5rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
-                      fontWeight: isSelected ? 700 : 500,
-                      background: isSelected ? 'rgba(255,255,255,0.03)' : 'transparent',
-                      fontSize: '0.7rem',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(255,255,255,0.03)' : 'transparent'}
-                  >
-                    {lang.label}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
 

@@ -26,21 +26,37 @@ function App() {
     }
   }, []);
 
-  const [settings] = useState<{
-    lowPerformanceMode: boolean;
-  }>(() => {
-    const cachedLowPerf = localStorage.getItem('settings_low_perf_mode');
-    return {
-      lowPerformanceMode: cachedLowPerf === 'true',
-    };
+  const [lowPerf, setLowPerf] = useState(() => {
+    return localStorage.getItem('settings_low_perf_mode') === 'true';
   });
 
   useEffect(() => {
-    if (settings.lowPerformanceMode) {
-      document.body.classList.add('low-perf');
-      return;
-    }
-    document.body.classList.remove('low-perf');
+    const syncPreferences = () => {
+      const isLowPerf = localStorage.getItem('settings_low_perf_mode') === 'true';
+      setLowPerf(isLowPerf);
+
+      if (isLowPerf) {
+        document.body.classList.add('low-perf');
+      } else {
+        document.body.classList.remove('low-perf');
+      }
+
+      const density = localStorage.getItem('settings_row_density') || 'comfortable';
+      document.body.classList.remove('density-comfortable', 'density-compact');
+      document.body.classList.add(`density-${density}`);
+    };
+
+    // Run once on mount
+    syncPreferences();
+
+    window.addEventListener('app-settings-changed', syncPreferences);
+    return () => {
+      window.removeEventListener('app-settings-changed', syncPreferences);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (lowPerf) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const card = (e.target as HTMLElement).closest('.glass-panel, .glow-card') as HTMLElement;
@@ -57,7 +73,7 @@ function App() {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [settings.lowPerformanceMode]);
+  }, [lowPerf]);
 
   if (authLoading) {
     return (

@@ -82,6 +82,7 @@ import { LedgerTable } from './portfolio/LedgerTable';
 import { AddTransactionModal } from './portfolio/AddTransactionModal';
 import { ShareModal } from './portfolio/ShareModal';
 import { SettingsModal } from './portfolio/SettingsModal';
+import { PreferencesModal } from './portfolio/PreferencesModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { FeedbackModal } from './portfolio/FeedbackModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
@@ -224,6 +225,7 @@ export function PortfolioView({
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [dividendViewMode, setDividendViewMode] = useState<'both' | 'forecast' | 'calendar'>('both');
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -1056,11 +1058,10 @@ export function PortfolioView({
         onCloseSidebar={() => setSidebarOpen(false)}
         subTab={subTab}
         setSubTab={setSubTab}
-        baseCurrency={baseCurrency}
-        setBaseCurrency={setBaseCurrency}
         onShareClick={() => setShowShareModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onFeedbackClick={() => setShowFeedbackModal(true)}
+        onPreferencesClick={() => setShowPreferencesModal(true)}
         apiBaseUrl={apiBaseUrl}
         onSelectStockSymbol={setSelectedPositionSymbol}
         onAddTransactionClick={(symbol) => {
@@ -1308,31 +1309,81 @@ export function PortfolioView({
                   (() => {
                     const isRightColumnOpen = showDashboardCards && (widgets.length > 0 || showWidgetManager);
                     return (
-                      <div className="portfolio-grid" style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: isRightColumnOpen ? '2fr 1fr' : '1fr', 
-                        gap: '0.75rem', 
-                        marginTop: '0.25rem',
-                        flex: 1,
-                        minHeight: 0,
-                        height: '100%'
-                      }}>
-                      {/* Left Column: Holdings Table */}
-                      <div ref={leftColRef} className="sticky-column" style={leftStickyStyle}>
-                        <HoldingsTable 
-                          holdings={holdings}
-                          summary={summary}
-                          activePortfolioRole={activePortfolioRole}
-                          onQuickAction={handleQuickAction}
-                          onSelectPositionSymbol={setSelectedPositionSymbol}
-                          onRebalanceClick={() => setShowRebalanceModal(true)}
-                          onToggleDashboardCards={handleToggleDashboardCards}
-                          isDashboardCardsVisible={isRightColumnOpen}
-                        />
-                      </div>
-                      {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
-                      {isRightColumnOpen && (
-                        <div ref={rightColRef} style={rightStickyStyle}>
+                      <>
+                        <div className="portfolio-grid" style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: isRightColumnOpen ? '2fr 12px 1fr' : '1fr', 
+                          gap: '0px', 
+                          marginTop: '0.25rem',
+                          flex: 1,
+                          minHeight: 0,
+                          height: '100%'
+                        }}>
+                        {/* Left Column: Holdings Table */}
+                        <div ref={leftColRef} className="sticky-column" style={{ ...leftStickyStyle, paddingRight: isRightColumnOpen ? '0px' : '0px' }}>
+                          <HoldingsTable 
+                            holdings={holdings}
+                            summary={summary}
+                            activePortfolioRole={activePortfolioRole}
+                            onQuickAction={handleQuickAction}
+                            onSelectPositionSymbol={setSelectedPositionSymbol}
+                          />
+                        </div>
+                        
+                        {/* Middle Column: Vertical Collapse Handle/Divider */}
+                        {isRightColumnOpen && (
+                          <div 
+                            onClick={handleToggleDashboardCards}
+                            className="divider-line-hover"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              position: 'relative',
+                              height: '100%',
+                              width: '100%',
+                              zIndex: 10
+                            }}
+                            title={t('dashboard.hide_cards_tooltip', 'Collapse side cards')}
+                          >
+                            <div 
+                              className="divider-line"
+                              style={{
+                                width: '2px',
+                                height: '100%',
+                                background: 'var(--panel-border)',
+                                borderRadius: '1px',
+                                transition: 'background-color 0.2s'
+                              }}
+                            />
+                            <div 
+                              className="divider-pill"
+                              style={{
+                                position: 'absolute',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '12px',
+                                height: '32px',
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                border: '1px solid var(--panel-border)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.55rem',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <span>▶</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
+                        {isRightColumnOpen && (
+                          <div ref={rightColRef} style={{ ...rightStickyStyle, paddingLeft: '0px' }}>
                     {/* Render active widgets in order */}
                     {widgets.map((widgetId, index) => {
                       const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
@@ -1385,6 +1436,7 @@ export function PortfolioView({
                               onMoveUp={onMoveUp}
                               onMoveDown={onMoveDown}
                               onClose={onClose}
+                              onRebalanceClick={() => setShowRebalanceModal(true)}
                             />
                           );
                         case 'analytics':
@@ -1486,6 +1538,45 @@ export function PortfolioView({
                   </div>
                   )}
                 </div>
+                
+                {/* Floating Expand Sidebar Button when collapsed */}
+                {!isRightColumnOpen && (
+                  <div 
+                    onClick={handleToggleDashboardCards}
+                    style={{
+                      position: 'fixed',
+                      right: '0px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '14px',
+                      height: '36px',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      border: '1px solid var(--panel-border)',
+                      borderRight: 'none',
+                      borderRadius: '6px 0 0 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      zIndex: 1000,
+                      boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    title={t('dashboard.show_cards_tooltip', 'Expand side cards')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = 'white';
+                      e.currentTarget.style.width = '18px';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                      e.currentTarget.style.width = '14px';
+                    }}
+                  >
+                    <span style={{ fontSize: '0.6rem' }}>◀</span>
+                  </div>
+                )}
+              </>
                     );
                   })()
                 )}
@@ -1737,6 +1828,14 @@ export function PortfolioView({
       <FeedbackModal 
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
+      />
+
+      {/* APP PREFERENCES MODAL */}
+      <PreferencesModal 
+        isOpen={showPreferencesModal}
+        onClose={() => setShowPreferencesModal(false)}
+        baseCurrency={baseCurrency}
+        setBaseCurrency={setBaseCurrency}
       />
 
       {/* PORTFOLIO DIVIDENDS OVERRIDES MODAL */}

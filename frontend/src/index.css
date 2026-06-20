@@ -1852,5 +1852,38 @@ select option {
   opacity: 0.5;
 }
 
+/* ==========================================
+   Table Row Density Preferences
+   ========================================== */
+
+/* Comfortable density (default/expanded spacing) */
+body.density-comfortable .screener-table th {
+  padding: 0.7rem 0.85rem;
+}
+body.density-comfortable .screener-table td {
+  padding: 0.6rem 0.85rem;
+}
+body.density-comfortable .portfolio-table th {
+  padding: 0.55rem 0.85rem;
+}
+body.density-comfortable .portfolio-table td {
+  padding: 0.5rem 0.85rem;
+}
+
+/* Compact density (tight row height spacing) */
+body.density-compact .screener-table th {
+  padding: 0.35rem 0.6rem;
+}
+body.density-compact .screener-table td {
+  padding: 0.25rem 0.6rem;
+}
+body.density-compact .portfolio-table th {
+  padding: 0.3rem 0.6rem;
+}
+body.density-compact .portfolio-table td {
+  padding: 0.2rem 0.6rem;
+}
+
+
 
 

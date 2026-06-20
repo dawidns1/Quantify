@@ -229,6 +229,21 @@
       "btn_saving": "Zapisywanie...",
       "btn_saved": "Zapisano!"
     },
+    "preferences": {
+      "title": "Preferencje Aplikacji",
+      "subtitle": "Skonfiguruj globalne ustawienia sesji.",
+      "label_language": "Język aplikacji",
+      "label_currency": "Waluta główna",
+      "label_density": "Zagęszczenie wierszy tabeli",
+      "density_comfortable": "Standardowy",
+      "density_compact": "Kompaktowy",
+      "label_performance": "Tryb wydajności",
+      "performance_normal": "Normalny",
+      "performance_low": "Niska wydajność (Maks. prędkość)",
+      "btn_save": "Zapisz preferencje",
+      "btn_saving": "Zapisywanie...",
+      "btn_saved": "Zapisano!"
+    },
     "share": {
       "title": "Udostępnij portfel",
       "btn_invite": "Wyślij zaproszenie",
