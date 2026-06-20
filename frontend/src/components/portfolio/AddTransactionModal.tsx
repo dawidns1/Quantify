@@ -643,7 +643,7 @@ export function AddTransactionModal({
             ) : (
               <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="form-shares">{t('modals.add_tx.label_shares', 'Number of Shares')}</label>
+                  <label className="form-label" htmlFor="form-shares">{t('modals.add_tx.label_shares', 'Shares')}</label>
                   <input 
                     id="form-shares"
                     type="number" 
@@ -659,7 +659,7 @@ export function AddTransactionModal({
 
                 <div className="form-group">
                   <label className="form-label" htmlFor="form-price">
-                    {priceInputMode === 'per_share' ? t('modals.add_tx.label_price', 'Share Purchase Price') : t('modals.add_tx.total_price_ex_fees', 'Total Price (excl. fees)')}
+                    {priceInputMode === 'per_share' ? t('modals.add_tx.label_price', 'Price') : t('modals.add_tx.total_price_ex_fees', 'Total Price (excl. fees)')}
                   </label>
                   <input 
                     id="form-price"
@@ -675,7 +675,7 @@ export function AddTransactionModal({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="form-fees">{t('modals.add_tx.label_fees', 'Brokerage Fees / Commission')}</label>
+                  <label className="form-label" htmlFor="form-fees">{t('modals.add_tx.label_fees', 'Fees')}</label>
                   <input 
                     id="form-fees"
                     type="number" 
