@@ -1032,82 +1032,161 @@ export function PortfolioView({
 
           {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
           {((loadingPortfolios && portfolios.length === 0) || (loadingHoldings && holdings.length === 0) || (loadingTransactions && allTransactions.length === 0)) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {subTab === 'overview' ? (
-                <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
-                  {/* Left Column: Holdings skeleton */}
+            <div style={{ position: 'relative', width: '100%', minHeight: '520px' }}>
+              {/* Blur/Faded Skeletons Backdrop */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', filter: 'blur(4px)', opacity: 0.3, pointerEvents: 'none', userSelect: 'none' }}>
+                {subTab === 'overview' ? (
+                  <div className="portfolio-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+                    {/* Left Column: Holdings skeleton */}
+                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div className="shimmer-placeholder" style={{ width: '180px', height: '22px' }}></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                          <div key={i} style={{ display: 'flex', gap: '1rem' }}>
+                            <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
+                            <div className="shimmer-placeholder" style={{ flex: 3, height: '20px' }}></div>
+                            <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                            <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Right Column: Metrics, Chart & Allocations stacked */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
+                      {/* Portfolio Metrics Skeleton */}
+                      <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="shimmer-placeholder" style={{ width: '120px', height: '18px' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <div className="shimmer-placeholder" style={{ width: '150px', height: '24px', marginBottom: '0.25rem' }} />
+                          {[1, 2, 3, 4].map(i => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                              <div className="shimmer-placeholder" style={{ width: '80px', height: '14px' }} />
+                              <div className="shimmer-placeholder" style={{ width: '60px', height: '14px' }} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Chart skeleton */}
+                      <div className="glass-panel" style={{ padding: '1rem', height: '200px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="shimmer-placeholder" style={{ width: '140px', height: '16px' }}></div>
+                        <div className="shimmer-placeholder" style={{ width: '100%', flex: 1 }}></div>
+                      </div>
+
+                      {/* Allocation skeleton */}
+                      <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
+                        {[1, 2, 3].map(i => (
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <div className="shimmer-placeholder" style={{ width: '60px', height: '14px' }}></div>
+                              <div className="shimmer-placeholder" style={{ width: '40px', height: '14px' }}></div>
+                            </div>
+                            <div className="shimmer-placeholder" style={{ width: '100%', height: '8px' }}></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Ledger tab skeleton */
                   <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div className="shimmer-placeholder" style={{ width: '180px', height: '22px' }}></div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="shimmer-placeholder" style={{ width: '220px', height: '24px' }}></div>
+                      <div className="shimmer-placeholder" style={{ width: '150px', height: '18px' }}></div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                         <div key={i} style={{ display: 'flex', gap: '1rem' }}>
+                          <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
+                          <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
+                          <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
                           <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
-                          <div className="shimmer-placeholder" style={{ flex: 3, height: '20px' }}></div>
                           <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
                           <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
                         </div>
                       ))}
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Right Column: Metrics, Chart & Allocations stacked */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
-                    {/* Portfolio Metrics Skeleton */}
-                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div className="shimmer-placeholder" style={{ width: '120px', height: '18px' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
-                        <div className="shimmer-placeholder" style={{ width: '150px', height: '24px', marginBottom: '0.25rem' }} />
-                        {[1, 2, 3, 4].map(i => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.04)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                            <div className="shimmer-placeholder" style={{ width: '80px', height: '14px' }} />
-                            <div className="shimmer-placeholder" style={{ width: '60px', height: '14px' }} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {/* Glowing Interactive Loading overlay card */}
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                padding: '2rem 1rem'
+              }}>
+                <div className="glass-panel" style={{
+                  padding: '2.5rem 2.25rem',
+                  maxWidth: '460px',
+                  width: '100%',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '1.25rem',
+                  boxShadow: '0 25px 60px rgba(0, 0, 0, 0.55)',
+                  border: '1px solid rgba(6, 182, 212, 0.25)', // Premium cyan boundary glow
+                  background: 'rgba(10, 15, 28, 0.88)',
+                  borderRadius: '16px'
+                }}>
+                  {/* Glowing spinner ring animation */}
+                  <div style={{ position: 'relative', width: '56px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{
+                      position: 'absolute',
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 70%)',
+                      animation: 'pulse 2s infinite ease-in-out'
+                    }} />
+                    <div className="spinner-ring" style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      border: '3.5px solid rgba(255, 255, 255, 0.05)',
+                      borderTopColor: 'var(--color-primary)',
+                      borderRightColor: 'rgba(6, 182, 212, 0.45)'
+                    }} />
+                  </div>
 
-                    {/* Chart skeleton */}
-                    <div className="glass-panel" style={{ padding: '1rem', height: '200px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div className="shimmer-placeholder" style={{ width: '140px', height: '16px' }}></div>
-                      <div className="shimmer-placeholder" style={{ width: '100%', flex: 1 }}></div>
-                    </div>
+                  {/* Header Titles */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'white', letterSpacing: '0.2px' }}>
+                      {t('dashboard.initial_sync_title', 'Synchronizing Portfolio')}
+                    </h3>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }} className="pulse">
+                      {t('dashboard.initial_sync_subtitle', 'Downloading Real-Time Data...')}
+                    </span>
+                  </div>
 
-                    {/* Allocation skeleton */}
-                    <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div className="shimmer-placeholder" style={{ width: '140px', height: '20px' }}></div>
-                      {[1, 2, 3].map(i => (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div className="shimmer-placeholder" style={{ width: '60px', height: '14px' }}></div>
-                            <div className="shimmer-placeholder" style={{ width: '40px', height: '14px' }}></div>
-                          </div>
-                          <div className="shimmer-placeholder" style={{ width: '100%', height: '8px' }}></div>
-                        </div>
-                      ))}
-                    </div>
+                  {/* Description Paragraph */}
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.55' }}>
+                    {t('dashboard.initial_sync_explanation', 'We are fetching live asset quotes, currency exchanges, and historical annual financials. Because this is your first load on this device, it may take up to a minute. Please keep this browser window open.')}
+                  </p>
+
+                  {/* Monospace status tracker log */}
+                  <div style={{
+                    fontSize: '0.7rem',
+                    color: 'var(--text-muted)',
+                    fontFamily: 'monospace',
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.04)',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}>
+                    {t('dashboard.initial_sync_status', 'Status: Connecting to API & downloading price lists...')}
                   </div>
                 </div>
-              ) : (
-                /* Ledger tab skeleton */
-                <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div className="shimmer-placeholder" style={{ width: '220px', height: '24px' }}></div>
-                    <div className="shimmer-placeholder" style={{ width: '150px', height: '18px' }}></div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                      <div key={i} style={{ display: 'flex', gap: '1rem' }}>
-                        <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
-                        <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
-                        <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
-                        <div className="shimmer-placeholder" style={{ flex: 2, height: '20px' }}></div>
-                        <div className="shimmer-placeholder" style={{ flex: 1, height: '20px' }}></div>
-                        <div className="shimmer-placeholder" style={{ flex: 1.5, height: '20px' }}></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           ) : (
             <>

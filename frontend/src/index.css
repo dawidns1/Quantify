@@ -1688,3 +1688,14 @@ select option {
   }
 }
 
+/* Spinner Rotation Animation */
+@keyframes spin-spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner-ring {
+  animation: spin-spinner 0.8s infinite linear;
+}
+
+
