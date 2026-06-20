@@ -689,7 +689,6 @@ export function HoldingsTable({
           <table 
             className="screener-table" 
             style={{ 
-              tableLayout: Object.keys(colWidths).length > 0 ? 'fixed' : 'auto',
               width: '100%' 
             }}
           >
@@ -701,8 +700,7 @@ export function HoldingsTable({
                     userSelect: 'none',
                     position: 'relative',
                     width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
-                    minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
-                    maxWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
+                    minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
                   }}
                 >
                   {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
@@ -725,8 +723,7 @@ export function HoldingsTable({
                         userSelect: 'none',
                         position: 'relative',
                         width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
-                        minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
-                        maxWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
+                        minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                       }}
                     >
                       {col.renderHeader(summary.base_currency)} {renderSortArrow(colId)}
@@ -745,8 +742,7 @@ export function HoldingsTable({
                     userSelect: 'none',
                     position: 'relative',
                     width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                    minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                    maxWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
+                    minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
                   }}
                 >
                   {t('holdings.col_current', 'Current')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
@@ -762,8 +758,7 @@ export function HoldingsTable({
                     userSelect: 'none',
                     position: 'relative',
                     width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                    minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                    maxWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
+                    minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
                   }}
                 >
                   {t('holdings.col_gain_loss', 'Gain/Loss')} {renderSortArrow('gain_base')}
@@ -778,8 +773,7 @@ export function HoldingsTable({
                     cursor: 'default', 
                     background: 'rgba(255, 255, 255, 0.01)',
                     width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    maxWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
+                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
                   }}
                 >
                   {t('holdings.col_actions', 'Actions')}
@@ -799,19 +793,16 @@ export function HoldingsTable({
                     }}
                     style={{ cursor: 'pointer' }}
                   >
-                    {/* Fixed Ticker column with div wrapper for flex a                    {/* Fixed Ticker column with div wrapper for flex alignment */}
+                    {/* Fixed Ticker column with div wrapper for flex alignment */}
                     <td 
                       style={{ 
                         fontWeight: 600, 
                         color: 'var(--text-primary)',
                         width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
-                        minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
-                        maxWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
-                        overflow: colWidths['symbol'] ? 'hidden' : 'visible',
-                        textOverflow: colWidths['symbol'] ? 'ellipsis' : 'clip'
+                        minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {h.is_live && (
                           <span 
                             title="Market Session is Live"
@@ -827,7 +818,7 @@ export function HoldingsTable({
                             }} 
                           />
                         )}
-                        <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{h.symbol}</span>
+                        <span>{h.symbol}</span>
                       </div>
                     </td>
 
@@ -842,10 +833,7 @@ export function HoldingsTable({
                             textAlign: col.align, 
                             fontFamily: ['shares', 'avg_cost', 'price', 'cost', 'dividends', 'day_change', 'weight', 'fx_rate'].includes(colId) ? 'monospace' : 'inherit',
                             width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
-                            minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
-                            maxWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
-                            overflow: colWidths[colId] ? 'hidden' : 'visible',
-                            textOverflow: colWidths[colId] ? 'ellipsis' : 'clip'
+                            minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                           }}
                         >
                           {col.renderCell(h, summary.base_currency)}
@@ -860,10 +848,7 @@ export function HoldingsTable({
                         fontFamily: 'monospace', 
                         fontWeight: 600,
                         width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                        minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                        maxWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                        overflow: colWidths['current_value_base'] ? 'hidden' : 'visible',
-                        textOverflow: colWidths['current_value_base'] ? 'ellipsis' : 'clip'
+                        minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
                       }}
                     >
                       <AnimateOnChange value={h.current_value_base} contextId={h.symbol}>
@@ -875,10 +860,7 @@ export function HoldingsTable({
                         textAlign: 'right', 
                         fontFamily: 'monospace',
                         width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                        minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                        maxWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                        overflow: colWidths['gain_base'] ? 'hidden' : 'visible',
-                        textOverflow: colWidths['gain_base'] ? 'ellipsis' : 'clip'
+                        minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
                       }}
                     >
                       <AnimateOnChange value={h.gain_base} contextId={h.symbol} style={{ display: 'block' }}>
@@ -894,10 +876,7 @@ export function HoldingsTable({
                       style={{ 
                         textAlign: 'center',
                         width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                        minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                        maxWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                        overflow: colWidths['actions'] ? 'hidden' : 'visible',
-                        textOverflow: colWidths['actions'] ? 'ellipsis' : 'clip'
+                        minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
                       }}
                     >
                       {activePortfolioRole === 'viewer' ? (
