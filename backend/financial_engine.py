@@ -2,6 +2,7 @@ import math
 from datetime import date, datetime, timedelta
 import numpy as np
 import yfinance as yf
+import pandas as pd
 
 # --- Money-Weighted Return (XIRR / IRR) ---
 

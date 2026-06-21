@@ -964,49 +964,51 @@ class PortfolioManager:
         
         cache_entry = cls._historical_fx_cache.get(pair)
         
+        # Check if we need to download/update cache
+        need_download = True
         if cache_entry and cache_entry["start_date"] <= start_dt:
             if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
-                sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
-                if sliced_prices:
-                    return sliced_prices
-                    
-        fetch_start = start_dt
-        if cache_entry and cache_entry["start_date"] < fetch_start:
-            fetch_start = cache_entry["start_date"]
-            
-        prices_dict = {}
-        try:
-            prices_dict = provider.download_historical_fx(pair, fetch_start, end_dt)
-        except Exception as e:
-            print(f"Error downloading historical FX for {pair}: {e}")
-            
-        if not prices_dict and cache_entry:
-            prices_dict = cache_entry["prices"]
-            fetch_start = cache_entry["start_date"]
-            
-        fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
-        
-        if prices_dict or cache_entry:
-            actual_prices = prices_dict if prices_dict else cache_entry["prices"]
-            actual_start = min(actual_prices.keys()) if actual_prices else fetch_start
-            actual_end = max(actual_prices.keys()) if actual_prices else date.today()
-            
-            if cache_entry:
-                merged_prices = {**cache_entry["prices"], **actual_prices}
-                actual_start = min(merged_prices.keys())
-                actual_end = max(merged_prices.keys())
-                actual_prices = merged_prices
+                need_download = False
                 
-            cls._historical_fx_cache[pair] = {
-                "start_date": actual_start,
-                "end_date": actual_end,
-                "last_updated": now,
-                "prices": actual_prices
-            }
+        if need_download:
+            fetch_start = start_dt
+            if cache_entry and cache_entry["start_date"] < fetch_start:
+                fetch_start = cache_entry["start_date"]
+                
+            prices_dict = {}
+            try:
+                prices_dict = provider.download_historical_fx(pair, fetch_start, end_dt)
+            except Exception as e:
+                print(f"Error downloading historical FX for {pair}: {e}")
+                
+            if not prices_dict and cache_entry:
+                prices_dict = cache_entry["prices"]
+                fetch_start = cache_entry["start_date"]
+                
+            fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
             
+            if prices_dict or cache_entry:
+                actual_prices = prices_dict if prices_dict else cache_entry["prices"]
+                actual_start = min(actual_prices.keys()) if actual_prices else fetch_start
+                actual_end = max(actual_prices.keys()) if actual_prices else date.today()
+                
+                if cache_entry:
+                    merged_prices = {**cache_entry["prices"], **actual_prices}
+                    actual_start = min(merged_prices.keys())
+                    actual_end = max(merged_prices.keys())
+                    actual_prices = merged_prices
+                    
+                cls._historical_fx_cache[pair] = {
+                    "start_date": actual_start,
+                    "end_date": actual_end,
+                    "last_updated": now,
+                    "prices": actual_prices
+                }
+                
         res = {}
         delta = end_dt - start_dt
         cached_prices = cls._historical_fx_cache.get(pair, {}).get("prices", {})
+        fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
         
         last_known_val = None
         for i in range(delta.days + 1):
@@ -1623,7 +1625,8 @@ class PortfolioManager:
                 
             pair = f"{curr}{base_currency}=X"
             fx_rates_hist[curr] = cls.get_cached_historical_fx(pair, start_dt, end_dt)
-                    
+            
+
         # 7. Compute NAV and Cost Basis for each calendar day
         dates_res = []
         nav_res = []
