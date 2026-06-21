@@ -3,6 +3,7 @@ import { PortfolioView } from './components/PortfolioView';
 import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
 import { PortfolioProvider } from './context/PortfolioContext';
+import { useTranslation } from 'react-i18next';
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
@@ -14,6 +15,7 @@ const API_BASE_URL = rawApiUrl.replace(/\/$/, "");
 
 function App() {
   const { user, loading: authLoading, recoveryMode, signOut } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -78,7 +80,7 @@ function App() {
   if (authLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>
-        <div className="pulse" style={{ fontSize: '1.2rem' }}>Establishing secure connection...</div>
+        <div className="pulse" style={{ fontSize: '1.2rem' }}>{t('app.establishing_connection', 'Establishing secure connection...')}</div>
       </div>
     );
   }

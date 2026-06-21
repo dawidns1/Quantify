@@ -1,4 +1,7 @@
 {
+  "app": {
+    "establishing_connection": "Estableciendo conexión segura..."
+  },
   "sidebar": {
     "logged_in_as": "Sesión iniciada como",
     "base_currency": "Moneda base",
@@ -180,7 +183,13 @@
     "close_customizer": "Cerrar configurador de tarjetas",
     "customize_cards": "Personalizar tarjetas del panel",
     "viewer_empty_warning": "Este portafolio está vacío y tiene acceso de solo lectura.",
-    "search_history_placeholder": "Buscar historial..."
+    "search_history_placeholder": "Buscar historial...",
+    "performance": "Rendimiento",
+    "move_up": "Mover hacia arriba",
+    "move_down": "Mover hacia abajo",
+    "hide_card": "Ocultar tarjeta",
+    "computing_performance": "Calculando rendimiento...",
+    "refetching": "Actualizando..."
   },
   "modals": {
     "common_close": "Cerrar",
@@ -514,5 +523,20 @@
     "descRevGrowth2y": "Tasa de crecimiento de ingresos proyectada entre el año 1 y el año 2.",
     "descPSG1y": "Ratio Precio/Ventas ajustado al crecimiento para los próximos 12 meses (menor es más barato).",
     "descPSG2y": "Ratio Precio/Ventas ajustado al crecimiento para el año 2."
+  },
+  "premium": {
+    "title": "Actualizar a QuantiFi Premium",
+    "upgrade_success": "¡Actualización exitosa!",
+    "upgrade_success_desc": "Bienvenido a QuantiFi Premium. ¡Se han eliminado los límites!",
+    "limit_portfolio": "Has alcanzado el límite de 1 portafolio en el Plan Gratuito. ¡Actualiza para crear portafolios ilimitados!",
+    "limit_account": "Has alcanzado el límite de 2 cuentas de corretaje por portafolio en el Plan Gratuito. ¡Actualiza para conectar cuentas ilimitadas!",
+    "limit_general": "¡Desbloquea análisis avanzados, configuraciones fiscales multicueenta y herramientas de seguimiento ilimitadas!",
+    "feature_1": "Portafolios y subcuentas ilimitados",
+    "feature_2": "Configuración fiscal personalizada (tasas IKE/IKZE)",
+    "feature_3": "Seguimiento avanzado de dividendos (Brutto vs Neto)",
+    "processing_upgrade": "Procesando actualización...",
+    "upgrade_now_price": "Actualizar ahora — $9.99/mes",
+    "skip_countdown": "Saltar al panel gratuito ({{count}}s)",
+    "skip_now": "Saltar por ahora"
   }
 }

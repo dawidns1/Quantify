@@ -1,4 +1,7 @@
 {
+  "app": {
+    "establishing_connection": "Nawiązywanie bezpiecznego połączenia..."
+  },
   "sidebar": {
     "logged_in_as": "Zalogowano jako",
     "base_currency": "Waluta bazowa",
@@ -180,7 +183,13 @@
     "close_customizer": "Zamknij konfigurator kart",
     "customize_cards": "Dostosuj karty pulpitu",
     "viewer_empty_warning": "Ten portfel jest pusty i masz do niego dostęp tylko do odczytu.",
-    "search_history_placeholder": "Szukaj w historii..."
+    "search_history_placeholder": "Szukaj w historii...",
+    "performance": "Wyniki",
+    "move_up": "Przesuń w górę",
+    "move_down": "Przesuń w dół",
+    "hide_card": "Ukryj kartę",
+    "computing_performance": "Obliczanie wyników...",
+    "refetching": "Odświeżanie..."
   },
   "modals": {
     "common_close": "Zamknij",
@@ -514,5 +523,20 @@
     "descRevGrowth2y": "Prognozowana roczna stopa wzrostu przychodów między rokiem 1 a rokiem 2.",
     "descPSG1y": "Wskaźnik Cena/Przychody skorygowany o prognozowany wzrost na 12 miesięcy (im niższy, tym tańszy).",
     "descPSG2y": "Wskaźnik Cena/Przychody skorygowany o prognozowany wzrost na rok 2."
+  },
+  "premium": {
+    "title": "Ulepsz do QuantiFi Premium",
+    "upgrade_success": "Ulepszenie pomyślne!",
+    "upgrade_success_desc": "Witaj w QuantiFi Premium. Limity zostały usunięte!",
+    "limit_portfolio": "Osiągnięto limit 1 portfela w darmowym planie. Ulepsz konto, aby tworzyć nielimitowane portfele!",
+    "limit_account": "Osiągnięto limit 2 kont maklerskich na portfel w darmowym planie. Ulepsz konto, aby połączyć nielimitowane konta!",
+    "limit_general": "Odblokuj zaawansowane analizy, ustawienia podatkowe dla wielu kont i nielimitowane narzędzia śledzenia!",
+    "feature_1": "Nielimitowane portfele i subkonta",
+    "feature_2": "Niestandardowe ustawienia podatkowe (stawki IKE/IKZE)",
+    "feature_3": "Zaawansowane śledzenie dywidend (Brutto vs Netto)",
+    "processing_upgrade": "Przetwarzanie ulepszenia...",
+    "upgrade_now_price": "Kup Premium — 9,99 USD/mies.",
+    "skip_countdown": "Przejdź do darmowego panelu ({{count}}s)",
+    "skip_now": "Pomiń na razie"
   }
 }

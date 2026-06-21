@@ -1,4 +1,7 @@
 {
+  "app": {
+    "establishing_connection": "Establishing secure connection..."
+  },
   "sidebar": {
     "logged_in_as": "Logged in as",
     "base_currency": "Base Currency",
@@ -180,7 +183,13 @@
     "close_customizer": "Close Card Customizer",
     "customize_cards": "Customize Dashboard Cards",
     "viewer_empty_warning": "This portfolio is empty and you have read-only access.",
-    "search_history_placeholder": "Search history..."
+    "search_history_placeholder": "Search history...",
+    "performance": "Performance",
+    "move_up": "Move Up",
+    "move_down": "Move Down",
+    "hide_card": "Hide Card",
+    "computing_performance": "Computing performance...",
+    "refetching": "Refetching..."
   },
   "modals": {
     "common_close": "Close",
@@ -514,5 +523,20 @@
     "descRevGrowth2y": "Projected revenue growth rate between year 1 and year 2.",
     "descPSG1y": "Growth-adjusted P/S ratio for next 12 months (lower is cheaper).",
     "descPSG2y": "Growth-adjusted P/S ratio for year 2."
+  },
+  "premium": {
+    "title": "Upgrade to QuantiFi Premium",
+    "upgrade_success": "Upgrade Successful!",
+    "upgrade_success_desc": "Welcome to QuantiFi Premium. Limits have been removed!",
+    "limit_portfolio": "You've hit the limit of 1 portfolio on the Free Plan. Upgrade to create unlimited portfolios!",
+    "limit_account": "You've reached the limit of 2 brokerage accounts per portfolio on the Free Plan. Upgrade to connect unlimited accounts!",
+    "limit_general": "Unlock advanced analytics, multi-account tax settings, and unlimited tracking tools!",
+    "feature_1": "Unlimited Portfolios & Sub-accounts",
+    "feature_2": "Custom Tax Settings (IKE/IKZE rates)",
+    "feature_3": "Advanced Dividend Tracking (Gross vs Net)",
+    "processing_upgrade": "Processing Upgrade...",
+    "upgrade_now_price": "Upgrade Now — $9.99/mo",
+    "skip_countdown": "Skip to free dashboard ({{count}}s)",
+    "skip_now": "Skip for Now"
   }
 }

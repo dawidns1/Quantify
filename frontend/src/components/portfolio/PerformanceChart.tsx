@@ -1,5 +1,6 @@
 import { useState, useMemo, memo } from 'react';
 import { Activity, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -92,6 +93,7 @@ export const PerformanceChart = memo(function PerformanceChart({
   onMoveDown,
   onClose
 }: PerformanceChartProps) {
+  const { t } = useTranslation();
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
 
   // Filter and slice chart data based on range
@@ -233,7 +235,7 @@ export const PerformanceChart = memo(function PerformanceChart({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Activity size={14} className="gradient-text" /> Performance ({baseCurrency})
+            <Activity size={14} className="gradient-text" /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
           </h4>
           {!loadingChart && performanceIndicator && (
             <span style={{
@@ -259,7 +261,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               <button 
                 onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                title="Move Up" 
+                title={t('dashboard.move_up', 'Move Up')} 
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
               >
@@ -270,7 +272,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               <button 
                 onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                title="Move Down" 
+                title={t('dashboard.move_down', 'Move Down')} 
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
               >
@@ -281,7 +283,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               <button 
                 onClick={(e) => { e.stopPropagation(); onClose(); }} 
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                title="Hide Card" 
+                title={t('dashboard.hide_card', 'Hide Card')} 
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
               >
@@ -322,7 +324,7 @@ export const PerformanceChart = memo(function PerformanceChart({
       <div style={{ height: '200px', position: 'relative' }}>
         {loadingChart && !chartDataFormatted ? (
           <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }} className="pulse">
-            Computing performance...
+            {t('dashboard.computing_performance', 'Computing performance...')}
           </div>
         ) : chartDataFormatted ? (
           <>
@@ -349,7 +351,7 @@ export const PerformanceChart = memo(function PerformanceChart({
                 boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                 fontWeight: 600
               }} className="pulse">
-                Refetching...
+                {t('dashboard.refetching', 'Refetching...')}
               </div>
             )}
           </>

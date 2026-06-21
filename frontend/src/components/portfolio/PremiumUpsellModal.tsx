@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Sparkles, ShieldCheck, Check } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface PremiumUpsellModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface PremiumUpsellModalProps {
 
 export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellModalProps) {
   const { setTier } = useAuth();
+  const { t } = useTranslation();
   const [countdown, setCountdown] = useState(5);
   const [upgrading, setUpgrading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -85,10 +87,10 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
                 <Check size={32} />
               </div>
               <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Upgrade Successful!
+                {t('premium.upgrade_success', 'Upgrade Successful!')}
               </h3>
               <p style={{ margin: 0, fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
-                Welcome to <strong>QuantiFi Premium</strong>. Limits have been removed!
+                {t('premium.upgrade_success_desc', 'Welcome to QuantiFi Premium. Limits have been removed!')}
               </p>
             </div>
           ) : (
@@ -115,17 +117,17 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
               {/* Title & Limits Reason */}
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Upgrade to QuantiFi Premium
+                  {t('premium.title', 'Upgrade to QuantiFi Premium')}
                 </h3>
                 <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                   {reason === 'portfolio' && (
-                    <span>You've hit the limit of <strong>1 portfolio</strong> on the Free Plan. Upgrade to create unlimited portfolios!</span>
+                    <span>{t('premium.limit_portfolio', "You've hit the limit of 1 portfolio on the Free Plan. Upgrade to create unlimited portfolios!")}</span>
                   )}
                   {reason === 'account' && (
-                    <span>You've reached the limit of <strong>2 brokerage accounts</strong> per portfolio on the Free Plan. Upgrade to connect unlimited accounts!</span>
+                    <span>{t('premium.limit_account', "You've reached the limit of 2 brokerage accounts per portfolio on the Free Plan. Upgrade to connect unlimited accounts!")}</span>
                   )}
                   {reason === 'general' && (
-                    <span>Unlock advanced analytics, multi-account tax settings, and unlimited tracking tools!</span>
+                    <span>{t('premium.limit_general', 'Unlock advanced analytics, multi-account tax settings, and unlimited tracking tools!')}</span>
                   )}
                 </p>
               </div>
@@ -142,16 +144,16 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
                 gap: '0.65rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
-                  <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>Unlimited Portfolios & Sub-accounts</span>
+                   <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                   <span>{t('premium.feature_1', 'Unlimited Portfolios & Sub-accounts')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
-                  <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>Custom Tax Settings (IKE/IKZE rates)</span>
+                   <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                   <span>{t('premium.feature_2', 'Custom Tax Settings (IKE/IKZE rates)')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
-                  <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>Advanced Dividend Tracking (Gross vs Net)</span>
+                   <ShieldCheck size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                   <span>{t('premium.feature_3', 'Advanced Dividend Tracking (Gross vs Net)')}</span>
                 </div>
               </div>
 
@@ -174,7 +176,7 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
                     width: '100%'
                   }}
                 >
-                  {upgrading ? 'Processing Upgrade...' : 'Upgrade Now — $9.99/mo'}
+                  {upgrading ? t('premium.processing_upgrade', 'Processing Upgrade...') : t('premium.upgrade_now_price', 'Upgrade Now — $9.99/mo')}
                 </button>
                 
                 <button
@@ -193,7 +195,7 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
                     fontWeight: 500
                   }}
                 >
-                  {countdown > 0 ? `Skip to free dashboard (${countdown}s)` : 'Skip for Now'}
+                  {countdown > 0 ? t('premium.skip_countdown', 'Skip to free dashboard ({{count}}s)', { count: countdown }) : t('premium.skip_now', 'Skip for Now')}
                 </button>
               </div>
 
