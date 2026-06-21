@@ -265,7 +265,7 @@ export function HoldingsTable({
       label: t('holdings.col_avg_cost', 'Average Cost'),
       sortField: 'avg_cost_local',
       align: 'right',
-      renderHeader: () => t('holdings.col_avg_price', 'Avg Price'),
+      renderHeader: () => t('holdings.col_avg_price', 'Avg Cost'),
       renderCell: (h) => (
         <AnimateOnChange value={h.avg_cost_local} contextId={h.symbol}>
           {formatCurrency(h.avg_cost_local, h.currency)}
@@ -273,7 +273,7 @@ export function HoldingsTable({
       )
     },
     price: {
-      label: t('holdings.col_local_price', 'Local Price'),
+      label: t('holdings.col_local_price', 'Current Price'),
       sortField: 'current_price_local',
       align: 'right',
       renderHeader: () => t('holdings.col_cur_price', 'Price'),
@@ -295,10 +295,10 @@ export function HoldingsTable({
       )
     },
     dividends: {
-      label: t('holdings.col_dividends_net', 'Dividends Net'),
+      label: t('holdings.col_dividends_net', 'Net Dividends'),
       sortField: 'dividends_net_base',
       align: 'right',
-      renderHeader: () => t('metrics.dividends', 'Dividends'),
+      renderHeader: () => t('holdings.col_dividends_net', 'Net Dividends'),
       renderCell: (h, baseCurrency) => (
         <span title={`${t('metrics.gross', 'Gross')}: ${formatCurrency(h.dividends_base || 0, baseCurrency)}`} style={{ color: 'var(--color-green)' }}>
           <AnimateOnChange value={h.dividends_net_base} contextId={h.symbol}>
@@ -339,10 +339,10 @@ export function HoldingsTable({
       )
     },
     weight: {
-      label: t('holdings.col_weight', 'Weight'),
+      label: t('holdings.col_allocation', 'Allocation'),
       sortField: 'current_value_base',
       align: 'right',
-      renderHeader: () => t('holdings.col_weight', 'Weight'),
+      renderHeader: () => t('holdings.col_allocation', 'Allocation'),
       renderCell: (h) => {
         const total = summary.total_value_base || 1;
         const wt = (h.current_value_base / total) * 100;
@@ -379,13 +379,13 @@ export function HoldingsTable({
       name: t('holdings.group_position', 'Position Info'),
       items: [
         { id: 'shares', label: t('holdings.col_shares_owned', 'Shares Owned') },
-        { id: 'weight', label: t('holdings.col_weight', 'Weight') }
+        { id: 'weight', label: t('holdings.col_allocation', 'Allocation') }
       ]
     },
     {
       name: t('holdings.group_valuation', 'Valuation'),
       items: [
-        { id: 'price', label: t('holdings.col_local_price', 'Local Price') },
+        { id: 'price', label: t('holdings.col_local_price', 'Current Price') },
         { id: 'avg_cost', label: t('holdings.col_avg_cost', 'Average Cost') },
         { id: 'cost', label: t('holdings.col_cost_basis', 'Cost Basis') },
         { id: 'fx_rate', label: t('holdings.col_fx_rate', 'FX Rate') }
@@ -395,7 +395,7 @@ export function HoldingsTable({
       name: t('holdings.group_returns', 'Returns'),
       items: [
         { id: 'day_change', label: t('holdings.col_day_change', 'Day Change') },
-        { id: 'dividends', label: t('holdings.col_dividends_net', 'Dividends Net') }
+        { id: 'dividends', label: t('holdings.col_dividends_net', 'Net Dividends') }
       ]
     }
   ];
@@ -479,14 +479,12 @@ export function HoldingsTable({
             background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
             border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
             color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
-            padding: '4px 10px',
+            padding: '6px',
             borderRadius: '6px',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.35rem',
-            fontSize: '0.75rem',
-            fontWeight: 600,
+            justifyContent: 'center',
             transition: 'all 0.2s ease',
           }}
           onMouseEnter={(e) => {
@@ -509,7 +507,6 @@ export function HoldingsTable({
           }}
         >
           <SlidersHorizontal size={13} />
-          <span>{t('holdings.btn_customize_cols', 'Customize Columns')}</span>
         </button>
       </div>
 
