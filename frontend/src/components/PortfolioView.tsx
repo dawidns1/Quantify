@@ -374,7 +374,8 @@ export function PortfolioView({
           minWidth: 0,
           height: '100%',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          minHeight: 0
         });
         setRightStickyStyle({
           display: 'flex',
@@ -382,7 +383,8 @@ export function PortfolioView({
           gap: '0.75rem',
           minWidth: 0,
           height: '100%',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          minHeight: 0
         });
         return;
       }
