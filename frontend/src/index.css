@@ -1140,6 +1140,9 @@ body.low-perf .modal-content {
   .portfolio-grid {
     grid-template-columns: 1fr !important;
   }
+  .table-wrapper {
+    min-height: 0 !important;
+  }
 }
 
 @media (min-width: 1025px) {
@@ -1522,7 +1525,7 @@ select option {
   .portfolio-header-bar {
     display: flex !important;
     align-items: center;
-    padding: 0.25rem 0.25rem 0.35rem 0.25rem;
+    padding: 0.25rem 0rem 0.35rem 0rem;
     background: transparent;
     border: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
