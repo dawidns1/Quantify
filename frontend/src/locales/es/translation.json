@@ -61,11 +61,13 @@
     "col_asset": "Activo",
     "col_shares": "Acciones",
     "col_avg_price": "Costo prom.",
-    "col_cur_price": "Precio",
+    "col_cur_price": "Precio actual",
     "col_market_value": "Valor de mercado",
     "col_cost_basis": "Base de costo",
     "col_profit_loss": "Ganancia / Pérdida",
-    "col_day_change": "Diario",
+    "col_current": "Valor actual",
+    "col_gain_loss": "Ganancia/Pérdida",
+    "col_day_change": "Cambio diario",
     "col_allocation": "Asignación",
     "col_actions": "Acciones",
     "action_history": "Historial",
@@ -99,7 +101,10 @@
     "col_ticker": "Ticker",
     "btn_rebalance": "Rebalancear",
     "btn_hide_cards": "Ocultar tarjetas",
-    "btn_show_cards": "Mostrar tarjetas"
+    "btn_show_cards": "Mostrar tarjetas",
+    "ticker_fixed": "Ticker (fijo)",
+    "current_fixed": "Valor actual (fijo)",
+    "gain_loss_fixed": "Ganancia/Pérdida (fijo)"
   },
   "ledger": {
     "header": "Libro de transacciones",

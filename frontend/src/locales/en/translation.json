@@ -61,10 +61,12 @@
     "col_asset": "Asset",
     "col_shares": "Shares",
     "col_avg_price": "Avg Cost",
-    "col_cur_price": "Price",
+    "col_cur_price": "Current Price",
     "col_market_value": "Market Value",
     "col_cost_basis": "Cost Basis",
     "col_profit_loss": "Profit / Loss",
+    "col_current": "Current Value",
+    "col_gain_loss": "Gain/Loss",
     "col_day_change": "Daily",
     "col_allocation": "Allocation",
     "col_actions": "Actions",
@@ -99,7 +101,10 @@
     "col_ticker": "Ticker",
     "btn_rebalance": "Rebalance",
     "btn_hide_cards": "Hide Cards",
-    "btn_show_cards": "Show Cards"
+    "btn_show_cards": "Show Cards",
+    "ticker_fixed": "Ticker (Fixed)",
+    "current_fixed": "Current Value (Fixed)",
+    "gain_loss_fixed": "Gain/Loss (Fixed)"
   },
   "ledger": {
     "header": "Transaction History Ledger",

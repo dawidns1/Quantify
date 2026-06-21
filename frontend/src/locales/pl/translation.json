@@ -61,11 +61,13 @@
     "col_asset": "Instrument",
     "col_shares": "Ilość",
     "col_avg_price": "Śr. koszt",
-    "col_cur_price": "Kurs",
+    "col_cur_price": "Bieżący kurs",
     "col_market_value": "Wartość rynkowa",
     "col_cost_basis": "Suma kosztów",
     "col_profit_loss": "Zysk / Strata",
-    "col_day_change": "Dzienny",
+    "col_current": "Wartość bieżąca",
+    "col_gain_loss": "Zysk/Strata",
+    "col_day_change": "Zmiana dzienna",
     "col_allocation": "Alokacja",
     "col_actions": "Akcje",
     "action_history": "Szczegóły",
@@ -99,7 +101,10 @@
     "col_ticker": "Ticker",
     "btn_rebalance": "Rebalansuj",
     "btn_hide_cards": "Ukryj karty",
-    "btn_show_cards": "Pokaż karty"
+    "btn_show_cards": "Pokaż karty",
+    "ticker_fixed": "Ticker (zablokowany)",
+    "current_fixed": "Wartość bieżąca (zablokowana)",
+    "gain_loss_fixed": "Zysk/Strata (zablokowana)"
   },
   "ledger": {
     "header": "Księga Historycznych Transakcji",

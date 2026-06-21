@@ -276,7 +276,7 @@ export function HoldingsTable({
       label: t('holdings.col_local_price', 'Current Price'),
       sortField: 'current_price_local',
       align: 'right',
-      renderHeader: () => t('holdings.col_cur_price', 'Price'),
+      renderHeader: () => t('holdings.col_cur_price', 'Current Price'),
       renderCell: (h) => (
         <AnimateOnChange value={h.current_price_local} contextId={h.symbol}>
           {formatCurrency(h.current_price_local, h.currency)}
@@ -622,7 +622,7 @@ export function HoldingsTable({
               })}
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {t('holdings.current_fixed', 'Current (Fixed)')}
+                {t('holdings.current_fixed', 'Current Value (Fixed)')}
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 {t('holdings.gain_loss_fixed', 'Gain/Loss (Fixed)')}
@@ -699,7 +699,7 @@ export function HoldingsTable({
                     minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
                   }}
                 >
-                  {t('holdings.col_current', 'Current')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
+                  {t('holdings.col_current', 'Current Value')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
                   <div 
                     className={`col-resizer ${activeDragCol.current === 'current_value_base' ? 'resizing' : ''}`}
                     onMouseDown={(e) => handleMouseDown(e, 'current_value_base')}
