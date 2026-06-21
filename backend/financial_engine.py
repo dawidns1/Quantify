@@ -222,10 +222,10 @@ def calculate_beta(daily_nav: list, daily_cash_flows: dict, benchmark_symbol: st
     try:
         from backend.data_provider import YF_SESSION
         df = yf.download(benchmark_symbol, start=start_str, end=end_str, progress=False, session=YF_SESSION)
-        if df.empty or 'Close' not in df.columns:
-            return 1.0
-            
-        benchmark_closes = df['Close'].dropna()
+        closes = df['Close']
+        if isinstance(closes, pd.DataFrame):
+            closes = closes.squeeze()
+        benchmark_closes = closes.dropna()
         if len(benchmark_closes) < 5:
             return 1.0
             

@@ -1575,19 +1575,42 @@ class PortfolioManager:
                             bfill_val = prices_dict[future_dates[0]]
                         stock_prices[sym][d] = bfill_val if bfill_val is not None else 0.0
                 
+        # Construct symbol_txs and ticker_info_tmp
+        symbol_txs = {}
+        for tx in sorted_txs:
+            sym = tx["symbol"].upper().strip()
+            if not sym.startswith("CASH_"):
+                symbol_txs.setdefault(sym, []).append(tx)
+                
+        ticker_info_tmp = {}
+        for symbol in symbol_txs.keys():
+            info = cls.get_cached_live_ticker(symbol)
+            native_currency = info.get("native_currency") or ""
+            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
+            # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
+            suffix = symbol.split(".")[-1] if "." in symbol else ""
+            is_non_us_ticker = suffix in {
+                "DE", "WA", "PA", "BR", "MI", "MC", "LS", "AT", "VI",
+                "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
+                "SG", "ST", "CO", "EE", "HE", "OL", "IC"
+            }
+            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
+                first_tx = symbol_txs[symbol][0]
+                native_currency = first_tx.get("currency", "USD")
+            ticker_info_tmp[symbol] = {
+                "native_currency": native_currency.upper().strip()
+            }
+
         # 6. Gather all unique currencies needing FX to base_currency
         unique_currencies = {base_currency}
         for tx in sorted_txs:
             unique_currencies.add(tx["currency"].upper().strip())
             
         symbol_currencies = {}
-        for tx in sorted_txs:
-            sym = tx["symbol"].upper().strip()
-            if not sym.startswith("CASH_"):
-                symbol_currencies[sym] = tx["currency"].upper().strip()
-                
-        for curr in symbol_currencies.values():
-            unique_currencies.add(curr)
+        for sym, info in ticker_info_tmp.items():
+            native_curr = info["native_currency"]
+            symbol_currencies[sym] = native_curr
+            unique_currencies.add(native_curr)
             
         # Fetch historical exchange rates (cached)
         fx_rates_hist = {}
@@ -1643,31 +1666,7 @@ class PortfolioManager:
                 return 0.0
             return 0.19
             
-        # Construct symbol_txs and ticker_info to get merged dividends
-        symbol_txs = {}
-        for tx in sorted_txs:
-            sym = tx["symbol"].upper().strip()
-            if not sym.startswith("CASH_"):
-                symbol_txs.setdefault(sym, []).append(tx)
-                
-        ticker_info_tmp = {}
-        for symbol in symbol_txs.keys():
-            info = cls.get_cached_live_ticker(symbol)
-            native_currency = info["native_currency"]
-            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
-            # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
-            suffix = symbol.split(".")[-1] if "." in symbol else ""
-            is_non_us_ticker = suffix in {
-                "DE", "WA", "PA", "BR", "MI", "MC", "LS", "AT", "VI",
-                "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
-                "SG", "ST", "CO", "EE", "HE", "OL", "IC"
-            }
-            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
-                first_tx = symbol_txs[symbol][0]
-                native_currency = first_tx.get("currency", "USD")
-            ticker_info_tmp[symbol] = {
-                "native_currency": native_currency.upper().strip()
-            }
+        # symbol_txs and ticker_info_tmp are already defined above
             
         fx_rates_tmp = {base_currency: 1.0}
         for curr in unique_currencies:
