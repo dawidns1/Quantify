@@ -351,7 +351,9 @@
     "no_forecast_data": "No forward dividend data available. Add dividend-paying assets to see projections.",
     "monthly_projection": "Monthly Cash Flow Projections",
     "total": "Total",
-    "total_net": "Total Net"
+    "total_net": "Total Net",
+    "hide_forecast_tooltip": "Collapse Forecast",
+    "hide_calendar_tooltip": "Collapse Calendar"
   },
   "rebalance": {
     "title": "Target Allocation Planner",

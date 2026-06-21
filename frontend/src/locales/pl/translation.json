@@ -351,7 +351,9 @@
     "no_forecast_data": "Brak danych o prognozowanych dywidendach. Dodaj aktywa wypłacające dywidendę, aby zobaczyć wykres.",
     "monthly_projection": "Miesięczne przepływy pieniężne",
     "total": "Razem",
-    "total_net": "Suma netto"
+    "total_net": "Suma netto",
+    "hide_forecast_tooltip": "Zwiń prognozę",
+    "hide_calendar_tooltip": "Zwiń kalendarz"
   },
   "rebalance": {
     "title": "Planowanie Rebalansowania Portfolio",

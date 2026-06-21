@@ -10,6 +10,8 @@ import type { Portfolio, Transaction, Holding, Summary } from '../types/portfoli
 import { fetchUserPortfolios, createPortfolio } from '../services/supabaseService';
 import { fetchTransactions as fetchTransactionsService } from '../services/transactionService';
 
+export type BaseCurrencyType = 'PLN' | 'USD' | 'EUR' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY';
+
 export interface AnalyticsData {
   mwr: number;
   twr: number;
@@ -28,8 +30,8 @@ interface PortfolioContextType {
   setActivePortfolioId: (id: string | null) => void;
   activePortfolioRole: 'owner' | 'editor' | 'viewer';
   setActivePortfolioRole: (role: 'owner' | 'editor' | 'viewer') => void;
-  baseCurrency: 'PLN' | 'USD' | 'EUR';
-  setBaseCurrency: (currency: 'PLN' | 'USD' | 'EUR') => void;
+  baseCurrency: BaseCurrencyType;
+  setBaseCurrency: (currency: BaseCurrencyType) => void;
   selectedAccount: string;
   setSelectedAccount: (account: string) => void;
   holdings: Holding[];
@@ -66,10 +68,10 @@ interface PortfolioContextType {
   
   // Handlers
   loadPortfolios: () => Promise<void>;
-  fetchHoldings: (curr?: 'PLN' | 'USD' | 'EUR', accountFilter?: string, silent?: boolean) => Promise<void>;
+  fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean) => Promise<void>;
   fetchTransactions: () => Promise<void>;
-  fetchHistoricalPerformance: (curr?: 'PLN' | 'USD' | 'EUR', accountFilter?: string) => Promise<void>;
-  fetchPortfolioAnalytics: (curr?: 'PLN' | 'USD' | 'EUR', accountFilter?: string) => Promise<void>;
+  fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
+  fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -95,7 +97,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     return (localStorage.getItem('portfolio_active_role') as any) || 'viewer';
   });
 
-  const [baseCurrency, setBaseCurrencyState] = useState<'PLN' | 'USD' | 'EUR'>(() => {
+  const [baseCurrency, setBaseCurrencyState] = useState<BaseCurrencyType>(() => {
     return (localStorage.getItem('portfolio_base_currency') as any) || 'PLN';
   });
 
@@ -223,7 +225,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     localStorage.setItem('portfolio_active_role', role);
   };
 
-  const setBaseCurrency = (currency: 'PLN' | 'USD' | 'EUR') => {
+  const setBaseCurrency = (currency: BaseCurrencyType) => {
     setBaseCurrencyState(currency);
     localStorage.setItem('portfolio_base_currency', currency);
   };
@@ -292,7 +294,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
   // --- Fetch Actions ---
   const fetchHoldings = async (
-    curr: 'PLN' | 'USD' | 'EUR' = baseCurrency,
+    curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
     silent = false
   ) => {
@@ -362,7 +364,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   };
 
   const fetchHistoricalPerformance = async (
-    curr: 'PLN' | 'USD' | 'EUR' = baseCurrency,
+    curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount
   ) => {
     if (!activePortfolioId) {
@@ -409,7 +411,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   };
 
   const fetchPortfolioAnalytics = async (
-    curr: 'PLN' | 'USD' | 'EUR' = baseCurrency,
+    curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount
   ) => {
     if (!activePortfolioId || portfolios.length === 0) {

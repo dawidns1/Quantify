@@ -1732,19 +1732,16 @@ export function PortfolioView({
                     {/* Divider between Forecast and Calendar */}
                     {(showDivForecast && showDivCalendar) && (
                       <div 
-                        onClick={handleToggleDivCalendar}
                         className="divider-line-hover"
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          cursor: 'pointer',
                           position: 'relative',
                           height: '100%',
-                          width: '100%',
+                          width: '12px',
                           zIndex: 10
                         }}
-                        title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
                       >
                         <div 
                           className="divider-line"
@@ -1756,14 +1753,17 @@ export function PortfolioView({
                             transition: 'background-color 0.2s'
                           }}
                         />
-                        <div 
+                        {/* Collapse Forecast Pill (Collapses Left) */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleDivForecast(); }}
                           className="divider-pill"
+                          title={t('dividends.hide_forecast_tooltip', 'Collapse Forecast')}
                           style={{
                             position: 'absolute',
-                            top: '50%',
+                            top: 'calc(50% - 20px)',
                             transform: 'translateY(-50%)',
                             width: '12px',
-                            height: '32px',
+                            height: '28px',
                             background: 'rgba(15, 23, 42, 0.95)',
                             border: '1px solid var(--panel-border)',
                             borderRadius: '6px',
@@ -1772,11 +1772,56 @@ export function PortfolioView({
                             justifyContent: 'center',
                             color: 'var(--text-muted)',
                             fontSize: '0.55rem',
+                            cursor: 'pointer',
+                            padding: 0,
                             transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--panel-border)';
+                          }}
+                        >
+                          <span>◀</span>
+                        </button>
+                        
+                        {/* Collapse Calendar Pill (Collapses Right) */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleToggleDivCalendar(); }}
+                          className="divider-pill"
+                          title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
+                          style={{
+                            position: 'absolute',
+                            top: 'calc(50% + 20px)',
+                            transform: 'translateY(-50%)',
+                            width: '12px',
+                            height: '28px',
+                            background: 'rgba(15, 23, 42, 0.95)',
+                            border: '1px solid var(--panel-border)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.55rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--panel-border)';
                           }}
                         >
                           <span>▶</span>
-                        </div>
+                        </button>
                       </div>
                     )}
 

@@ -4,6 +4,7 @@ import type { Transaction } from '../../types/portfolio';
 import { searchAssets } from '../../services/calculationService';
 import { saveTransaction } from '../../services/transactionService';
 import { useTranslation } from 'react-i18next';
+import type { BaseCurrencyType } from '../../context/PortfolioContext';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -44,7 +45,7 @@ export function AddTransactionModal({
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formShares, setFormShares] = useState('');
   const [formPrice, setFormPrice] = useState('');
-  const [formCurrency, setFormCurrency] = useState<'PLN' | 'USD' | 'EUR'>('USD');
+  const [formCurrency, setFormCurrency] = useState<BaseCurrencyType>('USD');
   const [formFees, setFormFees] = useState('');
   const [formAccount, setFormAccount] = useState('Default');
   const [priceInputMode, setPriceInputMode] = useState<'per_share' | 'total' | 'adjust'>('per_share');
@@ -152,7 +153,7 @@ export function AddTransactionModal({
       setFormDate(editingTransaction.date);
       setFormShares(editingTransaction.shares.toString());
       setFormPrice(editingTransaction.price.toString());
-      setFormCurrency(editingTransaction.currency as 'PLN' | 'USD' | 'EUR');
+      setFormCurrency(editingTransaction.currency as BaseCurrencyType);
       setFormFees(editingTransaction.fees ? editingTransaction.fees.toString() : '');
       setFormAccount(editingTransaction.account || 'Default');
       setIsSuggestionSelected(true);
@@ -169,6 +170,16 @@ export function AddTransactionModal({
         setFormCurrency('PLN');
       } else if (upperSymbol.endsWith('.DE') || upperSymbol.endsWith('.F')) {
         setFormCurrency('EUR');
+      } else if (upperSymbol.endsWith('.L')) {
+        setFormCurrency('GBP');
+      } else if (upperSymbol.endsWith('.SW')) {
+        setFormCurrency('CHF');
+      } else if (upperSymbol.endsWith('.TO') || upperSymbol.endsWith('.V')) {
+        setFormCurrency('CAD');
+      } else if (upperSymbol.endsWith('.AX')) {
+        setFormCurrency('AUD');
+      } else if (upperSymbol.endsWith('.T')) {
+        setFormCurrency('JPY');
       } else {
         setFormCurrency('USD');
       }
@@ -198,8 +209,18 @@ export function AddTransactionModal({
     const upperVal = val.toUpperCase().trim();
     if (upperVal.endsWith('.WA')) {
       setFormCurrency('PLN');
-    } else if (upperVal.endsWith('.DE')) {
+    } else if (upperVal.endsWith('.DE') || upperVal.endsWith('.F')) {
       setFormCurrency('EUR');
+    } else if (upperVal.endsWith('.L')) {
+      setFormCurrency('GBP');
+    } else if (upperVal.endsWith('.SW')) {
+      setFormCurrency('CHF');
+    } else if (upperVal.endsWith('.TO') || upperVal.endsWith('.V')) {
+      setFormCurrency('CAD');
+    } else if (upperVal.endsWith('.AX')) {
+      setFormCurrency('AUD');
+    } else if (upperVal.endsWith('.T')) {
+      setFormCurrency('JPY');
     } else {
       setFormCurrency('USD');
     }
@@ -220,6 +241,16 @@ export function AddTransactionModal({
       ['FRA', 'GER', 'DUS', 'MUN', 'XETRA', 'STU'].includes(s.exchange)
     ) {
       setFormCurrency('EUR');
+    } else if (sym.endsWith('.L') || s.exchange === 'LSE') {
+      setFormCurrency('GBP');
+    } else if (sym.endsWith('.SW') || s.exchange === 'SIX') {
+      setFormCurrency('CHF');
+    } else if (sym.endsWith('.TO') || sym.endsWith('.V') || ['TSX', 'CVE'].includes(s.exchange)) {
+      setFormCurrency('CAD');
+    } else if (sym.endsWith('.AX') || s.exchange === 'ASX') {
+      setFormCurrency('AUD');
+    } else if (sym.endsWith('.T') || s.exchange === 'TYO') {
+      setFormCurrency('JPY');
     } else {
       setFormCurrency('USD');
     }
@@ -423,7 +454,7 @@ export function AddTransactionModal({
               {/* Quick Cash Buttons */}
               {(!formSymbol || formSymbol.toUpperCase().startsWith('CASH')) && (
                 <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                  {['CASH_USD', 'CASH_PLN', 'CASH_EUR'].map((cashSym) => (
+                  {['CASH_USD', 'CASH_PLN', 'CASH_EUR', 'CASH_GBP', 'CASH_CHF', 'CASH_CAD', 'CASH_AUD', 'CASH_JPY'].map((cashSym) => (
                     <button
                       key={cashSym}
                       type="button"
@@ -431,7 +462,7 @@ export function AddTransactionModal({
                         setFormSymbol(cashSym);
                         setIsSuggestionSelected(true);
                         setShowSuggestions(false);
-                        const curr = cashSym.split('_')[1] as 'PLN' | 'USD' | 'EUR';
+                        const curr = cashSym.split('_')[1] as BaseCurrencyType;
                         setFormCurrency(curr);
                         setFormPrice('1.0');
                       }}
@@ -498,11 +529,16 @@ export function AddTransactionModal({
                   className="input-field"
                   style={{ width: '100%', cursor: 'pointer' }}
                   value={formCurrency}
-                  onChange={(e) => setFormCurrency(e.target.value as 'PLN' | 'USD' | 'EUR')}
+                  onChange={(e) => setFormCurrency(e.target.value as BaseCurrencyType)}
                 >
                   <option value="USD">USD ($)</option>
                   <option value="PLN">PLN (zł)</option>
                   <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="CHF">CHF (CHF)</option>
+                  <option value="CAD">CAD (C$)</option>
+                  <option value="AUD">AUD (A$)</option>
+                  <option value="JPY">JPY (¥)</option>
                 </select>
               </div>
 

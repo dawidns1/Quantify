@@ -351,7 +351,9 @@
     "no_forecast_data": "No hay datos de dividendos proyectados disponibles. Añada activos que paguen dividendos para ver proyecciones.",
     "monthly_projection": "Proyecciones de flujo de caja mensual",
     "total": "Total",
-    "total_net": "Total neto"
+    "total_net": "Total neto",
+    "hide_forecast_tooltip": "Colapsar pronóstico",
+    "hide_calendar_tooltip": "Colapsar calendario"
   },
   "rebalance": {
     "title": "Planificador de asignación objetivo",

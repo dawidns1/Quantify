@@ -156,10 +156,38 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
     }
   };
 
+  const getCurrencySymbol = (curr: string) => {
+    const upper = curr.toUpperCase();
+    if (upper === 'PLN') return 'zł';
+    if (upper === 'USD') return '$';
+    if (upper === 'EUR') return '€';
+    if (upper === 'GBP') return '£';
+    if (upper === 'JPY') return '¥';
+    try {
+      const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: upper }).formatToParts(1);
+      return parts.find(p => p.type === 'currency')?.value || upper;
+    } catch (e) {
+      return upper;
+    }
+  };
+
+  const formatDetailPrice = (val: number | null | undefined) => {
+    if (val === null || val === undefined) return 'N/A';
+    const sym = getCurrencySymbol(currency);
+    const formatted = val.toFixed(2);
+    if (currency.toUpperCase() === 'PLN') {
+      return `${formatted} ${sym}`;
+    }
+    if (sym.length > 1 && !sym.startsWith('$') && !sym.startsWith('€') && !sym.startsWith('£') && !sym.startsWith('¥') && !sym.startsWith('₹')) {
+      return `${formatted} ${sym}`;
+    }
+    return `${sym}${formatted}`;
+  };
+
   const getCurveName = (id: string) => {
     switch(id) {
       case 'price': 
-        return t('detail.curveSharePrice', 'Share Price ({{symbol}})', { symbol: currency === 'PLN' ? 'zł' : (currency === 'EUR' ? '€' : '$') });
+        return t('detail.curveSharePrice', 'Share Price ({{symbol}})', { symbol: getCurrencySymbol(currency) });
       case 'sma_50': return t('detail.curveSMA50', '50-Day SMA ($)');
       case 'sma_200': return t('detail.curveSMA200', '200-Day SMA ($)');
       case 'ps': return t('detail.curveTrailingPS', 'Trailing P/S');
@@ -199,7 +227,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
   const curveDefinitions = useMemo(() => [
     {
       id: 'price',
-      name: `Share Price (${currency === 'PLN' ? 'zł' : (currency === 'EUR' ? '€' : '$')})`,
+      name: `Share Price (${getCurrencySymbol(currency)})`,
       category: 'Price & Technicals',
       axis: 'y', // left
       color: 'hsl(217, 91%, 60%)',
@@ -696,9 +724,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
                 color: priceTrend === 'up' ? 'var(--color-green)' : (priceTrend === 'down' ? 'var(--color-red)' : 'var(--text-primary)') 
               }}
             >
-              {currency === 'PLN' ? '' : (currency === 'EUR' ? '€' : '$')}
-              {livePrice !== null ? livePrice.toFixed(2) : (overview.price ? overview.price.toFixed(2) : 'N/A')}
-              {currency === 'PLN' ? ' zł' : ''}
+              {formatDetailPrice(livePrice !== null ? livePrice : overview.price)}
             </span>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('detail.currentPrice', 'Current Price')}</div>

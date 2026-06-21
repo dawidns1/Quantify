@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import type { BaseCurrencyType } from '../../context/PortfolioContext';
 
 interface PreferencesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  baseCurrency: 'PLN' | 'USD' | 'EUR';
-  setBaseCurrency: (val: 'PLN' | 'USD' | 'EUR') => void;
+  baseCurrency: BaseCurrencyType;
+  setBaseCurrency: (val: BaseCurrencyType) => void;
 }
 
 export function PreferencesModal({
@@ -18,7 +19,7 @@ export function PreferencesModal({
   const { t, i18n } = useTranslation();
   
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
-  const [selectedCurrency, setSelectedCurrency] = useState<'PLN' | 'USD' | 'EUR'>('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState<BaseCurrencyType>('USD');
   const [selectedDensity, setSelectedDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [lowPerfMode, setLowPerfMode] = useState<boolean>(false);
   
@@ -151,7 +152,7 @@ export function PreferencesModal({
                 {t('modals.preferences.label_currency', 'Base Currency')}
               </label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {(['PLN', 'USD', 'EUR'] as const).map((curr) => (
+                {(['PLN', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY'] as const).map((curr) => (
                   <button 
                     key={curr}
                     type="button"

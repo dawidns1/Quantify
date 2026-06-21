@@ -89,6 +89,11 @@ export function UpcomingEvents({
       case 'USD': return '$';
       case 'EUR': return '€';
       case 'PLN': return ' zł';
+      case 'GBP': return '£';
+      case 'CHF': return ' CHF';
+      case 'CAD': return 'C$';
+      case 'AUD': return 'A$';
+      case 'JPY': return '¥';
       default: return ` ${currency}`;
     }
   };

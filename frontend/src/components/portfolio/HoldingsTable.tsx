@@ -472,6 +472,45 @@ export function HoldingsTable({
     <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)', height: '100%', minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
+        <button
+          onClick={() => setShowColumnPicker(!showColumnPicker)}
+          title={t('holdings.btn_customize_cols', 'Customize Columns')}
+          style={{
+            background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+            border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
+            color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
+            padding: '4px 10px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'white';
+            if (!showColumnPicker) {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!showColumnPicker) {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+            } else {
+              e.currentTarget.style.color = 'var(--color-primary)';
+              e.currentTarget.style.background = 'rgba(6, 182, 212, 0.15)';
+              e.currentTarget.style.borderColor = 'var(--color-primary)';
+            }
+          }}
+        >
+          <SlidersHorizontal size={13} />
+          <span>{t('holdings.btn_customize_cols', 'Customize Columns')}</span>
+        </button>
       </div>
 
       {showColumnPicker && (
@@ -697,47 +736,6 @@ export function HoldingsTable({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>
                     <span>{t('holdings.col_actions', 'Actions')}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowColumnPicker(!showColumnPicker);
-                      }}
-                      title={t('holdings.btn_customize_cols', 'Customize Columns')}
-                      style={{
-                        position: 'absolute',
-                        right: '4px',
-                        background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                        border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
-                        color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
-                        padding: '4px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = 'white';
-                        if (!showColumnPicker) {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!showColumnPicker) {
-                          e.currentTarget.style.color = 'var(--text-muted)';
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                        } else {
-                          e.currentTarget.style.color = 'var(--color-primary)';
-                          e.currentTarget.style.background = 'rgba(6, 182, 212, 0.15)';
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                        }
-                      }}
-                    >
-                      <SlidersHorizontal size={13} />
-                    </button>
                   </div>
                 </th>
               </tr>
