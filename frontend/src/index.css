@@ -1522,12 +1522,12 @@ select option {
   .portfolio-header-bar {
     display: flex !important;
     align-items: center;
-    padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+    padding: 0.25rem 0.25rem 0.35rem 0.25rem;
     background: transparent;
     border: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0rem;
   }
 }
 
@@ -1680,9 +1680,11 @@ select option {
   }
 
   .main-content {
-    padding: 0.5rem;
+    padding: 0.35rem 0.5rem 0.5rem 0.5rem;
     height: 100vh;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     --card-padding: 0.5rem;
   }
 

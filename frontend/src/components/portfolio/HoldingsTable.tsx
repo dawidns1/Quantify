@@ -469,9 +469,20 @@ export function HoldingsTable({
   };
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0, padding: 'var(--card-padding, 1rem)', height: '100%', minHeight: 0 }}>
+    <div className={!isMobile ? "glass-panel" : ""} style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: isMobile ? '0.45rem' : '1rem',
+      minWidth: 0,
+      padding: isMobile ? '0rem' : 'var(--card-padding, 1rem)',
+      height: '100%',
+      minHeight: 0,
+      background: isMobile ? 'transparent' : undefined,
+      border: isMobile ? 'none' : undefined,
+      boxShadow: isMobile ? 'none' : undefined
+    }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 className="portfolio-section-title" style={{ margin: 0 }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
+        <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.15rem' }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
         <button
           onClick={() => setShowColumnPicker(!showColumnPicker)}
           title={t('holdings.btn_customize_cols', 'Customize Columns')}

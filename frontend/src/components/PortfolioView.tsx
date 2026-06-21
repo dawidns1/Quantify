@@ -253,9 +253,20 @@ export function PortfolioView({
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
-  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 1025);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileOverviewTab, setMobileOverviewTab] = useState<'holdings' | 'analytics'>('holdings');
   const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar'>('forecast');
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    setIsMobile(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+    };
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
 
   const [showDashboardCards, setShowDashboardCards] = useState<boolean>(() => {
     return localStorage.getItem('portfolio_show_dashboard_cards') !== 'false';
@@ -275,8 +286,30 @@ export function PortfolioView({
   // Touch swipe gestures for mobile segmented views
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const touchStartScrollLeft = useRef<number | null>(null);
+  const touchStartScrollMax = useRef<number | null>(null);
+
+  const findScrollContainer = (element: HTMLElement | null): HTMLElement | null => {
+    let curr = element;
+    while (curr) {
+      if (curr.classList.contains('table-wrapper') || curr.style.overflowX === 'auto' || (window.getComputedStyle(curr).overflowX === 'auto')) {
+        return curr;
+      }
+      curr = curr.parentElement;
+    }
+    return null;
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    const scrollContainer = findScrollContainer(target);
+    if (scrollContainer) {
+      touchStartScrollLeft.current = scrollContainer.scrollLeft;
+      touchStartScrollMax.current = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+    } else {
+      touchStartScrollLeft.current = null;
+      touchStartScrollMax.current = null;
+    }
     touchStartX.current = e.targetTouches[0].clientX;
   };
 
@@ -289,6 +322,22 @@ export function PortfolioView({
     const distance = touchStartX.current - touchEndX.current;
     const isLeftSwipe = distance > 60;   // Swipe left -> next tab
     const isRightSwipe = distance < -60; // Swipe right -> previous tab
+
+    // Check if horizontal scroll container restricts swipe transitions
+    if (touchStartScrollLeft.current !== null && touchStartScrollMax.current !== null) {
+      if (isLeftSwipe && touchStartScrollLeft.current < touchStartScrollMax.current - 15) {
+        // Table still has space to scroll to the right, block page switch
+        touchStartX.current = null;
+        touchEndX.current = null;
+        return;
+      }
+      if (isRightSwipe && touchStartScrollLeft.current > 15) {
+        // Table still has space to scroll to the left, block page switch
+        touchStartX.current = null;
+        touchEndX.current = null;
+        return;
+      }
+    }
 
     if (tabType === 'overview') {
       if (isLeftSwipe && mobileOverviewTab === 'holdings') {
@@ -317,11 +366,22 @@ export function PortfolioView({
   useEffect(() => {
     const handleResize = () => {
       const isDesktop = window.innerWidth >= 1025;
-      setIsMobile(!isDesktop);
 
       if (!isDesktop) {
-        setLeftStickyStyle({ minWidth: 0 });
-        setRightStickyStyle({ display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 });
+        setLeftStickyStyle({
+          minWidth: 0,
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        });
+        setRightStickyStyle({
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          minWidth: 0,
+          height: '100%',
+          overflowY: 'auto'
+        });
         return;
       }
 
@@ -1135,7 +1195,7 @@ export function PortfolioView({
 
       {/* MAIN CONTENT AREA */}
       <main className="main-content">
-        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
+        <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Glowing Neon Top Progress Bar */}
           {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
@@ -1144,19 +1204,19 @@ export function PortfolioView({
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}
           <div className="portfolio-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <img 
                 src="/favicon.png" 
                 alt="QuantiFi Logo" 
                 style={{
-                  width: '26px',
-                  height: '26px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '6px',
                   boxShadow: '0 0 10px rgba(6, 182, 212, 0.35)',
                   objectFit: 'contain'
                 }}
               />
-              <span style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '0.01em', color: '#ffffff' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '0.01em', color: '#ffffff' }}>
                 Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
               </span>
             </div>
@@ -1642,8 +1702,8 @@ export function PortfolioView({
                           <div className="mobile-page-indicator" style={{
                             display: 'flex',
                             justifyContent: 'center',
-                            gap: '0.5rem',
-                            padding: '0.5rem 0 0 0',
+                            gap: '0.6rem',
+                            padding: '0.5rem 0 0.5rem 0',
                             alignItems: 'center',
                             marginTop: '0.25rem'
                           }}>
@@ -1651,11 +1711,11 @@ export function PortfolioView({
                               type="button"
                               onClick={() => setMobileOverviewTab('holdings')}
                               style={{
-                                width: '7px',
-                                height: '7px',
+                                width: '9px',
+                                height: '9px',
                                 borderRadius: '50%',
                                 border: 'none',
-                                background: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                                background: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
                                 padding: 0,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -1667,11 +1727,11 @@ export function PortfolioView({
                               type="button"
                               onClick={() => setMobileOverviewTab('analytics')}
                               style={{
-                                width: '7px',
-                                height: '7px',
+                                width: '9px',
+                                height: '9px',
                                 borderRadius: '50%',
                                 border: 'none',
-                                background: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                                background: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
                                 padding: 0,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -2030,8 +2090,8 @@ export function PortfolioView({
                     <div className="mobile-page-indicator" style={{
                       display: 'flex',
                       justifyContent: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 0 0 0',
+                      gap: '0.6rem',
+                      padding: '0.5rem 0 0.5rem 0',
                       alignItems: 'center',
                       marginTop: '0.25rem'
                     }}>
@@ -2039,11 +2099,11 @@ export function PortfolioView({
                         type="button"
                         onClick={() => setMobileDividendsTab('forecast')}
                         style={{
-                          width: '7px',
-                          height: '7px',
+                          width: '9px',
+                          height: '9px',
                           borderRadius: '50%',
                           border: 'none',
-                          background: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                          background: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
                           padding: 0,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
@@ -2055,11 +2115,11 @@ export function PortfolioView({
                         type="button"
                         onClick={() => setMobileDividendsTab('calendar')}
                         style={{
-                          width: '7px',
-                          height: '7px',
+                          width: '9px',
+                          height: '9px',
                           borderRadius: '50%',
                           border: 'none',
-                          background: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                          background: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
                           padding: 0,
                           cursor: 'pointer',
                           transition: 'all 0.2s ease',
