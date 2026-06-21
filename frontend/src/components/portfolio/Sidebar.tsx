@@ -394,7 +394,10 @@ export function Sidebar({
             return (
               <button
                 key={tab.id}
-                onClick={() => setSubTab(tab.id as any)}
+                onClick={() => {
+                  setSubTab(tab.id as any);
+                  if (onCloseSidebar) onCloseSidebar();
+                }}
                 style={{
                   flex: 1,
                   background: isActive ? tab.activeBg : 'transparent',
