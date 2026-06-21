@@ -1124,6 +1124,29 @@ class PortfolioManager:
         for symbol in symbol_txs.keys():
             info = cls.get_cached_live_ticker(symbol)
             native_currency = info["native_currency"]
+            
+            # If the user's transaction currency is different from the cached currency,
+            # and it is not PLN (PLN is rarely the native currency of a foreign listing),
+            # we query Yahoo Finance single ticker info to resolve the mismatch.
+            first_tx = symbol_txs[symbol][0]
+            tx_curr = first_tx.get("currency", "USD").upper().strip()
+            if native_currency and tx_curr != native_currency and tx_curr not in ["PLN"]:
+                try:
+                    real_info = provider.download_live_ticker(symbol)
+                    if real_info.get("native_currency"):
+                        native_currency = real_info["native_currency"].upper().strip()
+                        info["native_currency"] = native_currency
+                        save_cached_live_price(symbol, {
+                            "live_price": info.get("live_price", 0.0),
+                            "previous_close": info.get("previous_close", 0.0),
+                            "company_name": info.get("company_name", symbol),
+                            "native_currency": native_currency,
+                            "timezone": info.get("timezone", "UTC"),
+                            "exchange": info.get("exchange", "")
+                        })
+                except Exception as ex:
+                    print(f"Error resolving currency mismatch for {symbol}: {ex}")
+
             # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
             # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
             suffix = symbol.split(".")[-1] if "." in symbol else ""
@@ -1133,7 +1156,6 @@ class PortfolioManager:
                 "SG", "ST", "CO", "EE", "HE", "OL", "IC"
             }
             if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
-                first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
                 
             ticker_info[symbol] = {

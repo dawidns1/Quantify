@@ -687,7 +687,7 @@ export function HoldingsTable({
                   onClick={() => handleHoldingsSort('symbol')} 
                   style={{ 
                     userSelect: 'none',
-                    position: 'relative',
+                    position: 'sticky',
                     width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
                     minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
                   }}
@@ -710,7 +710,7 @@ export function HoldingsTable({
                       style={{ 
                         textAlign: col.align, 
                         userSelect: 'none',
-                        position: 'relative',
+                        position: 'sticky',
                         width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
                         minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                       }}
@@ -729,7 +729,7 @@ export function HoldingsTable({
                   style={{ 
                     textAlign: 'right', 
                     userSelect: 'none',
-                    position: 'relative',
+                    position: 'sticky',
                     width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
                     minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
                   }}
@@ -745,7 +745,7 @@ export function HoldingsTable({
                   style={{ 
                     textAlign: 'right', 
                     userSelect: 'none',
-                    position: 'relative',
+                    position: 'sticky',
                     width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
                     minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
                   }}
@@ -763,7 +763,7 @@ export function HoldingsTable({
                     background: 'rgba(255, 255, 255, 0.01)',
                     width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
                     minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    position: 'relative'
+                    position: 'sticky'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>

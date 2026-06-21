@@ -375,12 +375,18 @@ class YFinanceProvider(BaseDataProvider):
             df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
             if not df.empty:
                 if 'Close' in df.columns:
-                    closes = df['Close'].dropna()
+                    closes = df['Close']
+                    if isinstance(closes, pd.DataFrame):
+                        closes = closes.squeeze()
+                    closes = closes.dropna()
                     for idx, val in closes.items():
                         dt = idx.to_pydatetime().date()
                         prices_dict[dt] = float(val)
                 if 'Dividends' in df.columns:
-                    divs = df['Dividends'].dropna()
+                    divs = df['Dividends']
+                    if isinstance(divs, pd.DataFrame):
+                        divs = divs.squeeze()
+                    divs = divs.dropna()
                     for idx, val in divs.items():
                         if float(val) > 0:
                             dt = idx.to_pydatetime().date()
@@ -396,7 +402,10 @@ class YFinanceProvider(BaseDataProvider):
         try:
             df_fx = yf.download(pair, start=start_str, end=end_str, progress=False, session=YF_SESSION)
             if not df_fx.empty and 'Close' in df_fx.columns:
-                closes = df_fx['Close'].dropna()
+                closes = df_fx['Close']
+                if isinstance(closes, pd.DataFrame):
+                    closes = closes.squeeze()
+                closes = closes.dropna()
                 for idx, val in closes.items():
                     dt = idx.to_pydatetime().date()
                     prices_dict[dt] = float(val)
