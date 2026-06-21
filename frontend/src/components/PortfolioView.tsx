@@ -11,7 +11,9 @@ import {
   LayoutGrid,
   Layout,
   Scale,
-  AlertTriangle
+  AlertTriangle,
+  Briefcase,
+  SlidersHorizontal
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -253,6 +255,10 @@ export function PortfolioView({
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellReason, setUpsellReason] = useState<'portfolio' | 'account' | 'general'>('general');
   
+  const [isMobile, setIsMobile] = useState<boolean>(() => window.innerWidth < 1025);
+  const [mobileOverviewTab, setMobileOverviewTab] = useState<'holdings' | 'analytics'>('holdings');
+  const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar'>('forecast');
+
   const [showDashboardCards, setShowDashboardCards] = useState<boolean>(() => {
     return localStorage.getItem('portfolio_show_dashboard_cards') !== 'false';
   });
@@ -268,6 +274,42 @@ export function PortfolioView({
     });
   };
 
+  // Touch swipe gestures for mobile segmented views
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (tabType: 'overview' | 'dividends') => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 60;   // Swipe left -> next tab
+    const isRightSwipe = distance < -60; // Swipe right -> previous tab
+
+    if (tabType === 'overview') {
+      if (isLeftSwipe && mobileOverviewTab === 'holdings') {
+        setMobileOverviewTab('analytics');
+      } else if (isRightSwipe && mobileOverviewTab === 'analytics') {
+        setMobileOverviewTab('holdings');
+      }
+    } else if (tabType === 'dividends') {
+      if (isLeftSwipe && mobileDividendsTab === 'forecast') {
+        setMobileDividendsTab('calendar');
+      } else if (isRightSwipe && mobileDividendsTab === 'calendar') {
+        setMobileDividendsTab('forecast');
+      }
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   // Dynamic Sticky Columns references & styling
   const leftColRef = useRef<HTMLDivElement>(null);
   const rightColRef = useRef<HTMLDivElement>(null);
@@ -277,6 +319,7 @@ export function PortfolioView({
   useEffect(() => {
     const handleResize = () => {
       const isDesktop = window.innerWidth >= 1025;
+      setIsMobile(!isDesktop);
 
       if (!isDesktop) {
         setLeftStickyStyle({ minWidth: 0 });
@@ -1102,13 +1145,41 @@ export function PortfolioView({
           )}
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}
-          <div className="portfolio-header-bar glass-panel">
+          <div className="portfolio-header-bar glass-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <img 
+                src="/favicon.png" 
+                alt="QuantiFi Logo" 
+                style={{
+                  width: '26px',
+                  height: '26px',
+                  borderRadius: '6px',
+                  boxShadow: '0 0 10px rgba(6, 182, 212, 0.35)',
+                  objectFit: 'contain'
+                }}
+              />
+              <span style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '0.01em', color: '#ffffff' }}>
+                Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
+              </span>
+            </div>
             <button 
               className="mobile-menu-toggle-btn"
               onClick={() => setSidebarOpen(true)}
               title="Open Navigation Menu"
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '6px',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+                cursor: 'pointer'
+              }}
             >
-              <Menu size={18} />
+              <Menu size={16} />
             </button>
           </div>
 
@@ -1331,273 +1402,340 @@ export function PortfolioView({
                     const isRightColumnOpen = showDashboardCards && (widgets.length > 0 || showWidgetManager);
                     return (
                       <>
-                        <div className="portfolio-grid" style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: isRightColumnOpen ? '2fr 12px 1fr' : '1fr', 
-                          gap: '0px', 
-                          marginTop: '0.25rem',
-                          flex: 1,
-                          minHeight: 0,
-                          height: '100%'
-                        }}>
-                        {/* Left Column: Holdings Table */}
-                        <div ref={leftColRef} className="sticky-column" style={{ ...leftStickyStyle, paddingRight: isRightColumnOpen ? '0px' : '0px' }}>
-                          <HoldingsTable 
-                            holdings={holdings}
-                            summary={summary}
-                            activePortfolioRole={activePortfolioRole}
-                            onQuickAction={handleQuickAction}
-                            onSelectPositionSymbol={setSelectedPositionSymbol}
-                          />
+                        {/* Segmented Switcher for Mobile */}
+                        {isMobile && holdings.length > 0 && (
+                          <div className="mobile-subtab-bar" style={{
+                            display: 'flex',
+                            padding: '4px',
+                            borderRadius: '8px',
+                            background: 'rgba(0, 0, 0, 0.2)',
+                            border: '1px solid var(--panel-border)',
+                            marginBottom: '0.5rem',
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => setMobileOverviewTab('holdings')}
+                              style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: mobileOverviewTab === 'holdings' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                                color: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <Briefcase size={13} />
+                              <span>{t('holdings.tab_holdings_list', 'Asset Holdings')}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMobileOverviewTab('analytics')}
+                              style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: mobileOverviewTab === 'analytics' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                                color: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'var(--text-secondary)',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <SlidersHorizontal size={13} />
+                              <span>{t('holdings.tab_analytics_cards', 'Analytics & Charts')}</span>
+                            </button>
+                          </div>
+                        )}
+
+                        <div 
+                          className="portfolio-grid" 
+                          onTouchStart={handleTouchStart}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={() => handleTouchEnd('overview')}
+                          style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: isMobile ? '1fr' : (isRightColumnOpen ? '2fr 12px 1fr' : '1fr'), 
+                            gap: '0px', 
+                            marginTop: '0.25rem',
+                            flex: 1,
+                            minHeight: 0,
+                            height: '100%'
+                          }}
+                        >
+                          {/* Left Column: Holdings Table */}
+                          {(!isMobile || mobileOverviewTab === 'holdings') && (
+                            <div ref={leftColRef} className="sticky-column" style={{ ...leftStickyStyle, paddingRight: isRightColumnOpen && !isMobile ? '0px' : '0px', width: '100%' }}>
+                              <HoldingsTable 
+                                holdings={holdings}
+                                summary={summary}
+                                activePortfolioRole={activePortfolioRole}
+                                onQuickAction={handleQuickAction}
+                                onSelectPositionSymbol={setSelectedPositionSymbol}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Middle Column: Vertical Collapse Handle/Divider */}
+                          {!isMobile && isRightColumnOpen && (
+                            <div 
+                              onClick={handleToggleDashboardCards}
+                              className="divider-line-hover"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                height: '100%',
+                                width: '100%',
+                                zIndex: 10
+                              }}
+                              title={t('dashboard.hide_cards_tooltip', 'Collapse side cards')}
+                            >
+                              <div 
+                                className="divider-line"
+                                style={{
+                                  width: '2px',
+                                  height: '100%',
+                                  background: 'var(--panel-border)',
+                                  borderRadius: '1px',
+                                  transition: 'background-color 0.2s'
+                                }}
+                              />
+                              <div 
+                                className="divider-pill"
+                                style={{
+                                  position: 'absolute',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  width: '12px',
+                                  height: '32px',
+                                  background: 'rgba(15, 23, 42, 0.95)',
+                                  border: '1px solid var(--panel-border)',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.55rem',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <span>▶</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
+                          {isRightColumnOpen && (!isMobile || mobileOverviewTab === 'analytics') && (
+                            <div ref={rightColRef} style={{ ...rightStickyStyle, paddingLeft: '0px', width: '100%' }}>
+                              {/* Render active widgets in order */}
+                              {widgets.map((widgetId, index) => {
+                                const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
+                                const onMoveDown = index < widgets.length - 1 ? () => handleMoveWidget(index, index + 1) : undefined;
+                                const onClose = () => handleCloseWidget(widgetId);
+
+                                switch (widgetId) {
+                                  case 'metrics':
+                                    return (
+                                      <MetricsBanner 
+                                        key="metrics"
+                                        summary={summary}
+                                        activePortfolioId={activePortfolioId}
+                                        onMoveUp={onMoveUp}
+                                        onMoveDown={onMoveDown}
+                                        onClose={onClose}
+                                      />
+                                    );
+                                  case 'chart':
+                                    return (
+                                      <PerformanceChart 
+                                        key="chart"
+                                        chartData={chartData}
+                                        loadingChart={loadingChart}
+                                        baseCurrency={summary.base_currency}
+                                        onMoveUp={onMoveUp}
+                                        onMoveDown={onMoveDown}
+                                        onClose={onClose}
+                                      />
+                                    );
+                                  case 'events':
+                                    return (
+                                      <UpcomingEvents 
+                                        key="events"
+                                        apiBaseUrl={apiBaseUrl}
+                                        activePortfolioId={activePortfolioId}
+                                        session={session}
+                                        holdings={holdings}
+                                        onMoveUp={onMoveUp}
+                                        onMoveDown={onMoveDown}
+                                        onClose={onClose}
+                                      />
+                                    );
+                                  case 'allocation':
+                                    return (
+                                      <PortfolioAllocation 
+                                        key="allocation"
+                                        holdings={holdings}
+                                        summary={summary}
+                                        onMoveUp={onMoveUp}
+                                        onMoveDown={onMoveDown}
+                                        onClose={onClose}
+                                        onRebalanceClick={() => setShowRebalanceModal(true)}
+                                      />
+                                    );
+                                  case 'analytics':
+                                    return (
+                                      <PortfolioAnalytics 
+                                        key="analytics"
+                                        analytics={analytics}
+                                        loading={loadingAnalytics}
+                                        onMoveUp={onMoveUp}
+                                        onMoveDown={onMoveDown}
+                                        onClose={onClose}
+                                      />
+                                    );
+
+                                  default:
+                                    return null;
+                                }
+                              })}
+
+                              {/* Widget Manager Selection Card */}
+                              {showWidgetManager && (
+                                <div className="glass-panel" style={{
+                                  padding: '1rem',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '0.75rem',
+                                  background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.75) 0%, rgba(0, 0, 0, 0.9) 100%)',
+                                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                                  borderRadius: '12px',
+                                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                                  marginTop: '0.25rem'
+                                }}>
+                                  <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
+                                    <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> {t('dashboard.toggle_cards', 'Toggle Dashboard Cards')}
+                                  </h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                                    {[
+                                      { id: 'metrics', name: t('metrics.header', 'Portfolio Metrics') },
+                                      { id: 'chart', name: t('dashboard.performance_chart', 'Performance Chart') },
+                                      { id: 'events', name: t('events.header', 'Upcoming Corporate Events') },
+                                      { id: 'allocation', name: t('allocation.title', 'Portfolio Allocation') },
+                                      { id: 'analytics', name: t('analytics.header', 'Performance & Risk') }
+                                    ].map(widget => {
+                                      const isVisible = widgets.includes(widget.id);
+                                      return (
+                                        <label key={widget.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                          <input 
+                                            type="checkbox" 
+                                            checked={isVisible}
+                                            onChange={() => handleToggleWidgetVisibility(widget.id)}
+                                            style={{
+                                              cursor: 'pointer',
+                                              accentColor: 'var(--color-primary)',
+                                              width: '14px',
+                                              height: '14px'
+                                            }}
+                                          />
+                                          <span>{widget.name}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Widget Manager Toggle Button */}
+                              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.25rem' }}>
+                                <button 
+                                  className="glow-btn"
+                                  style={{
+                                    background: showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px dashed var(--panel-border)',
+                                    color: 'var(--text-secondary)',
+                                    padding: '0.5rem',
+                                    borderRadius: '50%',
+                                    width: '36px',
+                                    height: '36px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: 'none',
+                                    transition: 'var(--transition-smooth)'
+                                  }}
+                                  onClick={() => setShowWidgetManager(!showWidgetManager)}
+                                  title={showWidgetManager ? t('dashboard.close_customizer', 'Close Card Customizer') : t('dashboard.customize_cards', 'Customize Dashboard Cards')}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                    e.currentTarget.style.transform = 'scale(1.08)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                  }}
+                                >
+                                  <Layout size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        
-                        {/* Middle Column: Vertical Collapse Handle/Divider */}
-                        {isRightColumnOpen && (
+
+                        {/* Floating Expand Sidebar Button when collapsed */}
+                        {!isMobile && !isRightColumnOpen && (
                           <div 
                             onClick={handleToggleDashboardCards}
-                            className="divider-line-hover"
                             style={{
+                              position: 'fixed',
+                              right: '0px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              width: '14px',
+                              height: '36px',
+                              background: 'rgba(15, 23, 42, 0.95)',
+                              border: '1px solid var(--panel-border)',
+                              borderRight: 'none',
+                              borderRadius: '6px 0 0 6px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               cursor: 'pointer',
-                              position: 'relative',
-                              height: '100%',
-                              width: '100%',
-                              zIndex: 10
+                              color: 'var(--text-muted)',
+                              zIndex: 1000,
+                              boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+                              transition: 'all 0.2s'
                             }}
-                            title={t('dashboard.hide_cards_tooltip', 'Collapse side cards')}
+                            title={t('dashboard.show_cards_tooltip', 'Expand side cards')}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'white';
+                              e.currentTarget.style.width = '18px';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = 'var(--text-muted)';
+                              e.currentTarget.style.width = '14px';
+                            }}
                           >
-                            <div 
-                              className="divider-line"
-                              style={{
-                                width: '2px',
-                                height: '100%',
-                                background: 'var(--panel-border)',
-                                borderRadius: '1px',
-                                transition: 'background-color 0.2s'
-                              }}
-                            />
-                            <div 
-                              className="divider-pill"
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                width: '12px',
-                                height: '32px',
-                                background: 'rgba(15, 23, 42, 0.95)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.55rem',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <span>▶</span>
-                            </div>
+                            <span style={{ fontSize: '0.6rem' }}>◀</span>
                           </div>
                         )}
-
-                        {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
-                        {isRightColumnOpen && (
-                          <div ref={rightColRef} style={{ ...rightStickyStyle, paddingLeft: '0px' }}>
-                    {/* Render active widgets in order */}
-                    {widgets.map((widgetId, index) => {
-                      const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;
-                      const onMoveDown = index < widgets.length - 1 ? () => handleMoveWidget(index, index + 1) : undefined;
-                      const onClose = () => handleCloseWidget(widgetId);
-
-                      switch (widgetId) {
-                        case 'metrics':
-                          return (
-                            <MetricsBanner 
-                              key="metrics"
-                              summary={summary}
-                              activePortfolioId={activePortfolioId}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                            />
-                          );
-                        case 'chart':
-                          return (
-                            <PerformanceChart 
-                              key="chart"
-                              chartData={chartData}
-                              loadingChart={loadingChart}
-                              baseCurrency={summary.base_currency}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                            />
-                          );
-                        case 'events':
-                          return (
-                            <UpcomingEvents 
-                              key="events"
-                              apiBaseUrl={apiBaseUrl}
-                              activePortfolioId={activePortfolioId}
-                              session={session}
-                              holdings={holdings}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                            />
-                          );
-                        case 'allocation':
-                          return (
-                            <PortfolioAllocation 
-                              key="allocation"
-                              holdings={holdings}
-                              summary={summary}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                              onRebalanceClick={() => setShowRebalanceModal(true)}
-                            />
-                          );
-                        case 'analytics':
-                          return (
-                            <PortfolioAnalytics 
-                              key="analytics"
-                              analytics={analytics}
-                              loading={loadingAnalytics}
-                              onMoveUp={onMoveUp}
-                              onMoveDown={onMoveDown}
-                              onClose={onClose}
-                            />
-                          );
-
-                        default:
-                          return null;
-                      }
-                    })}
-
-                    {/* Widget Manager Selection Card */}
-                    {showWidgetManager && (
-                      <div className="glass-panel" style={{
-                        padding: '1rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.75rem',
-                        background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.75) 0%, rgba(0, 0, 0, 0.9) 100%)',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        borderRadius: '12px',
-                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-                        marginTop: '0.25rem'
-                      }}>
-                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
-                          <LayoutGrid size={14} style={{ color: 'var(--color-primary)' }} /> {t('dashboard.toggle_cards', 'Toggle Dashboard Cards')}
-                        </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-                          {[
-                            { id: 'metrics', name: t('metrics.header', 'Portfolio Metrics') },
-                            { id: 'chart', name: t('dashboard.performance_chart', 'Performance Chart') },
-                            { id: 'events', name: t('events.header', 'Upcoming Corporate Events') },
-                            { id: 'allocation', name: t('allocation.title', 'Portfolio Allocation') },
-                            { id: 'analytics', name: t('analytics.header', 'Performance & Risk') }
-                          ].map(widget => {
-                            const isVisible = widgets.includes(widget.id);
-                            return (
-                              <label key={widget.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={isVisible}
-                                  onChange={() => handleToggleWidgetVisibility(widget.id)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    accentColor: 'var(--color-primary)',
-                                    width: '14px',
-                                    height: '14px'
-                                  }}
-                                />
-                                <span>{widget.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Widget Manager Toggle Button (at the bottom, centered, icon only) */}
-                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.25rem' }}>
-                      <button 
-                        className="glow-btn"
-                        style={{
-                          background: showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)',
-                          border: '1px dashed var(--panel-border)',
-                          color: 'var(--text-secondary)',
-                          padding: '0.5rem',
-                          borderRadius: '50%',
-                          width: '36px',
-                          height: '36px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: 'none',
-                          transition: 'var(--transition-smooth)'
-                        }}
-                        onClick={() => setShowWidgetManager(!showWidgetManager)}
-                        title={showWidgetManager ? t('dashboard.close_customizer', 'Close Card Customizer') : t('dashboard.customize_cards', 'Customize Dashboard Cards')}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                          e.currentTarget.style.transform = 'scale(1.08)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = showWidgetManager ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.02)';
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                      >
-                        <Layout size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  )}
-                </div>
-                
-                {/* Floating Expand Sidebar Button when collapsed */}
-                {!isRightColumnOpen && (
-                  <div 
-                    onClick={handleToggleDashboardCards}
-                    style={{
-                      position: 'fixed',
-                      right: '0px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      width: '14px',
-                      height: '36px',
-                      background: 'rgba(15, 23, 42, 0.95)',
-                      border: '1px solid var(--panel-border)',
-                      borderRight: 'none',
-                      borderRadius: '6px 0 0 6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      zIndex: 1000,
-                      boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
-                      transition: 'all 0.2s'
-                    }}
-                    title={t('dashboard.show_cards_tooltip', 'Expand side cards')}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.width = '18px';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                      e.currentTarget.style.width = '14px';
-                    }}
-                  >
-                    <span style={{ fontSize: '0.6rem' }}>◀</span>
-                  </div>
-                )}
-              </>
+                      </>
                     );
                   })()
                 )}
@@ -1628,93 +1766,301 @@ export function PortfolioView({
                 height: '100%',
                 position: 'relative'
               }}>
-                {/* Floating Expand Forecast Button when collapsed */}
-                {!showDivForecast && (
-                  <div 
-                    onClick={handleToggleDivForecast}
-                    style={{
-                      position: 'absolute',
-                      left: '0px',
-                      top: '100px',
-                      width: '14px',
-                      height: '36px',
-                      background: 'rgba(15, 23, 42, 0.95)',
-                      border: '1px solid var(--panel-border)',
-                      borderLeft: 'none',
-                      borderRadius: '0 6px 6px 0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      zIndex: 1000,
-                      boxShadow: '4px 0 16px rgba(0,0,0,0.3)',
-                      transition: 'all 0.2s'
-                    }}
-                    title={t('dividends.show_forecast_tooltip', 'Expand Forecast')}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.width = '18px';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                      e.currentTarget.style.width = '14px';
-                    }}
-                  >
-                    <span style={{ fontSize: '0.6rem' }}>▶</span>
+                {/* Segmented Switcher for Mobile Dividends */}
+                {isMobile && (
+                  <div className="mobile-subtab-bar" style={{
+                    display: 'flex',
+                    padding: '4px',
+                    borderRadius: '8px',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    border: '1px solid var(--panel-border)',
+                    marginBottom: '0.5rem',
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setMobileDividendsTab('forecast')}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: mobileDividendsTab === 'forecast' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                        color: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'var(--text-secondary)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <span>{t('dividends.tab_forecast', 'Dividend Forecast')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileDividendsTab('calendar')}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: mobileDividendsTab === 'calendar' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                        color: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'var(--text-secondary)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      <span>{t('dividends.tab_calendar_ledger', 'Calendar & Ledger')}</span>
+                    </button>
                   </div>
                 )}
 
-                {/* Floating Expand Calendar Button when collapsed */}
-                {!showDivCalendar && (
-                  <div 
-                    onClick={handleToggleDivCalendar}
-                    style={{
-                      position: 'absolute',
-                      right: '0px',
-                      top: '100px',
-                      width: '14px',
-                      height: '36px',
-                      background: 'rgba(15, 23, 42, 0.95)',
-                      border: '1px solid var(--panel-border)',
-                      borderRight: 'none',
-                      borderRadius: '6px 0 0 6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      zIndex: 1000,
-                      boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
-                      transition: 'all 0.2s'
-                    }}
-                    title={t('dividends.show_calendar_tooltip', 'Expand Calendar')}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.width = '18px';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                      e.currentTarget.style.width = '14px';
-                    }}
-                  >
-                    <span style={{ fontSize: '0.6rem' }}>◀</span>
-                  </div>
+                {/* Desktop view */}
+                {!isMobile && (
+                  <>
+                    {/* Floating Expand Forecast Button when collapsed */}
+                    {!showDivForecast && (
+                      <div 
+                        onClick={handleToggleDivForecast}
+                        style={{
+                          position: 'absolute',
+                          left: '0px',
+                          top: '100px',
+                          width: '14px',
+                          height: '36px',
+                          background: 'rgba(15, 23, 42, 0.95)',
+                          border: '1px solid var(--panel-border)',
+                          borderLeft: 'none',
+                          borderRadius: '0 6px 6px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          zIndex: 1000,
+                          boxShadow: '4px 0 16px rgba(0,0,0,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                        title={t('dividends.show_forecast_tooltip', 'Expand Forecast')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.width = '18px';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.width = '14px';
+                        }}
+                      >
+                        <span style={{ fontSize: '0.6rem' }}>▶</span>
+                      </div>
+                    )}
+
+                    {/* Floating Expand Calendar Button when collapsed */}
+                    {!showDivCalendar && (
+                      <div 
+                        onClick={handleToggleDivCalendar}
+                        style={{
+                          position: 'absolute',
+                          right: '0px',
+                          top: '100px',
+                          width: '14px',
+                          height: '36px',
+                          background: 'rgba(15, 23, 42, 0.95)',
+                          border: '1px solid var(--panel-border)',
+                          borderRight: 'none',
+                          borderRadius: '6px 0 0 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          zIndex: 1000,
+                          boxShadow: '-4px 0 16px rgba(0,0,0,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                        title={t('dividends.show_calendar_tooltip', 'Expand Calendar')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.width = '18px';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.width = '14px';
+                        }}
+                      >
+                        <span style={{ fontSize: '0.6rem' }}>◀</span>
+                      </div>
+                    )}
+
+                    {/* Collapsible Split-Pane Grid for Dividends */}
+                    {(showDivForecast || showDivCalendar) && (
+                      <div 
+                        style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
+                          gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
+                          marginBottom: '0.3rem',
+                          animation: 'fadeIn 0.25s ease-out'
+                        }} 
+                        className="portfolio-grid"
+                      >
+                        {showDivForecast && (
+                          <div style={{ minWidth: 0, height: '100%' }}>
+                            <DividendForecast 
+                              apiBaseUrl={apiBaseUrl}
+                              activePortfolioId={activePortfolioId}
+                              session={session}
+                              baseCurrency={summary.base_currency}
+                              account={selectedAccount}
+                              linkCash={linkCash}
+                              holdings={holdings}
+                              onClose={handleToggleDivForecast}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Divider between Forecast and Calendar */}
+                        {(showDivForecast && showDivCalendar) && (
+                          <div 
+                            className="divider-line-hover"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              position: 'relative',
+                              height: '100%',
+                              width: '12px',
+                              zIndex: 10
+                            }}
+                          >
+                            <div 
+                              className="divider-line"
+                              style={{
+                                width: '2px',
+                                height: '100%',
+                                background: 'var(--panel-border)',
+                                borderRadius: '1px',
+                                transition: 'background-color 0.2s'
+                              }}
+                            />
+                            {/* Collapse Forecast Pill */}
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleToggleDivForecast(); }}
+                              className="divider-pill"
+                              title={t('dividends.hide_forecast_tooltip', 'Collapse Forecast')}
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(50% - 20px)',
+                                transform: 'translateY(-50%)',
+                                width: '12px',
+                                height: '28px',
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                border: '1px solid var(--panel-border)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.55rem',
+                                cursor: 'pointer',
+                                padding: 0,
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'var(--text-muted)';
+                                e.currentTarget.style.borderColor = 'var(--panel-border)';
+                              }}
+                            >
+                              <span>◀</span>
+                            </button>
+                            
+                            {/* Collapse Calendar Pill */}
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleToggleDivCalendar(); }}
+                              className="divider-pill"
+                              title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(50% + 20px)',
+                                transform: 'translateY(-50%)',
+                                width: '12px',
+                                height: '28px',
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                border: '1px solid var(--panel-border)',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.55rem',
+                                cursor: 'pointer',
+                                padding: 0,
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.color = 'var(--text-primary)';
+                                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.color = 'var(--text-muted)';
+                                e.currentTarget.style.borderColor = 'var(--panel-border)';
+                              }}
+                            >
+                              <span>▶</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {showDivCalendar && (
+                          <div style={{ minWidth: 0, height: '100%' }}>
+                            <DividendCalendar 
+                              dividends={dividendsList}
+                              baseCurrency={summary.base_currency}
+                              onClose={handleToggleDivCalendar}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <DividendLedgerTable 
+                      dividends={dividendsList}
+                      activePortfolioRole={activePortfolioRole}
+                      baseCurrency={summary.base_currency}
+                      onEditDividendClick={(div) => {
+                        setEditingDividend(div);
+                        setShowAddDividendModal(true);
+                      }}
+                      onDeleteDividendClick={handleDeleteDividend}
+                      style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
+                      onScrollToBottomChange={setIsDividendLedgerAtBottom}
+                    />
+                  </>
                 )}
 
-                {/* Collapsible Split-Pane Grid for Dividends */}
-                {(showDivForecast || showDivCalendar) && (
+                {/* Mobile view */}
+                {isMobile && (
                   <div 
-                    style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
-                      gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
-                      marginBottom: '0.3rem',
-                      animation: 'fadeIn 0.25s ease-out'
-                    }} 
-                    className="portfolio-grid"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={() => handleTouchEnd('dividends')}
+                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
                   >
-                    {showDivForecast && (
+                    {mobileDividendsTab === 'forecast' ? (
                       <div style={{ minWidth: 0, height: '100%' }}>
                         <DividendForecast 
                           apiBaseUrl={apiBaseUrl}
@@ -1727,128 +2073,31 @@ export function PortfolioView({
                           onClose={handleToggleDivForecast}
                         />
                       </div>
-                    )}
-                    
-                    {/* Divider between Forecast and Calendar */}
-                    {(showDivForecast && showDivCalendar) && (
-                      <div 
-                        className="divider-line-hover"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          position: 'relative',
-                          height: '100%',
-                          width: '12px',
-                          zIndex: 10
-                        }}
-                      >
-                        <div 
-                          className="divider-line"
-                          style={{
-                            width: '2px',
-                            height: '100%',
-                            background: 'var(--panel-border)',
-                            borderRadius: '1px',
-                            transition: 'background-color 0.2s'
-                          }}
-                        />
-                        {/* Collapse Forecast Pill (Collapses Left) */}
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleToggleDivForecast(); }}
-                          className="divider-pill"
-                          title={t('dividends.hide_forecast_tooltip', 'Collapse Forecast')}
-                          style={{
-                            position: 'absolute',
-                            top: 'calc(50% - 20px)',
-                            transform: 'translateY(-50%)',
-                            width: '12px',
-                            height: '28px',
-                            background: 'rgba(15, 23, 42, 0.95)',
-                            border: '1px solid var(--panel-border)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--text-muted)',
-                            fontSize: '0.55rem',
-                            cursor: 'pointer',
-                            padding: 0,
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                            e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = 'var(--text-muted)';
-                            e.currentTarget.style.borderColor = 'var(--panel-border)';
-                          }}
-                        >
-                          <span>◀</span>
-                        </button>
-                        
-                        {/* Collapse Calendar Pill (Collapses Right) */}
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleToggleDivCalendar(); }}
-                          className="divider-pill"
-                          title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
-                          style={{
-                            position: 'absolute',
-                            top: 'calc(50% + 20px)',
-                            transform: 'translateY(-50%)',
-                            width: '12px',
-                            height: '28px',
-                            background: 'rgba(15, 23, 42, 0.95)',
-                            border: '1px solid var(--panel-border)',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--text-muted)',
-                            fontSize: '0.55rem',
-                            cursor: 'pointer',
-                            padding: 0,
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                            e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = 'var(--text-muted)';
-                            e.currentTarget.style.borderColor = 'var(--panel-border)';
-                          }}
-                        >
-                          <span>▶</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {showDivCalendar && (
-                      <div style={{ minWidth: 0, height: '100%' }}>
-                        <DividendCalendar 
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minHeight: 0 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <DividendCalendar 
+                            dividends={dividendsList}
+                            baseCurrency={summary.base_currency}
+                            onClose={handleToggleDivCalendar}
+                          />
+                        </div>
+                        <DividendLedgerTable 
                           dividends={dividendsList}
+                          activePortfolioRole={activePortfolioRole}
                           baseCurrency={summary.base_currency}
-                          onClose={handleToggleDivCalendar}
+                          onEditDividendClick={(div) => {
+                            setEditingDividend(div);
+                            setShowAddDividendModal(true);
+                          }}
+                          onDeleteDividendClick={handleDeleteDividend}
+                          style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
+                          onScrollToBottomChange={setIsDividendLedgerAtBottom}
                         />
                       </div>
                     )}
                   </div>
                 )}
-
-                <DividendLedgerTable 
-                  dividends={dividendsList}
-                  activePortfolioRole={activePortfolioRole}
-                  baseCurrency={summary.base_currency}
-                  onEditDividendClick={(div) => {
-                    setEditingDividend(div);
-                    setShowAddDividendModal(true);
-                  }}
-                  onDeleteDividendClick={handleDeleteDividend}
-                  style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
-                  onScrollToBottomChange={setIsDividendLedgerAtBottom}
-                />
               </div>
 
 

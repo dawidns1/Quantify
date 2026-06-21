@@ -7,8 +7,11 @@ import { useTranslation } from 'react-i18next';
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
-  ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000'
+  ((window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname.match(/^(?:192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[0-1])\.)/) ||
+    window.location.hostname.endsWith('.local'))
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
     : window.location.origin);
 
 const API_BASE_URL = rawApiUrl.replace(/\/$/, "");
