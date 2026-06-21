@@ -12,7 +12,8 @@ from backend.cache_db import (
     save_cached_historical_prices,
     get_cached_upcoming_events,
     save_cached_upcoming_events,
-    update_upcoming_events_timestamp
+    update_upcoming_events_timestamp,
+    get_expired_cached_live_price
 )
 
 provider = get_provider()
@@ -271,13 +272,28 @@ class PortfolioManager:
             exchange = res.get("exchange", "")
         except Exception as e:
             print(f"Error fetching live data for {symbol}: {e}")
-            live_price = 0.0
-            company_name = symbol
-            native_currency = "USD"
-            quote_type = None
-            previous_close = 0.0
-            timezone = "Unknown"
-            exchange = ""
+            fallback_data = None
+            try:
+                fallback_data = get_expired_cached_live_price(symbol)
+            except Exception as db_err:
+                print(f"Failed to fetch expired cache fallback for {symbol}: {db_err}")
+
+            if fallback_data:
+                live_price = fallback_data.get("live_price", 0.0)
+                company_name = fallback_data.get("company_name", symbol)
+                native_currency = fallback_data.get("native_currency", "USD")
+                quote_type = fallback_data.get("asset_class", "Equity")
+                previous_close = fallback_data.get("previous_close", live_price)
+                timezone = fallback_data.get("timezone", "UTC")
+                exchange = fallback_data.get("exchange", "")
+            else:
+                live_price = 0.0
+                company_name = symbol
+                native_currency = "USD"
+                quote_type = None
+                previous_close = 0.0
+                timezone = "Unknown"
+                exchange = ""
             
         # Determine asset class friendly name
         if symbol.startswith("CASH_"):
@@ -1151,7 +1167,7 @@ class PortfolioManager:
             # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
             suffix = symbol.split(".")[-1] if "." in symbol else ""
             is_non_us_ticker = suffix in {
-                "DE", "WA", "L", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI",
+                "DE", "WA", "PA", "BR", "MI", "MC", "LS", "AT", "VI",
                 "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
                 "SG", "ST", "CO", "EE", "HE", "OL", "IC"
             }

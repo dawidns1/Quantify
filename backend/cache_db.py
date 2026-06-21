@@ -110,6 +110,20 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
         return dict(row)
     return None
 
+def get_expired_cached_live_price(symbol: str) -> dict:
+    """Gets cached live price regardless of age as a fallback."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM live_prices WHERE symbol = ?",
+        (symbol.upper(),)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return None
+
 def save_cached_live_price(symbol: str, data: dict):
     with db_write_lock:
         conn = get_connection()
