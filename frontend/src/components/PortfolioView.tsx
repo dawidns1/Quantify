@@ -220,6 +220,8 @@ export function PortfolioView({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingDividend, setEditingDividend] = useState<any | null>(null);
   const [isDividendLedgerAtBottom, setIsDividendLedgerAtBottom] = useState(false);
+  const [isHoldingsAtBottom, setIsHoldingsAtBottom] = useState(false);
+  const [isLedgerAtBottom, setIsLedgerAtBottom] = useState(false);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1482,6 +1484,7 @@ export function PortfolioView({
                                 activePortfolioRole={activePortfolioRole}
                                 onQuickAction={handleQuickAction}
                                 onSelectPositionSymbol={setSelectedPositionSymbol}
+                                onScrollToBottomChange={setIsHoldingsAtBottom}
                               />
                             </div>
                           )}
@@ -1796,6 +1799,7 @@ export function PortfolioView({
                   onDeleteTransaction={handleDeleteTransaction}
                   onImportCSVClick={() => setShowImportModal(true)}
                   style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                  onScrollToBottomChange={setIsLedgerAtBottom}
                 />
               </div>
 
@@ -2944,55 +2948,62 @@ export function PortfolioView({
       />
 
       {/* Floating Action Button (FAB) */}
-      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
-        <button
-          onClick={() => {
-            if (!triggerRandomUpsell()) {
-              if (subTab === 'dividends') {
-                setEditingDividend(null);
-                setShowAddDividendModal(true);
-              } else {
-                setShowAddModal(true);
+      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (() => {
+        const hideFAB = isMobile && (
+          (subTab === 'overview' && mobileOverviewTab === 'holdings' && isHoldingsAtBottom) ||
+          (subTab === 'ledger' && isLedgerAtBottom) ||
+          (subTab === 'dividends' && mobileDividendsTab === 'calendar' && isDividendLedgerAtBottom)
+        );
+        return (
+          <button
+            onClick={() => {
+              if (!triggerRandomUpsell()) {
+                if (subTab === 'dividends') {
+                  setEditingDividend(null);
+                  setShowAddDividendModal(true);
+                } else {
+                  setShowAddModal(true);
+                }
               }
-            }
-          }}
-          title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
-          style={{
-            position: 'fixed',
-            bottom: '2rem',
-            right: '2rem',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
-            color: 'white',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
-            zIndex: 99,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            outline: 'none',
-            opacity: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 0 : 1,
-            pointerEvents: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 'none' : 'auto',
-            transform: (subTab === 'dividends' && isDividendLedgerAtBottom) ? 'scale(0)' : 'scale(1)'
-          }}
-          onMouseEnter={(e) => {
-            if (subTab === 'dividends' && isDividendLedgerAtBottom) return;
-            e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
-            e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            if (subTab === 'dividends' && isDividendLedgerAtBottom) return;
-            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-            e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
-          }}
-        >
-          <Plus size={24} style={{ strokeWidth: 2.5 }} />
-        </button>
-      )}
+            }}
+            title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
+            style={{
+              position: 'fixed',
+              bottom: '2rem',
+              right: '2rem',
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+              color: 'white',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
+              zIndex: 99,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              outline: 'none',
+              opacity: hideFAB ? 0 : 1,
+              pointerEvents: hideFAB ? 'none' : 'auto',
+              transform: hideFAB ? 'scale(0)' : 'scale(1)'
+            }}
+            onMouseEnter={(e) => {
+              if (hideFAB) return;
+              e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              if (hideFAB) return;
+              e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+              e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
+            }}
+          >
+            <Plus size={24} style={{ strokeWidth: 2.5 }} />
+          </button>
+        );
+      })()}
 
     </div>
   );

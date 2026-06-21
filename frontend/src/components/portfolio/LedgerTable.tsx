@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { History, Edit2, Trash2, Search, Upload } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ interface LedgerTableProps {
   onDeleteTransaction: (id: string) => void;
   onImportCSVClick?: () => void;
   style?: React.CSSProperties;
+  onScrollToBottomChange?: (isAtBottom: boolean) => void;
 }
 
 export function LedgerTable({
@@ -18,12 +19,34 @@ export function LedgerTable({
   onEditTransaction,
   onDeleteTransaction,
   onImportCSVClick,
-  style
+  style,
+  onScrollToBottomChange
 }: LedgerTableProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest transactions first
+
+  const wasAtBottomRef = useRef(false);
+
+  useEffect(() => {
+    wasAtBottomRef.current = false;
+    if (onScrollToBottomChange) {
+      onScrollToBottomChange(false);
+    }
+  }, [transactions.length, searchQuery, onScrollToBottomChange]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isScrollable = target.scrollHeight > target.clientHeight;
+    const isAtBottom = isScrollable && (target.scrollHeight - target.scrollTop <= target.clientHeight + 10);
+    if (isAtBottom !== wasAtBottomRef.current) {
+      wasAtBottomRef.current = isAtBottom;
+      if (onScrollToBottomChange) {
+        onScrollToBottomChange(isAtBottom);
+      }
+    }
+  };
 
   // Local filtering by Symbol or Account name
   const filteredTransactions = useMemo(() => {
@@ -190,7 +213,7 @@ export function LedgerTable({
           <p>{t('ledger.no_matches', 'No transactions match your search query.')}</p>
         </div>
       ) : (
-        <div className="table-wrapper" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div className="table-wrapper" onScroll={handleScroll} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <table className="screener-table">
             <thead>
               <tr>

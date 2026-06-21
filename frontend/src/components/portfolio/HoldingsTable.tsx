@@ -10,6 +10,7 @@ interface HoldingsTableProps {
   activePortfolioRole: string;
   onQuickAction: (symbol: string, type: 'BUY' | 'SELL') => void;
   onSelectPositionSymbol: (symbol: string) => void;
+  onScrollToBottomChange?: (isAtBottom: boolean) => void;
 }
 
 export function HoldingsTable({
@@ -17,7 +18,8 @@ export function HoldingsTable({
   summary,
   activePortfolioRole,
   onQuickAction,
-  onSelectPositionSymbol
+  onSelectPositionSymbol,
+  onScrollToBottomChange
 }: HoldingsTableProps) {
   const { t } = useTranslation();
 
@@ -90,6 +92,27 @@ export function HoldingsTable({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const wasAtBottomRef = useRef(false);
+
+  useEffect(() => {
+    wasAtBottomRef.current = false;
+    if (onScrollToBottomChange) {
+      onScrollToBottomChange(false);
+    }
+  }, [holdings.length, onScrollToBottomChange]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isScrollable = target.scrollHeight > target.clientHeight;
+    const isAtBottom = isScrollable && (target.scrollHeight - target.scrollTop <= target.clientHeight + 10);
+    if (isAtBottom !== wasAtBottomRef.current) {
+      wasAtBottomRef.current = isAtBottom;
+      if (onScrollToBottomChange) {
+        onScrollToBottomChange(isAtBottom);
+      }
+    }
+  };
 
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleColumnsDesktop, setVisibleColumnsDesktop] = useState<string[]>(() => {
@@ -497,6 +520,7 @@ export function HoldingsTable({
             alignItems: 'center',
             justifyContent: 'center',
             transition: 'all 0.2s ease',
+            marginLeft: 'auto',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = 'white';
@@ -650,7 +674,7 @@ export function HoldingsTable({
           <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{t('holdings.empty_state_desc', 'Click "Add Transaction" below to register purchases.')}</p>
         </div>
       ) : (
-        <div className="table-wrapper" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div className="table-wrapper" onScroll={handleScroll} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <table 
             className="screener-table" 
             style={{ 
