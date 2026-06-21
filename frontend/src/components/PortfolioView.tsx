@@ -11,9 +11,7 @@ import {
   LayoutGrid,
   Layout,
   Scale,
-  AlertTriangle,
-  Briefcase,
-  SlidersHorizontal
+  AlertTriangle
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -1145,7 +1143,7 @@ export function PortfolioView({
           )}
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}
-          <div className="portfolio-header-bar glass-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.75rem' }}>
+          <div className="portfolio-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <img 
                 src="/favicon.png" 
@@ -1402,65 +1400,6 @@ export function PortfolioView({
                     const isRightColumnOpen = showDashboardCards && (widgets.length > 0 || showWidgetManager);
                     return (
                       <>
-                        {/* Segmented Switcher for Mobile */}
-                        {isMobile && holdings.length > 0 && (
-                          <div className="mobile-subtab-bar" style={{
-                            display: 'flex',
-                            padding: '4px',
-                            borderRadius: '8px',
-                            background: 'rgba(0, 0, 0, 0.2)',
-                            border: '1px solid var(--panel-border)',
-                            marginBottom: '0.5rem',
-                          }}>
-                            <button
-                              type="button"
-                              onClick={() => setMobileOverviewTab('holdings')}
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: mobileOverviewTab === 'holdings' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                                color: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'var(--text-secondary)',
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.4rem'
-                              }}
-                            >
-                              <Briefcase size={13} />
-                              <span>{t('holdings.tab_holdings_list', 'Asset Holdings')}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setMobileOverviewTab('analytics')}
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: mobileOverviewTab === 'analytics' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                                color: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'var(--text-secondary)',
-                                fontSize: '0.8rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.4rem'
-                              }}
-                            >
-                              <SlidersHorizontal size={13} />
-                              <span>{t('holdings.tab_analytics_cards', 'Analytics & Charts')}</span>
-                            </button>
-                          </div>
-                        )}
-
                         <div 
                           className="portfolio-grid" 
                           onTouchStart={handleTouchStart}
@@ -1698,6 +1637,51 @@ export function PortfolioView({
                           )}
                         </div>
 
+                        {/* Mobile Page Indicator Dots */}
+                        {isMobile && holdings.length > 0 && (
+                          <div className="mobile-page-indicator" style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem 0 0 0',
+                            alignItems: 'center',
+                            marginTop: '0.25rem'
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => setMobileOverviewTab('holdings')}
+                              style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                border: 'none',
+                                background: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                                padding: 0,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                boxShadow: mobileOverviewTab === 'holdings' ? '0 0 8px var(--color-primary)' : 'none'
+                              }}
+                              aria-label="Holdings Page"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setMobileOverviewTab('analytics')}
+                              style={{
+                                width: '7px',
+                                height: '7px',
+                                borderRadius: '50%',
+                                border: 'none',
+                                background: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                                padding: 0,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                boxShadow: mobileOverviewTab === 'analytics' ? '0 0 8px var(--color-primary)' : 'none'
+                              }}
+                              aria-label="Analytics Page"
+                            />
+                          </div>
+                        )}
+
                         {/* Floating Expand Sidebar Button when collapsed */}
                         {!isMobile && !isRightColumnOpen && (
                           <div 
@@ -1766,62 +1750,7 @@ export function PortfolioView({
                 height: '100%',
                 position: 'relative'
               }}>
-                {/* Segmented Switcher for Mobile Dividends */}
-                {isMobile && (
-                  <div className="mobile-subtab-bar" style={{
-                    display: 'flex',
-                    padding: '4px',
-                    borderRadius: '8px',
-                    background: 'rgba(0, 0, 0, 0.2)',
-                    border: '1px solid var(--panel-border)',
-                    marginBottom: '0.5rem',
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setMobileDividendsTab('forecast')}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: mobileDividendsTab === 'forecast' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                        color: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'var(--text-secondary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem'
-                      }}
-                    >
-                      <span>{t('dividends.tab_forecast', 'Dividend Forecast')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMobileDividendsTab('calendar')}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: mobileDividendsTab === 'calendar' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                        color: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'var(--text-secondary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem'
-                      }}
-                    >
-                      <span>{t('dividends.tab_calendar_ledger', 'Calendar & Ledger')}</span>
-                    </button>
-                  </div>
-                )}
+
 
                 {/* Desktop view */}
                 {!isMobile && (
@@ -2096,6 +2025,49 @@ export function PortfolioView({
                         />
                       </div>
                     )}
+
+                    {/* Mobile Page Indicator Dots */}
+                    <div className="mobile-page-indicator" style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0 0 0',
+                      alignItems: 'center',
+                      marginTop: '0.25rem'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('forecast')}
+                        style={{
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                          padding: 0,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'forecast' ? '0 0 8px var(--color-primary)' : 'none'
+                        }}
+                        aria-label="Forecast Page"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('calendar')}
+                        style={{
+                          width: '7px',
+                          height: '7px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.25)',
+                          padding: 0,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'calendar' ? '0 0 8px var(--color-primary)' : 'none'
+                        }}
+                        aria-label="Calendar and Ledger Page"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

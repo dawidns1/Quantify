@@ -1522,11 +1522,12 @@ select option {
   .portfolio-header-bar {
     display: flex !important;
     align-items: center;
-    padding: 0.5rem 0.75rem;
-    background: rgba(13, 20, 35, 0.45);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
+    padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0;
+    margin-bottom: 0.5rem;
   }
 }
 
