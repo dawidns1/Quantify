@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useDeferredValue } from 'react';
 import { Search, ArrowUpDown, X, ChevronRight, BarChart2, HelpCircle, Eye, Sliders } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface IndicatorConfig {
   id: string;
@@ -32,6 +33,47 @@ interface ScreenerTableProps {
 }
 
 export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators, onSelectStock, selectedTicker }) => {
+  const { t } = useTranslation();
+
+  const getCategoryLabel = (cat: string) => {
+    switch (cat) {
+      case 'Valuation': return t('holdings.group_valuation', 'Valuation');
+      case 'Returns': return t('holdings.group_returns', 'Returns');
+      default: return cat;
+    }
+  };
+
+  const getIndicatorName = (ind: IndicatorConfig) => {
+    switch (ind.id) {
+      case 'symbol': return t('screener.indicatorTicker', 'Ticker');
+      case 'name': return t('screener.indicatorCompany', 'Company Name');
+      case 'price': return t('screener.indicatorPrice', 'Price');
+      case 'market_cap': return t('screener.indicatorMarketCap', 'Market Cap');
+      case 'trailing_ps': return t('screener.indicatorTrailingPS', 'Trailing P/S');
+      case 'forward_ps_1y': return t('screener.indicatorForwardPS1y', 'FWD P/S (1y)');
+      case 'forward_ps_2y': return t('screener.indicatorForwardPS2y', 'FWD P/S (2y)');
+      case 'rev_growth_1y': return t('screener.indicatorRevGrowth1y', 'Rev Growth (1y)');
+      case 'rev_growth_2y': return t('screener.indicatorRevGrowth2y', 'Rev Growth (2y)');
+      case 'psg_1y': return t('screener.indicatorPSG1y', 'PSSG Ratio (1y)');
+      case 'psg_2y': return t('screener.indicatorPSG2y', 'PSSG Ratio (2y)');
+      default: return ind.name;
+    }
+  };
+
+  const getIndicatorDesc = (ind: IndicatorConfig) => {
+    switch (ind.id) {
+      case 'market_cap': return t('screener.descMarketCap', 'Total market value of a company\'s outstanding shares.');
+      case 'trailing_ps': return t('screener.descTrailingPS', 'Price-to-Sales ratio over trailing 12 months.');
+      case 'forward_ps_1y': return t('screener.descForwardPS1y', 'Projected Price-to-Sales ratio for next fiscal year.');
+      case 'forward_ps_2y': return t('screener.descForwardPS2y', 'Projected Price-to-Sales ratio for 2 years out.');
+      case 'rev_growth_1y': return t('screener.descRevGrowth1y', 'Projected revenue growth rate over next 12 months.');
+      case 'rev_growth_2y': return t('screener.descRevGrowth2y', 'Projected revenue growth rate between year 1 and year 2.');
+      case 'psg_1y': return t('screener.descPSG1y', 'Growth-adjusted P/S ratio for next 12 months (lower is cheaper).');
+      case 'psg_2y': return t('screener.descPSG2y', 'Growth-adjusted P/S ratio for year 2.');
+      default: return ind.description || '';
+    }
+  };
+
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<string>(() => {
     return localStorage.getItem('screener_sort_field') || 'market_cap';
@@ -275,7 +317,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
           <Search size={18} />
           <input 
             type="text" 
-            placeholder="Search symbol or company name..." 
+            placeholder={t('screener.searchPlaceholder', 'Search symbol or company name...')} 
             className="input-field"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -297,7 +339,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
               setActiveHeaderFilter(null); // Close active header filters when toggling column picker
             }}
           >
-            <Eye size={14} /> Customize Columns
+            <Eye size={14} /> {t('screener.btnCustomizeColumns', 'Customize Columns')}
           </button>
 
           {(Object.keys(filters).length > 0 || search) && (
@@ -306,7 +348,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
               style={{ background: 'var(--color-red-glow)', color: 'var(--color-red)', padding: '0.5rem 1rem', fontSize: '0.85rem', boxShadow: 'none' }}
               onClick={resetFilters}
             >
-              <X size={14} /> Clear
+              <X size={14} /> {t('screener.btnClear', 'Clear')}
             </button>
           )}
         </div>
@@ -316,14 +358,14 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
       {showColumnPicker && (
         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Configure Screener Table Columns</h4>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Core columns (Ticker, Company) are fixed</span>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('screener.configColumns', 'Configure Screener Table Columns')}</h4>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('screener.coreColumnsFixed', 'Core columns (Ticker, Company) are fixed')}</span>
           </div>
           <div className="column-picker-grid">
             {Object.entries(groupedIndicators).map(([category, items]) => (
               <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {category}
+                  {getCategoryLabel(category)}
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {items.map((ind) => {
@@ -332,7 +374,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                       <label 
                         key={ind.id} 
                         style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
-                        title={ind.description}
+                        title={getIndicatorDesc(ind)}
                       >
                         <input 
                           type="checkbox"
@@ -340,7 +382,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                           onChange={() => toggleIndicator(ind.id)}
                           style={{ accentColor: 'var(--color-primary)' }}
                         />
-                        {ind.name}
+                        {getIndicatorName(ind)}
                       </label>
                     );
                   })}
@@ -363,7 +405,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                         onClick={() => handleSort(ind.id)} 
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
                       >
-                        {ind.name}
+                        {getIndicatorName(ind)}
                         {sortField === ind.id && (
                           <ArrowUpDown size={12} style={{ color: 'var(--color-primary)' }} />
                         )}
@@ -376,7 +418,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                        ind.id !== 'industry' && (
                         <div className="tooltip-container" onClick={(e) => e.stopPropagation()}>
                           <HelpCircle size={13} />
-                          <span className="tooltip-text">{ind.description}</span>
+                          <span className="tooltip-text">{getIndicatorDesc(ind)}</span>
                         </div>
                       )}
 
@@ -418,7 +460,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                         <div className="header-filter-popover" style={{ zIndex: 1000 }} onClick={(e) => e.stopPropagation()}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem' }}>
                             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                              Filter {ind.name}
+                              {t('screener.filterIndicator', 'Filter {{name}}', { name: getIndicatorName(ind) })}
                             </span>
                             <button 
                               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -426,7 +468,9 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                             >
                               <X size={14} />
                             </button>
-                          </div>                           {/* Quick Sort Options */}
+                          </div>
+
+                          {/* Quick Sort Options */}
                           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                             <button 
                               className="glow-btn"
@@ -435,7 +479,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 updateSort(ind.id, true);
                               }}
                             >
-                              Sort Asc
+                              {t('screener.btnSortAsc', 'Sort Asc')}
                             </button>
                             <button 
                               className="glow-btn"
@@ -444,7 +488,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 updateSort(ind.id, false);
                               }}
                             >
-                              Sort Desc
+                              {t('screener.btnSortDesc', 'Sort Desc')}
                             </button>
                           </div>
 
@@ -459,7 +503,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 if (ind.id === 'market_cap' || ind.id === 'enterprise_value' || ind.id === 'free_cash_flow') {
                                   return `$ ${(val / 1e9).toFixed(1)}B`;
                                 }
-                                return `$ ${val.toFixed(2)}`;
+                                  return `$ ${val.toFixed(2)}`;
                               }
                               return val.toFixed(2);
                             };
@@ -473,7 +517,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 {/* Text Box Inputs */}
                                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Min</span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('screener.min', 'Min')}</span>
                                     <input 
                                       type="number"
                                       className="input-field"
@@ -491,7 +535,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                     />
                                   </div>
                                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Max</span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('screener.max', 'Max')}</span>
                                     <input 
                                       type="number"
                                       className="input-field"
@@ -513,7 +557,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 {/* Slider Inputs */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', width: '20px' }}>Min</span>
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', width: '20px' }}>{t('screener.min', 'Min')}</span>
                                     <input 
                                       type="range"
                                       min={limit.min}
@@ -529,7 +573,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                     />
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', width: '20px' }}>Max</span>
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', width: '20px' }}>{t('screener.max', 'Max')}</span>
                                     <input 
                                       type="range"
                                       min={limit.min}
@@ -547,7 +591,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 </div>
 
                                 <div style={{ fontSize: '0.75rem', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'monospace', marginTop: '0.2rem' }}>
-                                  Range: {formatValue(current.min)} - {formatValue(current.max)}
+                                  {t('screener.range', 'Range')}: {formatValue(current.min)} - {formatValue(current.max)}
                                 </div>
                               </div>
                             );
@@ -567,7 +611,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
                                 setTempMax(null);
                               }}
                             >
-                              Reset Filter
+                              {t('screener.btnResetFilter', 'Reset Filter')}
                             </button>
                           )}
                         </div>
@@ -582,7 +626,7 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
             {sortedStocks.length === 0 ? (
               <tr>
                 <td colSpan={visibleIndicatorIds.length + 1} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                  No stocks match the screen criteria. Try resetting filters.
+                  {t('screener.noStocksMatch', 'No stocks match the screen criteria. Try resetting filters.')}
                 </td>
               </tr>
             ) : (
@@ -620,10 +664,10 @@ export const ScreenerTable: React.FC<ScreenerTableProps> = ({ stocks, indicators
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.5rem 0.25rem' }}>
-        <span>Showing {sortedStocks.length} of {stocks.length} stocks</span>
+        <span>{t('screener.showingStocks', 'Showing {{count}} of {{total}} stocks', { count: sortedStocks.length, total: stocks.length })}</span>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <BarChart2 size={12} />
-          <span>Click a stock row to open historical detail charts.</span>
+          <span>{t('screener.clickToOpenDetail', 'Click a stock row to open historical detail charts.')}</span>
         </div>
       </div>
     </div>

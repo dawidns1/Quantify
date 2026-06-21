@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export function AuthView() {
+  const { t } = useTranslation();
   const { recoveryMode, setRecoveryMode } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -19,23 +21,23 @@ export function AuthView() {
   // Validate password strength according to rules
   const validatePasswordStrength = (pw: string): boolean => {
     if (pw.length < 8) {
-      setError("Password must be at least 8 characters long.");
+      setError(t('auth.errorPasswordLength', 'Password must be at least 8 characters long.'));
       return false;
     }
     if (!/[A-Z]/.test(pw)) {
-      setError("Password must contain at least one uppercase letter.");
+      setError(t('auth.errorPasswordUppercase', 'Password must contain at least one uppercase letter.'));
       return false;
     }
     if (!/[a-z]/.test(pw)) {
-      setError("Password must contain at least one lowercase letter.");
+      setError(t('auth.errorPasswordLowercase', 'Password must contain at least one lowercase letter.'));
       return false;
     }
     if (!/[0-9]/.test(pw)) {
-      setError("Password must contain at least one number.");
+      setError(t('auth.errorPasswordNumber', 'Password must contain at least one number.'));
       return false;
     }
     if (!/[@$!%*?&#]/.test(pw)) {
-      setError("Password must contain at least one special character (e.g. @$!%*?&#).");
+      setError(t('auth.errorPasswordSpecial', 'Password must contain at least one special character (e.g. @$!%*?&#).'));
       return false;
     }
     return true;
@@ -49,7 +51,7 @@ export function AuthView() {
 
     if (isSignUp) {
       if (password !== confirmPassword) {
-        setError("Passwords do not match.");
+        setError(t('auth.errorPasswordsMatch', 'Passwords do not match.'));
         setSubmitting(false);
         return;
       }
@@ -66,7 +68,7 @@ export function AuthView() {
       if (error) {
         setError(error.message);
       } else {
-        setMessage("Success! Check your email for the confirmation link.");
+        setMessage(t('auth.msgConfirmLinkSent', 'Success! Check your email for the confirmation link.'));
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -90,7 +92,7 @@ export function AuthView() {
 
     const emailAddress = email.trim().toLowerCase();
     if (!emailAddress) {
-      setError("Please enter your email address.");
+      setError(t('auth.errorEnterEmail', 'Please enter your email address.'));
       setSubmitting(false);
       return;
     }
@@ -103,11 +105,11 @@ export function AuthView() {
       if (error) {
         setError(error.message);
       } else {
-        setMessage("Check your email for the recovery link or 6-digit code.");
+        setMessage(t('auth.msgRecoveryLinkSent', 'Check your email for the recovery link or 6-digit code.'));
         setShowOtpInput(true);
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred.");
+      setError(err.message || t('auth.errorDefault', 'An error occurred.'));
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +124,7 @@ export function AuthView() {
 
     const token = otpToken.trim();
     if (token.length < 6) {
-      setError("Please enter a valid verification code.");
+      setError(t('auth.errorEnterOtp', 'Please enter a valid verification code.'));
       setSubmitting(false);
       return;
     }
@@ -137,11 +139,11 @@ export function AuthView() {
       if (error) {
         setError(error.message);
       } else {
-        setMessage("Code verified! Set your new password below.");
+        setMessage(t('auth.msgOtpVerified', 'Code verified! Set your new password below.'));
         setRecoveryMode(true);
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred.");
+      setError(err.message || t('auth.errorDefault', 'An error occurred.'));
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +157,7 @@ export function AuthView() {
     setSubmitting(true);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t('auth.errorPasswordsMatch', 'Passwords do not match.'));
       setSubmitting(false);
       return;
     }
@@ -172,13 +174,13 @@ export function AuthView() {
       if (error) {
         setError(error.message);
       } else {
-        setMessage("Password updated successfully! Redirecting...");
+        setMessage(t('auth.msgPasswordUpdated', 'Password updated successfully! Redirecting...'));
         setTimeout(() => {
           setRecoveryMode(false); // redirects to portfolio
         }, 1500);
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred.");
+      setError(err.message || t('auth.errorDefault', 'An error occurred.'));
     } finally {
       setSubmitting(false);
     }
@@ -207,12 +209,12 @@ export function AuthView() {
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
               {recoveryMode 
-                ? 'Set your new secure password below' 
-                : isForgotPassword 
-                  ? 'Enter your email to receive a password reset link' 
-                  : isSignUp 
-                    ? 'Create a secure account to track portfolios' 
-                    : 'Sign in to access your portfolios across devices'}
+              ? t('auth.subtitleRecovery', 'Set your new secure password below') 
+              : isForgotPassword 
+                ? t('auth.subtitleForgot', 'Enter your email to receive a password reset link') 
+                : isSignUp 
+                  ? t('auth.subtitleSignUp', 'Create a secure account to track portfolios') 
+                  : t('auth.subtitleSignIn', 'Sign in to access your portfolios across devices')}
             </p>
           </div>
         </div>
@@ -234,7 +236,7 @@ export function AuthView() {
         {recoveryMode ? (
           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             <div className="form-group">
-              <label className="form-label" htmlFor="recovery-password-input">New Password</label>
+              <label className="form-label" htmlFor="recovery-password-input">{t('auth.labelNewPassword', 'New Password')}</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -251,7 +253,7 @@ export function AuthView() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="recovery-confirm-password-input">Confirm New Password</label>
+              <label className="form-label" htmlFor="recovery-confirm-password-input">{t('auth.labelConfirmNewPassword', 'Confirm New Password')}</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -274,7 +276,7 @@ export function AuthView() {
               disabled={submitting}
             >
               <KeyRound size={18} />
-              {submitting ? 'Updating...' : 'Update Password'}
+              {submitting ? t('auth.btnUpdating', 'Updating...') : t('auth.btnUpdatePassword', 'Update Password')}
             </button>
           </form>
         ) : isForgotPassword ? (
@@ -283,9 +285,9 @@ export function AuthView() {
             <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', lineHeight: '1.4' }}>
-                  We sent a recovery email to <strong>{email}</strong>. Enter the 6-digit verification code below:
+                  {t('auth.recoveryEmailSentText', 'We sent a recovery email to {{email}}. Enter the 6-digit verification code below:', { email })}
                 </p>
-                <label className="form-label" htmlFor="otp-token-input">Verification Code (6-digit)</label>
+                <label className="form-label" htmlFor="otp-token-input">{t('auth.labelVerificationCode', 'Verification Code (6-digit)')}</label>
                 <div style={{ position: 'relative' }}>
                   <KeyRound size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
@@ -309,7 +311,7 @@ export function AuthView() {
                 disabled={submitting}
               >
                 <KeyRound size={18} />
-                {submitting ? 'Verifying...' : 'Verify Code'}
+                {submitting ? t('auth.btnVerifying', 'Verifying...') : t('auth.btnVerifyCode', 'Verify Code')}
               </button>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', fontSize: '0.85rem' }}>
@@ -322,7 +324,7 @@ export function AuthView() {
                   }}
                   style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
                 >
-                  Back
+                  {t('auth.btnBack', 'Back')}
                 </button>
                 <button
                   type="button"
@@ -330,7 +332,7 @@ export function AuthView() {
                   disabled={submitting}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                 >
-                  Resend Code
+                  {t('auth.btnResendCode', 'Resend Code')}
                 </button>
               </div>
             </form>
@@ -338,7 +340,7 @@ export function AuthView() {
             /* 2b. REQUEST FORGOT PASSWORD RESET EMAIL FORM */
             <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
-                <label className="form-label" htmlFor="forgot-email-input">Email Address</label>
+                <label className="form-label" htmlFor="forgot-email-input">{t('auth.labelEmail', 'Email Address')}</label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
@@ -361,7 +363,7 @@ export function AuthView() {
                 disabled={submitting}
               >
                 <Mail size={18} />
-                {submitting ? 'Sending...' : 'Send Reset Link'}
+                {submitting ? t('auth.btnSending', 'Sending...') : t('auth.btnSendResetLink', 'Send Reset Link')}
               </button>
 
               <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', textAlign: 'center', fontSize: '0.85rem' }}>
@@ -375,7 +377,7 @@ export function AuthView() {
                   }}
                   style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
                 >
-                  Back to Sign In
+                  {t('auth.btnBackToSignIn', 'Back to Sign In')}
                 </button>
               </div>
             </form>
@@ -384,7 +386,7 @@ export function AuthView() {
           /* 3. STANDARD SIGN IN / SIGN UP FORM */
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             <div className="form-group">
-              <label className="form-label" htmlFor="login-email-input">Email Address</label>
+              <label className="form-label" htmlFor="login-email-input">{t('auth.labelEmail', 'Email Address')}</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -401,7 +403,7 @@ export function AuthView() {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="login-password-input">Password</label>
+              <label className="form-label" htmlFor="login-password-input">{t('auth.labelPassword', 'Password')}</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
@@ -419,7 +421,7 @@ export function AuthView() {
 
             {isSignUp && (
               <div className="form-group">
-                <label className="form-label" htmlFor="login-confirm-password-input">Confirm Password</label>
+                <label className="form-label" htmlFor="login-confirm-password-input">{t('auth.labelConfirmPassword', 'Confirm Password')}</label>
                 <div style={{ position: 'relative' }}>
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
@@ -455,7 +457,7 @@ export function AuthView() {
                     textDecoration: 'underline'
                   }}
                 >
-                  Forgot Password?
+                  {t('auth.btnForgotPassword', 'Forgot Password?')}
                 </button>
               </div>
             )}
@@ -467,7 +469,7 @@ export function AuthView() {
               disabled={submitting}
             >
               {isSignUp ? <UserPlus size={18} /> : <LogIn size={18} />}
-              {submitting ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+              {submitting ? t('auth.btnPleaseWait', 'Please wait...') : isSignUp ? t('auth.btnCreateAccount', 'Create Account') : t('auth.btnSignIn', 'Sign In')}
             </button>
 
             <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '1rem', textAlign: 'center', fontSize: '0.85rem' }}>
@@ -480,7 +482,7 @@ export function AuthView() {
                 }}
                 style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}
               >
-                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+                {isSignUp ? t('auth.linkAlreadyHaveAccount', 'Already have an account? Sign In') : t('auth.linkDontHaveAccount', "Don't have an account? Create one")}
               </button>
             </div>
           </form>

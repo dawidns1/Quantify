@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import enTranslation from './locales/en/translation.json';
 import plTranslation from './locales/pl/translation.json';
+import esTranslation from './locales/es/translation.json';
 
 i18n
   .use(LanguageDetector)
@@ -14,6 +15,9 @@ i18n
       },
       pl: {
         translation: plTranslation
+      },
+      es: {
+        translation: esTranslation
       }
     },
     lng: localStorage.getItem('quantifi_language') || 'en',

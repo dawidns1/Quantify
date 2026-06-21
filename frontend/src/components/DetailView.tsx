@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, TrendingUp, DollarSign, BarChart2, Activity } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -142,8 +143,33 @@ interface DetailViewProps {
 }
 
 export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBaseUrl, defaultTimeframe, stocks = [] }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const getCategoryLabel = (cat: string) => {
+    switch(cat) {
+      case 'Price & Technicals': return t('detail.categoryPriceTechnicals', 'Price & Technicals');
+      case 'Valuation Multiples': return t('detail.categoryValuationMultiples', 'Valuation Multiples');
+      case 'Growth-Adjusted (PSSG)': return t('detail.categoryGrowthAdjusted', 'Growth-Adjusted (PSSG)');
+      default: return cat;
+    }
+  };
+
+  const getCurveName = (id: string) => {
+    switch(id) {
+      case 'price': 
+        return t('detail.curveSharePrice', 'Share Price ({{symbol}})', { symbol: currency === 'PLN' ? 'zł' : (currency === 'EUR' ? '€' : '$') });
+      case 'sma_50': return t('detail.curveSMA50', '50-Day SMA ($)');
+      case 'sma_200': return t('detail.curveSMA200', '200-Day SMA ($)');
+      case 'ps': return t('detail.curveTrailingPS', 'Trailing P/S');
+      case 'forward_ps': return t('detail.curveForwardPS', 'Forward P/S (Daily)');
+      case 'pe': return t('detail.curveTrailingPE', 'Trailing P/E');
+      case 'psg': return t('detail.curveTrailingPSG', 'Trailing PSSG');
+      case 'forward_psg': return t('detail.curveForwardPSG', 'Forward PSSG (Daily)');
+      default: return id;
+    }
+  };
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'1Y' | '2Y' | '3Y'>(() => {
     return defaultTimeframe || '2Y';
@@ -294,7 +320,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
     fetch(`${apiBaseUrl}/api/stocks/${ticker}`)
       .then((res) => {
         if (!res.ok) {
-          throw new Error(`Failed to load details for ${ticker}`);
+          throw new Error(t('detail.errorLoadFailed', 'Failed to load details for {{ticker}}', { ticker }));
         }
         return res.json();
       })
@@ -418,19 +444,19 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
     if (diff < -0.5) {
       return (
         <div className="peer-comparison discount">
-          <span>Trades at a {absDiff.toFixed(1)}% discount to peer median ({medianVal.toFixed(2)}{suffix})</span>
+          <span>{t('detail.discountText', 'Trades at a {{diff}}% discount to peer median ({{median}}{{suffix}})', { diff: absDiff.toFixed(1), median: medianVal.toFixed(2), suffix })}</span>
         </div>
       );
     } else if (diff > 0.5) {
       return (
         <div className="peer-comparison premium">
-          <span>Trades at a {diff.toFixed(1)}% premium to peer median ({medianVal.toFixed(2)}{suffix})</span>
+          <span>{t('detail.premiumText', 'Trades at a {{diff}}% premium to peer median ({{median}}{{suffix}})', { diff: diff.toFixed(1), median: medianVal.toFixed(2), suffix })}</span>
         </div>
       );
     } else {
       return (
         <div className="peer-comparison neutral">
-          <span>Aligned with peer median ({medianVal.toFixed(2)}{suffix})</span>
+          <span>{t('detail.alignedText', 'Aligned with peer median ({{median}}{{suffix}})', { median: medianVal.toFixed(2), suffix })}</span>
         </div>
       );
     }
@@ -458,7 +484,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         const group = SCALE_GROUPS[c.id];
         const axisId = group === chartConfig.leftGroup ? 'y' : 'y1';
         return {
-          label: c.name,
+          label: getCurveName(c.id),
           data: filteredHistory.map((h: any) => h[c.id]),
           borderColor: c.borderColor,
           backgroundColor: c.backgroundColor,
@@ -597,7 +623,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
     return (
       <div className="glass-panel" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
         <div className="pulse" style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
-          Loading historical dataset for {ticker}...
+          {t('detail.loadingHistorical', 'Loading historical dataset for {{ticker}}...', { ticker })}
         </div>
       </div>
     );
@@ -606,9 +632,9 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
   if (error || !data) {
     return (
       <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-        <p style={{ color: 'var(--color-red)', marginBottom: '1rem' }}>Error: {error || 'No data found'}</p>
+        <p style={{ color: 'var(--color-red)', marginBottom: '1rem' }}>{t('detail.errorMsg', 'Error: {{error}}', { error: error || t('detail.noDataFound', 'No data found') })}</p>
         <button className="glow-btn" onClick={onClose}>
-          <ArrowLeft size={16} /> Back to Screener
+          <ArrowLeft size={16} /> {t('detail.backToScreener', 'Back to Screener')}
         </button>
       </div>
     );
@@ -646,7 +672,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
               {overview.name} <span style={{ color: 'var(--color-primary)', fontSize: '1.3rem' }}>({overview.symbol})</span>
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.1rem' }}>
-              {overview.sector ? `${overview.sector} • ${overview.industry}` : 'NASDAQ 100 Constituent'}
+              {overview.sector ? `${overview.sector} • ${overview.industry}` : t('detail.nasdaqConstituent', 'NASDAQ 100 Constituent')}
             </p>
           </div>
         </div>
@@ -654,12 +680,12 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             {isMarketOpen ? (
-              <span className="live-badge open" title="Market Session Active">
-                <span className="live-dot pulse"></span> LIVE SESSION
+              <span className="live-badge open" title={t('detail.marketSessionActive', 'Market Session Active')}>
+                <span className="live-dot pulse"></span> {t('detail.liveSession', 'LIVE SESSION')}
               </span>
             ) : (
-              <span className="live-badge closed" title="Market Session Closed">
-                <span className="live-dot"></span> MARKET CLOSED
+              <span className="live-badge closed" title={t('detail.marketSessionClosed', 'Market Session Closed')}>
+                <span className="live-dot"></span> {t('detail.marketClosed', 'MARKET CLOSED')}
               </span>
             )}
             <span 
@@ -675,7 +701,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
               {currency === 'PLN' ? ' zł' : ''}
             </span>
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current Price</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('detail.currentPrice', 'Current Price')}</div>
         </div>
       </div>
 
@@ -685,24 +711,24 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         <div className="side-panel">
           <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 600, borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
-              Indicator Card Checklist
+              {t('detail.indicatorChecklist', 'Indicator Card Checklist')}
             </h3>
             
             <MetricCard 
-              label="Market Cap" 
+              label={t('detail.marketCap', 'Market Cap')} 
               value={formatMarketCap(overview.market_cap)} 
               icon={<DollarSign size={18} />} 
               color="hsl(217, 91%, 60%)" 
             />
             <MetricCard 
-              label="Trailing P/S" 
+              label={t('detail.trailingPS', 'Trailing P/S')} 
               value={overview.trailing_ps} 
               icon={<BarChart2 size={18} />} 
               color="hsl(32, 95%, 55%)"
               comparison={renderPeerComparison(overview.trailing_ps, sectorMedians?.ps, 'x')}
             />
             <MetricCard 
-              label="Trailing P/E" 
+              label={t('detail.trailingPE', 'Trailing P/E')} 
               value={overview.trailing_pe} 
               icon={<BarChart2 size={18} />} 
               color="hsl(350, 70%, 50%)"
@@ -712,48 +738,48 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <MetricCard 
-                  label="FWD P/S (1y)" 
+                  label={t('detail.fwdPS1y', 'FWD P/S (1y)')} 
                   value={overview.forward_ps_1y} 
                   icon={<Activity size={14} />} 
                   color="var(--text-secondary)"
                 />
                 <MetricCard 
-                  label="Rev Growth (1y)" 
+                  label={t('detail.revGrowth1y', 'Rev Growth (1y)')} 
                   value={formatPercent(overview.rev_growth_1y)} 
                   suffix="%" 
                   icon={<TrendingUp size={14} />} 
                   color={overview.rev_growth_1y && overview.rev_growth_1y > 0 ? 'var(--color-green)' : 'var(--color-red)'}
                 />
                 <MetricCard 
-                  label="PSSG Ratio (1y)" 
+                  label={t('detail.pssgRatio1y', 'PSSG Ratio (1y)')} 
                   value={overview.psg_1y} 
                   icon={<Activity size={14} />} 
                   color={getPSGColor(overview.psg_1y)}
-                  sub={overview.psg_1y ? (overview.psg_1y < 1.0 ? "Undervalued" : "Overvalued") : undefined}
+                  sub={overview.psg_1y ? (overview.psg_1y < 1.0 ? t('detail.undervalued', 'Undervalued') : t('detail.overvalued', 'Overvalued')) : undefined}
                   comparison={renderPeerComparison(overview.psg_1y, sectorMedians?.psg)}
                 />
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <MetricCard 
-                  label="FWD P/S (2y)" 
+                  label={t('detail.fwdPS2y', 'FWD P/S (2y)')} 
                   value={overview.forward_ps_2y} 
                   icon={<Activity size={14} />} 
                   color="var(--text-secondary)"
                 />
                 <MetricCard 
-                  label="Rev Growth (2y)" 
+                  label={t('detail.revGrowth2y', 'Rev Growth (2y)')} 
                   value={formatPercent(overview.rev_growth_2y)} 
                   suffix="%" 
                   icon={<TrendingUp size={14} />} 
                   color={overview.rev_growth_2y && overview.rev_growth_2y > 0 ? 'var(--color-green)' : 'var(--color-red)'}
                 />
                 <MetricCard 
-                  label="PSSG Ratio (2y)" 
+                  label={t('detail.pssgRatio2y', 'PSSG Ratio (2y)')} 
                   value={overview.psg_2y} 
                   icon={<Activity size={14} />} 
                   color={getPSGColor(overview.psg_2y)}
-                  sub={overview.psg_2y ? (overview.psg_2y < 1.0 ? "Undervalued" : "Overvalued") : undefined}
+                  sub={overview.psg_2y ? (overview.psg_2y < 1.0 ? t('detail.undervalued', 'Undervalued') : t('detail.overvalued', 'Overvalued')) : undefined}
                 />
               </div>
             </div>
@@ -764,8 +790,8 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
         <div className="glass-panel charts-dashboard">
           <div className="chart-header">
             <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>Interactive Valuation Dashboard</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.1rem' }}>Overlay and align price history with multiples expansion/contraction curves</p>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>{t('detail.interactiveDashboard', 'Interactive Valuation Dashboard')}</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.1rem' }}>{t('detail.dashboardDesc', 'Overlay and align price history with multiples expansion/contraction curves')}</p>
             </div>
             
             <div className="time-toggles">
@@ -778,9 +804,9 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
           {/* Grouped Chart Curves Selector */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.1rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>Select Indicators to Chart</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('detail.selectIndicators', 'Select Indicators to Chart')}</span>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                {selectedCurves.length} selected
+                {t('detail.selectedIndicatorCount', '{{count}} selected', { count: selectedCurves.length })}
               </span>
             </div>
             
@@ -788,7 +814,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
               {Object.entries(groupedCurves).map(([category, items]) => (
                 <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {category}
+                    {getCategoryLabel(category)}
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {items.map(curve => {
@@ -813,7 +839,7 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
                             style={{ accentColor: curve.color }}
                           />
                           <span style={{ display: 'inline-block', width: '10px', height: '3px', background: curve.color, borderRadius: '1.5px' }}></span>
-                          {curve.name}
+                          {getCurveName(curve.id)}
                         </label>
                       );
                     })}
@@ -839,14 +865,14 @@ export const DetailView: React.FC<DetailViewProps> = ({ ticker, onClose, apiBase
               })
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', border: '1px dashed var(--panel-border)', borderRadius: '12px', color: 'var(--text-muted)' }}>
-                Select one or more indicators above to plot.
+                {t('detail.selectToPlot', 'Select one or more indicators above to plot.')}
               </div>
             )}
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
             <Activity size={14} />
-            <span>Note: Metrics with different units are dynamically split into separate, independently scaled dual-axis charts.</span>
+            <span>{t('detail.chartNote', 'Note: Metrics with different units are dynamically split into separate, independently scaled dual-axis charts.')}</span>
           </div>
         </div>
       </div>

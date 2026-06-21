@@ -28,7 +28,12 @@ export function PreferencesModal({
   useEffect(() => {
     if (isOpen) {
       // Load current settings from i18n, props, and localStorage
-      const currentLang = i18n.language.startsWith('pl') ? 'pl' : 'en';
+      let currentLang = 'en';
+      if (i18n.language.startsWith('pl')) {
+        currentLang = 'pl';
+      } else if (i18n.language.startsWith('es')) {
+        currentLang = 'es';
+      }
       setSelectedLanguage(currentLang);
       setSelectedCurrency(baseCurrency);
       
@@ -128,6 +133,13 @@ export function PreferencesModal({
                   onClick={() => setSelectedLanguage('pl')}
                 >
                   Polski
+                </button>
+                <button 
+                  type="button"
+                  style={optionButtonStyle(selectedLanguage === 'es')}
+                  onClick={() => setSelectedLanguage('es')}
+                >
+                  Español
                 </button>
               </div>
             </div>
