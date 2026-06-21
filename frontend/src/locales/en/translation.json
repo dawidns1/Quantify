@@ -102,9 +102,9 @@
     "btn_rebalance": "Rebalance",
     "btn_hide_cards": "Hide Cards",
     "btn_show_cards": "Show Cards",
-    "ticker_fixed": "Ticker (Fixed)",
-    "current_fixed": "Current Value (Fixed)",
-    "gain_loss_fixed": "Gain/Loss (Fixed)"
+    "ticker_fixed": "Ticker",
+    "current_fixed": "Current Value",
+    "gain_loss_fixed": "Gain/Loss"
   },
   "ledger": {
     "header": "Transaction History Ledger",

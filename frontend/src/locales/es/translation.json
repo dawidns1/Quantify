@@ -102,9 +102,9 @@
     "btn_rebalance": "Rebalancear",
     "btn_hide_cards": "Ocultar tarjetas",
     "btn_show_cards": "Mostrar tarjetas",
-    "ticker_fixed": "Ticker (fijo)",
-    "current_fixed": "Valor actual (fijo)",
-    "gain_loss_fixed": "Ganancia/Pérdida (fijo)"
+    "ticker_fixed": "Ticker",
+    "current_fixed": "Valor actual",
+    "gain_loss_fixed": "Ganancia/Pérdida"
   },
   "ledger": {
     "header": "Libro de transacciones",

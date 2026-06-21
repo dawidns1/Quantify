@@ -102,9 +102,9 @@
     "btn_rebalance": "Rebalansuj",
     "btn_hide_cards": "Ukryj karty",
     "btn_show_cards": "Pokaż karty",
-    "ticker_fixed": "Ticker (zablokowany)",
-    "current_fixed": "Wartość bieżąca (zablokowana)",
-    "gain_loss_fixed": "Zysk/Strata (zablokowana)"
+    "ticker_fixed": "Ticker",
+    "current_fixed": "Wartość bieżąca",
+    "gain_loss_fixed": "Zysk/Strata"
   },
   "ledger": {
     "header": "Księga Historycznych Transakcji",

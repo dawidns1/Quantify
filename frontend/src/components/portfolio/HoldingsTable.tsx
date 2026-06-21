@@ -560,7 +560,7 @@ export function HoldingsTable({
             </span>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {t('holdings.ticker_fixed', 'Ticker (Fixed)')}
+                {t('holdings.ticker_fixed', 'Ticker')}
               </div>
               
               {visibleColumns.map((colId, idx) => {
@@ -622,10 +622,10 @@ export function HoldingsTable({
               })}
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {t('holdings.current_fixed', 'Current Value (Fixed)')}
+                {t('holdings.current_fixed', 'Current Value')}
               </div>
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {t('holdings.gain_loss_fixed', 'Gain/Loss (Fixed)')}
+                {t('holdings.gain_loss_fixed', 'Gain/Loss')}
               </div>
             </div>
           </div>
