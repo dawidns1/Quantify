@@ -1414,8 +1414,7 @@ export function PortfolioView({
                 display: subTab === 'overview' ? 'flex' : 'none',
                 flexDirection: 'column',
                 flex: 1,
-                minHeight: 0,
-                height: '100%'
+                minHeight: 0
               }}>
                 {portfolioTransactions.length === 0 && !loadingTransactions ? (
                   <div className="glass-panel" style={{ padding: '3rem 2rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.04) 0%, rgba(236, 72, 153, 0.04) 100%)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px' }}>
@@ -1471,8 +1470,7 @@ export function PortfolioView({
                             gap: '0px', 
                             marginTop: '0.25rem',
                             flex: 1,
-                            minHeight: 0,
-                            height: '100%'
+                            minHeight: 0
                           }}
                         >
                           {/* Left Column: Holdings Table */}
@@ -1789,8 +1787,7 @@ export function PortfolioView({
                 display: subTab === 'ledger' ? 'flex' : 'none',
                 flexDirection: 'column',
                 flex: 1,
-                minHeight: 0,
-                height: '100%'
+                minHeight: 0
               }}>
                 <LedgerTable 
                   transactions={transactions}
@@ -1807,7 +1804,6 @@ export function PortfolioView({
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0,
-                height: '100%',
                 position: 'relative'
               }}>
 
