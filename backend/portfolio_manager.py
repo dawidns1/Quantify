@@ -1658,7 +1658,7 @@ class PortfolioManager:
             # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
             suffix = symbol.split(".")[-1] if "." in symbol else ""
             is_non_us_ticker = suffix in {
-                "DE", "WA", "L", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI",
+                "DE", "WA", "PA", "BR", "MI", "MC", "LS", "AT", "VI",
                 "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
                 "SG", "ST", "CO", "EE", "HE", "OL", "IC"
             }

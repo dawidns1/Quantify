@@ -202,11 +202,15 @@ class YFinanceProvider(BaseDataProvider):
         try:
             stock_ticker = yf.Ticker(symbol, session=YF_SESSION)
             
-            # Use fast_info first to avoid calling .info which can throw KeyError
-            fast = stock_ticker.fast_info
+            fast = None
+            try:
+                # Use fast_info first to avoid calling .info which can throw KeyError
+                fast = stock_ticker.fast_info
+            except Exception as fast_err:
+                print(f"Warning: Could not fetch stock_ticker.fast_info for {symbol} ({fast_err}). Using info.")
             
             try:
-                live_price = fast.get("lastPrice")
+                live_price = fast.get("lastPrice") if fast else None
             except Exception:
                 live_price = None
                 
@@ -215,10 +219,10 @@ class YFinanceProvider(BaseDataProvider):
                 # Wrap .info access in try-except to handle KeyError: 'exchangeTimezoneName'
                 info_dict = stock_ticker.info or {}
             except Exception as info_err:
-                print(f"Warning: Could not fetch stock_ticker.info for {symbol} ({info_err}). Using fast_info.")
+                print(f"Warning: Could not fetch stock_ticker.info for {symbol} ({info_err}).")
                 
             if live_price is None:
-                live_price = info_dict.get("currentPrice") or 0.0
+                live_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or 0.0
                 
             company_name = info_dict.get("longName") or info_dict.get("shortName")
             
@@ -244,35 +248,35 @@ class YFinanceProvider(BaseDataProvider):
                 company_name = symbol
                 
             try:
-                native_currency = fast.get("currency")
+                native_currency = fast.get("currency") if fast else None
             except Exception:
                 native_currency = None
             if not native_currency:
                 native_currency = info_dict.get("currency") or guess_native_currency(symbol)
                 
             try:
-                quote_type = fast.get("quoteType")
+                quote_type = fast.get("quoteType") if fast else None
             except Exception:
                 quote_type = None
             if not quote_type:
                 quote_type = info_dict.get("quoteType")
                 
             try:
-                previous_close = fast.get("previousClose")
+                previous_close = fast.get("previousClose") if fast else None
             except Exception:
                 previous_close = None
             if not previous_close:
-                previous_close = info_dict.get("regularMarketPreviousClose") or live_price
+                previous_close = info_dict.get("regularMarketPreviousClose") or info_dict.get("previousClose") or live_price
                 
             try:
-                timezone = fast.get("timezone")
+                timezone = fast.get("timezone") if fast else None
             except Exception:
                 timezone = None
             if not timezone:
                 timezone = info_dict.get("exchangeTimezoneName") or "UTC"
                 
             try:
-                exchange = fast.get("exchange")
+                exchange = fast.get("exchange") if fast else None
             except Exception:
                 exchange = None
             if not exchange:

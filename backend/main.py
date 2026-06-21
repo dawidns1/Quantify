@@ -382,13 +382,28 @@ def get_stock_price(ticker: str):
     try:
         from backend.data_provider import YF_SESSION
         ticker_obj = yf.Ticker(clean_ticker, session=YF_SESSION)
-        price = ticker_obj.fast_info.get('lastPrice')
-        if price is None:
-            price = ticker_obj.info.get('currentPrice')
+        fast = None
+        try:
+            fast = ticker_obj.fast_info
+        except Exception:
+            pass
             
-        timezone = ticker_obj.fast_info.get("timezone") or "UTC"
-        exchange = ticker_obj.fast_info.get("exchange") or ""
-        currency = ticker_obj.fast_info.get("currency") or ticker_obj.info.get("currency") or "USD"
+        price = fast.get('lastPrice') if fast else None
+        if price is None:
+            try:
+                price = ticker_obj.info.get('currentPrice') or ticker_obj.info.get('regularMarketPrice')
+            except Exception:
+                price = None
+                
+        timezone = (fast.get("timezone") if fast else None) or "UTC"
+        exchange = (fast.get("exchange") if fast else None) or ""
+        
+        info_curr = None
+        try:
+            info_curr = ticker_obj.info.get("currency")
+        except Exception:
+            pass
+        currency = (fast.get("currency") if fast else None) or info_curr or "USD"
         
         is_open = PortfolioManager.is_market_open(timezone, exchange)
             
@@ -413,22 +428,39 @@ def get_watchlist_prices(symbols: str):
         try:
             from backend.data_provider import YF_SESSION
             ticker_obj = yf.Ticker(sym, session=YF_SESSION)
-            price = ticker_obj.fast_info.get('lastPrice')
+            fast = None
+            try:
+                fast = ticker_obj.fast_info
+            except Exception:
+                pass
+                
+            price = fast.get('lastPrice') if fast else None
             if price is None:
-                price = ticker_obj.info.get('currentPrice')
-                
-            prev_close = ticker_obj.fast_info.get('previousClose')
+                try:
+                    price = ticker_obj.info.get('currentPrice') or ticker_obj.info.get('regularMarketPrice')
+                except Exception:
+                    price = None
+                    
+            prev_close = fast.get('previousClose') if fast else None
             if prev_close is None:
-                prev_close = ticker_obj.info.get('previousClose')
-                
+                try:
+                    prev_close = ticker_obj.info.get('regularMarketPreviousClose') or ticker_obj.info.get('previousClose')
+                except Exception:
+                    prev_close = None
+                    
             change_pct = 0.0
             if price is not None and prev_close:
                 change_pct = ((price - prev_close) / prev_close) * 100.0
                 
-            currency = ticker_obj.fast_info.get("currency") or ticker_obj.info.get("currency") or "USD"
+            info_curr = None
+            try:
+                info_curr = ticker_obj.info.get("currency")
+            except Exception:
+                pass
+            currency = (fast.get("currency") if fast else None) or info_curr or "USD"
             
-            timezone = ticker_obj.fast_info.get("timezone") or "UTC"
-            exchange = ticker_obj.fast_info.get("exchange") or ""
+            timezone = (fast.get("timezone") if fast else None) or "UTC"
+            exchange = (fast.get("exchange") if fast else None) or ""
             is_open = PortfolioManager.is_market_open(timezone, exchange)
             
             results.append({
