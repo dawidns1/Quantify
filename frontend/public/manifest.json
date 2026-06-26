@@ -3,7 +3,7 @@
   "name": "QuantiFi Portfolio Tracker",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/icon-mobile.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"

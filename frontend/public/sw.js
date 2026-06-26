@@ -3,6 +3,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/favicon.png',
+  '/icon-mobile.png',
   '/vite.svg'
 ];
 

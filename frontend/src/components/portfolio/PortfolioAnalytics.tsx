@@ -1,4 +1,4 @@
-import { Shield, RefreshCw } from 'lucide-react';
+import { Shield, RefreshCw, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { AnalyticsData } from '../../context/PortfolioContext';
 import { useTranslation } from 'react-i18next';
 
@@ -133,27 +133,33 @@ export function PortfolioAnalytics({
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Up" 
+              title={t('dashboard.move_up', 'Move Up')}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
-              <span style={{ fontSize: '0.75rem' }}>▲</span>
+              <ChevronUp size={14} />
             </button>
           )}
           {onMoveDown && (
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Down" 
+              title={t('dashboard.move_down', 'Move Down')}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
-              <span style={{ fontSize: '0.75rem' }}>▼</span>
+              <ChevronDown size={14} />
             </button>
           )}
           {onClose && (
             <button 
               onClick={(e) => { e.stopPropagation(); onClose(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Hide Card" 
+              title={t('dashboard.hide_card', 'Hide Card')}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
-              <span style={{ fontSize: '0.75rem' }}>✕</span>
+              <X size={14} />
             </button>
           )}
         </div>

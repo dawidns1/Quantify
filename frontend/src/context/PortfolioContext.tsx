@@ -180,6 +180,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   });
 
+  const [nextCheckSeconds, setNextCheckSeconds] = useState<number>(300);
+
   const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(() => {
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
@@ -325,6 +327,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       setHoldings(result.holdings);
       setSummary(result.summary);
       setDividendsList(result.dividends_list || []);
+      if (typeof result.next_check_seconds === 'number') {
+        setNextCheckSeconds(result.next_check_seconds);
+      }
       
       // Cache the fresh data
       localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
@@ -519,20 +524,33 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
 
-  // Set up live polling (every 60 seconds) for real-time price updates when active portfolios exist and markets are open
+  // Set up live polling for real-time price updates when active portfolios exist
+  // Uses backend next_check_seconds to schedule the next check, suspending polling entirely when tab is hidden
   useEffect(() => {
     if (!activePortfolioId || portfolios.length === 0) return;
     
-    // We only poll if at least one holding is currently in a live trading session
-    const hasLiveInstruments = holdings.some(h => h.is_live);
-    if (!hasLiveInstruments) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Force refresh immediately when tab becomes visible
+        fetchHoldings(baseCurrency, selectedAccount, true);
+      }
+    };
     
-    const interval = setInterval(() => {
-      fetchHoldings(baseCurrency, selectedAccount, true);
-    }, 60000); // Poll every 60 seconds (1 minute)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => clearInterval(interval);
-  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, holdings]);
+    let timeout: any;
+    if (document.visibilityState === 'visible') {
+      const delay = nextCheckSeconds > 0 ? nextCheckSeconds : 300;
+      timeout = setTimeout(() => {
+        fetchHoldings(baseCurrency, selectedAccount, true);
+      }, delay * 1000);
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds]);
 
   // Recalculate chart when active portfolio, filters, or transactions update
   useEffect(() => {

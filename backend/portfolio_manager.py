@@ -43,11 +43,20 @@ class PortfolioManager:
     _historical_prefetch_lock = threading.Lock()
     _symbol_fetch_locks = {}
     _fetch_locks_lock = threading.Lock()
+
+    # Caches for historical performance and portfolio analytics calculations
+    _historical_perf_cache = {}  # key -> (timestamp, result)
+    _historical_perf_cache_lock = threading.Lock()
+    _portfolio_analytics_cache = {}  # key -> (timestamp, result)
+    _portfolio_analytics_cache_lock = threading.Lock()
+    _historical_calc_locks = {}
+    _historical_calc_locks_mutex = threading.Lock()
     
     STOCK_CACHE_TTL = 60  # 1 minute
     FX_CACHE_TTL = 600     # 10 minutes
     HISTORICAL_CACHE_TTL = 3600  # 1 hour
     EVENTS_CACHE_TTL = 43200     # 12 hours
+    CALCULATION_CACHE_TTL = 15   # 15 seconds
 
     @staticmethod
     def is_market_open(timezone_str: str, exchange_str: str) -> bool:
@@ -78,6 +87,89 @@ class PortfolioManager:
             return True
         else:
             return 9.0 <= time_float < 17.5
+
+    @classmethod
+    def get_historical_calc_lock(cls, key) -> threading.Lock:
+        with cls._historical_calc_locks_mutex:
+            if key not in cls._historical_calc_locks:
+                cls._historical_calc_locks[key] = threading.Lock()
+            return cls._historical_calc_locks[key]
+
+    @staticmethod
+    def _get_transactions_hash(transactions: list) -> str:
+        if not transactions:
+            return ""
+        try:
+            sorted_txs = sorted(
+                transactions,
+                key=lambda x: (
+                    str(x.get("date", "")),
+                    str(x.get("id", "")),
+                    str(x.get("symbol", "")),
+                    str(x.get("type", ""))
+                )
+            )
+            serialized = json.dumps(sorted_txs, sort_keys=True)
+            import hashlib
+            return hashlib.md5(serialized.encode('utf-8')).hexdigest()
+        except Exception:
+            return str(len(transactions))
+
+    @staticmethod
+    def _get_settings_hash(portfolio_settings: dict) -> str:
+        if not portfolio_settings:
+            return ""
+        try:
+            serialized = json.dumps(portfolio_settings, sort_keys=True)
+            import hashlib
+            return hashlib.md5(serialized.encode('utf-8')).hexdigest()
+        except Exception:
+            return ""
+
+    @classmethod
+    def seconds_to_next_open(cls, timezone_str: str, exchange_str: str) -> float:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime, timedelta
+        
+        try:
+            if not timezone_str or timezone_str == "Unknown":
+                return 86400.0
+            tz = ZoneInfo(timezone_str)
+            now_tz = datetime.now(tz)
+        except Exception:
+            return 86400.0
+            
+        # Determine open hour/minute based on exchange
+        if "WSE" in exchange_str or "WAR" in exchange_str or "Europe/Warsaw" in timezone_str:
+            open_hour, open_minute = 9, 0
+        elif "America/New_York" in timezone_str or exchange_str in ["NMS", "NYQ", "ASE"]:
+            open_hour, open_minute = 9, 30
+        elif "CCY" in exchange_str or "forex" in exchange_str.lower():
+            return 0.0  # Forex is always open
+        else:
+            open_hour, open_minute = 9, 0
+            
+        target_date = now_tz.date()
+        
+        def is_weekend(d):
+            return d.weekday() >= 5
+            
+        today_open = datetime.combine(target_date, datetime.min.time(), tzinfo=tz).replace(hour=open_hour, minute=open_minute)
+        
+        if not is_weekend(target_date) and now_tz < today_open:
+            next_open = today_open
+        else:
+            # Look at subsequent days
+            for i in range(1, 10):
+                next_day = target_date + timedelta(days=i)
+                if not is_weekend(next_day):
+                    next_open = datetime.combine(next_day, datetime.min.time(), tzinfo=tz).replace(hour=open_hour, minute=open_minute)
+                    break
+            else:
+                next_open = now_tz + timedelta(days=1)
+                
+        diff = next_open - now_tz
+        return max(0.0, diff.total_seconds())
 
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list):
@@ -1363,6 +1455,9 @@ class PortfolioManager:
         if portfolio_settings and isinstance(portfolio_settings, dict):
             cost_basis_method = portfolio_settings.get("cost_basis_method") or portfolio_settings.get("costBasisMethod") or "average_cost"
 
+        any_live = False
+        min_seconds_to_open = 86400.0 * 7
+
         # Calculate stock holdings
         for symbol, txs in symbol_txs.items():
             shares_owned = 0.0
@@ -1451,6 +1546,11 @@ class PortfolioManager:
                 day_change_value_base = shares_owned * day_change_native * fx_native_to_base
                 
                 is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""))
+                if is_live:
+                    any_live = True
+                else:
+                    s_to_open = cls.seconds_to_next_open(info.get("timezone", "UTC"), info.get("exchange", ""))
+                    min_seconds_to_open = min(min_seconds_to_open, s_to_open)
                 
                 # Retrieve accumulated dividends for this stock
                 div_gross = sum(dividends_by_symbol_acc.get((symbol, acc), {}).get("gross_base", 0.0) for acc in accounts)
@@ -1547,7 +1647,8 @@ class PortfolioManager:
                     "base_currency": base_currency
                 },
                 "holdings": [],
-                "dividends_list": merged_divs
+                "dividends_list": merged_divs,
+                "next_check_seconds": 3600
             }
             
         total_gain_base = (total_value_base - total_cost_base)
@@ -1558,6 +1659,14 @@ class PortfolioManager:
         prev_day_value = total_value_base - total_day_change_base
         total_day_change_percent = (total_day_change_base / prev_day_value * 100) if prev_day_value > 0.0 else 0.0
         
+        if any_live:
+            next_check_seconds = 60
+        else:
+            if min_seconds_to_open >= 86400.0 * 7:
+                next_check_seconds = 3600
+            else:
+                next_check_seconds = max(15, min(int(min_seconds_to_open), 86400))
+
         return {
             "summary": {
                 "total_cost_base": round(total_cost_base, 2),
@@ -1571,11 +1680,46 @@ class PortfolioManager:
                 "base_currency": base_currency
             },
             "holdings": holdings_list,
-            "dividends_list": merged_divs
+            "dividends_list": merged_divs,
+            "next_check_seconds": next_check_seconds
         }
 
     @classmethod
     def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+        base_currency = base_currency.upper().strip()
+        account_val = account or "All"
+        settings_val = portfolio_settings or {}
+        
+        tx_hash = cls._get_transactions_hash(transactions)
+        settings_hash = cls._get_settings_hash(settings_val)
+        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
+        
+        now = time.time()
+        with cls._historical_perf_cache_lock:
+            if cache_key in cls._historical_perf_cache:
+                ts, result = cls._historical_perf_cache[cache_key]
+                if now - ts < cls.CALCULATION_CACHE_TTL:
+                    return result
+                    
+        # Double checked lock
+        lock = cls.get_historical_calc_lock(cache_key)
+        with lock:
+            now = time.time()
+            with cls._historical_perf_cache_lock:
+                if cache_key in cls._historical_perf_cache:
+                    ts, result = cls._historical_perf_cache[cache_key]
+                    if now - ts < cls.CALCULATION_CACHE_TTL:
+                        return result
+            
+            # Perform calculation
+            result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings)
+            
+            with cls._historical_perf_cache_lock:
+                cls._historical_perf_cache[cache_key] = (time.time(), result)
+            return result
+
+    @classmethod
+    def _calculate_historical_performance_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
         base_currency = base_currency.upper().strip()
         
         # 1. Filter transactions by account if not "All"
@@ -1896,6 +2040,40 @@ class PortfolioManager:
 
     @classmethod
     def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+        base_currency = base_currency.upper().strip()
+        account_val = account or "All"
+        settings_val = portfolio_settings or {}
+        
+        tx_hash = cls._get_transactions_hash(transactions)
+        settings_hash = cls._get_settings_hash(settings_val)
+        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
+        
+        now = time.time()
+        with cls._portfolio_analytics_cache_lock:
+            if cache_key in cls._portfolio_analytics_cache:
+                ts, result = cls._portfolio_analytics_cache[cache_key]
+                if now - ts < cls.CALCULATION_CACHE_TTL:
+                    return result
+                    
+        # Double checked lock
+        lock = cls.get_historical_calc_lock(cache_key)
+        with lock:
+            now = time.time()
+            with cls._portfolio_analytics_cache_lock:
+                if cache_key in cls._portfolio_analytics_cache:
+                    ts, result = cls._portfolio_analytics_cache[cache_key]
+                    if now - ts < cls.CALCULATION_CACHE_TTL:
+                        return result
+            
+            # Perform calculation
+            result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings)
+            
+            with cls._portfolio_analytics_cache_lock:
+                cls._portfolio_analytics_cache[cache_key] = (time.time(), result)
+            return result
+
+    @classmethod
+    def _calculate_portfolio_analytics_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
         from backend.financial_engine import (
             calculate_xirr,
             calculate_twr,
