@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
-import { PortfolioView } from './components/PortfolioView';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
 import { PortfolioProvider } from './context/PortfolioContext';
 import { useTranslation } from 'react-i18next';
+
+const PortfolioView = lazy(() => import('./components/PortfolioView').then(module => ({ default: module.PortfolioView })));
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
@@ -94,10 +95,16 @@ function App() {
 
   return (
     <PortfolioProvider apiBaseUrl={API_BASE_URL}>
-      <PortfolioView 
-        apiBaseUrl={API_BASE_URL} 
-        signOut={signOut}
-      />
+      <Suspense fallback={
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>
+          <div className="pulse" style={{ fontSize: '1.2rem' }}>{t('app.loading', 'Loading application...')}</div>
+        </div>
+      }>
+        <PortfolioView 
+          apiBaseUrl={API_BASE_URL} 
+          signOut={signOut}
+        />
+      </Suspense>
     </PortfolioProvider>
   );
 }

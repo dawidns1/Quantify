@@ -362,8 +362,19 @@ class PortfolioManager:
             print(f"Error fetching FX rate for {pair}: {e}")
             
         if rate is None or rate == 1.0:
+            # Fall back to the most recent cached rate from SQLite even if expired
+            try:
+                expired_data = get_expired_cached_live_price(pair)
+                if expired_data and expired_data.get("live_price") and expired_data["live_price"] != 1.0:
+                    rate = expired_data["live_price"]
+                    print(f"[FX FALLBACK] Using expired L2 cache rate for {pair}: {rate}")
+            except Exception as db_err:
+                print(f"[FX FALLBACK] Failed to read expired L2 cache for {pair}: {db_err}")
+
+        if rate is None or rate == 1.0:
             base_pair = pair.replace("=X", "")
             rate = FALLBACK_RATES.get(base_pair, 1.0)
+            print(f"[FX FALLBACK] Using hardcoded fallback rate for {pair}: {rate}")
             
         cls._live_fx_cache[pair] = (now, float(rate))
         

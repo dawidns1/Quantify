@@ -685,6 +685,7 @@ export function HoldingsTable({
               <tr>
                 <th 
                   onClick={() => handleHoldingsSort('symbol')} 
+                  className="sticky-ticker-col"
                   style={{ 
                     userSelect: 'none',
                     position: 'sticky',
@@ -787,6 +788,7 @@ export function HoldingsTable({
                   >
                     {/* Fixed Ticker column with div wrapper for flex alignment */}
                     <td 
+                      className="sticky-ticker-col"
                       style={{ 
                         fontWeight: 600, 
                         color: 'var(--text-primary)',

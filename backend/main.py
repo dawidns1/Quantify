@@ -18,32 +18,7 @@ import requests
 import urllib3
 import ssl
 
-# Globally disable SSL verification warnings and certificate checks to prevent local machine errors
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-try:
-    ssl._create_default_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-
-# Globally patch requests.Session.request to default timeout to 5.0 seconds
-# and disable SSL verification to avoid certificate errors.
-_original_session_request = requests.Session.request
-def _patched_session_request(self, method, url, *args, **kwargs):
-    if 'timeout' not in kwargs:
-        kwargs['timeout'] = 5.0
-    self.verify = False
-    if 'verify' in kwargs:
-        kwargs['verify'] = False
-    return _original_session_request(self, method, url, *args, **kwargs)
-requests.Session.request = _patched_session_request
-
-from backend.data_fetcher import run_screener_collection, WikipediaNasdaq100Provider, StockDataCollector
-from backend.portfolio_manager import PortfolioManager
-from backend.ai_client import generate_insights
-
-
-
-# Load environment variables manually
+# Load environment variables manually first so they are available for SSL configuration
 for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'frontend/.env.local']:
     if os.path.exists(path):
         with open(path, 'r') as f:
@@ -52,6 +27,34 @@ for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'front
                 if line and not line.startswith('#') and '=' in line:
                     k, v = line.split('=', 1)
                     os.environ.setdefault(k.strip(), v.strip())
+
+# Enforce SSL verification in production environments (like Vercel)
+IS_PRODUCTION = os.environ.get("PRODUCTION") == "true" or os.environ.get("VERCEL") == "1" or os.environ.get("ENV") == "production"
+
+if not IS_PRODUCTION:
+    # Globally disable SSL verification warnings and certificate checks to prevent local machine errors
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    try:
+        ssl._create_default_https_context = ssl._create_unverified_context
+    except AttributeError:
+        pass
+
+# Globally patch requests.Session.request to default timeout to 5.0 seconds
+# and conditionally disable SSL verification (only in development/local).
+_original_session_request = requests.Session.request
+def _patched_session_request(self, method, url, *args, **kwargs):
+    if 'timeout' not in kwargs:
+        kwargs['timeout'] = 5.0
+    if not IS_PRODUCTION:
+        self.verify = False
+        if 'verify' in kwargs:
+            kwargs['verify'] = False
+    return _original_session_request(self, method, url, *args, **kwargs)
+requests.Session.request = _patched_session_request
+
+from backend.data_fetcher import run_screener_collection, WikipediaNasdaq100Provider, StockDataCollector
+from backend.portfolio_manager import PortfolioManager
+from backend.ai_client import generate_insights
 
 def fetch_screener_data_from_supabase():
     supabase_url = os.environ.get("SUPABASE_URL")

@@ -8,16 +8,33 @@ import urllib3
 import ssl
 import requests
 
-# Globally disable SSL certificate warnings and verification to prevent network errors in local environment
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-try:
-    ssl._create_default_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
+# Load environment variables manually if not already loaded (e.g. when run as a standalone script)
+for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'frontend/.env.local']:
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    k, v = line.split('=', 1)
+                    os.environ.setdefault(k.strip(), v.strip())
 
-# Shared requests session to bypass SSL certificate verification and specify browser User-Agent
+IS_PRODUCTION = os.environ.get("PRODUCTION") == "true" or os.environ.get("VERCEL") == "1" or os.environ.get("ENV") == "production"
+
+if not IS_PRODUCTION:
+    # Globally disable SSL certificate warnings and verification to prevent network errors in local environment
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    try:
+        ssl._create_default_https_context = ssl._create_unverified_context
+    except AttributeError:
+        pass
+
+# Shared requests session with conditional SSL certificate verification and browser User-Agent
 YF_SESSION = requests.Session()
-YF_SESSION.verify = False
+if IS_PRODUCTION:
+    YF_SESSION.verify = True
+else:
+    YF_SESSION.verify = False
+
 YF_SESSION.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
 })
