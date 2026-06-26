@@ -761,10 +761,8 @@ export function HoldingsTable({
                   style={{ 
                     textAlign: 'center', 
                     cursor: 'default', 
-                    background: 'rgba(255, 255, 255, 0.01)',
                     width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
-                    position: 'sticky'
+                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>

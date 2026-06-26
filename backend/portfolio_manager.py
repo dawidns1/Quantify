@@ -130,6 +130,13 @@ class PortfolioManager:
                 for sym in missing_symbols:
                     stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
                     cls._live_ticker_cache[sym] = (now, stock_data)
+                    cls._ticker_metadata_cache[sym] = {
+                        "company_name": stock_data.get("company_name", sym),
+                        "native_currency": stock_data.get("native_currency", "USD").upper().strip(),
+                        "asset_class": "Equity",
+                        "timezone": stock_data.get("timezone", "UTC"),
+                        "exchange": stock_data.get("exchange", "")
+                    }
                     # Save to SQLite L2 Cache
                     save_cached_live_price(sym, {
                         "live_price": stock_data.get("live_price", 0.0),
@@ -239,11 +246,6 @@ class PortfolioManager:
         # Check L2 SQLite Cache
         sqlite_data = get_cached_live_price(symbol, cls.STOCK_CACHE_TTL)
         
-        # If the cached company name is equal to the symbol itself, bypass the cache
-        # to trigger a fresh download and save the correct resolved name to the DB.
-        if sqlite_data and sqlite_data.get("company_name", "").upper().strip() == symbol.upper().strip():
-            sqlite_data = None
-            
         if sqlite_data:
             # Populate metadata cache
             meta_data = {
@@ -924,6 +926,19 @@ class PortfolioManager:
         
         cache_entry = cls._historical_stock_cache.get(symbol)
         
+        # Check SQLite L2 Cache if memory cache miss or doesn't go back far enough
+        if not cache_entry or cache_entry["start_date"] > start_dt:
+            sqlite_prices, sqlite_divs = get_cached_historical_prices(symbol, start_dt, end_dt)
+            if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
+                cls._historical_stock_cache[symbol] = {
+                    "start_date": min(sqlite_prices.keys()),
+                    "end_date": max(sqlite_prices.keys()),
+                    "last_updated": now - 3600,
+                    "prices": sqlite_prices,
+                    "dividends": sqlite_divs
+                }
+                cache_entry = cls._historical_stock_cache[symbol]
+        
         if cache_entry and cache_entry["start_date"] <= start_dt:
             if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
                 sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
@@ -965,6 +980,10 @@ class PortfolioManager:
                 "prices": prices_dict,
                 "dividends": dividends_dict
             }
+            try:
+                save_cached_historical_prices(symbol, prices_dict, dividends_dict)
+            except Exception as db_err:
+                print(f"Error saving historical stock to SQLite cache: {db_err}")
             
         return {d: val for d, val in prices_dict.items() if start_dt <= d <= end_dt}
 
@@ -974,6 +993,18 @@ class PortfolioManager:
         now = time.time()
         
         cache_entry = cls._historical_fx_cache.get(pair)
+        
+        # Check SQLite L2 Cache if memory cache miss
+        if not cache_entry or cache_entry["start_date"] > start_dt:
+            sqlite_prices, _ = get_cached_historical_prices(pair, start_dt, end_dt)
+            if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
+                cls._historical_fx_cache[pair] = {
+                    "start_date": min(sqlite_prices.keys()),
+                    "end_date": max(sqlite_prices.keys()),
+                    "last_updated": now - 3600,
+                    "prices": sqlite_prices
+                }
+                cache_entry = cls._historical_fx_cache[pair]
         
         # Check if we need to download/update cache
         need_download = True
@@ -1015,6 +1046,10 @@ class PortfolioManager:
                     "last_updated": now,
                     "prices": actual_prices
                 }
+                try:
+                    save_cached_historical_prices(pair, actual_prices, {})
+                except Exception as db_err:
+                    print(f"Error saving historical FX to SQLite cache: {db_err}")
                 
         res = {}
         delta = end_dt - start_dt
@@ -1333,6 +1368,10 @@ class PortfolioManager:
             shares_owned = 0.0
             cost_basis_base = 0.0
             
+            info = ticker_info[symbol]
+            native_curr = info["native_currency"]
+            fx_native_to_base = fx_rates.get(native_curr, 1.0)
+            
             if cost_basis_method == "fifo":
                 buy_lots = []
                 for tx in txs:
@@ -1343,9 +1382,10 @@ class PortfolioManager:
                     fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
                     
                     tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
+                    tx_cost_native = (tx_shares * tx_price + tx_fees) if tx_curr == native_curr else (tx_cost_base / fx_native_to_base if fx_native_to_base > 0.0 else 0.0)
                     
                     if tx["type"] == "BUY":
-                        buy_lots.append({"shares": tx_shares, "cost_base": tx_cost_base})
+                        buy_lots.append({"shares": tx_shares, "cost_base": tx_cost_base, "cost_native": tx_cost_native})
                     elif tx["type"] == "SELL":
                         sell_shares = tx_shares
                         while sell_shares > 1e-9 and buy_lots:
@@ -1357,13 +1397,17 @@ class PortfolioManager:
                                 ratio = (lot["shares"] - sell_shares) / lot["shares"]
                                 lot["shares"] -= sell_shares
                                 lot["cost_base"] *= ratio
+                                lot["cost_native"] *= ratio
                                 sell_shares = 0.0
                 shares_owned = sum(lot["shares"] for lot in buy_lots)
                 cost_basis_base = sum(lot["cost_base"] for lot in buy_lots)
+                cost_basis_native = sum(lot["cost_native"] for lot in buy_lots)
                 if shares_owned < 1e-9:
                     shares_owned = 0.0
                     cost_basis_base = 0.0
+                    cost_basis_native = 0.0
             else:
+                cost_basis_native = 0.0
                 for tx in txs:
                     tx_shares = tx["shares"]
                     tx_price = tx["price"]
@@ -1372,24 +1416,25 @@ class PortfolioManager:
                     fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
                     
                     tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
+                    tx_cost_native = (tx_shares * tx_price + tx_fees) if tx_curr == native_curr else (tx_cost_base / fx_native_to_base if fx_native_to_base > 0.0 else 0.0)
                     
                     if tx["type"] == "BUY":
                         cost_basis_base += tx_cost_base
+                        cost_basis_native += tx_cost_native
                         shares_owned += tx_shares
                     elif tx["type"] == "SELL":
                         if shares_owned > 0:
                             cost_basis_base = cost_basis_base * max(0.0, (shares_owned - tx_shares)) / shares_owned
+                            cost_basis_native = cost_basis_native * max(0.0, (shares_owned - tx_shares)) / shares_owned
                         shares_owned = max(0.0, shares_owned - tx_shares)
                         if shares_owned == 0.0:
                             cost_basis_base = 0.0
+                            cost_basis_native = 0.0
                         
             if shares_owned > 0.0:
-                info = ticker_info[symbol]
                 live_price_native = info["live_price"]
-                native_curr = info["native_currency"]
-                fx_native_to_base = fx_rates.get(native_curr, 1.0)
                 
-                avg_cost_native = (cost_basis_base / shares_owned) / fx_native_to_base if fx_native_to_base > 0 else 0.0
+                avg_cost_native = (cost_basis_native / shares_owned) if shares_owned > 0.0 else 0.0
                 
                 if live_price_native == 0.0:
                     live_price_native = avg_cost_native

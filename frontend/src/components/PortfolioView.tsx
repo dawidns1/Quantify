@@ -711,8 +711,31 @@ export function PortfolioView({
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Glowing Neon Top Progress Bar */}
-          {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions) && (
-            <div className="shimmer-progress-bar" />
+          {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions || loadingAnalytics) && (
+            <div style={{ position: 'relative', width: '100%', zIndex: 100 }}>
+              <div className="shimmer-progress-bar" />
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                right: '12px',
+                fontSize: '0.68rem',
+                color: 'rgba(6, 182, 212, 0.95)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                textShadow: '0 0 8px rgba(6, 182, 212, 0.4)',
+                background: 'rgba(10, 15, 30, 0.85)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                border: '1px solid rgba(6, 182, 212, 0.15)',
+                pointerEvents: 'none'
+              }}>
+                {loadingPortfolios ? 'Syncing portfolios...' :
+                 loadingTransactions ? 'Fetching transactions ledger...' :
+                 loadingHoldings ? 'Recalculating live holdings & prices...' :
+                 loadingChart ? 'Generating historical NAV chart...' :
+                 loadingAnalytics ? 'Computing volatility & risk metrics...' : 'Synchronizing data...'}
+              </div>
+            </div>
           )}
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}
@@ -1054,7 +1077,7 @@ export function PortfolioView({
 
                           {/* Right Column: Metrics, Performance Chart & Allocations stacked */}
                           {isRightColumnOpen && (!isMobile || mobileOverviewTab === 'analytics') && (
-                            <div ref={rightColRef} style={{ ...rightStickyStyle, paddingLeft: '0px', width: '100%' }}>
+                            <div ref={rightColRef} className="custom-scrollbar" style={{ ...rightStickyStyle, paddingLeft: '0px', width: '100%' }}>
                               {/* Render active widgets in order */}
                               {widgets.map((widgetId, index) => {
                                 const onMoveUp = index > 0 ? () => handleMoveWidget(index, index - 1) : undefined;

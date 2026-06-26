@@ -333,12 +333,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     } catch (err) {
       console.error('Error fetching holdings:', err);
     } finally {
-      if (
-        requestId === holdingsRequestIdRef.current &&
-        activePortfolioId === latestParamsRef.current.activePortfolioId &&
-        curr === latestParamsRef.current.baseCurrency &&
-        accountFilter === latestParamsRef.current.selectedAccount
-      ) {
+      if (requestId === holdingsRequestIdRef.current) {
         if (!silent) setLoadingHoldings(false);
       }
     }
@@ -399,12 +394,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     } catch (err) {
       console.error('Error fetching historical performance:', err);
     } finally {
-      if (
-        requestId === chartRequestIdRef.current &&
-        activePortfolioId === latestParamsRef.current.activePortfolioId &&
-        curr === latestParamsRef.current.baseCurrency &&
-        accountFilter === latestParamsRef.current.selectedAccount
-      ) {
+      if (requestId === chartRequestIdRef.current) {
         setLoadingChart(false);
       }
     }
@@ -446,12 +436,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     } catch (err) {
       console.error('Error fetching portfolio analytics:', err);
     } finally {
-      if (
-        requestId === analyticsRequestIdRef.current &&
-        activePortfolioId === latestParamsRef.current.activePortfolioId &&
-        curr === latestParamsRef.current.baseCurrency &&
-        accountFilter === latestParamsRef.current.selectedAccount
-      ) {
+      if (requestId === analyticsRequestIdRef.current) {
         setLoadingAnalytics(false);
       }
     }

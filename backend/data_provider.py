@@ -308,10 +308,18 @@ class YFinanceProvider(BaseDataProvider):
             timezone = "Unknown"
             exchange = ""
             
+        resolved_currency = native_currency.upper().strip() if native_currency else guess_native_currency(symbol)
+        if resolved_currency in ["GBP", "GBX"] or symbol.upper().strip().endswith(".L"):
+            resolved_currency = "GBP"
+            if live_price:
+                live_price = float(live_price) / 100.0
+            if previous_close:
+                previous_close = float(previous_close) / 100.0
+
         return {
             "live_price": float(live_price) if live_price else 0.0,
             "company_name": company_name,
-            "native_currency": native_currency.upper().strip() if native_currency else guess_native_currency(symbol),
+            "native_currency": resolved_currency,
             "quote_type": quote_type,
             "previous_close": float(previous_close) if previous_close else 0.0,
             "timezone": timezone,
@@ -370,16 +378,17 @@ class YFinanceProvider(BaseDataProvider):
                             
                     # Clean and insert daily prices
                     prices_series = prices_series.dropna()
+                    is_pence = sym.upper().strip().endswith(".L")
                     for idx, val in prices_series.items():
                         dt = idx.to_pydatetime().date()
-                        prices_by_symbol[sym][dt] = float(val)
+                        prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
 
                     # Clean and insert dividends
                     div_series = div_series.dropna()
                     for idx, val in div_series.items():
                         if float(val) > 0:
                             dt = idx.to_pydatetime().date()
-                            dividends_by_symbol[sym][dt] = float(val)
+                            dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
                 except Exception as sym_err:
                     print(f"Error parsing historical bulk data for {sym}: {sym_err}")
         except Exception as e:
@@ -394,6 +403,7 @@ class YFinanceProvider(BaseDataProvider):
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
             df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
+            is_pence = symbol.upper().strip().endswith(".L")
             if not df.empty:
                 if 'Close' in df.columns:
                     closes = df['Close']
@@ -402,7 +412,7 @@ class YFinanceProvider(BaseDataProvider):
                     closes = closes.dropna()
                     for idx, val in closes.items():
                         dt = idx.to_pydatetime().date()
-                        prices_dict[dt] = float(val)
+                        prices_dict[dt] = float(val) / 100.0 if is_pence else float(val)
                 if 'Dividends' in df.columns:
                     divs = df['Dividends']
                     if isinstance(divs, pd.DataFrame):
@@ -411,7 +421,7 @@ class YFinanceProvider(BaseDataProvider):
                     for idx, val in divs.items():
                         if float(val) > 0:
                             dt = idx.to_pydatetime().date()
-                            dividends_dict[dt] = float(val)
+                            dividends_dict[dt] = float(val) / 100.0 if is_pence else float(val)
         except Exception as e:
             print(f"YFinance single historical stock download failed for {symbol}: {e}")
         return prices_dict, dividends_dict
