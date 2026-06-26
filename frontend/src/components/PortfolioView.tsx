@@ -96,7 +96,8 @@ export function PortfolioView({
     loadPortfolios,
     fetchHoldings,
     fetchTransactions,
-    fetchHistoricalPerformance
+    fetchHistoricalPerformance,
+    fetchPortfolioAnalytics
   } = usePortfolio();
 
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
@@ -711,7 +712,7 @@ export function PortfolioView({
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Glowing Neon Top Progress Bar */}
-          {(loadingHoldings || loadingChart || loadingPortfolios || loadingTransactions || loadingAnalytics) && (
+          {(loadingHoldings || loadingPortfolios || loadingTransactions) && (
             <div style={{ position: 'relative', width: '100%', zIndex: 100 }}>
               <div className="shimmer-progress-bar" />
               <div style={{
@@ -731,9 +732,7 @@ export function PortfolioView({
               }}>
                 {loadingPortfolios ? 'Syncing portfolios...' :
                  loadingTransactions ? 'Fetching transactions ledger...' :
-                 loadingHoldings ? 'Recalculating live holdings & prices...' :
-                 loadingChart ? 'Generating historical NAV chart...' :
-                 loadingAnalytics ? 'Computing volatility & risk metrics...' : 'Synchronizing data...'}
+                 loadingHoldings ? 'Recalculating live holdings & prices...' : 'Synchronizing data...'}
               </div>
             </div>
           )}
@@ -1106,6 +1105,7 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
+                                        onRefresh={() => fetchHistoricalPerformance(baseCurrency, selectedAccount)}
                                       />
                                     );
                                   case 'events':
@@ -1142,6 +1142,7 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
+                                        onRefresh={() => fetchPortfolioAnalytics(baseCurrency, selectedAccount)}
                                       />
                                     );
 

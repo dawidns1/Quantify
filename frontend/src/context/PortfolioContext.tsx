@@ -349,6 +349,17 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     try {
       const portfolioIds = portfolios.map(p => p.id);
       const data = await fetchTransactionsService(portfolioIds);
+      
+      const cachedTxStr = localStorage.getItem('cached_all_transactions');
+      if (cachedTxStr && JSON.stringify(data) !== cachedTxStr) {
+        // Invalidate chart and analytics caches if transactions list changed
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('cached_chart_data_') || key.startsWith('cached_analytics_')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+      
       setAllTransactions(data);
       localStorage.setItem('cached_all_transactions', JSON.stringify(data));
     } catch (err) {
@@ -530,9 +541,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedC) {
         setChartData(JSON.parse(cachedC));
+      } else {
+        fetchHistoricalPerformance(baseCurrency, selectedAccount);
       }
-
-      fetchHistoricalPerformance(baseCurrency, selectedAccount);
     } else {
       setChartData(null);
       setLoadingChart(false);
@@ -546,9 +557,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedA) {
         setAnalytics(JSON.parse(cachedA));
+      } else {
+        fetchPortfolioAnalytics(baseCurrency, selectedAccount);
       }
-
-      fetchPortfolioAnalytics(baseCurrency, selectedAccount);
     } else {
       setAnalytics(null);
       setLoadingAnalytics(false);

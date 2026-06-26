@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { Activity, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Activity, ChevronUp, ChevronDown, X, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Chart as ChartJS,
@@ -83,6 +83,7 @@ interface PerformanceChartProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onClose?: () => void;
+  onRefresh?: () => void;
 }
 
 export const PerformanceChart = memo(function PerformanceChart({
@@ -91,7 +92,8 @@ export const PerformanceChart = memo(function PerformanceChart({
   baseCurrency,
   onMoveUp,
   onMoveDown,
-  onClose
+  onClose,
+  onRefresh
 }: PerformanceChartProps) {
   const { t } = useTranslation();
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
@@ -255,8 +257,20 @@ export const PerformanceChart = memo(function PerformanceChart({
         </div>
         
         {/* Widget Controls */}
-        {(onMoveUp || onMoveDown || onClose) && (
+        {(onMoveUp || onMoveDown || onClose || onRefresh) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            {onRefresh && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onRefresh(); }} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', marginRight: '4px' }} 
+                title={t('dashboard.refresh_card', 'Refresh Data')} 
+                className={loadingChart ? 'spinner-ring' : ''}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'} 
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <RefreshCw size={13} />
+              </button>
+            )}
             {onMoveUp && (
               <button 
                 onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
