@@ -720,24 +720,29 @@ export function PortfolioView({
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Glowing Neon Top Progress Bar */}
+          {/* Glowing Neon Top Progress Bar */}
           {(loadingHoldings || loadingPortfolios || loadingTransactions) && (
-            <div style={{ position: 'relative', width: '100%', zIndex: 100 }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, pointerEvents: 'none' }}>
               <div className="shimmer-progress-bar" />
-              <div style={{
-                position: 'absolute',
-                top: '4px',
-                right: '12px',
-                fontSize: '0.68rem',
-                color: 'rgba(6, 182, 212, 0.95)',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-                textShadow: '0 0 8px rgba(6, 182, 212, 0.4)',
-                background: 'rgba(10, 15, 30, 0.85)',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                border: '1px solid rgba(6, 182, 212, 0.15)',
-                pointerEvents: 'none'
-              }}>
+              <div 
+                className="pulse"
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  fontSize: '0.65rem',
+                  color: 'var(--color-primary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  backdropFilter: 'blur(4px)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(6, 182, 212, 0.2)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none'
+                }}
+              >
                 {loadingPortfolios ? 'Syncing portfolios...' :
                  loadingTransactions ? 'Fetching transactions ledger...' :
                  loadingHoldings ? 'Recalculating live holdings & prices...' : 'Synchronizing data...'}

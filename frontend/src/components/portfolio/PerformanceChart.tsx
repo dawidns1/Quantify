@@ -541,23 +541,25 @@ export const PerformanceChart = memo(function PerformanceChart({
               plugins={performanceChartPlugins}
             />
             {loadingChart && (
-              <div style={{
-                position: 'absolute',
-                top: '0.25rem',
-                right: '0.25rem',
-                background: 'rgba(15, 23, 42, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                padding: '0.2rem 0.45rem',
-                borderRadius: '4px',
-                fontSize: '0.65rem',
-                color: 'var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                pointerEvents: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                fontWeight: 600
-              }} className="pulse">
+              <div 
+                className="pulse"
+                style={{
+                  position: 'absolute',
+                  top: '0.25rem',
+                  right: '0.25rem',
+                  fontSize: '0.65rem',
+                  color: 'var(--color-primary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  backdropFilter: 'blur(4px)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(6, 182, 212, 0.2)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none'
+                }}
+              >
                 {t('dashboard.refetching', 'Refetching...')}
               </div>
             )}
