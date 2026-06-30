@@ -56,7 +56,7 @@ class PortfolioManager:
     FX_CACHE_TTL = 86400   # 24 hours (1 day)
     HISTORICAL_CACHE_TTL = 3600  # 1 hour
     EVENTS_CACHE_TTL = 43200     # 12 hours
-    CALCULATION_CACHE_TTL = 15   # 15 seconds
+    CALCULATION_CACHE_TTL = 300  # 5 minutes
 
     @staticmethod
     def is_market_open(timezone_str: str, exchange_str: str) -> bool:
@@ -1149,6 +1149,9 @@ class PortfolioManager:
         fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
         
         last_known_val = None
+        first_available_date = min(cached_prices.keys()) if cached_prices else None
+        first_val = cached_prices[first_available_date] if first_available_date else fallback
+        
         for i in range(delta.days + 1):
             d = start_dt + timedelta(days=i)
             val = cached_prices.get(d)
@@ -1159,11 +1162,7 @@ class PortfolioManager:
                 if last_known_val is not None:
                     res[d] = last_known_val
                 else:
-                    bfill_val = None
-                    future_dates = sorted([k for k in cached_prices.keys() if k > d])
-                    if future_dates:
-                        bfill_val = cached_prices[future_dates[0]]
-                    res[d] = bfill_val if bfill_val is not None else fallback
+                    res[d] = first_val
                     
         return res
 
@@ -1766,6 +1765,10 @@ class PortfolioManager:
         for sym in stock_symbols:
             stock_prices[sym] = {}
             prices_dict = cls.get_cached_historical_stock(sym, start_dt, end_dt)
+            # Find earliest available date and price once to avoid daily sorting loop
+            first_available_date = min(prices_dict.keys()) if prices_dict else None
+            first_val = prices_dict[first_available_date] if first_available_date else 0.0
+            
             # Fill dates_list with cached daily close, applying ffill & bfill if gaps exist
             last_val = None
             for d in dates_list:
@@ -1777,11 +1780,7 @@ class PortfolioManager:
                     if last_val is not None:
                         stock_prices[sym][d] = last_val
                     else:
-                        bfill_val = None
-                        future_dates = sorted([k for k in prices_dict.keys() if k > d])
-                        if future_dates:
-                            bfill_val = prices_dict[future_dates[0]]
-                        stock_prices[sym][d] = bfill_val if bfill_val is not None else 0.0
+                        stock_prices[sym][d] = first_val
                 
         # Construct symbol_txs and ticker_info_tmp
         symbol_txs = {}
@@ -2043,6 +2042,10 @@ class PortfolioManager:
         if benchmarks:
             for bench in benchmarks:
                 prices_dict, _ = cls.get_cached_historical_stock(bench, start_dt, end_dt)
+                # Find earliest available date and price once to avoid daily sorting loop
+                first_available_date = min(prices_dict.keys()) if prices_dict else None
+                first_val = prices_dict[first_available_date] if first_available_date else 0.0
+                
                 aligned_prices = []
                 last_val = None
                 for d in dates_list:
@@ -2054,12 +2057,7 @@ class PortfolioManager:
                         if last_val is not None:
                             aligned_prices.append(round(last_val, 4))
                         else:
-                            # Backfill if front is missing
-                            bfill_val = None
-                            future_dates = sorted([k for k in prices_dict.keys() if k > d])
-                            if future_dates:
-                                bfill_val = prices_dict[future_dates[0]]
-                            last_val = bfill_val if bfill_val is not None else 0.0
+                            last_val = first_val
                             aligned_prices.append(round(last_val, 4))
                 benchmark_res[bench] = aligned_prices
             
