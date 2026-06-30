@@ -116,12 +116,8 @@ export const PerformanceChart = memo(function PerformanceChart({
 
   // Fetch historical data with benchmarks when selections change
   useEffect(() => {
-    if (chartMode === 'percent' && activeBenchmarks.length > 0) {
-      fetchHistoricalPerformance(baseCurrency as any, selectedAccount, activeBenchmarks.join(','));
-    } else {
-      fetchHistoricalPerformance(baseCurrency as any, selectedAccount, '');
-    }
-  }, [activeBenchmarks, chartMode, baseCurrency, selectedAccount]);
+    fetchHistoricalPerformance(baseCurrency as any, selectedAccount, activeBenchmarks.join(','));
+  }, [activeBenchmarks, baseCurrency, selectedAccount]);
 
   // Search query debounce
   useEffect(() => {
@@ -228,7 +224,20 @@ export const PerformanceChart = memo(function PerformanceChart({
         intersect: false
       },
       plugins: {
-        legend: { display: chartMode === 'percent' },
+        legend: { 
+          display: chartMode === 'percent',
+          position: 'top' as const,
+          labels: {
+            color: 'rgba(255, 255, 255, 0.7)',
+            font: {
+              family: 'Outfit, sans-serif',
+              size: 11
+            },
+            boxHeight: 2, // Sleek line format instead of square box
+            boxWidth: 16,
+            padding: 10
+          }
+        },
         tooltip: {
           position: 'top' as any,
           caretSize: 0,
@@ -518,7 +527,7 @@ export const PerformanceChart = memo(function PerformanceChart({
 
       {/* Benchmark Selector Row (Only in % Return Mode) */}
       {chartMode === 'percent' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem', position: 'relative', zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Compare Benchmarks:
