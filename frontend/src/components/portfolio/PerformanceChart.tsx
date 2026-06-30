@@ -394,7 +394,7 @@ export const PerformanceChart = memo(function PerformanceChart({
           <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Activity size={14} className="gradient-text" /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
           </h4>
-          {chartMode === 'value' && !loadingChart && performanceIndicator && (
+          {chartMode === 'value' && performanceIndicator && (
             <span style={{
               fontSize: '0.72rem',
               fontWeight: 700,
@@ -464,7 +464,7 @@ export const PerformanceChart = memo(function PerformanceChart({
       </div>
 
       {/* Date Range Selection & Value Toggle Bar */}
-      {!loadingChart && chartData && (
+      {chartData && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', margin: '0.1rem 0' }}>
           {/* Range pills */}
           <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
@@ -525,9 +525,49 @@ export const PerformanceChart = memo(function PerformanceChart({
         </div>
       )}
 
-      {/* Benchmark Selector Row (Only in % Return Mode) */}
+      
+      
+      {/* Chart Canvas Area */}
+      <div style={{ height: '200px', position: 'relative' }}>
+        {loadingChart && !chartDataFormatted ? (
+          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }} className="pulse">
+            {t('dashboard.computing_performance', 'Computing performance...')}
+          </div>
+        ) : chartDataFormatted ? (
+          <>
+            <Line 
+              options={chartOptions}
+              data={chartDataFormatted}
+              plugins={performanceChartPlugins}
+            />
+            {loadingChart && (
+              <div style={{
+                position: 'absolute',
+                top: '0.25rem',
+                right: '0.25rem',
+                background: 'rgba(15, 23, 42, 0.9)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                padding: '0.2rem 0.45rem',
+                borderRadius: '4px',
+                fontSize: '0.65rem',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                pointerEvents: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                fontWeight: 600
+              }} className="pulse">
+                {t('dashboard.refetching', 'Refetching...')}
+              </div>
+            )}
+          </>
+        ) : null}
+      </div>
+
+      {/* Benchmark Selector Row (Only in % Return Mode, placed at the bottom to stabilize layout) */}
       {chartMode === 'percent' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem', position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem', position: 'relative', zIndex: 10, marginTop: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
               Compare Benchmarks:
@@ -673,44 +713,6 @@ export const PerformanceChart = memo(function PerformanceChart({
           )}
         </div>
       )}
-      
-      {/* Chart Canvas Area */}
-      <div style={{ height: '200px', position: 'relative' }}>
-        {loadingChart && !chartDataFormatted ? (
-          <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }} className="pulse">
-            {t('dashboard.computing_performance', 'Computing performance...')}
-          </div>
-        ) : chartDataFormatted ? (
-          <>
-            <Line 
-              options={chartOptions}
-              data={chartDataFormatted}
-              plugins={performanceChartPlugins}
-            />
-            {loadingChart && (
-              <div style={{
-                position: 'absolute',
-                top: '0.25rem',
-                right: '0.25rem',
-                background: 'rgba(15, 23, 42, 0.9)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                padding: '0.2rem 0.45rem',
-                borderRadius: '4px',
-                fontSize: '0.65rem',
-                color: 'var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                pointerEvents: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                fontWeight: 600
-              }} className="pulse">
-                {t('dashboard.refetching', 'Refetching...')}
-              </div>
-            )}
-          </>
-        ) : null}
-      </div>
     </div>
   );
 });
