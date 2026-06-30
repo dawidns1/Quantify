@@ -2041,7 +2041,7 @@ class PortfolioManager:
         benchmark_res = {}
         if benchmarks:
             for bench in benchmarks:
-                prices_dict, _ = cls.get_cached_historical_stock(bench, start_dt, end_dt)
+                prices_dict = cls.get_cached_historical_stock(bench, start_dt, end_dt)
                 # Find earliest available date and price once to avoid daily sorting loop
                 first_available_date = min(prices_dict.keys()) if prices_dict else None
                 first_val = prices_dict[first_available_date] if first_available_date else 0.0
