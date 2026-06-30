@@ -192,6 +192,39 @@ export const PerformanceChart = memo(function PerformanceChart({
     return { changeVal, changePct, isPositive };
   }, [filteredData]);
 
+  // Calculate cumulative returns for portfolio and benchmarks over the selected period
+  const periodPerformance = useMemo(() => {
+    if (!filteredData || !filteredData.dates || filteredData.dates.length === 0) return null;
+    
+    // Portfolio cumulative TWR return starting at 0%
+    const getPortGainAt = (idx: number) => {
+      const nav = filteredData.nav[idx];
+      const cost = filteredData.cost_basis[idx];
+      return cost > 0 ? ((nav - cost) / cost) * 100 : 0;
+    };
+    const portGainStart = getPortGainAt(0);
+    const portGainEnd = getPortGainAt(filteredData.nav.length - 1);
+    const portfolioReturn = portGainEnd - portGainStart;
+
+    // Benchmarks cumulative returns starting at 0%
+    const benchmarkReturns: Record<string, number> = {};
+    if (filteredData.benchmarks) {
+      Object.keys(filteredData.benchmarks).forEach((sym) => {
+        const prices = filteredData.benchmarks?.[sym] || [];
+        if (prices.length > 0) {
+          const startPrice = prices[0] || 1;
+          const endPrice = prices[prices.length - 1] || 1;
+          benchmarkReturns[sym] = ((endPrice - startPrice) / startPrice) * 100;
+        }
+      });
+    }
+
+    return {
+      portfolio: portfolioReturn,
+      benchmarks: benchmarkReturns
+    };
+  }, [filteredData]);
+
   // Memoized Chart Options
   const chartOptions = useMemo(() => {
     return {
@@ -408,6 +441,46 @@ export const PerformanceChart = memo(function PerformanceChart({
             }}>
               {performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changeVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changePct.toFixed(2)}%)
             </span>
+          )}
+
+          {chartMode === 'percent' && periodPerformance && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginLeft: '4px' }}>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: '#22d3ee',
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.15)',
+                padding: '1px 6px',
+                borderRadius: '4px'
+              }}>
+                Portfolio: {periodPerformance.portfolio >= 0 ? '+' : ''}{periodPerformance.portfolio.toFixed(2)}%
+              </span>
+              
+              {Object.keys(periodPerformance.benchmarks).map((sym, idx) => {
+                const colors = ['#fbbf24', '#a78bfa', '#34d399', '#f472b6', '#fbbf24'];
+                const bgs = ['rgba(245, 158, 11, 0.08)', 'rgba(139, 92, 246, 0.08)', 'rgba(16, 185, 129, 0.08)', 'rgba(236, 72, 153, 0.08)', 'rgba(245, 158, 11, 0.08)'];
+                const borders = ['rgba(245, 158, 11, 0.15)', 'rgba(139, 92, 246, 0.15)', 'rgba(16, 185, 129, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(245, 158, 11, 0.15)'];
+                const color = colors[idx % colors.length];
+                const bg = bgs[idx % bgs.length];
+                const border = borders[idx % borders.length];
+                const val = periodPerformance.benchmarks[sym];
+                
+                return (
+                  <span key={sym} style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color,
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    padding: '1px 6px',
+                    borderRadius: '4px'
+                  }}>
+                    {sym.replace('^', '')}: {val >= 0 ? '+' : ''}{val.toFixed(2)}%
+                  </span>
+                );
+              })}
+            </div>
           )}
         </div>
         
