@@ -53,7 +53,7 @@ class PortfolioManager:
     _historical_calc_locks_mutex = threading.Lock()
     
     STOCK_CACHE_TTL = 60  # 1 minute
-    FX_CACHE_TTL = 600     # 10 minutes
+    FX_CACHE_TTL = 86400   # 24 hours (1 day)
     HISTORICAL_CACHE_TTL = 3600  # 1 hour
     EVENTS_CACHE_TTL = 43200     # 12 hours
     CALCULATION_CACHE_TTL = 15   # 15 seconds
