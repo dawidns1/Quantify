@@ -444,43 +444,18 @@ export const PerformanceChart = memo(function PerformanceChart({
           )}
 
           {chartMode === 'percent' && periodPerformance && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginLeft: '4px' }}>
-              <span style={{
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                color: '#22d3ee',
-                background: 'rgba(6, 182, 212, 0.08)',
-                border: '1px solid rgba(6, 182, 212, 0.15)',
-                padding: '1px 6px',
-                borderRadius: '4px'
-              }}>
-                Portfolio: {periodPerformance.portfolio >= 0 ? '+' : ''}{periodPerformance.portfolio.toFixed(2)}%
-              </span>
-              
-              {Object.keys(periodPerformance.benchmarks).map((sym, idx) => {
-                const colors = ['#fbbf24', '#a78bfa', '#34d399', '#f472b6', '#fbbf24'];
-                const bgs = ['rgba(245, 158, 11, 0.08)', 'rgba(139, 92, 246, 0.08)', 'rgba(16, 185, 129, 0.08)', 'rgba(236, 72, 153, 0.08)', 'rgba(245, 158, 11, 0.08)'];
-                const borders = ['rgba(245, 158, 11, 0.15)', 'rgba(139, 92, 246, 0.15)', 'rgba(16, 185, 129, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(245, 158, 11, 0.15)'];
-                const color = colors[idx % colors.length];
-                const bg = bgs[idx % bgs.length];
-                const border = borders[idx % borders.length];
-                const val = periodPerformance.benchmarks[sym];
-                
-                return (
-                  <span key={sym} style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color,
-                    background: bg,
-                    border: `1px solid ${border}`,
-                    padding: '1px 6px',
-                    borderRadius: '4px'
-                  }}>
-                    {sym.replace('^', '')}: {val >= 0 ? '+' : ''}{val.toFixed(2)}%
-                  </span>
-                );
-              })}
-            </div>
+            <span style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: '#22d3ee',
+              background: 'rgba(6, 182, 212, 0.08)',
+              border: '1px solid rgba(6, 182, 212, 0.15)',
+              padding: '1px 6px',
+              borderRadius: '4px',
+              marginLeft: '4px'
+            }}>
+              Portfolio: {periodPerformance.portfolio >= 0 ? '+' : ''}{periodPerformance.portfolio.toFixed(2)}%
+            </span>
           )}
         </div>
         
@@ -658,7 +633,10 @@ export const PerformanceChart = memo(function PerformanceChart({
                 fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer'
               }}
             >
-              S&P 500
+              S&P 500{(() => {
+                const gspcReturn = activeBenchmarks.includes('^GSPC') && periodPerformance?.benchmarks['^GSPC'];
+                return gspcReturn !== undefined && gspcReturn !== false ? ` (${gspcReturn >= 0 ? '+' : ''}${gspcReturn.toFixed(2)}%)` : '';
+              })()}
             </button>
 
             <button
@@ -670,7 +648,10 @@ export const PerformanceChart = memo(function PerformanceChart({
                 fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer'
               }}
             >
-              MSCI World
+              MSCI World{(() => {
+                const acwiReturn = activeBenchmarks.includes('ACWI') && periodPerformance?.benchmarks['ACWI'];
+                return acwiReturn !== undefined && acwiReturn !== false ? ` (${acwiReturn >= 0 ? '+' : ''}${acwiReturn.toFixed(2)}%)` : '';
+              })()}
             </button>
 
             {/* Custom search button toggle */}
@@ -760,30 +741,33 @@ export const PerformanceChart = memo(function PerformanceChart({
           {/* Render Active Custom Benchmarks list */}
           {activeBenchmarks.filter(s => s !== '^GSPC' && s !== 'ACWI').length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.1rem' }}>
-              {activeBenchmarks.filter(s => s !== '^GSPC' && s !== 'ACWI').map((sym) => (
-                <div
-                  key={sym}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '4px',
-                    padding: '1px 4px 1px 6px',
-                    fontSize: '0.6rem',
-                    color: 'white'
-                  }}
-                >
-                  <span>{sym}</span>
-                  <button
-                    onClick={() => removeBenchmark(sym)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px', display: 'flex', alignItems: 'center' }}
+              {activeBenchmarks.filter(s => s !== '^GSPC' && s !== 'ACWI').map((sym) => {
+                const symReturn = periodPerformance?.benchmarks[sym];
+                return (
+                  <div
+                    key={sym}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '4px',
+                      padding: '1px 4px 1px 6px',
+                      fontSize: '0.6rem',
+                      color: 'white'
+                    }}
                   >
-                    <X size={10} />
-                  </button>
-                </div>
-              ))}
+                    <span>{sym}{symReturn !== undefined ? ` (${symReturn >= 0 ? '+' : ''}${symReturn.toFixed(2)}%)` : ''}</span>
+                    <button
+                      onClick={() => removeBenchmark(sym)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px', display: 'flex', alignItems: 'center' }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
