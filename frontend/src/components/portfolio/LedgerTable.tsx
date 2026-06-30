@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { History, Edit2, Trash2, Search, Upload } from 'lucide-react';
+import { History, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +9,7 @@ interface LedgerTableProps {
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onImportCSVClick?: () => void;
+  onExportCSVClick?: () => void;
   style?: React.CSSProperties;
   onScrollToBottomChange?: (isAtBottom: boolean) => void;
 }
@@ -19,6 +20,7 @@ export function LedgerTable({
   onEditTransaction,
   onDeleteTransaction,
   onImportCSVClick,
+  onExportCSVClick,
   style,
   onScrollToBottomChange
 }: LedgerTableProps) {
@@ -178,23 +180,55 @@ export function LedgerTable({
             </div>
           )}
           {activePortfolioRole !== 'viewer' && onImportCSVClick && (
-            <button
-              onClick={onImportCSVClick}
-              className="glow-btn"
-              style={{
-                padding: '0.45rem 1rem',
-                fontSize: '0.78rem',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                height: '32px'
-              }}
-            >
-              <Upload size={14} />
-              <span>{t('ledger.btn_import_csv', 'Import CSV')}</span>
-            </button>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                onClick={onImportCSVClick}
+                className="glow-btn"
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.78rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  height: '32px'
+                }}
+              >
+                <Upload size={14} />
+                <span>{t('ledger.btn_import_csv', 'Import')}</span>
+              </button>
+              {onExportCSVClick && (
+                <button
+                  onClick={onExportCSVClick}
+                  className="glow-btn"
+                  style={{
+                    padding: '0.45rem 1rem',
+                    fontSize: '0.78rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    height: '32px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--text-secondary)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                >
+                  <Download size={14} />
+                  <span>{t('ledger.btn_export_csv', 'Export')}</span>
+                </button>
+              )}
+            </div>
           )}
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             {t('ledger.total_operations', 'Total operations recorded')}: {transactions.length}

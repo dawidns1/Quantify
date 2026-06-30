@@ -7,9 +7,16 @@ from datetime import datetime, date
 db_write_lock = threading.Lock()
 
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(os.path.dirname(DB_DIR), "backend", "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, "cache.db")
+
+# If VERCEL environment is active, use ephemeral /tmp directory for cache database
+if os.environ.get("VERCEL") == "1":
+    DATA_DIR = "/tmp/data"
+    os.makedirs(DATA_DIR, exist_ok=True)
+    DB_PATH = "/tmp/cache.db"
+else:
+    DATA_DIR = os.path.join(os.path.dirname(DB_DIR), "backend", "data")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    DB_PATH = os.path.join(DATA_DIR, "cache.db")
 
 def get_connection():
     # check_same_thread=False allows us to pass connections across threads, 

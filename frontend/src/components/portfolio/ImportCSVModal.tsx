@@ -138,6 +138,17 @@ export function ImportCSVModal({
     });
   };
 
+  const handleEditCell = (index: number, field: keyof ParsedTx, value: any) => {
+    setParsedTransactions(prev => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        [field]: value
+      };
+      return next;
+    });
+  };
+
   const handleImportSubmit = async () => {
     const finalAccount = showNewAccountInput ? newAccountName.trim() : selectedAccount;
     if (!finalAccount) {
@@ -264,7 +275,7 @@ export function ImportCSVModal({
                 {t('import.supported_title', 'Auto-Detected Formats')}
               </span>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                {['XTB', 'Revolut', 'IBKR (Activity List)', 'Generic CSV'].map(b => (
+                {['XTB', 'Revolut', 'IBKR', 'Trading212', 'Degiro', 'mBank eMakler', 'Generic CSV'].map(b => (
                   <div key={b} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
                     <Check size={12} style={{ color: 'var(--color-green)' }} />
                     <span>{b}</span>
@@ -418,7 +429,7 @@ export function ImportCSVModal({
                         transition: 'all 0.15s ease'
                       }}
                     >
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'center' }}>
                         <input 
                           type="checkbox"
                           checked={selectedTxs[idx]}
@@ -426,19 +437,96 @@ export function ImportCSVModal({
                           style={{ cursor: 'pointer', accentColor: 'var(--color-primary)' }}
                         />
                       </td>
-                      <td style={{ padding: '0.65rem 0.85rem', fontWeight: 700, color: 'white' }}>{tx.symbol}</td>
-                      <td style={{ padding: '0.65rem 0.85rem' }}>
+                      <td style={{ padding: '0.45rem 0.65rem' }}>
+                        <input 
+                          type="text"
+                          value={tx.symbol}
+                          onChange={(e) => handleEditCell(idx, 'symbol', e.target.value.toUpperCase().trim())}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid transparent',
+                            color: 'white',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            width: '80px',
+                            outline: 'none',
+                            padding: '2px 4px',
+                            borderRadius: '3px'
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                        />
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem' }}>
                         <span className={`badge ${tx.type === 'BUY' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>
                           {tx.type === 'BUY' ? t('rebalance.buy', 'BUY') : t('rebalance.sell', 'SELL')}
                         </span>
                       </td>
-                      <td style={{ padding: '0.65rem 0.85rem', color: 'var(--text-secondary)' }}>{tx.date}</td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 600 }}>{tx.shares.toFixed(4)}</td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', color: 'var(--text-secondary)' }}>
-                        {tx.price.toFixed(2)} <span style={{ fontSize: '0.68rem', opacity: 0.6 }}>{tx.currency}</span>
+                      <td style={{ padding: '0.45rem 0.65rem', color: 'var(--text-secondary)' }}>{tx.date}</td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right' }}>
+                        <input 
+                          type="number"
+                          step="any"
+                          value={tx.shares}
+                          onChange={(e) => handleEditCell(idx, 'shares', parseFloat(e.target.value) || 0)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid transparent',
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: '0.78rem',
+                            width: '70px',
+                            textAlign: 'right',
+                            outline: 'none',
+                            padding: '2px 4px',
+                            borderRadius: '3px'
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                        />
                       </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', color: 'var(--text-muted)' }}>
-                        {tx.fees > 0 ? tx.fees.toFixed(2) : '—'}
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right' }}>
+                        <input 
+                          type="number"
+                          step="any"
+                          value={tx.price}
+                          onChange={(e) => handleEditCell(idx, 'price', parseFloat(e.target.value) || 0)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid transparent',
+                            color: 'white',
+                            fontSize: '0.78rem',
+                            width: '60px',
+                            textAlign: 'right',
+                            outline: 'none',
+                            padding: '2px 4px',
+                            borderRadius: '3px'
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                        />
+                        <span style={{ fontSize: '0.68rem', opacity: 0.6, marginLeft: '4px' }}>{tx.currency}</span>
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right' }}>
+                        <input 
+                          type="number"
+                          step="any"
+                          value={tx.fees}
+                          onChange={(e) => handleEditCell(idx, 'fees', parseFloat(e.target.value) || 0)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid transparent',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.78rem',
+                            width: '60px',
+                            textAlign: 'right',
+                            outline: 'none',
+                            padding: '2px 4px',
+                            borderRadius: '3px'
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                        />
                       </td>
                     </tr>
                   ))}

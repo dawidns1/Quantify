@@ -160,72 +160,35 @@ def start_cache_warmer():
 def startup_event():
     start_cache_warmer()
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+# If VERCEL environment is active, direct local writes to /tmp cache folder
+if os.environ.get("VERCEL") == "1":
+    DATA_DIR = "/tmp/data"
+else:
+    DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+    
 DETAILS_DIR = os.path.join(DATA_DIR, 'details')
+os.makedirs(DETAILS_DIR, exist_ok=True)
+
 
 # In-memory lock to prevent concurrent refreshes
 refresh_lock = threading.Lock()
 
 def bg_refresh_task():
-    """Background task runner for the crawler."""
-    global refresh_lock
-    acquired = refresh_lock.acquire(blocking=False)
-    if not acquired:
-        return  # already running
-    try:
-        provider = WikipediaNasdaq100Provider()
-        run_screener_collection(provider)
-    except Exception as e:
-        print(f"Error in background crawler task: {e}")
-        # Update status file with error
-        status_path = os.path.join(DATA_DIR, 'status.json')
-        try:
-            status = {
-                "is_running": False,
-                "message": "Failed to refresh data",
-                "progress": 0,
-                "total": 0,
-                "error": str(e),
-                "last_updated": time.time()
-            }
-            with open(status_path, 'w') as f:
-                json.dump(status, f)
-        except Exception:
-            pass
-    finally:
-        refresh_lock.release()
+    """Background task runner for the crawler (Disabled)."""
+    print("[REFRESH] Index constituent scraping is decommissioned.")
+    return
 
 @app.get("/api/stocks")
 def get_stocks():
-    # 1. Try to load from Supabase cloud
-    cloud_data = fetch_screener_data_from_supabase()
-    if cloud_data:
-        try:
-            # Cache locally
-            file_path = os.path.join(DATA_DIR, 'screener_data.json')
-            with open(file_path, 'w') as f:
-                json.dump(cloud_data, f, indent=2)
-        except Exception as cache_err:
-            print(f"Failed to cache cloud data locally: {cache_err}")
-        return cloud_data
-
-    # 2. Fallback to local cache file if Supabase fails
-    file_path = os.path.join(DATA_DIR, 'screener_data.json')
-    if not os.path.exists(file_path):
-        # Return empty data structure with last updated = 0
-        return {
-            "metadata": {
-                "last_updated": 0,
-                "total_stocks": 0,
-                "indicators": []
-            },
-            "stocks": []
-        }
-    try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading screener data: {str(e)}")
+    # Return empty data structure as screener functionality has been decommissioned
+    return {
+        "metadata": {
+            "last_updated": time.time(),
+            "total_stocks": 0,
+            "indicators": []
+        },
+        "stocks": []
+    }
 
 @app.get("/api/stocks/{ticker}")
 def get_stock_detail(ticker: str):
@@ -427,49 +390,31 @@ def get_watchlist_prices(symbols: str):
     clean_symbols = [s.upper().strip() for s in symbols.split(",") if s.strip()]
     results = []
     
+    # 1. Prefetch using PortfolioManager (queries L1/L2 cache, fetches expired/missing in bulk)
+    try:
+        PortfolioManager.prefetch_live_prices(clean_symbols[:15], [])
+    except Exception as prefetch_err:
+        print(f"Error prefetching watchlist prices: {prefetch_err}")
+        
     for sym in clean_symbols[:15]:
         try:
-            from backend.data_provider import YF_SESSION
-            ticker_obj = yf.Ticker(sym, session=YF_SESSION)
-            fast = None
-            try:
-                fast = ticker_obj.fast_info
-            except Exception:
-                pass
-                
-            price = fast.get('lastPrice') if fast else None
-            if price is None:
-                try:
-                    price = ticker_obj.info.get('currentPrice') or ticker_obj.info.get('regularMarketPrice')
-                except Exception:
-                    price = None
-                    
-            prev_close = fast.get('previousClose') if fast else None
-            if prev_close is None:
-                try:
-                    prev_close = ticker_obj.info.get('regularMarketPreviousClose') or ticker_obj.info.get('previousClose')
-                except Exception:
-                    prev_close = None
-                    
+            info = PortfolioManager.get_cached_live_ticker(sym)
+            price = info.get("live_price")
+            prev_close = info.get("previous_close")
+            currency = info.get("native_currency", "USD")
+            timezone = info.get("timezone", "UTC")
+            exchange = info.get("exchange", "")
+            
+            is_open = PortfolioManager.is_market_open(timezone, exchange)
+            
             change_pct = 0.0
             if price is not None and prev_close:
                 change_pct = ((price - prev_close) / prev_close) * 100.0
                 
-            info_curr = None
-            try:
-                info_curr = ticker_obj.info.get("currency")
-            except Exception:
-                pass
-            currency = (fast.get("currency") if fast else None) or info_curr or "USD"
-            
-            timezone = (fast.get("timezone") if fast else None) or "UTC"
-            exchange = (fast.get("exchange") if fast else None) or ""
-            is_open = PortfolioManager.is_market_open(timezone, exchange)
-            
             results.append({
                 "symbol": sym,
                 "price": price,
-                "currency": currency.upper().strip(),
+                "currency": currency.upper().strip() if currency else "USD",
                 "change_percent": change_pct,
                 "is_market_open": is_open
             })
@@ -510,33 +455,7 @@ def get_status():
 
 @app.post("/api/refresh")
 def trigger_refresh(background_tasks: BackgroundTasks, force: bool = False):
-    # Check if already running
-    is_locked = refresh_lock.locked()
-    if is_locked:
-        return {"status": "error", "message": "A refresh task is already running."}
-        
-    # Check data freshness if not forced
-    if not force:
-        file_path = os.path.join(DATA_DIR, 'screener_data.json')
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, 'r') as f:
-                    data = json.load(f)
-                    last_updated = data.get("metadata", {}).get("last_updated", 0)
-                    age = time.time() - last_updated
-                    if age < 3600:  # 1 hour
-                        minutes_ago = int(age // 60)
-                        return {
-                            "status": "fresh",
-                            "message": f"Data is already fresh (updated {minutes_ago}m ago).",
-                            "last_updated": last_updated
-                        }
-            except Exception:
-                pass
-        
-    # Trigger background execution
-    background_tasks.add_task(bg_refresh_task)
-    return {"status": "ok", "message": "Refresh task started in background."}
+    return {"status": "ok", "message": "Scraper is decommissioned. Fetching stock indicators is disabled."}
 
 # ==========================================
 # Portfolio APIs
@@ -722,6 +641,7 @@ def get_historical_portfolio_nav_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
+    benchmarks: str = "",
     authorization: str = Header(None),
     x_supabase_url: str = Header(None),
     x_supabase_anon_key: str = Header(None)
@@ -732,7 +652,8 @@ def get_historical_portfolio_nav_jwt(
     try:
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings)
+        benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None
+        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings, benchmarks_list)
     except HTTPException:
         raise
     except Exception as e:
@@ -927,6 +848,12 @@ def parse_transactions_csv(csv_content: str):
         broker = "revolut"
     elif any("ib commission" in h for h in headers_clean) or (any("quantity" in h for h in headers_clean) and any("asset class" in h for h in headers_clean)):
         broker = "ibkr"
+    elif any("isin" in h for h in headers_clean) and any("no. of shares" in h for h in headers_clean):
+        broker = "trading212"
+    elif any("aantal" in h for h in headers_clean) and any("koers" in h for h in headers_clean):
+        broker = "degiro"
+    elif any("kierunek" in h for h in headers_clean) and any("papier" in h for h in headers_clean):
+        broker = "emakler"
     
     print(f"[CSV IMPORT] Detected broker: {broker} from headers: {headers_clean}")
     
@@ -1016,14 +943,90 @@ def parse_transactions_csv(csv_content: str):
                 if raw_datetime:
                     tx_date = raw_datetime.replace(",", "").split()[0]
                     
+            elif broker == "trading212":
+                raw_ticker = row.get("Ticker") or row.get("ticker") or ""
+                raw_action = row.get("Action") or row.get("action") or ""
+                raw_time = row.get("Time") or row.get("time") or ""
+                raw_qty = row.get("No. of shares") or row.get("no. of shares") or "0"
+                raw_price = row.get("Price / share") or row.get("price / share") or "0"
+                raw_fee = row.get("Transaction fee") or row.get("transaction fee") or row.get("Fee") or row.get("fee") or "0"
+                raw_curr = row.get("Currency (Price / share)") or row.get("currency (price / share)") or "USD"
+                
+                if not any(x in raw_action.lower() for x in ("buy", "kupno", "sell", "sprzedaż")):
+                    continue
+                    
+                symbol = raw_ticker.strip().upper()
+                tx_type = "SELL" if "sell" in raw_action.lower() or "sprzedaż" in raw_action.lower() else "BUY"
+                shares = float(raw_qty)
+                price = float(raw_price)
+                fees = float(raw_fee)
+                currency = raw_curr.strip().upper()
+                
+                if raw_time:
+                    tx_date = raw_time.split()[0]
+                    
+            elif broker == "degiro":
+                raw_product = row.get("Product") or row.get("product") or ""
+                raw_symbol = row.get("Symbol") or row.get("symbol") or ""
+                raw_date = row.get("Datum") or row.get("datum") or row.get("Date") or row.get("date") or ""
+                raw_qty = row.get("Aantal") or row.get("aantal") or row.get("Quantity") or row.get("quantity") or "0"
+                raw_price = row.get("Koers") or row.get("koers") or row.get("Price") or row.get("price") or "0"
+                raw_fee = row.get("Kosten") or row.get("kosten") or row.get("Transaction fee") or "0"
+                raw_curr = row.get("Valuta") or row.get("valuta") or row.get("Currency") or "EUR"
+                
+                symbol = raw_symbol.strip().upper() if raw_symbol else raw_product.strip().upper()
+                qty_val = float(raw_qty)
+                tx_type = "SELL" if qty_val < 0 else "BUY"
+                shares = abs(qty_val)
+                price = float(raw_price)
+                fees = abs(float(raw_fee))
+                currency = raw_curr.strip().upper()
+                
+                if raw_date:
+                    raw_date_clean = raw_date.split()[0]
+                    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
+                        try:
+                            dt = datetime.strptime(raw_date_clean, fmt)
+                            tx_date = dt.strftime("%Y-%m-%d")
+                            break
+                        except ValueError:
+                            continue
+                            
+            elif broker == "emakler":
+                raw_papier = row.get("Papier") or row.get("papier") or ""
+                raw_kierunek = row.get("Kierunek") or row.get("kierunek") or ""
+                raw_date = row.get("Data transakcji") or row.get("data transakcji") or row.get("Data") or row.get("data") or ""
+                raw_qty = row.get("Ilość") or row.get("ilość") or row.get("ilosc") or "0"
+                raw_price = row.get("Cena") or row.get("cena") or "0"
+                raw_fee = row.get("Prowizja") or row.get("prowizja") or "0"
+                raw_curr = row.get("Waluta") or row.get("waluta") or "PLN"
+                
+                symbol = raw_papier.strip().upper().split(":")[0]
+                tx_type = "SELL" if "sprzedaż" in raw_kierunek.lower() or "sell" in raw_kierunek.lower() or raw_kierunek.lower().startswith("s") else "BUY"
+                shares = float(raw_qty)
+                price = float(raw_price)
+                fees = float(raw_fee)
+                currency = raw_curr.strip().upper()
+                
+                if raw_date:
+                    raw_date_clean = raw_date.split()[0]
+                    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
+                        try:
+                            dt = datetime.strptime(raw_date_clean, fmt)
+                            tx_date = dt.strftime("%Y-%m-%d")
+                            break
+                        except ValueError:
+                            continue
+                    
             else: # generic fallback
-                date_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("date", "time", "data"))), None)
-                ticker_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("ticker", "symbol", "instrument", "akcja", "walor"))), None)
-                type_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("type", "action", "transakcja", "operacja"))), None)
-                shares_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("shares", "quantity", "vol", "ilość", "ilosc"))), None)
-                price_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("price", "rate", "kurs", "cena"))), None)
-                fees_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("fee", "comm", "prov", "prowizja"))), None)
-                curr_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("curr", "waluta"))), None)
+                date_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("date", "time", "data", "timestamp", "trans. date", "transaction date"))), None)
+                ticker_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("ticker", "symbol", "instrument", "akcja", "walor", "isin", "name", "security", "asset"))), None)
+                type_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("type", "action", "transakcja", "operacja", "direction", "kierunek"))), None)
+                shares_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("shares", "quantity", "vol", "ilość", "ilosc", "qty", "volume", "no. of shares", "amount", "aantal"))), None)
+                price_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("price", "rate", "kurs", "cena", "koers", "trade price", "price / share"))), None)
+                fees_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("fee", "comm", "prov", "prowizja", "commission", "transaction fee", "kosten"))), None)
+                curr_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("curr", "waluta", "currency", "valuta"))), None)
+                
                 
                 symbol = row.get(ticker_key, "").strip().upper() if ticker_key else ""
                 raw_type = row.get(type_key, "") if type_key else ""
@@ -1206,6 +1209,144 @@ def get_portfolio_ai_insights_jwt(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating AI insights: {str(e)}")
+
+@app.get("/api/portfolio/{portfolio_id}/calendar.ics")
+def get_portfolio_dividend_calendar_ics(
+    portfolio_id: str,
+    token: str = None,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    jwt_token = authorization or token
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authentication token missing")
+        
+    if jwt_token and not jwt_token.startswith("Bearer "):
+        jwt_token = f"Bearer {jwt_token}"
+        
+    try:
+        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        
+        # Calculate holdings (with USD baseline to safely compile everything)
+        res = PortfolioManager.calculate_holdings(transactions, "USD", "All", False, settings)
+        holdings = res.get("holdings", [])
+        
+        active_holdings = []
+        for h in holdings:
+            symbol = h.get("symbol")
+            shares = h.get("shares", 0.0)
+            if symbol and symbol.upper() != "CASH" and shares > 0.0:
+                active_holdings.append({
+                    "symbol": symbol,
+                    "shares": shares
+                })
+                
+        events = PortfolioManager.get_upcoming_events(active_holdings)
+        
+        ics_lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//QuantiFi//Dividend Feed//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH"
+        ]
+        
+        for idx, ev in enumerate(events):
+            if ev.get("type") == "dividend":
+                symbol = ev.get("symbol")
+                event_date = ev.get("date")
+                amount = ev.get("value", 0.0)
+                
+                # Retrieve active shares owned for this event
+                shares_owned = 0.0
+                for h in active_holdings:
+                    if h["symbol"] == symbol:
+                        shares_owned = h["shares"]
+                        break
+                        
+                total_pay = amount * shares_owned
+                curr = ev.get("currency", "USD")
+                
+                if not event_date:
+                    continue
+                    
+                date_clean = event_date.replace("-", "")
+                
+                uid = f"div-{symbol}-{date_clean}-{idx}@quantifi"
+                summary = f"Dividend Ex-Date: {symbol} ({curr} {amount:.2f}/sh)"
+                desc = f"Ex-dividend date for {symbol}.\\nExpected payout: {curr} {total_pay:.2f} based on {shares_owned:.2f} shares owned."
+                
+                ics_lines.extend([
+                    "BEGIN:VEVENT",
+                    f"UID:{uid}",
+                    f"DTSTART;VALUE=DATE:{date_clean}",
+                    f"DTEND;VALUE=DATE:{date_clean}",
+                    f"SUMMARY:{summary}",
+                    f"DESCRIPTION:{desc}",
+                    "END:VEVENT"
+                ])
+                
+        ics_lines.append("END:VCALENDAR")
+        ics_content = "\r\n".join(ics_lines)
+        
+        from fastapi.responses import Response
+        return Response(content=ics_content, media_type="text/calendar", headers={
+            "Content-Disposition": f"attachment; filename=portfolio_{portfolio_id}_dividends.ics"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating iCal feed: {str(e)}")
+
+@app.get("/api/portfolio/{portfolio_id}/export-csv")
+def export_portfolio_csv(
+    portfolio_id: str,
+    token: str = None,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    jwt_token = authorization or token
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authentication token missing")
+        
+    if jwt_token and not jwt_token.startswith("Bearer "):
+        jwt_token = f"Bearer {jwt_token}"
+        
+    try:
+        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        
+        import io, csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        writer.writerow(["Date", "Ticker", "Type", "Shares", "Price", "Commission", "Currency", "Account"])
+        
+        # Write rows
+        for tx in sorted(transactions, key=lambda x: x.get("date", "")):
+            writer.writerow([
+                tx.get("date", ""),
+                tx.get("symbol", "").upper(),
+                tx.get("type", "BUY").upper(),
+                tx.get("shares", 0.0),
+                tx.get("price", 0.0),
+                tx.get("fees", 0.0),
+                tx.get("currency", "USD").upper(),
+                tx.get("account", "Default")
+            ])
+            
+        csv_content = output.getvalue()
+        from fastapi.responses import Response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=portfolio_{portfolio_id}_transactions.csv"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exporting CSV: {str(e)}")
 
 # Serve Frontend static assets if compiled in production
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')

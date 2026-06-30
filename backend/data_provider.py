@@ -345,54 +345,30 @@ class YFinanceProvider(BaseDataProvider):
         return float(rate)
 
     def download_historical_stock_bulk(self, symbols: list, start_dt: date, end_dt: date) -> tuple:
+        import concurrent.futures
+        
         prices_by_symbol = {}
         dividends_by_symbol = {}
         for sym in symbols:
             prices_by_symbol[sym] = {}
             dividends_by_symbol[sym] = {}
 
-        start_str = start_dt.strftime("%Y-%m-%d")
-        # Go slightly past today to capture the most recent trading days
-        end_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        def fetch_single(sym):
+            try:
+                p, d = self.download_historical_stock(sym, start_dt, end_dt)
+                return sym, p, d
+            except Exception as sym_err:
+                print(f"Error in parallel historical download for {sym}: {sym_err}")
+                return sym, {}, {}
 
-        try:
-            symbols_str = " ".join(symbols)
-            df = yf.download(symbols_str, start=start_str, end=end_str, progress=False, group_by='ticker', actions=True, session=YF_SESSION)
-            
-            for sym in symbols:
-                try:
-                    if len(symbols) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                        div_series = ticker_df['Dividends'] if 'Dividends' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if sym in df.columns.levels[0]:
-                            ticker_df = df[sym]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                            div_series = ticker_df['Dividends'] if 'Dividends' in ticker_df.columns else pd.Series(dtype=float)
-                        else:
-                            prices_series = pd.Series(dtype=float)
-                            div_series = pd.Series(dtype=float)
-                            
-                    # Clean and insert daily prices
-                    prices_series = prices_series.dropna()
-                    is_pence = sym.upper().strip().endswith(".L")
-                    for idx, val in prices_series.items():
-                        dt = idx.to_pydatetime().date()
-                        prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
-
-                    # Clean and insert dividends
-                    div_series = div_series.dropna()
-                    for idx, val in div_series.items():
-                        if float(val) > 0:
-                            dt = idx.to_pydatetime().date()
-                            dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
-                except Exception as sym_err:
-                    print(f"Error parsing historical bulk data for {sym}: {sym_err}")
-        except Exception as e:
-            print(f"YFinance bulk historical download failed: {e}")
+        # Fetch in parallel using a thread pool with max 8 concurrent workers
+        max_workers = min(len(symbols), 8) if symbols else 1
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(fetch_single, sym): sym for sym in symbols}
+            for future in concurrent.futures.as_completed(futures):
+                sym, p, d = future.result()
+                prices_by_symbol[sym] = p
+                dividends_by_symbol[sym] = d
 
         return prices_by_symbol, dividends_by_symbol
 

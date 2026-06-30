@@ -61,8 +61,9 @@ export async function fetchHistoricalPerformance(
   portfolioId: string,
   baseCurrency: string,
   account: string,
-  linkCash: boolean
-): Promise<{ dates: string[]; nav: number[]; cost_basis: number[] }> {
+  linkCash: boolean,
+  benchmarks?: string
+): Promise<{ dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> }> {
   const headers: Record<string, string> = {};
   if (jwtToken) {
     headers['Authorization'] = `Bearer ${jwtToken}`;
@@ -81,6 +82,9 @@ export async function fetchHistoricalPerformance(
     account,
     link_cash: String(linkCash)
   });
+  if (benchmarks) {
+    queryParams.append('benchmarks', benchmarks);
+  }
 
   const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`, {
     method: 'GET',

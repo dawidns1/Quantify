@@ -24,6 +24,7 @@ export function SettingsModal({
   const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
   const [costBasisMethod, setCostBasisMethod] = useState<'average_cost' | 'fifo'>('average_cost');
+  const [addDividendsToCash, setAddDividendsToCash] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
@@ -50,6 +51,7 @@ export function SettingsModal({
       setRiskFreeRate(portfolio.settings?.risk_free_rate !== undefined ? portfolio.settings.risk_free_rate : 2.0);
       setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
       setCostBasisMethod(portfolio.settings?.cost_basis_method || 'average_cost');
+      setAddDividendsToCash(portfolio.settings?.add_dividends_to_cash !== false);
       setErrorMsg(null);
       setSuccessMsg(false);
     }
@@ -85,7 +87,8 @@ export function SettingsModal({
         accountTaxRates,
         risk_free_rate: riskFreeRate,
         beta_benchmark: betaBenchmark,
-        cost_basis_method: costBasisMethod
+        cost_basis_method: costBasisMethod,
+        add_dividends_to_cash: addDividendsToCash
       };
       await updatePortfolioSettings(portfolio.id, updatedSettings);
       setSuccessMsg(true);
@@ -239,6 +242,28 @@ export function SettingsModal({
                   <option value="average_cost">{t('modals.settings.average_cost')}</option>
                   <option value="fifo">{t('modals.settings.fifo')}</option>
                 </select>
+              </div>
+              <div 
+                onClick={() => !isViewer && setAddDividendsToCash(!addDividendsToCash)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: isViewer ? 'default' : 'pointer',
+                  marginTop: '0.45rem',
+                  userSelect: 'none'
+                }}
+              >
+                <input 
+                  type="checkbox"
+                  disabled={isViewer}
+                  checked={addDividendsToCash}
+                  onChange={() => {}}
+                  style={{ accentColor: 'var(--color-primary)', cursor: isViewer ? 'default' : 'pointer' }}
+                />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  {t('modals.settings.add_div_to_cash', 'Auto-add dividends to cash balance')}
+                </span>
               </div>
             </div>
 

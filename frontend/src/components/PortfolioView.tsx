@@ -580,6 +580,14 @@ export function PortfolioView({
     setShowAddModal(true);
   };
 
+  const handleExportCSV = () => {
+    if (!apiBaseUrl || !activePortfolioId) return;
+    const token = session?.access_token || '';
+    const cleanUrl = apiBaseUrl.replace(/\/$/, "");
+    const exportUrl = `${cleanUrl}/api/portfolio/${activePortfolioId}/export-csv?token=${encodeURIComponent(token)}`;
+    window.open(exportUrl, '_blank');
+  };
+
   // Handle delete transaction
   const handleDeleteTransaction = (id: string) => {
     if (activePortfolioRole === 'viewer') return;
@@ -1334,6 +1342,7 @@ export function PortfolioView({
                   onEditTransaction={handleStartEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
                   onImportCSVClick={() => setShowImportModal(true)}
+                  onExportCSVClick={handleExportCSV}
                   style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
                   onScrollToBottomChange={setIsLedgerAtBottom}
                 />
@@ -1556,6 +1565,9 @@ export function PortfolioView({
                               dividends={dividendsList}
                               baseCurrency={summary.base_currency}
                               onClose={handleToggleDivCalendar}
+                              apiBaseUrl={apiBaseUrl}
+                              activePortfolioId={activePortfolioId}
+                              jwtToken={session?.access_token || null}
                             />
                           </div>
                         )}
@@ -1605,6 +1617,9 @@ export function PortfolioView({
                             dividends={dividendsList}
                             baseCurrency={summary.base_currency}
                             onClose={handleToggleDivCalendar}
+                            apiBaseUrl={apiBaseUrl}
+                            activePortfolioId={activePortfolioId}
+                            jwtToken={session?.access_token || null}
                           />
                         </div>
                         <DividendLedgerTable 

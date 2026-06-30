@@ -1416,7 +1416,11 @@ class PortfolioManager:
                         cash_balances[tx_account][tx_curr] += (amount - fees)
                         
         # Add net dividends to cash balances
-        if link_cash:
+        add_divs_to_cash = True
+        if portfolio_settings and isinstance(portfolio_settings, dict):
+            add_divs_to_cash = portfolio_settings.get("add_dividends_to_cash", portfolio_settings.get("addDividendsToCash", True))
+
+        if link_cash and add_divs_to_cash:
             for (symbol, acc), div_data in dividends_by_symbol_acc.items():
                 if div_data["net_native"] > 0.0:
                     native_curr = ticker_info[symbol]["native_currency"]
@@ -1685,14 +1689,15 @@ class PortfolioManager:
         }
 
     @classmethod
-    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None) -> dict:
         base_currency = base_currency.upper().strip()
         account_val = account or "All"
         settings_val = portfolio_settings or {}
         
         tx_hash = cls._get_transactions_hash(transactions)
         settings_hash = cls._get_settings_hash(settings_val)
-        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
+        benchmarks_tuple = tuple(sorted(benchmarks)) if benchmarks else ()
+        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash, benchmarks_tuple)
         
         now = time.time()
         with cls._historical_perf_cache_lock:
@@ -1712,14 +1717,14 @@ class PortfolioManager:
                         return result
             
             # Perform calculation
-            result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings)
+            result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings, benchmarks)
             
             with cls._historical_perf_cache_lock:
                 cls._historical_perf_cache[cache_key] = (time.time(), result)
             return result
 
     @classmethod
-    def _calculate_historical_performance_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def _calculate_historical_performance_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None) -> dict:
         base_currency = base_currency.upper().strip()
         
         # 1. Filter transactions by account if not "All"
@@ -1752,8 +1757,9 @@ class PortfolioManager:
         # 4. Gather unique stock symbols (exclude CASH_ symbols)
         stock_symbols = list({tx["symbol"].upper().strip() for tx in sorted_txs if not tx["symbol"].upper().strip().startswith("CASH_")})
         
-        # Prefetch historical prices in bulk to speed up loading
-        cls.prefetch_historical_stock_prices(stock_symbols, start_dt, end_dt)
+        # Prefetch historical daily prices in bulk to speed up loading (including benchmarks if requested)
+        prefetch_symbols = stock_symbols + (benchmarks if benchmarks else [])
+        cls.prefetch_historical_stock_prices(prefetch_symbols, start_dt, end_dt)
 
         # 5. Fetch daily close prices for all stocks (cached)
         stock_prices = {}
@@ -2032,10 +2038,36 @@ class PortfolioManager:
             nav_res.append(round(day_nav, 2))
             cost_basis_res.append(round(max(0.0, day_cost), 2))
             
+        # Align daily prices for the requested benchmarks
+        benchmark_res = {}
+        if benchmarks:
+            for bench in benchmarks:
+                prices_dict, _ = cls.get_cached_historical_stock(bench, start_dt, end_dt)
+                aligned_prices = []
+                last_val = None
+                for d in dates_list:
+                    val = prices_dict.get(d)
+                    if val is not None:
+                        last_val = val
+                        aligned_prices.append(round(val, 4))
+                    else:
+                        if last_val is not None:
+                            aligned_prices.append(round(last_val, 4))
+                        else:
+                            # Backfill if front is missing
+                            bfill_val = None
+                            future_dates = sorted([k for k in prices_dict.keys() if k > d])
+                            if future_dates:
+                                bfill_val = prices_dict[future_dates[0]]
+                            last_val = bfill_val if bfill_val is not None else 0.0
+                            aligned_prices.append(round(last_val, 4))
+                benchmark_res[bench] = aligned_prices
+            
         return {
             "dates": dates_res,
             "nav": nav_res,
-            "cost_basis": cost_basis_res
+            "cost_basis": cost_basis_res,
+            "benchmarks": benchmark_res
         }
 
     @classmethod

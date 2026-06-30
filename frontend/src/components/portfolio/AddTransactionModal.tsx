@@ -41,7 +41,7 @@ export function AddTransactionModal({
 }: AddTransactionModalProps) {
   const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
-  const [formType, setFormType] = useState<'BUY' | 'SELL'>('BUY');
+  const [formType, setFormType] = useState<'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL'>('BUY');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formShares, setFormShares] = useState('');
   const [formPrice, setFormPrice] = useState('');
@@ -270,11 +270,12 @@ export function AddTransactionModal({
     if (activePortfolioRole === 'viewer') return;
     setFormError(null);
     
-    const symbol = formSymbol.toUpperCase().trim();
+    const isCashAction = formType === 'DEPOSIT' || formType === 'WITHDRAWAL';
+    const symbol = isCashAction ? `CASH_${formCurrency}` : formSymbol.toUpperCase().trim();
     let shares = parseFloat(formShares);
-    let priceInput = parseFloat(formPrice);
-    let fees = parseFloat(formFees) || 0;
-    let type = formType;
+    let priceInput = isCashAction ? 1.0 : parseFloat(formPrice);
+    let fees = isCashAction ? 0.0 : (parseFloat(formFees) || 0);
+    let type = isCashAction ? (formType === 'DEPOSIT' ? 'BUY' : 'SELL') : formType;
 
     if (!symbol) {
       setFormError('Please enter a stock ticker symbol.');
@@ -301,7 +302,7 @@ export function AddTransactionModal({
       type = diff > 0 ? 'BUY' : 'SELL';
     } else {
       if (isNaN(shares) || shares <= 0) {
-        setFormError('Shares must be a positive number.');
+        setFormError(isCashAction ? 'Amount must be a positive number.' : 'Shares must be a positive number.');
         return;
       }
       if (isNaN(priceInput) || priceInput < 0) {
@@ -395,18 +396,17 @@ export function AddTransactionModal({
             {/* Type selector */}
             <div className="form-group">
               <label className="form-label">{t('modals.add_tx.action_type', 'Action Type')}</label>
-              <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
+              <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px', gap: '2px', width: '100%' }}>
                 <button
                   type="button"
-                  className={`form-type-btn ${formType === 'BUY' ? 'active-buy' : ''}`}
                   onClick={() => setFormType('BUY')}
                   style={{
                     flex: 1,
                     border: 'none',
                     background: formType === 'BUY' ? 'var(--color-green)' : 'transparent',
                     color: 'white',
-                    padding: '0.5rem',
-                    fontSize: '0.85rem',
+                    padding: '0.45rem',
+                    fontSize: '0.78rem',
                     fontWeight: 600,
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -417,15 +417,14 @@ export function AddTransactionModal({
                 </button>
                 <button
                   type="button"
-                  className={`form-type-btn ${formType === 'SELL' ? 'active-sell' : ''}`}
                   onClick={() => setFormType('SELL')}
                   style={{
                     flex: 1,
                     border: 'none',
                     background: formType === 'SELL' ? 'var(--color-red)' : 'transparent',
                     color: 'white',
-                    padding: '0.5rem',
-                    fontSize: '0.85rem',
+                    padding: '0.45rem',
+                    fontSize: '0.78rem',
                     fontWeight: 600,
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -434,12 +433,53 @@ export function AddTransactionModal({
                 >
                   {t('modals.add_tx.type_sell', 'SELL')}
                 </button>
+                {linkCash && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setFormType('DEPOSIT')}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: formType === 'DEPOSIT' ? 'var(--color-primary)' : 'transparent',
+                        color: 'white',
+                        padding: '0.45rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('modals.add_tx.type_deposit', 'DEPOSIT')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormType('WITHDRAWAL')}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: formType === 'WITHDRAWAL' ? 'rgba(239, 68, 68, 0.7)' : 'transparent',
+                        color: 'white',
+                        padding: '0.45rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('modals.add_tx.type_withdrawal', 'WITHDRAW')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Ticker Input */}
-            <div className="form-group" style={{ position: 'relative' }}>
-              <label className="form-label" htmlFor="form-ticker">{t('modals.add_tx.label_symbol', 'Stock Ticker Symbol')}</label>
+            {/* Ticker Input - only shown for BUY/SELL */}
+            {formType !== 'DEPOSIT' && formType !== 'WITHDRAWAL' ? (
+              <div className="form-group" style={{ position: 'relative' }}>
+                <label className="form-label" htmlFor="form-ticker">{t('modals.add_tx.label_symbol', 'Stock Ticker Symbol')}</label>
               <input 
                 id="form-ticker"
                 type="text" 
@@ -506,6 +546,12 @@ export function AddTransactionModal({
                 <Info size={12} /> {t('modals.add_tx.suffixes_desc', 'Suffixes: USA (no suffix), Poland GPW (.WA), Germany Xetra (.DE).')}
               </small>
             </div>
+            ) : (
+              <div style={{ background: 'rgba(6, 182, 212, 0.04)', border: '1px solid rgba(6, 182, 212, 0.15)', padding: '0.85rem 1rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Asset Class</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Fiat Cash Balance ({formCurrency})</span>
+              </div>
+            )}
 
             {/* Grid: Date, Currency, and Account */}
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
@@ -586,57 +632,19 @@ export function AddTransactionModal({
               </div>
             </div>
 
-            {/* Price Input Mode Selector */}
-            <div className="form-group">
-              <label className="form-label">{t('modals.add_tx.price_input_mode', 'Price Input Mode')}</label>
-              <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
-                <button
-                  type="button"
-                  className={`form-type-btn ${priceInputMode === 'per_share' ? 'active-buy' : ''}`}
-                  onClick={() => setPriceInputMode('per_share')}
-                  style={{
-                    flex: 1,
-                    border: 'none',
-                    background: priceInputMode === 'per_share' ? 'var(--color-primary)' : 'transparent',
-                    color: 'white',
-                    padding: '0.4rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  {t('modals.add_tx.per_share', 'Per Share')}
-                </button>
-                <button
-                  type="button"
-                  className={`form-type-btn ${priceInputMode === 'total' ? 'active-buy' : ''}`}
-                  onClick={() => setPriceInputMode('total')}
-                  style={{
-                    flex: 1,
-                    border: 'none',
-                    background: priceInputMode === 'total' ? 'var(--color-primary)' : 'transparent',
-                    color: 'white',
-                    padding: '0.4rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'var(--transition-smooth)'
-                  }}
-                >
-                  {t('modals.add_tx.total_value', 'Total Value')}
-                </button>
-                {formSymbol.toUpperCase().startsWith('CASH_') && (
+            {/* Price Input Mode Selector - only shown for BUY/SELL */}
+            {formType !== 'DEPOSIT' && formType !== 'WITHDRAWAL' && (
+              <div className="form-group">
+                <label className="form-label">{t('modals.add_tx.price_input_mode', 'Price Input Mode')}</label>
+                <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '3px' }}>
                   <button
                     type="button"
-                    className={`form-type-btn ${priceInputMode === 'adjust' ? 'active-buy' : ''}`}
-                    onClick={() => setPriceInputMode('adjust')}
+                    className={`form-type-btn ${priceInputMode === 'per_share' ? 'active-buy' : ''}`}
+                    onClick={() => setPriceInputMode('per_share')}
                     style={{
                       flex: 1,
                       border: 'none',
-                      background: priceInputMode === 'adjust' ? 'var(--color-primary)' : 'transparent',
+                      background: priceInputMode === 'per_share' ? 'var(--color-primary)' : 'transparent',
                       color: 'white',
                       padding: '0.4rem',
                       fontSize: '0.8rem',
@@ -646,14 +654,71 @@ export function AddTransactionModal({
                       transition: 'var(--transition-smooth)'
                     }}
                   >
-                    {t('modals.add_tx.adjust_balance', 'Adjust Balance')}
+                    {t('modals.add_tx.per_share', 'Per Share')}
                   </button>
-                )}
+                  <button
+                    type="button"
+                    className={`form-type-btn ${priceInputMode === 'total' ? 'active-buy' : ''}`}
+                    onClick={() => setPriceInputMode('total')}
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      background: priceInputMode === 'total' ? 'var(--color-primary)' : 'transparent',
+                      color: 'white',
+                      padding: '0.4rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'var(--transition-smooth)'
+                    }}
+                  >
+                    {t('modals.add_tx.total_value', 'Total Value')}
+                  </button>
+                  {formSymbol.toUpperCase().startsWith('CASH_') && (
+                    <button
+                      type="button"
+                      className={`form-type-btn ${priceInputMode === 'adjust' ? 'active-buy' : ''}`}
+                      onClick={() => setPriceInputMode('adjust')}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: priceInputMode === 'adjust' ? 'var(--color-primary)' : 'transparent',
+                        color: 'white',
+                        padding: '0.4rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      {t('modals.add_tx.adjust_balance', 'Adjust Balance')}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Grid: Shares, Price & Fees OR Target Cash Balance */}
-            {formSymbol.toUpperCase().startsWith('CASH_') && priceInputMode === 'adjust' ? (
+            {formType === 'DEPOSIT' || formType === 'WITHDRAWAL' ? (
+              <div className="form-group">
+                <label className="form-label" htmlFor="form-shares">
+                  {formType === 'DEPOSIT' ? 'Amount to Deposit' : 'Amount to Withdraw'} ({formCurrency})
+                </label>
+                <input 
+                  id="form-shares"
+                  type="number" 
+                  step="any"
+                  placeholder="0.00" 
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  value={formShares}
+                  onChange={(e) => setFormShares(e.target.value)}
+                  required
+                />
+              </div>
+            ) : formSymbol.toUpperCase().startsWith('CASH_') && priceInputMode === 'adjust' ? (
               <div className="form-group">
                 <label className="form-label" htmlFor="form-target-bal">{t('modals.add_tx.target_cash_balance', 'Target Cash Balance')} ({formCurrency})</label>
                 <div style={{ position: 'relative' }}>

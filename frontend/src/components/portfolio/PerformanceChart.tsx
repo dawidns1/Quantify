@@ -1,6 +1,8 @@
-import { useState, useMemo, memo } from 'react';
-import { Activity, ChevronUp, ChevronDown, X, RefreshCw } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, memo } from 'react';
+import { Activity, ChevronUp, ChevronDown, X, RefreshCw, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { usePortfolio } from '../../context/PortfolioContext';
+import { searchAssets } from '../../services/calculationService';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -53,14 +55,13 @@ const verticalLinePlugin = {
   }
 };
 
-// Register custom top positioner to place the tooltip cleanly at the top of the chart area and to the side of the vertical line
+// Register custom top positioner to place the tooltip cleanly at the top of the chart area
 (Tooltip.positioners as any).top = function(this: any, items: any) {
   if (!items || items.length === 0) return false;
   const x = items[0].element.x;
   const chart = this.chart;
   const topY = chart.scales.y.top;
   
-  // Offset to the left if in the right half of the chart, otherwise offset to the right
   const isRightHalf = x > chart.width / 2;
   const offset = 10;
   const tooltipX = isRightHalf ? x - offset : x + offset;
@@ -77,7 +78,12 @@ const verticalLinePlugin = {
 const performanceChartPlugins = [verticalLinePlugin];
 
 interface PerformanceChartProps {
-  chartData: { dates: string[]; nav: number[]; cost_basis: number[] } | null;
+  chartData: { 
+    dates: string[]; 
+    nav: number[]; 
+    cost_basis: number[]; 
+    benchmarks?: Record<string, number[]> 
+  } | null;
   loadingChart: boolean;
   baseCurrency: string;
   onMoveUp?: () => void;
@@ -96,7 +102,46 @@ export const PerformanceChart = memo(function PerformanceChart({
   onRefresh
 }: PerformanceChartProps) {
   const { t } = useTranslation();
+  const { apiBaseUrl, selectedAccount, fetchHistoricalPerformance } = usePortfolio();
+
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
+  const [chartMode, setChartMode] = useState<'value' | 'percent'>('value');
+  const [activeBenchmarks, setActiveBenchmarks] = useState<string[]>([]);
+  
+  // Custom benchmark search autocomplete
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState<any[]>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch historical data with benchmarks when selections change
+  useEffect(() => {
+    if (chartMode === 'percent' && activeBenchmarks.length > 0) {
+      fetchHistoricalPerformance(baseCurrency as any, selectedAccount, activeBenchmarks.join(','));
+    } else {
+      fetchHistoricalPerformance(baseCurrency as any, selectedAccount, '');
+    }
+  }, [activeBenchmarks, chartMode, baseCurrency, selectedAccount]);
+
+  // Search query debounce
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      searchAssets(apiBaseUrl, searchQuery)
+        .then(data => {
+          setSearchSuggestions(data || []);
+        })
+        .catch(err => {
+          console.error('Error fetching benchmark suggestions:', err);
+        });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, apiBaseUrl]);
 
   // Filter and slice chart data based on range
   const filteredData = useMemo(() => {
@@ -122,10 +167,22 @@ export const PerformanceChart = memo(function PerformanceChart({
 
     if (startIndex === -1) return chartData;
 
+    const slicedBenchmarks: Record<string, number[]> = {};
+    const benchmarks = chartData.benchmarks;
+    if (benchmarks) {
+      Object.keys(benchmarks).forEach(sym => {
+        const prices = benchmarks[sym];
+        if (prices) {
+          slicedBenchmarks[sym] = prices.slice(startIndex);
+        }
+      });
+    }
+
     return {
       dates: chartData.dates.slice(startIndex),
       nav: chartData.nav.slice(startIndex),
-      cost_basis: chartData.cost_basis.slice(startIndex)
+      cost_basis: chartData.cost_basis.slice(startIndex),
+      benchmarks: slicedBenchmarks
     };
   }, [chartData, selectedRange]);
 
@@ -159,7 +216,10 @@ export const PerformanceChart = memo(function PerformanceChart({
           grid: { color: 'rgba(255, 255, 255, 0.04)' },
           ticks: { 
             color: 'rgba(255, 255, 255, 0.75)', 
-            font: { family: 'Outfit', size: 9 }
+            font: { family: 'Outfit', size: 9 },
+            callback: function(value: any) {
+              return chartMode === 'percent' ? `${value.toFixed(1)}%` : value.toLocaleString('en-US');
+            }
           }
         }
       },
@@ -168,7 +228,7 @@ export const PerformanceChart = memo(function PerformanceChart({
         intersect: false
       },
       plugins: {
-        legend: { display: false },
+        legend: { display: chartMode === 'percent' },
         tooltip: {
           position: 'top' as any,
           caretSize: 0,
@@ -183,49 +243,135 @@ export const PerformanceChart = memo(function PerformanceChart({
           cornerRadius: 6,
           displayColors: true,
           mode: 'index' as const,
-          intersect: false
+          intersect: false,
+          callbacks: {
+            label: function(context: any) {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                label += chartMode === 'percent'
+                  ? `${context.parsed.y.toFixed(2)}%`
+                  : `${context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${baseCurrency}`;
+              }
+              return label;
+            }
+          }
         }
       }
     };
-  }, []);
+  }, [chartMode, baseCurrency]);
 
   // Memoized Chart Data
   const chartDataFormatted = useMemo(() => {
     if (!filteredData) return null;
-    return {
-      labels: filteredData.dates,
-      datasets: [
+
+    if (chartMode === 'percent') {
+      const getPortGainAt = (idx: number) => {
+        const nav = filteredData.nav[idx];
+        const cost = filteredData.cost_basis[idx];
+        return cost > 0 ? ((nav - cost) / cost) * 100 : 0;
+      };
+      
+      const portGainStart = getPortGainAt(0);
+      const portfolioPercentData = filteredData.nav.map((_, i) => getPortGainAt(i) - portGainStart);
+
+      const datasets = [
         {
-          label: 'NAV',
-          data: filteredData.nav,
+          label: `Portfolio NAV (TWR)`,
+          data: portfolioPercentData,
           borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6, 182, 212, 0.05)',
+          backgroundColor: 'rgba(6, 182, 212, 0.03)',
           fill: true,
           tension: 0.15,
-          borderWidth: 2,
+          borderWidth: 2.5,
           pointRadius: 0,
           pointHoverRadius: 4,
           pointHoverBackgroundColor: '#ffffff',
           pointHoverBorderColor: '#06b6d4',
           pointHoverBorderWidth: 2
-        },
-        {
-          label: 'Cost Basis',
-          data: filteredData.cost_basis,
-          borderColor: 'rgba(239, 68, 68, 0.65)',
-          borderDash: [4, 4],
-          fill: false,
-          tension: 0.1,
-          borderWidth: 1.5,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: '#ffffff',
-          pointHoverBorderColor: 'rgba(239, 68, 68, 0.85)',
-          pointHoverBorderWidth: 2
         }
-      ]
-    };
-  }, [filteredData]);
+      ];
+
+      const benchmarkColors = ['#f59e0b', '#8b5cf6', '#10b981', '#ec4899', '#eab308'];
+      if (filteredData.benchmarks) {
+        Object.keys(filteredData.benchmarks).forEach((sym, idx) => {
+          const prices = filteredData.benchmarks?.[sym] || [];
+          if (prices.length > 0) {
+            const startPrice = prices[0] || 1;
+            const benchmarkPercentData = prices.map(p => ((p - startPrice) / startPrice) * 100);
+            const color = benchmarkColors[idx % benchmarkColors.length];
+            
+            datasets.push({
+              label: sym,
+              data: benchmarkPercentData,
+              borderColor: color,
+              backgroundColor: 'transparent',
+              fill: false,
+              tension: 0.15,
+              borderWidth: 1.5,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              pointHoverBackgroundColor: '#ffffff',
+              pointHoverBorderColor: color,
+              pointHoverBorderWidth: 2
+            } as any);
+          }
+        });
+      }
+
+      return {
+        labels: filteredData.dates,
+        datasets
+      };
+    } else {
+      // Absolute Value Mode
+      return {
+        labels: filteredData.dates,
+        datasets: [
+          {
+            label: 'NAV',
+            data: filteredData.nav,
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.05)',
+            fill: true,
+            tension: 0.15,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#ffffff',
+            pointHoverBorderColor: '#06b6d4',
+            pointHoverBorderWidth: 2
+          },
+          {
+            label: 'Cost Basis',
+            data: filteredData.cost_basis,
+            borderColor: 'rgba(239, 68, 68, 0.65)',
+            borderDash: [4, 4],
+            fill: false,
+            tension: 0.1,
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: '#ffffff',
+            pointHoverBorderColor: 'rgba(239, 68, 68, 0.85)',
+            pointHoverBorderWidth: 2
+          }
+        ]
+      };
+    }
+  }, [filteredData, chartMode, baseCurrency]);
+
+  const toggleBenchmark = (sym: string) => {
+    setActiveBenchmarks(prev => 
+      prev.includes(sym) ? prev.filter(s => s !== sym) : [...prev, sym]
+    );
+  };
+
+  const removeBenchmark = (sym: string) => {
+    setActiveBenchmarks(prev => prev.filter(s => s !== sym));
+  };
 
   if (!loadingChart && (!chartData || !chartData.dates || chartData.dates.length === 0)) {
     return null;
@@ -239,7 +385,7 @@ export const PerformanceChart = memo(function PerformanceChart({
           <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Activity size={14} className="gradient-text" /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
           </h4>
-          {!loadingChart && performanceIndicator && (
+          {chartMode === 'value' && !loadingChart && performanceIndicator && (
             <span style={{
               fontSize: '0.72rem',
               fontWeight: 700,
@@ -308,9 +454,10 @@ export const PerformanceChart = memo(function PerformanceChart({
         )}
       </div>
 
-      {/* Date range selection pills */}
+      {/* Date Range Selection & Value Toggle Bar */}
       {!loadingChart && chartData && (
-        <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '0.1rem 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', margin: '0.1rem 0' }}>
+          {/* Range pills */}
           <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
             {(['1M', '1Q', '1Y', '5Y', 'MAX'] as const).map((r) => (
               <button
@@ -332,9 +479,193 @@ export const PerformanceChart = memo(function PerformanceChart({
               </button>
             ))}
           </div>
+
+          {/* Mode Toggle (Value vs % Return) */}
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+            <button
+              onClick={() => setChartMode('value')}
+              style={{
+                background: chartMode === 'value' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                color: chartMode === 'value' ? 'white' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '0.15rem 0.45rem',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              {t('chart.mode_value', 'Value')}
+            </button>
+            <button
+              onClick={() => setChartMode('percent')}
+              style={{
+                background: chartMode === 'percent' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                color: chartMode === 'percent' ? '#22d3ee' : 'var(--text-secondary)',
+                border: 'none',
+                padding: '0.15rem 0.45rem',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              {t('chart.mode_percent', '% Return')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Benchmark Selector Row (Only in % Return Mode) */}
+      {chartMode === 'percent' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+              Compare Benchmarks:
+            </span>
+            
+            {/* Quick Index Toggles */}
+            <button
+              onClick={() => toggleBenchmark('^GSPC')}
+              style={{
+                background: activeBenchmarks.includes('^GSPC') ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.02)',
+                border: activeBenchmarks.includes('^GSPC') ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                color: activeBenchmarks.includes('^GSPC') ? '#fbbf24' : 'var(--text-secondary)',
+                fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer'
+              }}
+            >
+              S&P 500
+            </button>
+
+            <button
+              onClick={() => toggleBenchmark('ACWI')}
+              style={{
+                background: activeBenchmarks.includes('ACWI') ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255,255,255,0.02)',
+                border: activeBenchmarks.includes('ACWI') ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                color: activeBenchmarks.includes('ACWI') ? '#a78bfa' : 'var(--text-secondary)',
+                fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer'
+              }}
+            >
+              MSCI World
+            </button>
+
+            {/* Custom search button toggle */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowSearch(!showSearch)}
+                style={{
+                  background: showSearch ? 'rgba(6, 182, 212, 0.1)' : 'transparent',
+                  border: '1px dashed rgba(255,255,255,0.15)',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '3px'
+                }}
+              >
+                <Search size={10} /> Add Custom Ticker
+              </button>
+
+              {/* Autocomplete suggestions box */}
+              {showSearch && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  zIndex: 200,
+                  marginTop: '4px',
+                  background: 'rgba(15, 23, 42, 0.98)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '6px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  padding: '4px',
+                  width: '200px'
+                }}>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search e.g. BTC-USD, AAPL"
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      padding: '4px 6px',
+                      fontSize: '0.7rem',
+                      color: 'white',
+                      outline: 'none',
+                      marginBottom: '4px'
+                    }}
+                  />
+                  {searchSuggestions.length > 0 && (
+                    <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                      {searchSuggestions.map((s, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            if (s.symbol && !activeBenchmarks.includes(s.symbol)) {
+                              setActiveBenchmarks(prev => [...prev, s.symbol]);
+                            }
+                            setShowSearch(false);
+                            setSearchQuery('');
+                          }}
+                          style={{
+                            padding: '4px 6px',
+                            fontSize: '0.65rem',
+                            cursor: 'pointer',
+                            color: 'var(--text-secondary)',
+                            borderRadius: '3px',
+                            display: 'flex',
+                            justifyContent: 'space-between'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontWeight: 700, color: 'white' }}>{s.symbol}</span>
+                          <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{s.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Render Active Custom Benchmarks list */}
+          {activeBenchmarks.filter(s => s !== '^GSPC' && s !== 'ACWI').length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.1rem' }}>
+              {activeBenchmarks.filter(s => s !== '^GSPC' && s !== 'ACWI').map((sym) => (
+                <div
+                  key={sym}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '4px',
+                    padding: '1px 4px 1px 6px',
+                    fontSize: '0.6rem',
+                    color: 'white'
+                  }}
+                >
+                  <span>{sym}</span>
+                  <button
+                    onClick={() => removeBenchmark(sym)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '1px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
       
+      {/* Chart Canvas Area */}
       <div style={{ height: '200px', position: 'relative' }}>
         {loadingChart && !chartDataFormatted ? (
           <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }} className="pulse">

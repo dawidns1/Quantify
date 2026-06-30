@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface DividendCalendarProps {
@@ -9,6 +9,9 @@ interface DividendCalendarProps {
   onMoveDown?: () => void;
   onClose?: () => void;
   viewMode?: 'both' | 'calendar' | 'forecast';
+  apiBaseUrl?: string;
+  activePortfolioId?: string | null;
+  jwtToken?: string | null;
 }
 
 export function DividendCalendar({ 
@@ -17,13 +20,30 @@ export function DividendCalendar({
   onMoveUp,
   onMoveDown,
   onClose,
-  viewMode
+  viewMode,
+  apiBaseUrl,
+  activePortfolioId,
+  jwtToken
 }: DividendCalendarProps) {
   const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [hoveredMonthIndex, setHoveredMonthIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isTooltipRightHalf, setIsTooltipRightHalf] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyFeed = () => {
+    if (!apiBaseUrl || !activePortfolioId || !jwtToken) return;
+    const cleanUrl = apiBaseUrl.replace(/\/$/, "");
+    const feedUrl = `${cleanUrl}/api/portfolio/${activePortfolioId}/calendar.ics?token=${encodeURIComponent(jwtToken)}`;
+    
+    navigator.clipboard.writeText(feedUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(err => console.error("Could not copy feed URL:", err));
+  };
 
   const formatCurrency = (val: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -117,6 +137,29 @@ export function DividendCalendar({
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {apiBaseUrl && activePortfolioId && jwtToken && (
+            <button
+              onClick={handleCopyFeed}
+              title={t('calendar.copy_feed_title', 'Copy iCal Feed URL for Google/Apple Calendar')}
+              style={{
+                background: copied ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                border: copied ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: copied ? 'var(--color-green)' : 'var(--text-secondary)',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              <span>{copied ? t('calendar.copied', 'Synced!') : t('calendar.subscribe', 'Sync Calendar')}</span>
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button 
               onClick={handlePrevYear} 

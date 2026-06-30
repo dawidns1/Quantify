@@ -1,5 +1,5 @@
-import { useMemo, memo } from 'react';
-import { PieChart, Coins, Globe, Layers, ChevronUp, ChevronDown, X, Scale } from 'lucide-react';
+import { useState, useMemo, memo } from 'react';
+import { PieChart, ChevronUp, ChevronDown, X, Scale } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 
@@ -21,6 +21,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
   onRebalanceClick
 }: PortfolioAllocationProps) {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'class' | 'ticker' | 'currency' | 'market'>('class');
 
   // Client-side calculations for allocations
   const { assets, currencies, countries, assetClasses } = useMemo(() => {
@@ -76,8 +77,85 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
     };
   }, [holdings, summary.total_value_base]);
 
+  const COLORS = [
+    'hsl(192, 95%, 50%)', // cyan
+    'hsl(263, 90%, 65%)', // purple
+    'hsl(142, 70%, 45%)', // green
+    'hsl(45, 90%, 60%)',  // amber
+    'hsl(326, 90%, 60%)', // pink
+    'hsl(217, 91%, 60%)', // blue
+    'hsl(15, 90%, 60%)'   // orange
+  ];
+
+  interface ChartItem {
+    name: string;
+    percentage: number;
+    val: number;
+    color: string;
+  }
+
+  const chartItems = useMemo<ChartItem[]>(() => {
+    let list: { name: string; percentage: number; val: number }[] = [];
+    if (activeTab === 'class') list = assetClasses;
+    else if (activeTab === 'ticker') list = assets.slice(0, 6);
+    else if (activeTab === 'currency') list = currencies;
+    else if (activeTab === 'market') list = countries;
+    
+    return list.map((item, idx) => {
+      let color = COLORS[idx % COLORS.length];
+      if (activeTab === 'class') {
+        if (item.name === 'Equity') color = 'hsl(217, 91%, 60%)';
+        else if (item.name === 'ETF') color = 'hsl(263, 90%, 65%)';
+        else if (item.name === 'Cash') color = 'hsl(142, 70%, 45%)';
+      } else if (activeTab === 'currency') {
+        if (item.name === 'USD') color = 'hsl(217, 91%, 60%)';
+        else if (item.name === 'EUR') color = 'hsl(263, 90%, 65%)';
+        else if (item.name === 'PLN') color = 'hsl(142, 70%, 45%)';
+      }
+      return { ...item, color };
+    });
+  }, [activeTab, assetClasses, assets, currencies, countries]);
+
+  // Magic circle radius has 100px circumference (r = 15.915)
+  const renderDoughnut = () => {
+    if (chartItems.length === 0) {
+      return (
+        <svg width="110" height="110" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.3))' }}>
+          <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="4.2" />
+        </svg>
+      );
+    }
+    
+    let accumulatedPercent = 0;
+    return (
+      <svg width="110" height="110" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.35))' }}>
+        <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(255,255,255,0.02)" strokeWidth="4.2" />
+        {chartItems.map((item, idx) => {
+          const strokeDasharray = `${item.percentage} ${100 - item.percentage}`;
+          const strokeDashoffset = 100 - accumulatedPercent;
+          accumulatedPercent += item.percentage;
+          
+          return (
+            <circle
+              key={idx}
+              cx="21"
+              cy="21"
+              r="15.915"
+              fill="transparent"
+              stroke={item.color}
+              strokeWidth="4.2"
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+            />
+          );
+        })}
+      </svg>
+    );
+  };
+
   return (
-    <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+    <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1rem', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <PieChart size={16} className="gradient-text" /> {t('allocation.title', 'Portfolio Allocation')}
@@ -157,118 +235,71 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
           <p>{t('allocation.no_data', 'Add holdings to display allocation weights.')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Asset Classes Allocation */}
-          <div>
-            <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Layers size={13} /> {t('allocation.by_class', 'By Asset Class')}
-            </h4>
-            <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
-              {assetClasses.map((item) => (
-                <div key={item.name} className="allocation-item">
-                  <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name === 'Equity' ? t('holdings.class_equity', 'Equity') : item.name === 'Cash' ? t('holdings.class_cash', 'Cash') : item.name === 'ETF' ? t('holdings.class_etf', 'ETF') : item.name}</span>
-                    <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div 
-                      className="allocation-fill asset-class-color" 
-                      style={{ 
-                        height: '100%',
-                        width: `${item.percentage}%`,
-                        background: item.name === 'Equity' ? 'hsl(217, 91%, 60%)' : item.name === 'ETF' ? 'hsl(263, 90%, 65%)' : item.name === 'Cash' ? 'hsl(142, 70%, 45%)' : 'hsl(45, 90%, 60%)',
-                        borderRadius: '3px',
-                        transition: 'width 0.4s ease-out'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+          {/* Tab switches */}
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px', gap: '2px' }}>
+            {[
+              { id: 'class', label: t('allocation.by_class', 'Asset Class') },
+              { id: 'ticker', label: t('allocation.by_ticker', 'Tickers') },
+              { id: 'currency', label: t('allocation.by_currency', 'Currency') },
+              { id: 'market', label: t('allocation.by_market', 'Market') }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                style={{
+                  flex: 1,
+                  background: activeTab === tab.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  border: 'none',
+                  color: activeTab === tab.id ? 'white' : 'var(--text-secondary)',
+                  padding: '4px 6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Asset Tickers Allocation */}
-          <div>
-            <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <PieChart size={13} /> {t('allocation.by_ticker', 'By Asset Ticker')}
-            </h4>
-            <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
-              {assets.slice(0, 5).map((item) => (
-                <div key={item.name} className="allocation-item">
-                  <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name}</span>
-                    <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div 
-                      className="allocation-fill asset-color" 
-                      style={{ 
-                        height: '100%',
-                        width: `${item.percentage}%`,
-                        borderRadius: '3px',
-                        transition: 'width 0.4s ease-out'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-              {assets.length > 5 && (
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                  {t('allocation.more_tickers', '+ {{count}} more tickers', { count: assets.length - 5 })}
-                </div>
-              )}
+          {/* Allocation Content Layout */}
+          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap', flex: 1, minHeight: 0 }}>
+            {/* Left: SVG Doughnut Chart */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '110px', height: '110px', flexShrink: 0, margin: '0.25rem auto' }}>
+              {renderDoughnut()}
+              {/* Inner label */}
+              <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>{holdings.length}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Currency Allocation */}
-          <div>
-            <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Coins size={13} /> {t('allocation.by_currency', 'By Currency')}
-            </h4>
-            <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
-              {currencies.map((item) => (
+            {/* Right: Legend bars */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '160px' }}>
+              {chartItems.map((item) => (
                 <div key={item.name} className="allocation-item">
-                  <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name}</span>
-                    <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', alignItems: 'center', marginBottom: '2px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: item.color }}></span>
+                      {activeTab === 'class'
+                        ? (item.name === 'Equity' ? t('holdings.class_equity', 'Equity') : item.name === 'Cash' ? t('holdings.class_cash', 'Cash') : item.name === 'ETF' ? t('holdings.class_etf', 'ETF') : item.name)
+                        : activeTab === 'market'
+                        ? (item.name === 'USA' ? t('allocation.usa', 'USA') : item.name === 'Poland' ? t('allocation.poland', 'Poland') : item.name === 'Germany' ? t('allocation.germany', 'Germany') : item.name)
+                        : item.name
+                      }
+                    </span>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{item.percentage.toFixed(1)}%</span>
                   </div>
-                  <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '4px', background: 'rgba(255,255,255,0.04)', borderRadius: '2px', overflow: 'hidden' }}>
                     <div 
-                      className="allocation-fill currency-color" 
                       style={{ 
-                        height: '100%',
-                        width: `${item.percentage}%`,
-                        background: item.name === 'USD' ? 'hsl(217, 91%, 60%)' : item.name === 'EUR' ? 'hsl(263, 90%, 65%)' : 'hsl(142, 70%, 45%)',
-                        borderRadius: '3px',
-                        transition: 'width 0.4s ease-out'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Geographic Allocation */}
-          <div>
-            <h4 className="allocation-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-              <Globe size={13} /> {t('allocation.by_market', 'By Market / Exchange')}
-            </h4>
-            <div className="allocation-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '0.4rem' }}>
-              {countries.map((item) => (
-                <div key={item.name} className="allocation-item">
-                  <div className="allocation-label" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span>{item.name === 'USA' ? t('allocation.usa', 'USA') : item.name === 'Poland' ? t('allocation.poland', 'Poland') : item.name === 'Germany' ? t('allocation.germany', 'Germany') : item.name}</span>
-                    <span className="percentage-val" style={{ fontWeight: 600 }}>{item.percentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="allocation-track" style={{ height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div 
-                      className="allocation-fill country-color" 
-                      style={{ 
-                        height: '100%',
-                        width: `${item.percentage}%`,
-                        background: item.name === 'USA' ? 'hsl(217, 91%, 60%)' : item.name === 'Poland' ? 'hsl(142, 70%, 45%)' : 'hsl(263, 90%, 65%)',
-                        borderRadius: '3px',
+                        height: '100%', 
+                        width: `${item.percentage}%`, 
+                        background: item.color, 
+                        borderRadius: '2px',
                         transition: 'width 0.4s ease-out'
                       }}
                     ></div>

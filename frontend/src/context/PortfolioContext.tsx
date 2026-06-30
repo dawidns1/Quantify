@@ -70,7 +70,7 @@ interface PortfolioContextType {
   loadPortfolios: () => Promise<void>;
   fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean) => Promise<void>;
   fetchTransactions: () => Promise<void>;
-  fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
+  fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string) => Promise<void>;
   fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
 }
 
@@ -376,7 +376,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
   const fetchHistoricalPerformance = async (
     curr: BaseCurrencyType = baseCurrency,
-    accountFilter: string = selectedAccount
+    accountFilter: string = selectedAccount,
+    benchmarks?: string
   ) => {
     if (!activePortfolioId) {
       setChartData(null);
@@ -392,7 +393,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         activePortfolioId,
         curr,
         accountFilter,
-        linkCash
+        linkCash,
+        benchmarks
       );
 
       // Prevent race conditions
