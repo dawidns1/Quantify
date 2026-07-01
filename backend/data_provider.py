@@ -309,7 +309,7 @@ class YFinanceProvider(BaseDataProvider):
             exchange = ""
             
         resolved_currency = native_currency.upper().strip() if native_currency else guess_native_currency(symbol)
-        if resolved_currency in ["GBP", "GBX"] or symbol.upper().strip().endswith(".L"):
+        if resolved_currency in ["GBP", "GBX"]:
             resolved_currency = "GBP"
             if live_price:
                 live_price = float(live_price) / 100.0
@@ -379,7 +379,19 @@ class YFinanceProvider(BaseDataProvider):
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
             df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
-            is_pence = symbol.upper().strip().endswith(".L")
+            is_pence = False
+            if symbol.upper().strip().endswith(".L"):
+                try:
+                    ticker = yf.Ticker(symbol, session=YF_SESSION)
+                    curr = ticker.fast_info.get("currency")
+                    if not curr:
+                        curr = (ticker.info or {}).get("currency")
+                    if curr:
+                        is_pence = curr.upper().strip() in {"GBP", "GBX"}
+                    else:
+                        is_pence = True
+                except Exception:
+                    is_pence = True
             if not df.empty:
                 if 'Close' in df.columns:
                     closes = df['Close']
