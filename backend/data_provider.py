@@ -54,6 +54,10 @@ def guess_native_currency(symbol: str) -> str:
         return "PLN"
     if suffix == "L":
         return "GBP"
+    if suffix == "JO":
+        return "ZAR"
+    if suffix == "TA":
+        return "ILS"
     if suffix == "SW":
         return "CHF"
     if suffix in {"TO", "V"}:
@@ -309,8 +313,14 @@ class YFinanceProvider(BaseDataProvider):
             exchange = ""
             
         resolved_currency = native_currency.upper().strip() if native_currency else guess_native_currency(symbol)
-        if resolved_currency in ["GBP", "GBX"]:
-            resolved_currency = "GBP"
+        if resolved_currency in ["GBP", "GBX", "ZAC", "ILA"]:
+            if resolved_currency in ["GBP", "GBX"]:
+                resolved_currency = "GBP"
+            elif resolved_currency == "ZAC":
+                resolved_currency = "ZAR"
+            elif resolved_currency == "ILA":
+                resolved_currency = "ILS"
+                
             if live_price:
                 live_price = float(live_price) / 100.0
             if previous_close:
@@ -380,14 +390,15 @@ class YFinanceProvider(BaseDataProvider):
         try:
             df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
             is_pence = False
-            if symbol.upper().strip().endswith(".L"):
+            symbol_upper = symbol.upper().strip()
+            if symbol_upper.endswith(".L") or symbol_upper.endswith(".JO") or symbol_upper.endswith(".TA"):
                 try:
                     ticker = yf.Ticker(symbol, session=YF_SESSION)
                     curr = ticker.fast_info.get("currency")
                     if not curr:
                         curr = (ticker.info or {}).get("currency")
                     if curr:
-                        is_pence = curr.upper().strip() in {"GBP", "GBX"}
+                        is_pence = curr.upper().strip() in {"GBP", "GBX", "ZAC", "ILA"}
                     else:
                         is_pence = True
                 except Exception:
