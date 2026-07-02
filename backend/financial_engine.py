@@ -217,24 +217,38 @@ def calculate_beta(daily_nav: list, daily_cash_flows: dict, benchmark_symbol: st
         return 1.0
         
     # Fetch benchmark data
-    start_str = portfolio_dates[0]
-    end_str = (datetime.strptime(portfolio_dates[-1], "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
-    
     try:
-        from backend.data_provider import YF_SESSION
-        df = yf.download(benchmark_symbol, start=start_str, end=end_str, progress=False, session=YF_SESSION)
-        closes = df['Close']
-        if isinstance(closes, pd.DataFrame):
-            closes = closes.squeeze()
-        benchmark_closes = closes.dropna()
-        if len(benchmark_closes) < 5:
+        from backend.cache_db import get_cached_historical_prices, save_cached_historical_prices
+        
+        # Load from SQLite cache first
+        start_date = datetime.strptime(portfolio_dates[0], "%Y-%m-%d").date()
+        end_date = datetime.strptime(portfolio_dates[-1], "%Y-%m-%d").date()
+        
+        prices_dict, _ = get_cached_historical_prices(benchmark_symbol, start_date, end_date)
+        
+        # If cache is missing or incomplete, download from yfinance and save to cache
+        expected_days = (end_date - start_date).days
+        if len(prices_dict) < max(5, expected_days * 0.4):
+            from backend.data_provider import get_provider
+            provider = get_provider()
+            prices_dict, divs_dict = provider.download_historical_stock(benchmark_symbol, start_date, end_date)
+            if prices_dict:
+                save_cached_historical_prices(benchmark_symbol, prices_dict, divs_dict)
+                
+        if not prices_dict:
             return 1.0
             
-        # Compute benchmark daily returns mapped to the same dates
+        # Build benchmark daily returns mapped to the same dates
+        dates_sorted = sorted(prices_dict.keys())
+        benchmark_closes = pd.Series(
+            data=[prices_dict[d] for d in dates_sorted],
+            index=pd.to_datetime(dates_sorted)
+        )
+        
         benchmark_returns = []
         aligned_portfolio_returns = []
         
-        # Build benchmark returns map
+        # Compute benchmark daily returns
         bench_ret_map = {}
         for i in range(1, len(benchmark_closes)):
             prev_val = float(benchmark_closes.iloc[i-1])
@@ -267,7 +281,7 @@ def calculate_beta(daily_nav: list, daily_cash_flows: dict, benchmark_symbol: st
 
 def calculate_correlation_matrix(symbols: list, days: int = 365) -> dict:
     """
-    Computes Pearson correlation matrix for the active symbols.
+    Computes Pearson correlation matrix for the active symbols using SQLite cache.
     """
     if len(symbols) < 2:
         return {}
@@ -275,24 +289,27 @@ def calculate_correlation_matrix(symbols: list, days: int = 365) -> dict:
     end_date = date.today()
     start_date = end_date - timedelta(days=days)
     
-    start_str = start_date.strftime("%Y-%m-%d")
-    end_str = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
-    
     try:
-        # Download prices in bulk
-        from backend.data_provider import YF_SESSION
-        df = yf.download(" ".join(symbols), start=start_str, end=end_str, progress=False, session=YF_SESSION)
-        if df.empty:
+        from backend.cache_db import get_cached_historical_prices
+        
+        # Build a pandas DataFrame of daily closing prices from SQLite cache
+        series_dict = {}
+        for sym in symbols:
+            prices, _ = get_cached_historical_prices(sym, start_date, end_date)
+            if prices:
+                # Map to string dates for alignment
+                series_dict[sym] = pd.Series(
+                    data=[v for v in prices.values()],
+                    index=[d.strftime("%Y-%m-%d") for d in prices.keys()]
+                )
+                
+        if not series_dict:
             return {}
             
-        # Parse close prices
-        if 'Close' in df.columns:
-            closes_df = df['Close']
-        else:
-            return {}
-            
+        closes_df = pd.DataFrame(series_dict)
+        
         # Calculate daily returns
-        returns_df = closes_df.pct_change().dropna()
+        returns_df = closes_df.pct_change().dropna(how='all')
         
         # Pearson correlation
         corr_df = returns_df.corr(method='pearson')
@@ -300,7 +317,6 @@ def calculate_correlation_matrix(symbols: list, days: int = 365) -> dict:
         # Fill NaN values with 0.0 and diagonal with 1.0
         corr_df = corr_df.fillna(0.0)
         
-        # Convert to dictionary of dictionaries
         matrix = {}
         for s1 in symbols:
             matrix[s1] = {}
