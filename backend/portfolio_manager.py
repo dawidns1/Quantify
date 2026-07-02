@@ -234,7 +234,6 @@ class PortfolioManager:
                         "live_price": stock_data.get("live_price", 0.0),
                         "previous_close": stock_data.get("previous_close", 0.0),
                         "company_name": stock_data.get("company_name", sym),
-                        "native_currency": stock_data.get("native_currency", "USD"),
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
                     })

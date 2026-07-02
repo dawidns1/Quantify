@@ -145,7 +145,7 @@ def save_cached_live_price(symbol: str, data: dict):
                     live_price = excluded.live_price,
                     previous_close = excluded.previous_close,
                     company_name = excluded.company_name,
-                    native_currency = excluded.native_currency,
+                    native_currency = COALESCE(excluded.native_currency, native_currency),
                     timezone = excluded.timezone,
                     exchange = excluded.exchange,
                     last_updated = excluded.last_updated
