@@ -28,8 +28,23 @@ if not IS_PRODUCTION:
     except AttributeError:
         pass
 
+class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
+    def __init__(self, *args, **kwargs):
+        self.timeout = kwargs.pop("timeout", 5.0)
+        super().__init__(*args, **kwargs)
+
+    def send(self, request, **kwargs):
+        timeout = kwargs.get("timeout")
+        if timeout is None:
+            kwargs["timeout"] = self.timeout
+        return super().send(request, **kwargs)
+
 # Shared requests session with conditional SSL certificate verification and browser User-Agent
 YF_SESSION = requests.Session()
+adapter = TimeoutHTTPAdapter(timeout=5.0)
+YF_SESSION.mount("https://", adapter)
+YF_SESSION.mount("http://", adapter)
+
 if IS_PRODUCTION:
     YF_SESSION.verify = True
 else:
