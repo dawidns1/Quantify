@@ -232,12 +232,12 @@ class PortfolioManager:
                     except Exception:
                         pass
                         
-                    resolved_currency = db_currency if db_currency else stock_data.get("native_currency", "USD")
+                    resolved_currency = db_currency
                     
                     cls._live_ticker_cache[sym] = (now, stock_data)
                     cls._ticker_metadata_cache[sym] = {
                         "company_name": stock_data.get("company_name", sym),
-                        "native_currency": resolved_currency.upper().strip(),
+                        "native_currency": resolved_currency.upper().strip() if resolved_currency else None,
                         "asset_class": "Equity",
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
