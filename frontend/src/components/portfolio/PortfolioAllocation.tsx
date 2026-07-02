@@ -97,7 +97,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
   const chartItems = useMemo<ChartItem[]>(() => {
     let list: { name: string; percentage: number; val: number }[] = [];
     if (activeTab === 'class') list = assetClasses;
-    else if (activeTab === 'ticker') list = assets.slice(0, 6);
+    else if (activeTab === 'ticker') list = assets;
     else if (activeTab === 'currency') list = currencies;
     else if (activeTab === 'market') list = countries;
     
@@ -278,7 +278,19 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
             </div>
 
             {/* Right: Legend bars */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '160px' }}>
+            <div 
+              className="custom-scrollbar"
+              style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem', 
+                minWidth: '160px',
+                maxHeight: '120px',
+                overflowY: 'auto',
+                paddingRight: '6.5px'
+              }}
+            >
               {chartItems.map((item) => (
                 <div key={item.name} className="allocation-item">
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', alignItems: 'center', marginBottom: '2px' }}>
