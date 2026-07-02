@@ -223,10 +223,21 @@ class PortfolioManager:
                     stock_data = res["stocks"].get(sym)
                     if not stock_data or stock_data.get("live_price", 0.0) == 0.0:
                         continue
+                        
+                    db_currency = None
+                    try:
+                        db_row = get_expired_cached_live_price(sym)
+                        if db_row:
+                            db_currency = db_row.get("native_currency")
+                    except Exception:
+                        pass
+                        
+                    resolved_currency = db_currency if db_currency else stock_data.get("native_currency", "USD")
+                    
                     cls._live_ticker_cache[sym] = (now, stock_data)
                     cls._ticker_metadata_cache[sym] = {
                         "company_name": stock_data.get("company_name", sym),
-                        "native_currency": stock_data.get("native_currency", "USD").upper().strip(),
+                        "native_currency": resolved_currency.upper().strip(),
                         "asset_class": "Equity",
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
@@ -236,6 +247,7 @@ class PortfolioManager:
                         "live_price": stock_data.get("live_price", 0.0),
                         "previous_close": stock_data.get("previous_close", 0.0),
                         "company_name": stock_data.get("company_name", sym),
+                        "native_currency": resolved_currency,
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
                     })
