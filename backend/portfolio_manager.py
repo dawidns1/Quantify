@@ -1302,7 +1302,7 @@ class PortfolioManager:
             # we query Yahoo Finance single ticker info to resolve the mismatch.
             first_tx = symbol_txs[symbol][0]
             tx_curr = first_tx.get("currency", "USD").upper().strip()
-            if native_currency and tx_curr != native_currency and tx_curr not in ["PLN"]:
+            if (not native_currency) or (tx_curr != native_currency and tx_curr not in ["PLN"]):
                 try:
                     real_info = provider.download_live_ticker(symbol)
                     if real_info.get("native_currency"):
