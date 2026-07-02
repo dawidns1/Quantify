@@ -60,8 +60,18 @@ FALLBACK_RATES = {
     "USDEUR": 0.92, "EURUSD": 1.08
 }
 
+# Hardcoded currency overrides for specific listings to guarantee correctness even during network/API failures
+CURRENCY_OVERRIDES = {
+    "DTLA.L": "USD",
+    "IUST.L": "USD",
+    "IUUS.L": "USD"
+}
+
 def guess_native_currency(symbol: str) -> str:
     symbol = symbol.upper().strip()
+    if symbol in CURRENCY_OVERRIDES:
+        return CURRENCY_OVERRIDES[symbol]
+        
     suffix = symbol.split(".")[-1] if "." in symbol else ""
     if suffix in {"DE", "PA", "AS", "BR", "MI", "MC", "LS", "AT", "VI", "EE", "HE", "OL", "IC"}:
         return "EUR"
