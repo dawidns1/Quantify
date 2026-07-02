@@ -238,7 +238,16 @@ export function PortfolioAnalytics({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem', fontFamily: 'monospace' }}>
                   <thead>
                     <tr>
-                      <th style={{ padding: '4px', border: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}></th>
+                      <th style={{ 
+                        padding: '4px', 
+                        border: '1px solid rgba(255,255,255,0.05)', 
+                        color: 'var(--text-muted)',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 10,
+                        background: '#0f1422',
+                        borderRight: '1px solid rgba(255,255,255,0.1)'
+                      }}></th>
                       {Object.keys(analytics.correlation_matrix).map(sym => (
                         <th key={sym} style={{ padding: '4px 6px', border: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-primary)', fontWeight: 700 }}>
                           {sym}
@@ -249,7 +258,17 @@ export function PortfolioAnalytics({
                   <tbody>
                     {Object.entries(analytics.correlation_matrix).map(([symRow, cols]) => (
                       <tr key={symRow}>
-                        <td style={{ padding: '4px 6px', border: '1px solid rgba(255,255,255,0.05)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        <td style={{ 
+                          padding: '4px 6px', 
+                          border: '1px solid rgba(255,255,255,0.05)', 
+                          fontWeight: 700, 
+                          color: 'var(--text-primary)',
+                          position: 'sticky',
+                          left: 0,
+                          zIndex: 5,
+                          background: '#0f1422',
+                          borderRight: '1px solid rgba(255,255,255,0.1)'
+                        }}>
                           {symRow}
                         </td>
                         {Object.keys(analytics.correlation_matrix).map(symCol => {
