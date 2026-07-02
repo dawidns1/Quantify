@@ -1308,6 +1308,11 @@ class PortfolioManager:
                     if real_info.get("native_currency"):
                         native_currency = real_info["native_currency"].upper().strip()
                         info["native_currency"] = native_currency
+                        
+                        # Also update the metadata cache to prevent out-of-sync read loops
+                        if symbol in cls._ticker_metadata_cache:
+                            cls._ticker_metadata_cache[symbol]["native_currency"] = native_currency
+                            
                         save_cached_live_price(symbol, {
                             "live_price": info.get("live_price", 0.0),
                             "previous_close": info.get("previous_close", 0.0),

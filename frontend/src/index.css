@@ -388,10 +388,6 @@ body.low-perf .glow-card::after {
   border-radius: 12px;
   border: 1px solid var(--panel-border);
   min-height: 450px;
-  
-  /* Skip rendering the table off-screen to improve scrolling performance */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 450px;
 }
 
 .screener-table {
