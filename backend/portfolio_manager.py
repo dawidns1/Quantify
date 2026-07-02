@@ -220,7 +220,9 @@ class PortfolioManager:
             try:
                 res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
                 for sym in missing_symbols:
-                    stock_data = res["stocks"].get(sym, {"live_price": 0.0, "company_name": sym, "native_currency": "USD"})
+                    stock_data = res["stocks"].get(sym)
+                    if not stock_data or stock_data.get("live_price", 0.0) == 0.0:
+                        continue
                     cls._live_ticker_cache[sym] = (now, stock_data)
                     cls._ticker_metadata_cache[sym] = {
                         "company_name": stock_data.get("company_name", sym),
@@ -239,7 +241,9 @@ class PortfolioManager:
                     })
                     
                 for pair in missing_fx:
-                    rate = res["fx"].get(pair, 1.0)
+                    rate = res["fx"].get(pair)
+                    if not rate or rate == 1.0 or math.isnan(rate):
+                        continue
                     cls._live_fx_cache[pair] = (now, rate)
                     # Save to SQLite L2 Cache
                     save_cached_live_price(pair, {

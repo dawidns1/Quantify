@@ -158,6 +158,22 @@ def start_cache_warmer():
 
 @app.on_event("startup")
 def startup_event():
+    # Purge any corrupted GBP cache rows for DTLA.L
+    try:
+        from backend.cache_db import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM live_prices WHERE symbol = 'DTLA.L' AND native_currency = 'GBP'")
+        count = cursor.fetchone()[0]
+        if count > 0:
+            print("[STARTUP] Purging corrupted GBP cache rows for DTLA.L...")
+            cursor.execute("DELETE FROM live_prices WHERE symbol = 'DTLA.L'")
+            cursor.execute("DELETE FROM daily_prices WHERE symbol = 'DTLA.L'")
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[STARTUP] Error purging DTLA.L cache: {e}")
+        
     start_cache_warmer()
 
 # If VERCEL environment is active, direct local writes to /tmp cache folder

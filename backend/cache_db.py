@@ -142,13 +142,13 @@ def save_cached_live_price(symbol: str, data: dict):
                 INSERT INTO live_prices (symbol, live_price, previous_close, company_name, native_currency, timezone, exchange, last_updated)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(symbol) DO UPDATE SET
-                    live_price = excluded.live_price,
-                    previous_close = excluded.previous_close,
+                    live_price = CASE WHEN excluded.live_price > 0.0 AND (excluded.symbol NOT LIKE '%=X' OR excluded.live_price != 1.0) THEN excluded.live_price ELSE live_price END,
+                    previous_close = CASE WHEN excluded.previous_close > 0.0 AND (excluded.symbol NOT LIKE '%=X' OR excluded.previous_close != 1.0) THEN excluded.previous_close ELSE previous_close END,
                     company_name = excluded.company_name,
                     native_currency = COALESCE(excluded.native_currency, native_currency),
                     timezone = excluded.timezone,
                     exchange = excluded.exchange,
-                    last_updated = excluded.last_updated
+                    last_updated = CASE WHEN excluded.live_price > 0.0 AND (excluded.symbol NOT LIKE '%=X' OR excluded.live_price != 1.0) THEN excluded.last_updated ELSE last_updated END
                 """, (
                     symbol.upper(),
                     data.get("live_price", 0.0),
