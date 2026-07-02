@@ -373,6 +373,8 @@ class PortfolioManager:
         try:
             res = provider.download_live_ticker(symbol)
             live_price = res.get("live_price", 0.0)
+            if not live_price or live_price == 0.0:
+                raise ValueError(f"Downloaded price is 0.0 for {symbol}")
             company_name = res.get("company_name", symbol)
             native_currency = res.get("native_currency", "USD")
             quote_type = res.get("quote_type")
