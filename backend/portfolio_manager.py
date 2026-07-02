@@ -38,6 +38,8 @@ class PortfolioManager:
     _ticker_metadata_cache = {}   # symbol -> {timezone, exchange, company_name, native_currency, asset_class}
     _upcoming_events_cache = {}   # symbol -> (timestamp, events)
     _dividend_rate_cache = {}     # symbol -> (timestamp, rate)
+    _upcoming_events_updating = set()
+    _upcoming_events_updating_lock = threading.Lock()
     
     _live_prefetch_lock = threading.Lock()
     _historical_prefetch_lock = threading.Lock()
@@ -502,61 +504,43 @@ class PortfolioManager:
     @classmethod
     def get_upcoming_events(cls, active_holdings: list) -> list:
         """
-        Fetch upcoming earnings and ex-dividend dates concurrently for currently active holdings.
-        Uses backend caching to avoid rate limit bans.
+        Loads upcoming events from SQLite cache immediately and schedules background 
+        refreshes for missing or expired records to avoid blocking the API thread.
         """
-        import requests
-        import urllib3
-        import ssl
         from datetime import date, datetime
-        from concurrent.futures import ThreadPoolExecutor
-        import yfinance as yf
-
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        ssl._create_default_https_context = ssl._create_unverified_context
-
-        # Setup standard requests session with verify=False and custom user agent
-        session = requests.Session()
-        session.verify = False
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        })
-
+        
         now = time.time()
         today = date.today()
-
-        def to_date_obj(val):
-            if isinstance(val, date):
-                return val
-            if isinstance(val, datetime):
-                return val.date()
-            if isinstance(val, str):
-                try:
-                    return datetime.strptime(val.split("T")[0], "%Y-%m-%d").date()
-                except Exception:
-                    pass
-            return None
-
-        def fetch_ticker_events(symbol, shares_owned):
-            symbol = symbol.upper().strip()
-            # 1. Check L1 cache first
+        
+        compiled_events = []
+        symbols_to_update = []
+        
+        for h in active_holdings:
+            symbol = h["symbol"].upper().strip()
+            shares_owned = h["shares"]
+            
+            # 1. Check L1 Cache (memory) first
             cached_entry = cls._upcoming_events_cache.get(symbol)
-            if cached_entry and (now - cached_entry[0] < cls.EVENTS_CACHE_TTL):
-                # Recalculate est_payout because shares_owned might have changed
-                updated_events = []
-                for ev in cached_entry[1]:
-                    if ev.get("date") is None:
-                        continue
-                    new_ev = dict(ev)
-                    if new_ev["type"] == "Dividend":
-                        div_val = new_ev.get("last_dividend_value", 0.0)
-                        new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
-                    updated_events.append(new_ev)
-                return updated_events
-
-            # 2. Check L2 SQLite Cache
+            if cached_entry:
+                ts, events_list = cached_entry
+                # If L1 cache is still fresh, just use it
+                if now - ts < cls.EVENTS_CACHE_TTL:
+                    updated_events = []
+                    for ev in events_list:
+                        if ev.get("date") is None:
+                            continue
+                        new_ev = dict(ev)
+                        if new_ev["type"] == "Dividend":
+                            div_val = new_ev.get("last_dividend_value", 0.0)
+                            new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
+                        updated_events.append(new_ev)
+                    compiled_events.extend(updated_events)
+                    continue
+            
+            # 2. Check L2 Cache (SQLite)
             sqlite_events = get_cached_upcoming_events(symbol, cls.EVENTS_CACHE_TTL)
             if sqlite_events is not None:
+                # Cache is fresh in SQLite! Store in L1 and use it
                 cls._upcoming_events_cache[symbol] = (now, sqlite_events)
                 updated_events = []
                 for ev in sqlite_events:
@@ -567,89 +551,12 @@ class PortfolioManager:
                         div_val = new_ev.get("last_dividend_value", 0.0)
                         new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
                     updated_events.append(new_ev)
-                return updated_events
-
-            events = []
-            fetch_success = False
-            try:
-                ticker = yf.Ticker(symbol, session=session)
-                cal = ticker.calendar
-                info = ticker.info
-                
-                # Check if we got something meaningful back from ticker.info
-                # If info is None or empty, yfinance call didn't get proper data
-                if not info or not isinstance(info, dict) or ('symbol' not in info and 'shortName' not in info and 'longName' not in info):
-                    raise Exception("Invalid or empty ticker info returned (likely rate-limited or API issue)")
-
-                # Ex-dividend value
-                last_div = info.get('lastDividendValue') or (info.get('dividendRate', 0) / 4.0 if info.get('dividendRate') else 0.0)
-                last_div = float(last_div) if last_div else 0.0
-
-                if cal and isinstance(cal, dict):
-                    # Check Ex-Dividend Date
-                    ex_div_date = cal.get('Dividend Date') or cal.get('Ex-Dividend Date')
-                    ex_date_obj = to_date_obj(ex_div_date)
-                    if ex_date_obj and ex_date_obj >= today:
-                        curr = info.get('currency') or info.get('financialCurrency') or 'USD'
-                        est_payout = shares_owned * last_div
-                        events.append({
-                            "date": ex_date_obj.isoformat(),
-                            "symbol": symbol,
-                            "type": "Dividend",
-                            "description": f"Ex-Dividend: {last_div:.2f}/share" if last_div > 0 else "Ex-Dividend Date",
-                            "est_payout": round(est_payout, 2) if est_payout > 0 else None,
-                            "last_dividend_value": last_div,
-                            "currency": curr.upper().strip()
-                        })
-                    
-                    # Check Earnings Dates
-                    earnings_dates = cal.get('Earnings Date')
-                    if earnings_dates and isinstance(earnings_dates, list):
-                        for ed in earnings_dates:
-                            ed_obj = to_date_obj(ed)
-                            if ed_obj and ed_obj >= today:
-                                avg_eps = cal.get('Earnings Average')
-                                events.append({
-                                    "date": ed_obj.isoformat(),
-                                    "symbol": symbol,
-                                    "type": "Earnings",
-                                    "description": f"Earnings Release (Est. EPS: {avg_eps:.2f})" if avg_eps else "Earnings Release"
-                                })
-                else:
-                    # Fallback to info timestamps if calendar fails
-                    ex_ts = info.get('exDividendDate')
-                    if ex_ts:
-                        try:
-                            # exDividendDate is usually a Unix timestamp (seconds)
-                            ex_dt = date.fromtimestamp(ex_ts)
-                            if ex_dt >= today:
-                                curr = info.get('currency') or info.get('financialCurrency') or 'USD'
-                                est_payout = shares_owned * last_div
-                                events.append({
-                                    "date": ex_dt.isoformat(),
-                                    "symbol": symbol,
-                                    "type": "Dividend",
-                                    "description": f"Ex-Dividend: {last_div:.2f}/share" if last_div > 0 else "Ex-Dividend Date",
-                                    "est_payout": round(est_payout, 2) if est_payout > 0 else None,
-                                    "last_dividend_value": last_div,
-                                    "currency": curr.upper().strip()
-                                })
-                        except Exception:
-                            pass
-                
-                # If we get to this point, the fetch was successful!
-                fetch_success = True
-                
-            except Exception as ex:
-                print(f"[UpcomingEvents] Error fetching for {symbol}: {ex}")
-                # Fetch failed! Try to fall back to expired cache (ignore TTL)
+                compiled_events.extend(updated_events)
+            else:
+                # Cache is expired or missing in SQLite!
+                # Try fetching expired cache (ignore TTL) to avoid returning empty while updating in bg
                 expired_sqlite_events = get_cached_upcoming_events(symbol, cls.EVENTS_CACHE_TTL, ignore_ttl=True)
-                if expired_sqlite_events is not None:
-                    # Update database timestamp so we don't spam requests to yfinance
-                    update_upcoming_events_timestamp(symbol)
-                    cls._upcoming_events_cache[symbol] = (now, expired_sqlite_events)
-                    
-                    # Recalculate payouts for return value
+                if expired_sqlite_events:
                     updated_events = []
                     for ev in expired_sqlite_events:
                         if ev.get("date") is None:
@@ -659,24 +566,26 @@ class PortfolioManager:
                             div_val = new_ev.get("last_dividend_value", 0.0)
                             new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
                         updated_events.append(new_ev)
-                    return updated_events
+                    compiled_events.extend(updated_events)
+                
+                # Schedule background update
+                symbols_to_update.append((symbol, shares_owned))
 
-            if fetch_success:
-                # Cache the parsed results to L1 and L2
-                cls._upcoming_events_cache[symbol] = (now, events)
-                save_cached_upcoming_events(symbol, events)
-                return [ev for ev in events if ev.get("date") is not None]
-            else:
-                # If we got here, fetch failed and we have no cached data at all. Return empty list but do not write to DB.
-                return []
-
-        # Compile concurrently
-        compiled_events = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(fetch_ticker_events, h["symbol"], h["shares"]): h["symbol"] for h in active_holdings}
-            for fut in futures:
-                res = fut.result()
-                compiled_events.extend(res)
+        # Spawn background thread to fetch yfinance data if needed
+        if symbols_to_update:
+            symbols_to_trigger = []
+            with cls._upcoming_events_updating_lock:
+                for symbol, shares in symbols_to_update:
+                    if symbol not in cls._upcoming_events_updating:
+                        cls._upcoming_events_updating.add(symbol)
+                        symbols_to_trigger.append((symbol, shares))
+                        
+            if symbols_to_trigger:
+                threading.Thread(
+                    target=cls._update_upcoming_events_bg_thread,
+                    args=(symbols_to_trigger,),
+                    daemon=True
+                ).start()
 
         # Add historical dividend projections for any active holdings that do not have an upcoming dividend event
         for h in active_holdings:
@@ -734,6 +643,121 @@ class PortfolioManager:
 
         unique_events.sort(key=lambda x: x["date"])
         return unique_events
+
+    @classmethod
+    def _update_upcoming_events_bg_thread(cls, symbols_and_shares: list):
+        import time
+        import yfinance as yf
+        import requests
+        from datetime import date, datetime
+        
+        session = requests.Session()
+        session.verify = False
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+        
+        now = time.time()
+        today = date.today()
+        
+        def to_date_obj(val):
+            if isinstance(val, date):
+                return val
+            if isinstance(val, datetime):
+                return val.date()
+            if isinstance(val, str):
+                try:
+                    return datetime.strptime(val.split("T")[0], "%Y-%m-%d").date()
+                except Exception:
+                    pass
+            return None
+            
+        for symbol, shares_owned in symbols_and_shares:
+            try:
+                events = []
+                ticker = yf.Ticker(symbol, session=session)
+                
+                cal = None
+                # Skip calendarEvents queries for ETFs/Funds to prevent slow 404s
+                is_etf = ".DE" in symbol or ".L" in symbol or "ETF" in symbol
+                if not is_etf:
+                    try:
+                        cal = ticker.calendar
+                    except Exception:
+                        pass
+                
+                try:
+                    info = ticker.info or {}
+                except Exception:
+                    info = {}
+                    
+                last_div = info.get('lastDividendValue') or (info.get('dividendRate', 0) / 4.0 if info.get('dividendRate') else 0.0)
+                last_div = float(last_div) if last_div else 0.0
+                
+                if cal and isinstance(cal, dict):
+                    ex_div_date = cal.get('Dividend Date') or cal.get('Ex-Dividend Date')
+                    ex_date_obj = to_date_obj(ex_div_date)
+                    if ex_date_obj and ex_date_obj >= today:
+                        curr = info.get('currency') or info.get('financialCurrency') or 'USD'
+                        est_payout = shares_owned * last_div
+                        events.append({
+                            "date": ex_date_obj.isoformat(),
+                            "symbol": symbol,
+                            "type": "Dividend",
+                            "description": f"Ex-Dividend: {last_div:.2f}/share" if last_div > 0 else "Ex-Dividend Date",
+                            "est_payout": round(est_payout, 2) if est_payout > 0 else None,
+                            "last_dividend_value": last_div,
+                            "currency": curr.upper().strip()
+                        })
+                    
+                    earnings_dates = cal.get('Earnings Date')
+                    if earnings_dates and isinstance(earnings_dates, list):
+                        for ed in earnings_dates:
+                            ed_obj = to_date_obj(ed)
+                            if ed_obj and ed_obj >= today:
+                                avg_eps = cal.get('Earnings Average')
+                                events.append({
+                                    "date": ed_obj.isoformat(),
+                                    "symbol": symbol,
+                                    "type": "Earnings",
+                                    "description": f"Earnings Release (Est. EPS: {avg_eps:.2f})" if avg_eps else "Earnings Release"
+                                })
+                else:
+                    ex_ts = info.get('exDividendDate')
+                    if ex_ts:
+                        try:
+                            ex_dt = date.fromtimestamp(ex_ts)
+                            if ex_dt >= today:
+                                curr = info.get('currency') or info.get('financialCurrency') or 'USD'
+                                est_payout = shares_owned * last_div
+                                events.append({
+                                    "date": ex_dt.isoformat(),
+                                    "symbol": symbol,
+                                    "type": "Dividend",
+                                    "description": f"Ex-Dividend: {last_div:.2f}/share" if last_div > 0 else "Ex-Dividend Date",
+                                    "est_payout": round(est_payout, 2) if est_payout > 0 else None,
+                                    "last_dividend_value": last_div,
+                                    "currency": curr.upper().strip()
+                                })
+                        except Exception:
+                            pass
+                            
+                # Cache results to SQLite
+                save_cached_upcoming_events(symbol, events)
+                # Update L1 cache
+                cls._upcoming_events_cache[symbol] = (now, events)
+            except Exception as e:
+                print(f"[UpcomingEvents bg] Error fetching for {symbol}: {e}")
+                try:
+                    update_upcoming_events_timestamp(symbol)
+                except Exception:
+                    pass
+            finally:
+                with cls._upcoming_events_updating_lock:
+                    cls._upcoming_events_updating.discard(symbol)
+            
+            # 0.5s throttle delay to be extremely friendly to Yahoo Finance
+            time.sleep(0.5)
 
     @classmethod
     def get_merged_dividends(cls, sorted_txs: list, symbol_txs: dict, ticker_info: dict, base_currency: str, fx_rates: dict, portfolio_settings: dict) -> list:

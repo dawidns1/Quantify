@@ -577,9 +577,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedA) {
         setAnalytics(JSON.parse(cachedA));
-      } else {
-        fetchPortfolioAnalytics(baseCurrency, selectedAccount);
       }
+      // Always fetch fresh analytics in the background
+      fetchPortfolioAnalytics(baseCurrency, selectedAccount);
     } else {
       setAnalytics(null);
       setLoadingAnalytics(false);

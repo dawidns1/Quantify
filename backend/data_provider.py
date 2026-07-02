@@ -380,31 +380,83 @@ class YFinanceProvider(BaseDataProvider):
         return float(rate)
 
     def download_historical_stock_bulk(self, symbols: list, start_dt: date, end_dt: date) -> tuple:
-        import concurrent.futures
-        
         prices_by_symbol = {}
         dividends_by_symbol = {}
         for sym in symbols:
             prices_by_symbol[sym] = {}
             dividends_by_symbol[sym] = {}
 
-        def fetch_single(sym):
-            try:
-                p, d = self.download_historical_stock(sym, start_dt, end_dt)
-                return sym, p, d
-            except Exception as sym_err:
-                print(f"Error in parallel historical download for {sym}: {sym_err}")
-                return sym, {}, {}
+        if not symbols:
+            return prices_by_symbol, dividends_by_symbol
 
-        # Fetch in parallel using a thread pool with max 8 concurrent workers
-        max_workers = min(len(symbols), 8) if symbols else 1
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(fetch_single, sym): sym for sym in symbols}
-            for future in concurrent.futures.as_completed(futures):
-                sym, p, d = future.result()
-                prices_by_symbol[sym] = p
-                dividends_by_symbol[sym] = d
+        start_str = start_dt.strftime("%Y-%m-%d")
+        end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
 
+        try:
+            # Check London-listed / other pence suffix indicators
+            pence_symbols = set()
+            for sym in symbols:
+                symbol_upper = sym.upper().strip()
+                if symbol_upper.endswith(".L") or symbol_upper.endswith(".JO") or symbol_upper.endswith(".TA"):
+                    try:
+                        # Check our hardcoded overrides first to avoid queries
+                        if sym in CURRENCY_OVERRIDES and CURRENCY_OVERRIDES[sym] == "USD":
+                            is_pence = False
+                        else:
+                            ticker = yf.Ticker(sym, session=YF_SESSION)
+                            curr = ticker.fast_info.get("currency")
+                            if not curr:
+                                curr = (ticker.info or {}).get("currency")
+                            is_pence = curr.upper().strip() in {"GBP", "GBX", "ZAC", "ILA"} if curr else True
+                    except Exception:
+                        is_pence = True
+                    if is_pence:
+                        pence_symbols.add(sym)
+
+            # Download all historical prices in a single bulk request!
+            df = yf.download(symbols, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
+            
+            if not df.empty:
+                # Normalize columns if single symbol (returns flat columns)
+                if len(symbols) == 1:
+                    sym = symbols[0]
+                    if 'Close' in df.columns:
+                        closes = df['Close'].dropna()
+                        is_pence = sym in pence_symbols
+                        for idx, val in closes.items():
+                            dt = idx.to_pydatetime().date()
+                            prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
+                    if 'Dividends' in df.columns:
+                        divs = df['Dividends'].dropna()
+                        is_pence = sym in pence_symbols
+                        for idx, val in divs.items():
+                            if float(val) > 0:
+                                dt = idx.to_pydatetime().date()
+                                dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
+                else:
+                    # Multi-index columns
+                    if 'Close' in df.columns:
+                        closes_df = df['Close']
+                        for sym in symbols:
+                            if sym in closes_df.columns:
+                                closes = closes_df[sym].dropna()
+                                is_pence = sym in pence_symbols
+                                for idx, val in closes.items():
+                                    dt = idx.to_pydatetime().date()
+                                    prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
+                    if 'Dividends' in df.columns:
+                        divs_df = df['Dividends']
+                        for sym in symbols:
+                            if sym in divs_df.columns:
+                                divs = divs_df[sym].dropna()
+                                is_pence = sym in pence_symbols
+                                for idx, val in divs.items():
+                                    if float(val) > 0:
+                                        dt = idx.to_pydatetime().date()
+                                        dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
+        except Exception as e:
+            print(f"YFinance bulk historical stock download failed: {e}")
+            
         return prices_by_symbol, dividends_by_symbol
 
     def download_historical_stock(self, symbol: str, start_dt: date, end_dt: date) -> tuple:

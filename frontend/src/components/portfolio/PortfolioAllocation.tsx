@@ -120,7 +120,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
   const renderDoughnut = () => {
     if (chartItems.length === 0) {
       return (
-        <svg width="110" height="110" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.3))' }}>
+        <svg width="145" height="145" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 10px rgba(0,0,0,0.3))' }}>
           <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="4.2" />
         </svg>
       );
@@ -128,7 +128,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
     
     let accumulatedPercent = 0;
     return (
-      <svg width="110" height="110" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.35))' }}>
+      <svg width="145" height="145" viewBox="0 0 42 42" style={{ transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.35))' }}>
         <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(255,255,255,0.02)" strokeWidth="4.2" />
         {chartItems.map((item, idx) => {
           const strokeDasharray = `${item.percentage} ${100 - item.percentage}`;
@@ -268,12 +268,12 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
           {/* Allocation Content Layout */}
           <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap', flex: 1, minHeight: 0 }}>
             {/* Left: SVG Doughnut Chart */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '110px', height: '110px', flexShrink: 0, margin: '0.25rem auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', width: '145px', height: '145px', flexShrink: 0, margin: '0.25rem auto' }}>
               {renderDoughnut()}
               {/* Inner label */}
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white' }}>{holdings.length}</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
+                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white' }}>{holdings.length}</span>
               </div>
             </div>
 
@@ -286,7 +286,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
                 flexDirection: 'column', 
                 gap: '0.5rem', 
                 minWidth: '160px',
-                maxHeight: '120px',
+                maxHeight: '150px',
                 overflowY: 'auto',
                 paddingRight: '6.5px'
               }}
