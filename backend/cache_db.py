@@ -2,7 +2,8 @@ import os
 import sqlite3
 import time
 import threading
-from datetime import datetime, date
+from datetime import datetime, date, timezone
+import requests
 
 db_write_lock = threading.Lock()
 
@@ -17,6 +18,50 @@ else:
     DATA_DIR = os.path.join(os.path.dirname(DB_DIR), "backend", "data")
     os.makedirs(DATA_DIR, exist_ok=True)
     DB_PATH = os.path.join(DATA_DIR, "cache.db")
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_ANON_KEY")
+
+def get_supabase_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+def get_supabase_kv(key: str) -> dict:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/kv_cache?key=eq.{key}"
+        r = requests.get(url, headers=get_supabase_headers(), timeout=5)
+        if r.status_code == 200:
+            rows = r.json()
+            if rows:
+                return rows[0]
+    except Exception as e:
+        print(f"[Supabase Cache] Read error for {key}: {e}")
+    return None
+
+def save_supabase_kv(key: str, value: dict):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+    try:
+        headers = get_supabase_headers()
+        url_check = f"{SUPABASE_URL}/rest/v1/kv_cache?key=eq.{key}"
+        r = requests.get(url_check, headers=headers, timeout=5)
+        now_str = datetime.now(timezone.utc).isoformat()
+        payload = {
+            "key": key,
+            "value": value,
+            "updated_at": now_str
+        }
+        if r.status_code == 200 and r.json():
+            requests.patch(url_check, headers=headers, json=payload, timeout=5)
+        else:
+            requests.post(f"{SUPABASE_URL}/rest/v1/kv_cache", headers=headers, json=payload, timeout=5)
+    except Exception as e:
+        print(f"[Supabase Cache] Write error for {key}: {e}")
 
 def get_connection():
     # check_same_thread=False allows us to pass connections across threads, 
@@ -105,6 +150,15 @@ init_db()
 
 def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
     """Gets cached live price if not older than max_age_seconds."""
+    if SUPABASE_URL and SUPABASE_KEY:
+        row = get_supabase_kv(f"LIVE_PRICE:{symbol.upper()}")
+        if row:
+            try:
+                updated_at = datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
+                if (datetime.now(timezone.utc) - updated_at).total_seconds() < max_age_seconds:
+                    return row["value"]
+            except Exception:
+                pass
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -119,6 +173,10 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
 
 def get_expired_cached_live_price(symbol: str) -> dict:
     """Gets cached live price regardless of age as a fallback."""
+    if SUPABASE_URL and SUPABASE_KEY:
+        row = get_supabase_kv(f"LIVE_PRICE:{symbol.upper()}")
+        if row:
+            return row["value"]
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -132,6 +190,8 @@ def get_expired_cached_live_price(symbol: str) -> dict:
     return None
 
 def save_cached_live_price(symbol: str, data: dict):
+    if SUPABASE_URL and SUPABASE_KEY:
+        save_supabase_kv(f"LIVE_PRICE:{symbol.upper()}", data)
     with db_write_lock:
         conn = get_connection()
         try:
@@ -169,6 +229,26 @@ def save_cached_live_price(symbol: str, data: dict):
 
 def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) -> tuple:
     """Returns (prices_dict, dividends_dict) from daily_prices table."""
+    if SUPABASE_URL and SUPABASE_KEY:
+        row = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
+        if row:
+            try:
+                prices_dict = {}
+                dividends_dict = {}
+                val = row["value"]
+                for k, v in val.get("prices", {}).items():
+                    dt = date(int(k[:4]), int(k[5:7]), int(k[8:10]))
+                    prices_dict[dt] = float(v)
+                for k, v in val.get("dividends", {}).items():
+                    dt = date(int(k[:4]), int(k[5:7]), int(k[8:10]))
+                    dividends_dict[dt] = float(v)
+                
+                filtered_prices = {d: p for d, p in prices_dict.items() if start_date <= d <= end_date}
+                filtered_dividends = {d: div for d, div in dividends_dict.items() if start_date <= d <= end_date}
+                return filtered_prices, filtered_dividends
+            except Exception as e:
+                print(f"[Supabase Cache] Historical parse error: {e}")
+                
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -200,6 +280,29 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
     """Saves historical daily prices and dividends to daily_prices table."""
     if not prices:
         return
+        
+    if SUPABASE_URL and SUPABASE_KEY:
+        existing_prices = {}
+        existing_divs = {}
+        row = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
+        if row:
+            try:
+                existing_prices = row["value"].get("prices", {})
+                existing_divs = row["value"].get("dividends", {})
+            except Exception:
+                pass
+        
+        for dt, val in prices.items():
+            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+            existing_prices[dt_str] = val
+        for dt, val in dividends.items():
+            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+            existing_divs[dt_str] = val
+            
+        save_supabase_kv(f"HIST_PRICES:{symbol.upper()}", {
+            "prices": existing_prices,
+            "dividends": existing_divs
+        })
         
     with db_write_lock:
         conn = get_connection()
@@ -236,6 +339,18 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
 
 def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0, ignore_ttl: bool = False) -> list:
     """Gets cached upcoming events if they are not older than max_age_seconds (unless ignore_ttl is True)."""
+    if SUPABASE_URL and SUPABASE_KEY:
+        row = get_supabase_kv(f"UPCOMING_EVENTS:{symbol.upper()}")
+        if row:
+            try:
+                updated_at = datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
+                age = (datetime.now(timezone.utc) - updated_at).total_seconds()
+                if ignore_ttl or age < max_age_seconds:
+                    val = row["value"]
+                    return val.get("events") or []
+            except Exception:
+                pass
+                
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -276,6 +391,14 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0, ig
 
 def update_upcoming_events_timestamp(symbol: str):
     """Updates the last_updated timestamp for all cached events of a symbol to the current time."""
+    if SUPABASE_URL and SUPABASE_KEY:
+        row = get_supabase_kv(f"UPCOMING_EVENTS:{symbol.upper()}")
+        if row:
+            try:
+                save_supabase_kv(f"UPCOMING_EVENTS:{symbol.upper()}", row["value"])
+            except Exception:
+                pass
+                
     with db_write_lock:
         conn = get_connection()
         try:
@@ -292,6 +415,11 @@ def update_upcoming_events_timestamp(symbol: str):
             conn.close()
 
 def save_cached_upcoming_events(symbol: str, events: list):
+    if SUPABASE_URL and SUPABASE_KEY:
+        save_supabase_kv(f"UPCOMING_EVENTS:{symbol.upper()}", {
+            "events": events or []
+        })
+        
     with db_write_lock:
         conn = get_connection()
         try:
