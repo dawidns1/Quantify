@@ -12,6 +12,7 @@ interface DividendCalendarProps {
   apiBaseUrl?: string;
   activePortfolioId?: string | null;
   jwtToken?: string | null;
+  style?: React.CSSProperties;
 }
 
 export function DividendCalendar({ 
@@ -23,7 +24,8 @@ export function DividendCalendar({
   viewMode,
   apiBaseUrl,
   activePortfolioId,
-  jwtToken
+  jwtToken,
+  style
 }: DividendCalendarProps) {
   const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
@@ -128,7 +130,8 @@ export function DividendCalendar({
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
       display: 'flex',
       flexDirection: 'column',
-      gap: '1rem'
+      gap: '1rem',
+      ...style
     }}>
       {/* Header with Year Switcher */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

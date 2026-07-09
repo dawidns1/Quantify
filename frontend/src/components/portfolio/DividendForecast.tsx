@@ -12,6 +12,7 @@ interface DividendForecastProps {
   linkCash: boolean;
   holdings: any[];
   onClose?: () => void;
+  style?: React.CSSProperties;
 }
 
 interface ForecastData {
@@ -31,7 +32,8 @@ export function DividendForecast({
   account,
   linkCash,
   holdings,
-  onClose
+  onClose,
+  style
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<ForecastData | null>(() => {
@@ -158,7 +160,8 @@ export function DividendForecast({
       background: 'linear-gradient(135deg, rgba(16, 24, 40, 0.45) 0%, rgba(10, 15, 26, 0.7) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
-      position: 'relative'
+      position: 'relative',
+      ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>

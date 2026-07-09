@@ -1600,10 +1600,10 @@ export function PortfolioView({
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd('dividends')}
-                    style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
+                    style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '2px' }}
                   >
                     {mobileDividendsTab === 'forecast' ? (
-                      <div style={{ minWidth: 0, height: '100%' }}>
+                      <div style={{ minWidth: 0, height: 'auto' }}>
                         <DividendForecast 
                           apiBaseUrl={apiBaseUrl}
                           activePortfolioId={activePortfolioId}
@@ -1613,10 +1613,11 @@ export function PortfolioView({
                           linkCash={linkCash}
                           holdings={holdings}
                           onClose={handleToggleDivForecast}
+                          style={{ height: 'auto' }}
                         />
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minHeight: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', height: 'auto' }}>
                         <div style={{ minWidth: 0 }}>
                           <DividendCalendar 
                             dividends={dividendsList}
@@ -1625,6 +1626,7 @@ export function PortfolioView({
                             apiBaseUrl={apiBaseUrl}
                             activePortfolioId={activePortfolioId}
                             jwtToken={session?.access_token || null}
+                            style={{ height: 'auto' }}
                           />
                         </div>
                         <DividendLedgerTable 
@@ -1636,7 +1638,7 @@ export function PortfolioView({
                             setShowAddDividendModal(true);
                           }}
                           onDeleteDividendClick={handleDeleteDividend}
-                          style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
+                          style={{ flex: 'none', minHeight: 'auto', height: 'auto', marginTop: '0px' }}
                           onScrollToBottomChange={setIsDividendLedgerAtBottom}
                         />
                       </div>
