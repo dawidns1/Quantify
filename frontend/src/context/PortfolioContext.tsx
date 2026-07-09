@@ -554,9 +554,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     };
   }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds]);
 
-  // Recalculate chart when active portfolio, filters, or transactions update
+  // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
-    if (activePortfolioId && portfolioTransactions.length > 0) {
+    if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
       // Synchronously load chart data from cache first
       const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedC) {
@@ -564,15 +564,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       } else {
         fetchHistoricalPerformance(baseCurrency, selectedAccount);
       }
-    } else {
+    } else if (!activePortfolioId || portfolioTransactions.length === 0) {
       setChartData(null);
       setLoadingChart(false);
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
 
-  // Fetch portfolio analytics when active portfolio, filters, or transactions update
+  // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
-    if (activePortfolioId && portfolioTransactions.length > 0) {
+    if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
       // Synchronously load analytics from cache first
       const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedA) {
@@ -580,11 +580,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       // Always fetch fresh analytics in the background
       fetchPortfolioAnalytics(baseCurrency, selectedAccount);
-    } else {
+    } else if (!activePortfolioId || portfolioTransactions.length === 0) {
       setAnalytics(null);
       setLoadingAnalytics(false);
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
 
   return (
     <PortfolioContext.Provider value={{
