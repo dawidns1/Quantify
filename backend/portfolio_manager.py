@@ -1,4 +1,5 @@
 import os
+import math
 import json
 import time
 import threading
@@ -278,12 +279,12 @@ class PortfolioManager:
             for sym in symbols:
                 sym = sym.upper().strip()
                 cache_entry = cls._historical_stock_cache.get(sym)
-                if cache_entry and cache_entry["start_date"] <= start_dt and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
+                if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)) and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
                     continue
                     
                 # Try loading from L2 SQLite Cache
                 sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
-                if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
+                if sqlite_prices and (min(sqlite_prices.keys()) <= start_dt or min(sqlite_prices.keys()) - start_dt <= timedelta(days=7)):
                     cls._historical_stock_cache[sym] = {
                         "start_date": min(sqlite_prices.keys()),
                         "end_date": max(sqlite_prices.keys()),
@@ -1060,9 +1061,9 @@ class PortfolioManager:
         cache_entry = cls._historical_stock_cache.get(symbol)
         
         # Check SQLite L2 Cache if memory cache miss or doesn't go back far enough
-        if not cache_entry or cache_entry["start_date"] > start_dt:
+        if not cache_entry or (cache_entry["start_date"] > start_dt and cache_entry["start_date"] - start_dt > timedelta(days=7)):
             sqlite_prices, sqlite_divs = get_cached_historical_prices(symbol, start_dt, end_dt)
-            if sqlite_prices and min(sqlite_prices.keys()) <= start_dt:
+            if sqlite_prices and (min(sqlite_prices.keys()) <= start_dt or min(sqlite_prices.keys()) - start_dt <= timedelta(days=7)):
                 cls._historical_stock_cache[symbol] = {
                     "start_date": min(sqlite_prices.keys()),
                     "end_date": max(sqlite_prices.keys()),
@@ -1072,7 +1073,7 @@ class PortfolioManager:
                 }
                 cache_entry = cls._historical_stock_cache[symbol]
         
-        if cache_entry and cache_entry["start_date"] <= start_dt:
+        if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
             if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
                 sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
                 if sliced_prices:
@@ -1326,7 +1327,7 @@ class PortfolioManager:
             # we query Yahoo Finance single ticker info to resolve the mismatch.
             first_tx = symbol_txs[symbol][0]
             tx_curr = first_tx.get("currency", "USD").upper().strip()
-            if (not native_currency) or (tx_curr != native_currency and tx_curr not in ["PLN"]):
+            if not native_currency:
                 try:
                     real_info = provider.download_live_ticker(symbol)
                     if real_info.get("native_currency"):
@@ -1837,17 +1838,22 @@ class PortfolioManager:
                 
         ticker_info_tmp = {}
         for symbol in symbol_txs.keys():
-            info = cls.get_cached_live_ticker(symbol)
-            native_currency = info.get("native_currency") or ""
-            # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
-            # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
+            meta = cls._ticker_metadata_cache.get(symbol)
+            native_currency = ""
+            if meta:
+                native_currency = meta.get("native_currency") or ""
+            if not native_currency:
+                db_row = get_expired_cached_live_price(symbol)
+                if db_row:
+                    native_currency = db_row.get("native_currency") or ""
+                    
             suffix = symbol.split(".")[-1] if "." in symbol else ""
             is_non_us_ticker = suffix in {
                 "DE", "WA", "PA", "BR", "MI", "MC", "LS", "AT", "VI",
                 "TO", "V", "AX", "HK", "SA", "MX", "KS", "KQ", "T", "NS", "BO",
                 "SG", "ST", "CO", "EE", "HE", "OL", "IC"
             }
-            if not native_currency or (info.get("live_price", 0.0) == 0.0 and symbol not in ["USD", "PLN", "EUR"]) or (native_currency == "USD" and is_non_us_ticker):
+            if not native_currency or (native_currency == "USD" and is_non_us_ticker):
                 first_tx = symbol_txs[symbol][0]
                 native_currency = first_tx.get("currency", "USD")
             ticker_info_tmp[symbol] = {
