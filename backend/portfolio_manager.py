@@ -14,7 +14,8 @@ from backend.cache_db import (
     get_cached_upcoming_events,
     save_cached_upcoming_events,
     update_upcoming_events_timestamp,
-    get_expired_cached_live_price
+    get_expired_cached_live_price,
+    save_supabase_kv_bulk
 )
 
 provider = get_provider()
@@ -222,6 +223,8 @@ class PortfolioManager:
             
             try:
                 res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
+                bulk_entries = []
+                
                 for sym in missing_symbols:
                     stock_data = res["stocks"].get(sym)
                     if not stock_data or stock_data.get("live_price", 0.0) == 0.0:
@@ -245,28 +248,41 @@ class PortfolioManager:
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
                     }
-                    # Save to SQLite L2 Cache
-                    save_cached_live_price(sym, {
+                    
+                    cache_payload = {
                         "live_price": stock_data.get("live_price", 0.0),
                         "previous_close": stock_data.get("previous_close", 0.0),
                         "company_name": stock_data.get("company_name", sym),
                         "native_currency": resolved_currency,
                         "timezone": stock_data.get("timezone", "UTC"),
                         "exchange": stock_data.get("exchange", "")
-                    })
+                    }
+                    # Save to SQLite L2 Cache only
+                    save_cached_live_price(sym, cache_payload, supabase_write=False)
+                    
+                    # Accumulate for Supabase bulk write
+                    bulk_entries.append((f"LIVE_PRICE:{sym.upper()}", cache_payload))
                     
                 for pair in missing_fx:
                     rate = res["fx"].get(pair)
                     if not rate or rate == 1.0 or math.isnan(rate):
                         continue
                     cls._live_fx_cache[pair] = (now, rate)
-                    # Save to SQLite L2 Cache
-                    save_cached_live_price(pair, {
+                    
+                    cache_payload = {
                         "live_price": rate,
                         "previous_close": rate,
                         "company_name": pair,
                         "native_currency": "USD"
-                    })
+                    }
+                    # Save to SQLite L2 Cache only
+                    save_cached_live_price(pair, cache_payload, supabase_write=False)
+                    
+                    # Accumulate for Supabase bulk write
+                    bulk_entries.append((f"LIVE_PRICE:{pair.upper()}", cache_payload))
+                    
+                if bulk_entries:
+                    save_supabase_kv_bulk(bulk_entries)
             except Exception as e:
                 print(f"Error prefetching live prices: {e}")
 
@@ -302,6 +318,7 @@ class PortfolioManager:
             try:
                 print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {missing_symbols} (start={start_dt})")
                 bulk_prices, bulk_divs = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
+                bulk_entries = []
                 
                 for sym in missing_symbols:
                     prices_dict = bulk_prices.get(sym, {})
@@ -327,8 +344,26 @@ class PortfolioManager:
                             "prices": prices_dict,
                             "dividends": dividends_dict
                         }
-                        # Save to SQLite L2 Cache
-                        save_cached_historical_prices(sym, prices_dict, dividends_dict)
+                        # Save to SQLite L2 Cache only
+                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
+                        
+                        # Accumulate for Supabase bulk write
+                        serialized_prices = {}
+                        serialized_divs = {}
+                        for dt, val in prices_dict.items():
+                            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+                            serialized_prices[dt_str] = val
+                        for dt, val in dividends_dict.items():
+                            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
+                            serialized_divs[dt_str] = val
+                            
+                        bulk_entries.append((f"HIST_PRICES:{sym.upper()}", {
+                            "prices": serialized_prices,
+                            "dividends": serialized_divs
+                        }))
+                        
+                if bulk_entries:
+                    save_supabase_kv_bulk(bulk_entries)
             except Exception as e:
                 print(f"Error bulk prefetching historical stock prices: {e}")
 

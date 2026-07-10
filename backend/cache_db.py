@@ -48,20 +48,48 @@ def save_supabase_kv(key: str, value: dict):
         return
     try:
         headers = get_supabase_headers()
-        url_check = f"{SUPABASE_URL}/rest/v1/kv_cache?key=eq.{key}"
-        r = requests.get(url_check, headers=headers, timeout=5)
-        now_str = datetime.now(timezone.utc).isoformat()
+        headers["Prefer"] = "resolution=merge-duplicates"
         payload = {
             "key": key,
             "value": value,
-            "updated_at": now_str
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }
-        if r.status_code == 200 and r.json():
-            requests.patch(url_check, headers=headers, json=payload, timeout=5)
-        else:
-            requests.post(f"{SUPABASE_URL}/rest/v1/kv_cache", headers=headers, json=payload, timeout=5)
+        url = f"{SUPABASE_URL}/rest/v1/kv_cache"
+        r = requests.post(url, headers=headers, json=payload, timeout=5)
+        if r.status_code not in (200, 201):
+            headers["Prefer"] = "on-conflict=key"
+            r = requests.post(url, headers=headers, json=payload, timeout=5)
+            if r.status_code not in (200, 201):
+                print(f"[Supabase Cache] Write failed for {key}: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"[Supabase Cache] Write error for {key}: {e}")
+
+def save_supabase_kv_bulk(entries: list):
+    """Upserts multiple key-value pairs to Supabase in a single bulk request."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not entries:
+        return
+    try:
+        headers = get_supabase_headers()
+        headers["Prefer"] = "resolution=merge-duplicates"
+        
+        now_str = datetime.now(timezone.utc).isoformat()
+        payload = []
+        for key, value in entries:
+            payload.append({
+                "key": key,
+                "value": value,
+                "updated_at": now_str
+            })
+            
+        url = f"{SUPABASE_URL}/rest/v1/kv_cache"
+        r = requests.post(url, headers=headers, json=payload, timeout=5)
+        if r.status_code not in (200, 201):
+            headers["Prefer"] = "on-conflict=key"
+            r = requests.post(url, headers=headers, json=payload, timeout=5)
+            if r.status_code not in (200, 201):
+                print(f"[Supabase Cache] Bulk write failed: {r.status_code} - {r.text}")
+    except Exception as e:
+        print(f"[Supabase Cache] Bulk write exception: {e}")
 
 def get_connection():
     # check_same_thread=False allows us to pass connections across threads, 
@@ -156,9 +184,13 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
             try:
                 updated_at = datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
                 if (datetime.now(timezone.utc) - updated_at).total_seconds() < max_age_seconds:
-                    return row["value"]
-            except Exception:
-                pass
+                    val = dict(row["value"])
+                    val["last_updated"] = updated_at.timestamp()
+                    val.setdefault("timezone", "UTC")
+                    val.setdefault("exchange", "")
+                    return val
+            except Exception as e:
+                print(f"[Supabase Cache] Live price parse error for {symbol}: {e}")
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -176,7 +208,15 @@ def get_expired_cached_live_price(symbol: str) -> dict:
     if SUPABASE_URL and SUPABASE_KEY:
         row = get_supabase_kv(f"LIVE_PRICE:{symbol.upper()}")
         if row:
-            return row["value"]
+            try:
+                val = dict(row["value"])
+                updated_at = datetime.fromisoformat(row["updated_at"].replace("Z", "+00:00"))
+                val["last_updated"] = updated_at.timestamp()
+                val.setdefault("timezone", "UTC")
+                val.setdefault("exchange", "")
+                return val
+            except Exception as e:
+                print(f"[Supabase Cache] Expired live price parse error for {symbol}: {e}")
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -189,8 +229,8 @@ def get_expired_cached_live_price(symbol: str) -> dict:
         return dict(row)
     return None
 
-def save_cached_live_price(symbol: str, data: dict):
-    if SUPABASE_URL and SUPABASE_KEY:
+def save_cached_live_price(symbol: str, data: dict, supabase_write: bool = True):
+    if supabase_write and SUPABASE_URL and SUPABASE_KEY:
         save_supabase_kv(f"LIVE_PRICE:{symbol.upper()}", data)
     with db_write_lock:
         conn = get_connection()
@@ -276,32 +316,24 @@ def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) 
             
     return prices_dict, dividends_dict
 
-def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict):
+def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict, supabase_write: bool = True):
     """Saves historical daily prices and dividends to daily_prices table."""
     if not prices:
         return
         
-    if SUPABASE_URL and SUPABASE_KEY:
-        existing_prices = {}
-        existing_divs = {}
-        row = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
-        if row:
-            try:
-                existing_prices = row["value"].get("prices", {})
-                existing_divs = row["value"].get("dividends", {})
-            except Exception:
-                pass
-        
+    if supabase_write and SUPABASE_URL and SUPABASE_KEY:
+        serialized_prices = {}
+        serialized_divs = {}
         for dt, val in prices.items():
             dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-            existing_prices[dt_str] = val
+            serialized_prices[dt_str] = val
         for dt, val in dividends.items():
             dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-            existing_divs[dt_str] = val
+            serialized_divs[dt_str] = val
             
         save_supabase_kv(f"HIST_PRICES:{symbol.upper()}", {
-            "prices": existing_prices,
-            "dividends": existing_divs
+            "prices": serialized_prices,
+            "dividends": serialized_divs
         })
         
     with db_write_lock:
