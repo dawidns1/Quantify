@@ -63,9 +63,38 @@ class PortfolioManager:
     CALCULATION_CACHE_TTL = 300  # 5 minutes
 
     @staticmethod
-    def is_market_open(timezone_str: str, exchange_str: str) -> bool:
+    def is_market_open(timezone_str: str, exchange_str: str, symbol: str = "") -> bool:
         from zoneinfo import ZoneInfo
         from datetime import datetime
+        
+        # Override metadata for known stock exchange ticker suffixes
+        if symbol:
+            symbol_upper = symbol.upper().strip()
+            if symbol_upper.endswith(".WA"):
+                timezone_str = "Europe/Warsaw"
+                exchange_str = "WSE"
+            elif symbol_upper.endswith(".DE"):
+                timezone_str = "Europe/Berlin"
+                exchange_str = "GER"
+            elif symbol_upper.endswith(".L"):
+                timezone_str = "Europe/London"
+                exchange_str = "LSE"
+            elif symbol_upper.endswith(".AS"):
+                timezone_str = "Europe/Amsterdam"
+                exchange_str = "AMS"
+            elif symbol_upper.endswith(".PA"):
+                timezone_str = "Europe/Paris"
+                exchange_str = "PAR"
+            elif symbol_upper.endswith(".MI"):
+                timezone_str = "Europe/Rome"
+                exchange_str = "MIL"
+            elif symbol_upper.endswith(".MC"):
+                timezone_str = "Europe/Madrid"
+                exchange_str = "MAD"
+            elif "." not in symbol_upper and not symbol_upper.endswith("=X") and symbol_upper not in ["USD", "PLN", "EUR"]:
+                timezone_str = "America/New_York"
+                exchange_str = "NMS"
+                
         try:
             if not timezone_str or timezone_str == "Unknown":
                 return False
@@ -87,7 +116,7 @@ class PortfolioManager:
         elif "America/New_York" in timezone_str or exchange_str in ["NMS", "NYQ", "ASE"]:
             # US: 09:30 - 16:00
             return 9.5 <= time_float < 16.0
-        elif "CCY" in exchange_str or "forex" in exchange_str.lower():
+        elif "CCY" in exchange_str or "forex" in exchange_str.lower() or timezone_str == "UTC":
             return True
         else:
             return 9.0 <= time_float < 17.5
@@ -240,13 +269,36 @@ class PortfolioManager:
                         
                     resolved_currency = db_currency
                     
+                    tz_val = stock_data.get("timezone")
+                    ex_val = stock_data.get("exchange")
+                    if not tz_val or tz_val == "UTC":
+                        sym_upper = sym.upper().strip()
+                        if sym_upper.endswith(".WA"):
+                            tz_val, ex_val = "Europe/Warsaw", "WSE"
+                        elif sym_upper.endswith(".DE"):
+                            tz_val, ex_val = "Europe/Berlin", "GER"
+                        elif sym_upper.endswith(".L"):
+                            tz_val, ex_val = "Europe/London", "LSE"
+                        elif sym_upper.endswith(".AS"):
+                            tz_val, ex_val = "Europe/Amsterdam", "AMS"
+                        elif sym_upper.endswith(".PA"):
+                            tz_val, ex_val = "Europe/Paris", "PAR"
+                        elif sym_upper.endswith(".MI"):
+                            tz_val, ex_val = "Europe/Rome", "MIL"
+                        elif sym_upper.endswith(".MC"):
+                            tz_val, ex_val = "Europe/Madrid", "MAD"
+                        elif "." not in sym_upper and not sym_upper.endswith("=X") and sym_upper not in ["USD", "PLN", "EUR"]:
+                            tz_val, ex_val = "America/New_York", "NMS"
+                    tz_val = tz_val or "UTC"
+                    ex_val = ex_val or ""
+
                     cls._live_ticker_cache[sym] = (now, stock_data)
                     cls._ticker_metadata_cache[sym] = {
                         "company_name": stock_data.get("company_name", sym),
                         "native_currency": resolved_currency.upper().strip() if resolved_currency else None,
                         "asset_class": "Equity",
-                        "timezone": stock_data.get("timezone", "UTC"),
-                        "exchange": stock_data.get("exchange", "")
+                        "timezone": tz_val,
+                        "exchange": ex_val
                     }
                     
                     cache_payload = {
@@ -254,8 +306,8 @@ class PortfolioManager:
                         "previous_close": stock_data.get("previous_close", 0.0),
                         "company_name": stock_data.get("company_name", sym),
                         "native_currency": resolved_currency,
-                        "timezone": stock_data.get("timezone", "UTC"),
-                        "exchange": stock_data.get("exchange", "")
+                        "timezone": tz_val,
+                        "exchange": ex_val
                     }
                     # Save to SQLite L2 Cache only
                     save_cached_live_price(sym, cache_payload, supabase_write=False)
@@ -1630,7 +1682,7 @@ class PortfolioManager:
                 day_change_percent = (day_change_native / prev_close_native * 100) if prev_close_native > 0.0 else 0.0
                 day_change_value_base = shares_owned * day_change_native * fx_native_to_base
                 
-                is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""))
+                is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""), symbol)
                 if is_live:
                     any_live = True
                 else:

@@ -387,7 +387,7 @@ def get_stock_price(ticker: str):
             pass
         currency = (fast.get("currency") if fast else None) or info_curr or "USD"
         
-        is_open = PortfolioManager.is_market_open(timezone, exchange)
+        is_open = PortfolioManager.is_market_open(timezone, exchange, clean_ticker)
             
         return {
             "symbol": clean_ticker,
@@ -421,7 +421,7 @@ def get_watchlist_prices(symbols: str):
             timezone = info.get("timezone", "UTC")
             exchange = info.get("exchange", "")
             
-            is_open = PortfolioManager.is_market_open(timezone, exchange)
+            is_open = PortfolioManager.is_market_open(timezone, exchange, sym)
             
             change_pct = 0.0
             if price is not None and prev_close:
