@@ -137,7 +137,7 @@ export function DividendCalendar({
     }}>
       {/* Header with Year Switcher */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+        <h3 style={{ margin: 0, fontSize: isExpanded ? '1.25rem' : '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
           <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h3>
@@ -235,14 +235,14 @@ export function DividendCalendar({
         alignItems: 'center'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
-          <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: isExpanded ? '0.75rem' : '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
+          <span style={{ fontSize: isExpanded ? '1.65rem' : '1.35rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal, baseCurrency)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
-          <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: isExpanded ? '0.72rem' : '0.68rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
+          <span style={{ fontSize: isExpanded ? '1.1rem' : '0.92rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal / 12, baseCurrency)}
           </span>
         </div>
@@ -290,11 +290,11 @@ export function DividendCalendar({
               className="calendar-month-card"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: hasPayments ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                <span style={{ fontSize: isExpanded ? '0.88rem' : '0.75rem', fontWeight: 700, color: hasPayments ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                   {m.name}
                 </span>
                 {hasPayments && (
-                  <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 4px', borderRadius: '3px' }}>
+                  <span style={{ fontSize: isExpanded ? '0.68rem' : '0.6rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 4px', borderRadius: '3px' }}>
                     {m.payments.length}
                   </span>
                 )}
@@ -302,14 +302,14 @@ export function DividendCalendar({
 
               <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                 <span style={{ 
-                  fontSize: '0.85rem', 
+                  fontSize: isExpanded ? '1.05rem' : '0.85rem', 
                   fontWeight: 700, 
                   color: hasPayments ? 'var(--color-green)' : 'var(--text-muted)', 
                   fontFamily: 'monospace',
                   opacity: isAllUpcoming ? 0.85 : 1
                 }}>
                   {m.totalNet > 0 ? formatCurrency(m.totalNet, baseCurrency) : '—'}
-                  {isAllUpcoming && <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginLeft: '3px', fontWeight: 500 }}>est.</span>}
+                  {isAllUpcoming && <span style={{ fontSize: isExpanded ? '0.68rem' : '0.62rem', color: 'var(--text-muted)', marginLeft: '3px', fontWeight: 500 }}>est.</span>}
                 </span>
                 
                 {hasPayments && (
@@ -324,11 +324,11 @@ export function DividendCalendar({
                               display: 'flex', 
                               justifyContent: 'space-between', 
                               alignItems: 'center',
-                              fontSize: '0.64rem',
+                              fontSize: isExpanded ? '0.72rem' : '0.64rem',
                               color: 'var(--text-secondary)',
                               background: 'rgba(255, 255, 255, 0.02)',
                               border: '1px solid rgba(255, 255, 255, 0.04)',
-                              padding: '2px 6px',
+                              padding: isExpanded ? '3px 8px' : '2px 6px',
                               borderRadius: '4px',
                               lineHeight: '1.2'
                             }}
@@ -341,7 +341,7 @@ export function DividendCalendar({
                         );
                       })}
                       {m.payments.length > 6 && (
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2px' }}>
+                        <div style={{ fontSize: isExpanded ? '0.68rem' : '0.6rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2px' }}>
                           + {m.payments.length - 6} more
                         </div>
                       )}

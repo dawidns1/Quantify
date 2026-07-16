@@ -1486,6 +1486,7 @@ export function PortfolioView({
                                 linkCash={linkCash}
                                 holdings={holdings}
                                 onClose={handleToggleDivForecast}
+                                isExpanded={!showDivLedger}
                               />
                             </div>
                           )}

@@ -13,6 +13,7 @@ interface DividendForecastProps {
   holdings: any[];
   onClose?: () => void;
   style?: React.CSSProperties;
+  isExpanded?: boolean;
 }
 
 interface ForecastData {
@@ -33,7 +34,8 @@ export function DividendForecast({
   linkCash,
   holdings,
   onClose,
-  style
+  style,
+  isExpanded = false
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<ForecastData | null>(() => {
@@ -267,8 +269,8 @@ export function DividendForecast({
       ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-          <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
+        <h3 style={{ margin: 0, fontSize: isExpanded ? '1.25rem' : '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+          <TrendingUp size={isExpanded ? 20 : 18} style={{ color: 'var(--color-primary)' }} />
           {t('dividends.forecast_title', '12-Month Forward Dividend Forecast')}
         </h3>
         {onClose && (
@@ -307,29 +309,29 @@ export function DividendForecast({
           {/* Key Metrics row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
             {/* Metric 1 */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: isExpanded ? '0.85rem 1rem' : '0.65rem 0.75rem' }}>
+              <span style={{ fontSize: isExpanded ? '0.75rem' : '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.forward_annual_income', 'Forward Annual Income')}
               </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace', textShadow: '0 0 10px rgba(16, 185, 129, 0.1)' }}>
+              <span style={{ fontSize: isExpanded ? '1.5rem' : '1.25rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace', textShadow: '0 0 10px rgba(16, 185, 129, 0.1)' }}>
                 {formatCurrency(data.forward_annual_income)}
               </span>
             </div>
             {/* Metric 2 */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: isExpanded ? '0.85rem 1rem' : '0.65rem 0.75rem' }}>
+              <span style={{ fontSize: isExpanded ? '0.75rem' : '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.forward_portfolio_yield', 'Forward Yield')}
               </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: isExpanded ? '1.5rem' : '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {formatPercent(data.forward_yield)}
               </span>
             </div>
             {/* Metric 3 */}
-            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.65rem 0.75rem' }}>
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: isExpanded ? '0.85rem 1rem' : '0.65rem 0.75rem' }}>
+              <span style={{ fontSize: isExpanded ? '0.75rem' : '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.yield_on_cost', 'Yield on Cost')}
               </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: isExpanded ? '1.5rem' : '1.25rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {formatPercent(data.yield_on_cost)}
               </span>
             </div>
@@ -346,7 +348,7 @@ export function DividendForecast({
             }}
             style={{ position: 'relative', marginTop: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '1rem', letterSpacing: '0.5px' }}>
+            <span style={{ fontSize: isExpanded ? '0.8rem' : '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '1rem', letterSpacing: '0.5px' }}>
               {t('dividends.monthly_projection', 'Monthly Cash Flow Projections')}
             </span>
 
@@ -401,7 +403,7 @@ export function DividendForecast({
                       <span style={{
                         position: 'absolute',
                         bottom: `calc(${heightPercent} + 6px)`,
-                        fontSize: '0.62rem',
+                        fontSize: isExpanded ? '0.72rem' : '0.62rem',
                         fontWeight: 700,
                         color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',
                         fontFamily: 'monospace',
@@ -439,7 +441,7 @@ export function DividendForecast({
 
                     {/* Month Label */}
                     <span style={{
-                      fontSize: '0.65rem',
+                      fontSize: isExpanded ? '0.72rem' : '0.65rem',
                       color: isHovered ? 'var(--text-primary)' : 'var(--text-muted)',
                       marginTop: '0.4rem',
                       fontWeight: isHovered ? 700 : 500,
