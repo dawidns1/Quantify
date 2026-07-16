@@ -13,6 +13,7 @@ interface DividendCalendarProps {
   activePortfolioId?: string | null;
   jwtToken?: string | null;
   style?: React.CSSProperties;
+  isExpanded?: boolean;
 }
 
 export function DividendCalendar({ 
@@ -25,7 +26,8 @@ export function DividendCalendar({
   apiBaseUrl,
   activePortfolioId,
   jwtToken,
-  style
+  style,
+  isExpanded = false
 }: DividendCalendarProps) {
   const { t, i18n } = useTranslation();
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
@@ -258,6 +260,7 @@ export function DividendCalendar({
             y: e.clientY - rect.top
           });
         }}
+        style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}
         className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : ''}`}
       >
         {monthlyData.map(m => {
@@ -311,48 +314,83 @@ export function DividendCalendar({
                 </span>
                 
                 {hasPayments && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
-                    {totalPaid > 0 && totalUpcoming > 0 ? (
-                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          background: 'linear-gradient(90deg, var(--color-green) 50%, rgba(6, 182, 212, 0.7) 50%)',
-                          flexShrink: 0
-                        }} />
-                        <span>
-                          Paid: <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalPaid, baseCurrency)}</span> | Est: <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(totalUpcoming, baseCurrency)}</span>
+                  isExpanded ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                      {m.payments.slice(0, 6).map((p, pIdx) => {
+                        const val = p.net_base || p.payout_net_base || 0;
+                        return (
+                          <div 
+                            key={pIdx} 
+                            style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              fontSize: '0.64rem',
+                              color: 'var(--text-secondary)',
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: '1px solid rgba(255, 255, 255, 0.04)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: 'white' }}>{p.symbol}</span>
+                            <span style={{ color: p.is_upcoming ? 'var(--text-muted)' : 'var(--color-green)', fontFamily: 'monospace' }}>
+                              {formatCurrency(val, baseCurrency)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {m.payments.length > 6 && (
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2px' }}>
+                          + {m.payments.length - 6} more
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                      {totalPaid > 0 && totalUpcoming > 0 ? (
+                        <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ 
+                            width: '5px', 
+                            height: '5px', 
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(90deg, var(--color-green) 50%, rgba(6, 182, 212, 0.7) 50%)',
+                            flexShrink: 0
+                          }} />
+                          <span>
+                            Paid: <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalPaid, baseCurrency)}</span> | Est: <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(totalUpcoming, baseCurrency)}</span>
+                          </span>
                         </span>
+                      ) : isAllUpcoming ? (
+                        <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ 
+                            width: '5px', 
+                            height: '5px', 
+                            borderRadius: '50%', 
+                            background: 'rgba(6, 182, 212, 0.7)',
+                            flexShrink: 0
+                          }} />
+                          <span>Projected Payout</span>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.58rem', color: 'var(--color-green)', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ 
+                            width: '5px', 
+                            height: '5px', 
+                            borderRadius: '50%', 
+                            background: 'var(--color-green)',
+                            flexShrink: 0
+                          }} />
+                          <span>Received</span>
+                        </span>
+                      )}
+                      <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+                        {uniqueTickers.join(', ')}
+                        {uniqueTickers.length < m.payments.length && '...'}
                       </span>
-                    ) : isAllUpcoming ? (
-                      <span style={{ fontSize: '0.58rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          background: 'rgba(6, 182, 212, 0.7)',
-                          flexShrink: 0
-                        }} />
-                        <span>Projected Payout</span>
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.58rem', color: 'var(--color-green)', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ 
-                          width: '5px', 
-                          height: '5px', 
-                          borderRadius: '50%', 
-                          background: 'var(--color-green)',
-                          flexShrink: 0
-                        }} />
-                        <span>Received</span>
-                      </span>
-                    )}
-                    <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
-                      {uniqueTickers.join(', ')}
-                      {uniqueTickers.length < m.payments.length && '...'}
-                    </span>
-                  </div>
+                    </div>
+                  )
                 )}
               </div>
             </div>

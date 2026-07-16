@@ -139,6 +139,31 @@ export function HoldingsTable({
 
   const visibleColumns = isMobile ? visibleColumnsMobile : visibleColumnsDesktop;
 
+  const [dayChangeMode, setDayChangeMode] = useState<'total' | 'pershare'>(() => {
+    return (localStorage.getItem('holdings_day_change_mode') as 'total' | 'pershare') || 'total';
+  });
+  const [gainLossMode, setGainLossMode] = useState<'total' | 'pershare'>(() => {
+    return (localStorage.getItem('holdings_gain_loss_mode') as 'total' | 'pershare') || 'total';
+  });
+
+  const handleToggleDayChangeMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDayChangeMode(prev => {
+      const next = prev === 'total' ? 'pershare' : 'total';
+      localStorage.setItem('holdings_day_change_mode', next);
+      return next;
+    });
+  };
+
+  const handleToggleGainLossMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGainLossMode(prev => {
+      const next = prev === 'total' ? 'pershare' : 'total';
+      localStorage.setItem('holdings_gain_loss_mode', next);
+      return next;
+    });
+  };
+
   const toggleColumn = (id: string) => {
     if (isMobile) {
       setVisibleColumnsMobile((prev) => {
@@ -277,7 +302,7 @@ export function HoldingsTable({
       label: t('holdings.col_shares_owned', 'Shares Owned'),
       sortField: 'shares',
       align: 'right',
-      renderHeader: () => t('holdings.col_shares', 'Shares'),
+      renderHeader: () => t('holdings.col_shares_owned', 'Shares Owned'),
       renderCell: (h) => (
         <AnimateOnChange value={h.shares} contextId={h.symbol}>
           {formatShares(h.shares)}
@@ -334,15 +359,38 @@ export function HoldingsTable({
       label: t('holdings.col_day_change', 'Day Change'),
       sortField: 'day_change_percent',
       align: 'right',
-      renderHeader: () => t('holdings.col_day_change', 'Day Change'),
+      renderHeader: () => (
+        <span>
+          {t('holdings.col_day_change', 'Day Change')}
+          <span 
+            onClick={handleToggleDayChangeMode}
+            style={{ 
+              cursor: 'pointer', 
+              textDecoration: 'underline', 
+              textDecorationStyle: 'dotted',
+              marginLeft: '4px',
+              color: 'var(--color-primary)',
+              fontSize: '0.72rem',
+              fontWeight: 500
+            }}
+            title={t('holdings.toggle_day_change_mode', 'Click to toggle between Position Total and Per Share change')}
+          >
+            {dayChangeMode === 'total' ? '(Total)' : '(Per Share)'}
+          </span>
+        </span>
+      ),
       renderCell: (h, baseCurrency) => {
+        const val = dayChangeMode === 'total' 
+          ? (h.day_change_value_base || 0) 
+          : (h.shares > 0 ? ((h.day_change_value_base || 0) / h.shares) : 0);
+          
         return h.day_change_percent !== undefined ? (
           <AnimateOnChange value={h.day_change_percent} contextId={h.symbol} style={{ display: 'block' }}>
             <div className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
               {h.day_change_percent >= 0 ? '+' : ''}{h.day_change_percent.toFixed(2)}%
             </div>
             <div style={{ fontSize: '0.72rem' }} className={h.day_change_percent >= 0 ? 'text-green' : 'text-red'}>
-              {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(h.day_change_value_base || 0, baseCurrency)}
+              {h.day_change_percent >= 0 ? '+' : ''}{formatCurrency(val, baseCurrency)}
             </div>
           </AnimateOnChange>
         ) : (
@@ -751,7 +799,25 @@ export function HoldingsTable({
                     minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
                   }}
                 >
-                  {t('holdings.col_gain_loss', 'Gain/Loss')} {renderSortArrow('gain_base')}
+                  <span>
+                    {t('holdings.col_gain_loss', 'Gain/Loss')}
+                    <span 
+                      onClick={handleToggleGainLossMode}
+                      style={{ 
+                        cursor: 'pointer', 
+                        textDecoration: 'underline', 
+                        textDecorationStyle: 'dotted',
+                        marginLeft: '4px',
+                        color: 'var(--color-primary)',
+                        fontSize: '0.72rem',
+                        fontWeight: 500
+                      }}
+                      title={t('holdings.toggle_gain_loss_mode', 'Click to toggle between Position Total and Per Share return')}
+                    >
+                      {gainLossMode === 'total' ? '(Total)' : '(Per Share)'}
+                    </span>
+                  </span>
+                  {' '}{renderSortArrow('gain_base')}
                   <div 
                     className={`col-resizer ${activeDragCol.current === 'gain_base' ? 'resizing' : ''}`}
                     onMouseDown={(e) => handleMouseDown(e, 'gain_base')}
@@ -855,14 +921,21 @@ export function HoldingsTable({
                         minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
                       }}
                     >
-                      <AnimateOnChange value={h.gain_base} contextId={h.symbol} style={{ display: 'block' }}>
-                        <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
-                          {valIsProfit ? '+' : ''}{formatCurrency(h.gain_base, summary.base_currency)}
-                        </div>
-                        <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
-                          {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
-                        </div>
-                      </AnimateOnChange>
+                      {(() => {
+                        const val = gainLossMode === 'total'
+                          ? h.gain_base
+                          : (h.shares > 0 ? (h.gain_base / h.shares) : 0);
+                        return (
+                          <AnimateOnChange value={val} contextId={h.symbol} style={{ display: 'block' }}>
+                            <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+                              {valIsProfit ? '+' : ''}{formatCurrency(val, summary.base_currency)}
+                            </div>
+                            <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
+                              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+                            </div>
+                          </AnimateOnChange>
+                        );
+                      })()}
                     </td>
                     <td 
                       style={{ 
