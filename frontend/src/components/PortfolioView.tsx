@@ -178,7 +178,7 @@ export function PortfolioView({
   
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileOverviewTab, setMobileOverviewTab] = useState<'holdings' | 'analytics'>('holdings');
-  const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar'>('forecast');
+  const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar' | 'ledger'>('forecast');
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1024px)');
@@ -269,10 +269,18 @@ export function PortfolioView({
         setMobileOverviewTab('holdings');
       }
     } else if (tabType === 'dividends') {
-      if (isLeftSwipe && mobileDividendsTab === 'forecast') {
-        setMobileDividendsTab('calendar');
-      } else if (isRightSwipe && mobileDividendsTab === 'calendar') {
-        setMobileDividendsTab('forecast');
+      if (isLeftSwipe) {
+        if (mobileDividendsTab === 'forecast') {
+          setMobileDividendsTab('calendar');
+        } else if (mobileDividendsTab === 'calendar') {
+          setMobileDividendsTab('ledger');
+        }
+      } else if (isRightSwipe) {
+        if (mobileDividendsTab === 'ledger') {
+          setMobileDividendsTab('calendar');
+        } else if (mobileDividendsTab === 'calendar') {
+          setMobileDividendsTab('forecast');
+        }
       }
     }
 
@@ -1807,7 +1815,7 @@ export function PortfolioView({
                     onTouchEnd={() => handleTouchEnd('dividends')}
                     style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '2px' }}
                   >
-                    {mobileDividendsTab === 'forecast' ? (
+                    {mobileDividendsTab === 'forecast' && (
                       <div style={{ minWidth: 0, height: 'auto' }}>
                         <DividendForecast 
                           apiBaseUrl={apiBaseUrl}
@@ -1821,32 +1829,35 @@ export function PortfolioView({
                           style={{ height: 'auto' }}
                         />
                       </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', height: 'auto' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <DividendCalendar 
-                            dividends={dividendsList}
-                            baseCurrency={summary.base_currency}
-                            onClose={handleToggleDivCalendar}
-                            apiBaseUrl={apiBaseUrl}
-                            activePortfolioId={activePortfolioId}
-                            jwtToken={session?.access_token || null}
-                            style={{ height: 'auto' }}
-                          />
-                        </div>
-                        <DividendLedgerTable 
+                    )}
+
+                    {mobileDividendsTab === 'calendar' && (
+                      <div style={{ minWidth: 0, height: 'auto' }}>
+                        <DividendCalendar 
                           dividends={dividendsList}
-                          activePortfolioRole={activePortfolioRole}
                           baseCurrency={summary.base_currency}
-                          onEditDividendClick={(div) => {
-                            setEditingDividend(div);
-                            setShowAddDividendModal(true);
-                          }}
-                          onDeleteDividendClick={handleDeleteDividend}
-                          style={{ flex: 'none', minHeight: 'auto', height: 'auto', marginTop: '0px' }}
-                          onScrollToBottomChange={setIsDividendLedgerAtBottom}
+                          onClose={handleToggleDivCalendar}
+                          apiBaseUrl={apiBaseUrl}
+                          activePortfolioId={activePortfolioId}
+                          jwtToken={session?.access_token || null}
+                          style={{ height: 'auto' }}
                         />
                       </div>
+                    )}
+
+                    {mobileDividendsTab === 'ledger' && (
+                      <DividendLedgerTable 
+                        dividends={dividendsList}
+                        activePortfolioRole={activePortfolioRole}
+                        baseCurrency={summary.base_currency}
+                        onEditDividendClick={(div) => {
+                          setEditingDividend(div);
+                          setShowAddDividendModal(true);
+                        }}
+                        onDeleteDividendClick={handleDeleteDividend}
+                        style={{ flex: 'none', minHeight: 'auto', height: 'auto', marginTop: '0px' }}
+                        onScrollToBottomChange={setIsDividendLedgerAtBottom}
+                      />
                     )}
 
                     {/* Mobile Page Indicator Dots */}
@@ -1888,7 +1899,23 @@ export function PortfolioView({
                           transition: 'all 0.2s ease',
                           boxShadow: mobileDividendsTab === 'calendar' ? '0 0 8px var(--color-primary)' : 'none'
                         }}
-                        aria-label="Calendar and Ledger Page"
+                        aria-label="Calendar Page"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('ledger')}
+                        style={{
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          border: 'none',
+                          background: mobileDividendsTab === 'ledger' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
+                          padding: 0,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'ledger' ? '0 0 8px var(--color-primary)' : 'none'
+                        }}
+                        aria-label="Ledger Page"
                       />
                     </div>
                   </div>
@@ -2165,7 +2192,7 @@ export function PortfolioView({
         const hideFAB = isMobile && (
           (subTab === 'overview' && mobileOverviewTab === 'holdings' && isHoldingsAtBottom) ||
           (subTab === 'ledger' && isLedgerAtBottom) ||
-          (subTab === 'dividends' && mobileDividendsTab === 'calendar' && isDividendLedgerAtBottom)
+          (subTab === 'dividends' && mobileDividendsTab === 'ledger' && isDividendLedgerAtBottom)
         );
         return (
           <button
