@@ -36,11 +36,13 @@ export function HoldingsTable({
   const activeDragCol = useRef<string | null>(null);
   const startX = useRef<number>(0);
   const startWidth = useRef<number>(0);
+  const isResizingRef = useRef<boolean>(false);
 
   const handleMouseDown = (e: React.MouseEvent, colId: string) => {
     e.preventDefault();
     e.stopPropagation();
     activeDragCol.current = colId;
+    isResizingRef.current = false;
     startX.current = e.clientX;
     const thElement = (e.target as HTMLElement).closest('th');
     if (thElement) {
@@ -53,6 +55,7 @@ export function HoldingsTable({
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!activeDragCol.current) return;
+    isResizingRef.current = true;
     const deltaX = e.clientX - startX.current;
     const newWidth = Math.max(50, startWidth.current + deltaX);
     setColWidths((prev) => {
@@ -66,6 +69,10 @@ export function HoldingsTable({
     activeDragCol.current = null;
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
+    // Delay resetting to prevent the click event from triggering a sort
+    setTimeout(() => {
+      isResizingRef.current = false;
+    }, 50);
   };
 
   useEffect(() => {
@@ -123,7 +130,7 @@ export function HoldingsTable({
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {}
     }
-    return ['name', 'shares', 'price', 'sparkline', 'day_change', 'cost'];
+    return ['name', 'shares', 'price', 'sparkline', 'day_change', 'cost', 'current_value', 'gain_loss'];
   });
 
   const [visibleColumnsMobile, setVisibleColumnsMobile] = useState<string[]>(() => {
@@ -146,23 +153,7 @@ export function HoldingsTable({
     return (localStorage.getItem('holdings_gain_loss_mode') as 'total' | 'pershare') || 'total';
   });
 
-  const handleToggleDayChangeMode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDayChangeMode(prev => {
-      const next = prev === 'total' ? 'pershare' : 'total';
-      localStorage.setItem('holdings_day_change_mode', next);
-      return next;
-    });
-  };
 
-  const handleToggleGainLossMode = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setGainLossMode(prev => {
-      const next = prev === 'total' ? 'pershare' : 'total';
-      localStorage.setItem('holdings_gain_loss_mode', next);
-      return next;
-    });
-  };
 
   const toggleColumn = (id: string) => {
     if (isMobile) {
@@ -359,26 +350,7 @@ export function HoldingsTable({
       label: t('holdings.col_day_change', 'Day Change'),
       sortField: 'day_change_percent',
       align: 'right',
-      renderHeader: () => (
-        <span>
-          {t('holdings.col_day_change', 'Day Change')}
-          <span 
-            onClick={handleToggleDayChangeMode}
-            style={{ 
-              cursor: 'pointer', 
-              textDecoration: 'underline', 
-              textDecorationStyle: 'dotted',
-              marginLeft: '4px',
-              color: 'var(--color-primary)',
-              fontSize: '0.72rem',
-              fontWeight: 500
-            }}
-            title={t('holdings.toggle_day_change_mode', 'Click to toggle between Position Total and Per Share change')}
-          >
-            {dayChangeMode === 'total' ? '(Total)' : '(Per Share)'}
-          </span>
-        </span>
-      ),
+      renderHeader: () => t('holdings.col_day_change', 'Day Change'),
       renderCell: (h, baseCurrency) => {
         const val = dayChangeMode === 'total' 
           ? (h.day_change_value_base || 0) 
@@ -434,6 +406,82 @@ export function HoldingsTable({
           <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{h.fx_rate?.toFixed(4) || '1.0000'}</span>
         </AnimateOnChange>
       )
+    },
+    current_value: {
+      label: t('holdings.col_current_val_base', 'Current Value (Base)'),
+      sortField: 'current_value_base',
+      align: 'right',
+      renderHeader: (baseCurrency) => `${t('holdings.col_current', 'Current Value')} (${baseCurrency})`,
+      renderCell: (h) => (
+        <AnimateOnChange value={h.current_value_base} contextId={h.symbol}>
+          {formatCurrency(h.current_value_base, summary.base_currency)}
+        </AnimateOnChange>
+      )
+    },
+    current_value_local: {
+      label: t('holdings.col_current_val_local', 'Current Value (Local)'),
+      sortField: 'current_value_local',
+      align: 'right',
+      renderHeader: () => t('holdings.col_current_val_local', 'Current Value (Local)'),
+      renderCell: (h) => {
+        const val = h.shares * h.current_price_local;
+        return (
+          <AnimateOnChange value={val} contextId={h.symbol}>
+            {formatCurrency(val, h.currency)}
+          </AnimateOnChange>
+        );
+      }
+    },
+    gain_loss: {
+      label: t('holdings.col_gain_loss', 'Gain/Loss'),
+      sortField: 'gain_base',
+      align: 'right',
+      renderHeader: () => t('holdings.col_gain_loss', 'Gain/Loss'),
+      renderCell: (h) => {
+        const val = gainLossMode === 'total'
+          ? h.gain_base
+          : (h.shares > 0 ? (h.gain_base / h.shares) : 0);
+        const valIsProfit = h.gain_base >= 0;
+        return (
+          <AnimateOnChange value={val} contextId={h.symbol} style={{ display: 'block' }}>
+            <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+              {valIsProfit ? '+' : ''}{formatCurrency(val, summary.base_currency)}
+            </div>
+            <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
+              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+            </div>
+          </AnimateOnChange>
+        );
+      }
+    },
+    gain_base_percent: {
+      label: t('holdings.col_gain_percent', 'Total Return %'),
+      sortField: 'gain_percent',
+      align: 'right',
+      renderHeader: () => t('holdings.col_gain_percent', 'Total Return %'),
+      renderCell: (h) => {
+        const valIsProfit = h.gain_percent >= 0;
+        return (
+          <AnimateOnChange value={h.gain_percent} contextId={h.symbol}>
+            <span className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+            </span>
+          </AnimateOnChange>
+        );
+      }
+    },
+    dividends_gross: {
+      label: t('holdings.col_dividends_gross', 'Gross Dividends'),
+      sortField: 'dividends_base',
+      align: 'right',
+      renderHeader: () => t('holdings.col_dividends_gross', 'Gross Dividends'),
+      renderCell: (h) => (
+        <span style={{ color: 'var(--color-green)' }}>
+          <AnimateOnChange value={h.dividends_base || 0} contextId={h.symbol}>
+            {formatCurrency(h.dividends_base || 0, summary.base_currency)}
+          </AnimateOnChange>
+        </span>
+      )
     }
   };
 
@@ -459,6 +507,8 @@ export function HoldingsTable({
         { id: 'price', label: t('holdings.col_local_price', 'Current Price') },
         { id: 'avg_cost', label: t('holdings.col_avg_cost', 'Average Cost') },
         { id: 'cost', label: t('holdings.col_cost_basis', 'Cost Basis') },
+        { id: 'current_value', label: t('holdings.col_current_val_base', 'Current Value (Base)') },
+        { id: 'current_value_local', label: t('holdings.col_current_val_local', 'Current Value (Local)') },
         { id: 'fx_rate', label: t('holdings.col_fx_rate', 'FX Rate') }
       ]
     },
@@ -466,7 +516,10 @@ export function HoldingsTable({
       name: t('holdings.group_returns', 'Returns'),
       items: [
         { id: 'day_change', label: t('holdings.col_day_change', 'Day Change') },
-        { id: 'dividends', label: t('holdings.col_dividends_net', 'Net Dividends') }
+        { id: 'gain_loss', label: t('holdings.col_gain_loss', 'Gain/Loss') },
+        { id: 'gain_base_percent', label: t('holdings.col_gain_percent', 'Total Return %') },
+        { id: 'dividends', label: t('holdings.col_dividends_net', 'Net Dividends') },
+        { id: 'dividends_gross', label: t('holdings.col_dividends_gross', 'Gross Dividends') }
       ]
     }
   ];
@@ -489,6 +542,9 @@ export function HoldingsTable({
       } else if (field === 'gain_base') {
         valA = a.gain_base;
         valB = b.gain_base;
+      } else if (field === 'current_value_local') {
+        valA = a.shares * a.current_price_local;
+        valB = b.shares * b.current_price_local;
       } else if (columnsMeta[field]) {
         // Resolve based on sortField in meta
         const sf = columnsMeta[field].sortField as keyof Holding;
@@ -515,6 +571,7 @@ export function HoldingsTable({
   }, [holdings, holdingsSortField, holdingsSortAsc]);
 
   const handleHoldingsSort = (field: string) => {
+    if (isResizingRef.current) return;
     if (holdingsSortField === field) {
       const nextAsc = !holdingsSortAsc;
       setHoldingsSortAsc(nextAsc);
@@ -554,22 +611,80 @@ export function HoldingsTable({
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.15rem' }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
-        <button
-          onClick={() => setShowColumnPicker(!showColumnPicker)}
-          title={t('holdings.btn_customize_cols', 'Customize Columns')}
-          style={{
-            background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
-            color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
-            padding: '6px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-            marginLeft: 'auto',
-          }}
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+          {/* Segmented Switch for Unit View Mode */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '20px',
+            padding: '2px',
+            position: 'relative'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setDayChangeMode('total');
+                setGainLossMode('total');
+                localStorage.setItem('holdings_day_change_mode', 'total');
+                localStorage.setItem('holdings_gain_loss_mode', 'total');
+              }}
+              style={{
+                background: (dayChangeMode === 'total') ? 'var(--color-primary)' : 'transparent',
+                border: 'none',
+                color: (dayChangeMode === 'total') ? 'white' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: '18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: (dayChangeMode === 'total') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+            >
+              {t('holdings.view_total', 'Position Total')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDayChangeMode('pershare');
+                setGainLossMode('pershare');
+                localStorage.setItem('holdings_day_change_mode', 'pershare');
+                localStorage.setItem('holdings_gain_loss_mode', 'pershare');
+              }}
+              style={{
+                background: (dayChangeMode === 'pershare') ? 'var(--color-primary)' : 'transparent',
+                border: 'none',
+                color: (dayChangeMode === 'pershare') ? 'white' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: '18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: (dayChangeMode === 'pershare') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+            >
+              {t('holdings.view_pershare', 'Per Share')}
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowColumnPicker(!showColumnPicker)}
+            title={t('holdings.btn_customize_cols', 'Customize Columns')}
+            style={{
+              background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
+              color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-muted)',
+              padding: '6px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = 'white';
             if (!showColumnPicker) {
@@ -592,6 +707,7 @@ export function HoldingsTable({
           <SlidersHorizontal size={13} />
         </button>
       </div>
+    </div>
 
       {showColumnPicker && (
         <div style={{ 
@@ -745,6 +861,7 @@ export function HoldingsTable({
                   <div 
                     className={`col-resizer ${activeDragCol.current === 'symbol' ? 'resizing' : ''}`}
                     onMouseDown={(e) => handleMouseDown(e, 'symbol')}
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </th>
                 
@@ -768,61 +885,13 @@ export function HoldingsTable({
                       <div 
                         className={`col-resizer ${activeDragCol.current === colId ? 'resizing' : ''}`}
                         onMouseDown={(e) => handleMouseDown(e, colId)}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </th>
                   );
                 })}
 
-                <th 
-                  onClick={() => handleHoldingsSort('current_value_base')} 
-                  style={{ 
-                    textAlign: 'right', 
-                    userSelect: 'none',
-                    position: 'sticky',
-                    width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                    minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
-                  }}
-                >
-                  {t('holdings.col_current', 'Current Value')} ({summary.base_currency}) {renderSortArrow('current_value_base')}
-                  <div 
-                    className={`col-resizer ${activeDragCol.current === 'current_value_base' ? 'resizing' : ''}`}
-                    onMouseDown={(e) => handleMouseDown(e, 'current_value_base')}
-                  />
-                </th>
-                <th 
-                  onClick={() => handleHoldingsSort('gain_base')} 
-                  style={{ 
-                    textAlign: 'right', 
-                    userSelect: 'none',
-                    position: 'sticky',
-                    width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                    minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
-                  }}
-                >
-                  <span>
-                    {t('holdings.col_gain_loss', 'Gain/Loss')}
-                    <span 
-                      onClick={handleToggleGainLossMode}
-                      style={{ 
-                        cursor: 'pointer', 
-                        textDecoration: 'underline', 
-                        textDecorationStyle: 'dotted',
-                        marginLeft: '4px',
-                        color: 'var(--color-primary)',
-                        fontSize: '0.72rem',
-                        fontWeight: 500
-                      }}
-                      title={t('holdings.toggle_gain_loss_mode', 'Click to toggle between Position Total and Per Share return')}
-                    >
-                      {gainLossMode === 'total' ? '(Total)' : '(Per Share)'}
-                    </span>
-                  </span>
-                  {' '}{renderSortArrow('gain_base')}
-                  <div 
-                    className={`col-resizer ${activeDragCol.current === 'gain_base' ? 'resizing' : ''}`}
-                    onMouseDown={(e) => handleMouseDown(e, 'gain_base')}
-                  />
-                </th>
+
                 <th 
                   style={{ 
                     textAlign: 'center', 
@@ -839,7 +908,6 @@ export function HoldingsTable({
             </thead>
             <tbody>
               {sortedHoldings.map((h) => {
-                const valIsProfit = h.gain_base >= 0;
                 return (
                   <tr 
                     key={h.symbol} 
@@ -884,12 +952,18 @@ export function HoldingsTable({
                     {visibleColumns.map((colId) => {
                       const col = columnsMeta[colId];
                       if (!col) return null;
+                      const isMonospace = [
+                        'shares', 'price', 'avg_cost', 'cost', 'dividends', 'dividends_gross', 
+                        'day_change', 'weight', 'fx_rate', 'current_value', 'current_value_local', 
+                        'gain_loss', 'gain_base_percent'
+                      ].includes(colId);
                       return (
                         <td 
                           key={colId} 
                           style={{ 
                             textAlign: col.align, 
-                            fontFamily: ['shares', 'avg_cost', 'price', 'cost', 'dividends', 'day_change', 'weight', 'fx_rate'].includes(colId) ? 'monospace' : 'inherit',
+                            fontFamily: isMonospace ? 'monospace' : 'inherit',
+                            fontWeight: ['current_value', 'gain_loss'].includes(colId) ? 600 : 'inherit',
                             width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
                             minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                           }}
@@ -898,45 +972,6 @@ export function HoldingsTable({
                         </td>
                       );
                     })}
-
-                    {/* Fixed ending columns */}
-                    <td 
-                      style={{ 
-                        textAlign: 'right', 
-                        fontFamily: 'monospace', 
-                        fontWeight: 600,
-                        width: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined,
-                        minWidth: colWidths['current_value_base'] ? `${colWidths['current_value_base']}px` : undefined
-                      }}
-                    >
-                      <AnimateOnChange value={h.current_value_base} contextId={h.symbol}>
-                        {formatCurrency(h.current_value_base, summary.base_currency)}
-                      </AnimateOnChange>
-                    </td>
-                    <td 
-                      style={{ 
-                        textAlign: 'right', 
-                        fontFamily: 'monospace',
-                        width: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined,
-                        minWidth: colWidths['gain_base'] ? `${colWidths['gain_base']}px` : undefined
-                      }}
-                    >
-                      {(() => {
-                        const val = gainLossMode === 'total'
-                          ? h.gain_base
-                          : (h.shares > 0 ? (h.gain_base / h.shares) : 0);
-                        return (
-                          <AnimateOnChange value={val} contextId={h.symbol} style={{ display: 'block' }}>
-                            <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
-                              {valIsProfit ? '+' : ''}{formatCurrency(val, summary.base_currency)}
-                            </div>
-                            <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
-                              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
-                            </div>
-                          </AnimateOnChange>
-                        );
-                      })()}
-                    </td>
                     <td 
                       style={{ 
                         textAlign: 'center',
