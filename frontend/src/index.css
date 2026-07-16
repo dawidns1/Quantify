@@ -1817,6 +1817,9 @@ select option {
 @media (min-width: 1024px) {
   .dividend-calendar-grid.full-width {
     grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    height: 100%;
+    min-height: 0;
   }
 }
 

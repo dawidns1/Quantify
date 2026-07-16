@@ -721,7 +721,6 @@ export function HoldingsTable({
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{t('holdings.config_columns', 'Configure Portfolio Columns')}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('holdings.config_columns_desc', 'Ticker, Current Value, Gain/Loss & Actions are always visible')}</span>
           </div>
           
           {/* Grouped checkboxes */}

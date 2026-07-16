@@ -1598,6 +1598,7 @@ export function PortfolioView({
                                 activePortfolioId={activePortfolioId}
                                 jwtToken={session?.access_token || null}
                                 isExpanded={!showDivLedger}
+                                viewMode={!showDivForecast ? 'calendar' : 'both'}
                               />
                             </div>
                           )}
