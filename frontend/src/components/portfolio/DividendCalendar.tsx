@@ -125,7 +125,7 @@ export function DividendCalendar({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      padding: '1.25rem',
+      padding: '1rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
@@ -225,11 +225,10 @@ export function DividendCalendar({
         </div>
       </div>
 
-      {/* Yearly Summary Card */}
       <div style={{
         background: 'rgba(59, 130, 246, 0.04)',
         border: '1px dashed rgba(59, 130, 246, 0.25)',
-        padding: '0.85rem 1rem',
+        padding: '0.6rem 0.8rem',
         borderRadius: '8px',
         display: 'flex',
         justifyContent: 'space-between',
