@@ -352,15 +352,20 @@ class PortfolioManager:
                     
                 # Try loading from L2 SQLite Cache
                 sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
-                if sqlite_prices and (min(sqlite_prices.keys()) <= start_dt or min(sqlite_prices.keys()) - start_dt <= timedelta(days=7)):
-                    cls._historical_stock_cache[sym] = {
-                        "start_date": min(sqlite_prices.keys()),
-                        "end_date": max(sqlite_prices.keys()),
-                        "last_updated": now,
-                        "prices": sqlite_prices,
-                        "dividends": sqlite_divs
-                    }
-                    continue
+                if sqlite_prices:
+                    min_date = min(sqlite_prices.keys())
+                    max_date = max(sqlite_prices.keys())
+                    has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
+                    has_end = (end_dt - max_date <= timedelta(days=3))
+                    if has_start and has_end:
+                        cls._historical_stock_cache[sym] = {
+                            "start_date": min_date,
+                            "end_date": max_date,
+                            "last_updated": now,
+                            "prices": sqlite_prices,
+                            "dividends": sqlite_divs
+                        }
+                        continue
                     
                 missing_symbols.append(sym)
                 
@@ -1150,15 +1155,20 @@ class PortfolioManager:
         # Check SQLite L2 Cache if memory cache miss or doesn't go back far enough
         if not cache_entry or (cache_entry["start_date"] > start_dt and cache_entry["start_date"] - start_dt > timedelta(days=7)):
             sqlite_prices, sqlite_divs = get_cached_historical_prices(symbol, start_dt, end_dt)
-            if sqlite_prices and (min(sqlite_prices.keys()) <= start_dt or min(sqlite_prices.keys()) - start_dt <= timedelta(days=7)):
-                cls._historical_stock_cache[symbol] = {
-                    "start_date": min(sqlite_prices.keys()),
-                    "end_date": max(sqlite_prices.keys()),
-                    "last_updated": now - 3600,
-                    "prices": sqlite_prices,
-                    "dividends": sqlite_divs
-                }
-                cache_entry = cls._historical_stock_cache[symbol]
+            if sqlite_prices:
+                min_date = min(sqlite_prices.keys())
+                max_date = max(sqlite_prices.keys())
+                has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
+                has_end = (end_dt - max_date <= timedelta(days=3))
+                if has_start and has_end:
+                    cls._historical_stock_cache[symbol] = {
+                        "start_date": min_date,
+                        "end_date": max_date,
+                        "last_updated": now - 3600,
+                        "prices": sqlite_prices,
+                        "dividends": sqlite_divs
+                    }
+                    cache_entry = cls._historical_stock_cache[symbol]
         
         if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
             if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):

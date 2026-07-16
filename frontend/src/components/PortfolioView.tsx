@@ -134,6 +134,28 @@ export function PortfolioView({
   const [showDivCalendar, setShowDivCalendar] = useState<boolean>(() => {
     return localStorage.getItem('portfolio_show_div_calendar') !== 'false';
   });
+  const [showDivTopRow, setShowDivTopRow] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_show_div_top_row') !== 'false';
+  });
+  const [showDivLedger, setShowDivLedger] = useState<boolean>(() => {
+    return localStorage.getItem('portfolio_show_div_ledger') !== 'false';
+  });
+
+  const handleToggleDivTopRow = (val?: boolean) => {
+    setShowDivTopRow(prev => {
+      const next = val !== undefined ? val : !prev;
+      localStorage.setItem('portfolio_show_div_top_row', next ? 'true' : 'false');
+      return next;
+    });
+  };
+
+  const handleToggleDivLedger = (val?: boolean) => {
+    setShowDivLedger(prev => {
+      const next = val !== undefined ? val : !prev;
+      localStorage.setItem('portfolio_show_div_ledger', next ? 'true' : 'false');
+      return next;
+    });
+  };
 
   const handleToggleDivForecast = () => {
     setShowDivForecast(prev => {
@@ -1440,157 +1462,337 @@ export function PortfolioView({
                     )}
 
                     {/* Collapsible Split-Pane Grid for Dividends */}
-                    {(showDivForecast || showDivCalendar) && (
-                      <div 
-                        style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
-                          gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
-                          marginBottom: '0.3rem',
-                          animation: 'fadeIn 0.25s ease-out'
-                        }} 
-                        className="portfolio-grid"
-                      >
-                        {showDivForecast && (
-                          <div style={{ minWidth: 0, height: '100%' }}>
-                            <DividendForecast 
-                              apiBaseUrl={apiBaseUrl}
-                              activePortfolioId={activePortfolioId}
-                              session={session}
-                              baseCurrency={summary.base_currency}
-                              account={selectedAccount}
-                              linkCash={linkCash}
-                              holdings={holdings}
-                              onClose={handleToggleDivForecast}
-                            />
-                          </div>
-                        )}
-                        
-                        {/* Divider between Forecast and Calendar */}
-                        {(showDivForecast && showDivCalendar) && (
-                          <div 
-                            className="divider-line-hover"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              position: 'relative',
-                              height: '100%',
-                              width: '12px',
-                              zIndex: 10
-                            }}
-                          >
+                    {showDivTopRow && (showDivForecast || showDivCalendar) && (
+                      <div style={{ flex: showDivLedger ? 1.1 : 1, minHeight: 0, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                        <div 
+                          style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
+                            gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
+                            height: '100%',
+                            marginBottom: '0px',
+                            animation: 'fadeIn 0.25s ease-out'
+                          }} 
+                          className="portfolio-grid"
+                        >
+                          {showDivForecast && (
+                            <div style={{ minWidth: 0, height: '100%' }}>
+                              <DividendForecast 
+                                apiBaseUrl={apiBaseUrl}
+                                activePortfolioId={activePortfolioId}
+                                session={session}
+                                baseCurrency={summary.base_currency}
+                                account={selectedAccount}
+                                linkCash={linkCash}
+                                holdings={holdings}
+                                onClose={handleToggleDivForecast}
+                              />
+                            </div>
+                          )}
+                          
+                          {/* Divider between Forecast and Calendar */}
+                          {(showDivForecast && showDivCalendar) && (
                             <div 
-                              className="divider-line"
+                              className="divider-line-hover"
                               style={{
-                                width: '2px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
                                 height: '100%',
-                                background: 'var(--panel-border)',
-                                borderRadius: '1px',
-                                transition: 'background-color 0.2s'
-                              }}
-                            />
-                            {/* Collapse Forecast Pill */}
-                            <button 
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleToggleDivForecast(); }}
-                              className="divider-pill"
-                              title={t('dividends.hide_forecast_tooltip', 'Collapse Forecast')}
-                              style={{
-                                position: 'absolute',
-                                top: 'calc(50% - 20px)',
-                                transform: 'translateY(-50%)',
                                 width: '12px',
-                                height: '28px',
-                                background: 'rgba(15, 23, 42, 0.95)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.55rem',
-                                cursor: 'pointer',
-                                padding: 0,
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'var(--text-primary)';
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'var(--text-muted)';
-                                e.currentTarget.style.borderColor = 'var(--panel-border)';
+                                zIndex: 10
                               }}
                             >
-                              <span>◀</span>
-                            </button>
-                            
-                            {/* Collapse Calendar Pill */}
-                            <button 
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleToggleDivCalendar(); }}
-                              className="divider-pill"
-                              title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
-                              style={{
-                                position: 'absolute',
-                                top: 'calc(50% + 20px)',
-                                transform: 'translateY(-50%)',
-                                width: '12px',
-                                height: '28px',
-                                background: 'rgba(15, 23, 42, 0.95)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--text-muted)',
-                                fontSize: '0.55rem',
-                                cursor: 'pointer',
-                                padding: 0,
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.color = 'var(--text-primary)';
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.color = 'var(--text-muted)';
-                                e.currentTarget.style.borderColor = 'var(--panel-border)';
-                              }}
-                            >
-                              <span>▶</span>
-                            </button>
-                          </div>
-                        )}
+                              <div 
+                                className="divider-line"
+                                style={{
+                                  width: '2px',
+                                  height: '100%',
+                                  background: 'var(--panel-border)',
+                                  borderRadius: '1px',
+                                  transition: 'background-color 0.2s'
+                                }}
+                              />
+                              {/* Collapse Forecast Pill */}
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleToggleDivForecast(); }}
+                                className="divider-pill"
+                                title={t('dividends.hide_forecast_tooltip', 'Collapse Forecast')}
+                                style={{
+                                  position: 'absolute',
+                                  top: 'calc(50% - 20px)',
+                                  transform: 'translateY(-50%)',
+                                  width: '12px',
+                                  height: '28px',
+                                  background: 'rgba(15, 23, 42, 0.95)',
+                                  border: '1px solid var(--panel-border)',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.55rem',
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-primary)';
+                                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-muted)';
+                                  e.currentTarget.style.borderColor = 'var(--panel-border)';
+                                }}
+                              >
+                                <span>◀</span>
+                              </button>
+                              
+                              {/* Collapse Calendar Pill */}
+                              <button 
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleToggleDivCalendar(); }}
+                                className="divider-pill"
+                                title={t('dividends.hide_calendar_tooltip', 'Collapse Calendar')}
+                                style={{
+                                  position: 'absolute',
+                                  top: 'calc(50% + 20px)',
+                                  transform: 'translateY(-50%)',
+                                  width: '12px',
+                                  height: '28px',
+                                  background: 'rgba(15, 23, 42, 0.95)',
+                                  border: '1px solid var(--panel-border)',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.55rem',
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-primary)';
+                                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'var(--text-muted)';
+                                  e.currentTarget.style.borderColor = 'var(--panel-border)';
+                                }}
+                              >
+                                <span>▶</span>
+                              </button>
+                            </div>
+                          )}
 
-                        {showDivCalendar && (
-                          <div style={{ minWidth: 0, height: '100%' }}>
-                            <DividendCalendar 
-                              dividends={dividendsList}
-                              baseCurrency={summary.base_currency}
-                              onClose={handleToggleDivCalendar}
-                              apiBaseUrl={apiBaseUrl}
-                              activePortfolioId={activePortfolioId}
-                              jwtToken={session?.access_token || null}
-                            />
-                          </div>
-                        )}
+                          {showDivCalendar && (
+                            <div style={{ minWidth: 0, height: '100%' }}>
+                              <DividendCalendar 
+                                dividends={dividendsList}
+                                baseCurrency={summary.base_currency}
+                                onClose={handleToggleDivCalendar}
+                                apiBaseUrl={apiBaseUrl}
+                                activePortfolioId={activePortfolioId}
+                                jwtToken={session?.access_token || null}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
-                    <DividendLedgerTable 
-                      dividends={dividendsList}
-                      activePortfolioRole={activePortfolioRole}
-                      baseCurrency={summary.base_currency}
-                      onEditDividendClick={(div) => {
-                        setEditingDividend(div);
-                        setShowAddDividendModal(true);
-                      }}
-                      onDeleteDividendClick={handleDeleteDividend}
-                      style={{ flex: 1, minHeight: 0, marginTop: '0px' }}
-                      onScrollToBottomChange={setIsDividendLedgerAtBottom}
-                    />
+                    {/* Horizontal Divider between Top Row and Ledger Table */}
+                    {showDivTopRow && showDivLedger && (showDivForecast || showDivCalendar) && (
+                      <div 
+                        className="divider-line-hover-h"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
+                          width: '100%',
+                          height: '12px',
+                          zIndex: 10,
+                          margin: '0.2rem 0'
+                        }}
+                      >
+                        <div 
+                          className="divider-line-h"
+                          style={{
+                            width: '100%',
+                            height: '2px',
+                            background: 'var(--panel-border)',
+                            borderRadius: '1px',
+                            transition: 'background-color 0.2s'
+                          }}
+                        />
+                        {/* Collapse Top Row (Expand Ledger) */}
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleToggleDivTopRow(false); }}
+                          className="divider-pill-h"
+                          title={t('dividends.collapse_top_tooltip', 'Expand Ledger / Collapse Forecast & Calendar')}
+                          style={{
+                            position: 'absolute',
+                            left: 'calc(50% - 20px)',
+                            transform: 'translateX(-50%)',
+                            width: '28px',
+                            height: '12px',
+                            background: 'rgba(15, 23, 42, 0.95)',
+                            border: '1px solid var(--panel-border)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.55rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--panel-border)';
+                          }}
+                        >
+                          <span>▲</span>
+                        </button>
+                        
+                        {/* Collapse Ledger (Expand Top Row) */}
+                        <button 
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleToggleDivLedger(false); }}
+                          className="divider-pill-h"
+                          title={t('dividends.collapse_ledger_tooltip', 'Collapse Ledger / Expand Forecast & Calendar')}
+                          style={{
+                            position: 'absolute',
+                            left: 'calc(50% + 20px)',
+                            transform: 'translateX(-50%)',
+                            width: '28px',
+                            height: '12px',
+                            background: 'rgba(15, 23, 42, 0.95)',
+                            border: '1px solid var(--panel-border)',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-muted)',
+                            fontSize: '0.55rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--text-primary)';
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--panel-border)';
+                          }}
+                        >
+                          <span>▼</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Floating Expand Top Row Button when collapsed */}
+                    {!showDivTopRow && (
+                      <div 
+                        onClick={() => handleToggleDivTopRow(true)}
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: '0px',
+                          transform: 'translateX(-50%)',
+                          width: '36px',
+                          height: '14px',
+                          background: 'rgba(15, 23, 42, 0.95)',
+                          border: '1px solid var(--panel-border)',
+                          borderTop: 'none',
+                          borderRadius: '0 0 6px 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          zIndex: 1000,
+                          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                        title={t('dividends.show_top_tooltip', 'Show Forecast & Calendar')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.height = '18px';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.height = '14px';
+                        }}
+                      >
+                        <span style={{ fontSize: '0.6rem' }}>▼</span>
+                      </div>
+                    )}
+
+                    {/* Floating Expand Ledger Button when collapsed */}
+                    {!showDivLedger && (
+                      <div 
+                        onClick={() => handleToggleDivLedger(true)}
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          bottom: '0px',
+                          transform: 'translateX(-50%)',
+                          width: '36px',
+                          height: '14px',
+                          background: 'rgba(15, 23, 42, 0.95)',
+                          border: '1px solid var(--panel-border)',
+                          borderBottom: 'none',
+                          borderRadius: '6px 6px 0 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          zIndex: 1000,
+                          boxShadow: '0 -4px 16px rgba(0,0,0,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                        title={t('dividends.show_ledger_tooltip', 'Show Ledger Table')}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'white';
+                          e.currentTarget.style.height = '18px';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)';
+                          e.currentTarget.style.height = '14px';
+                        }}
+                      >
+                        <span style={{ fontSize: '0.6rem' }}>▲</span>
+                      </div>
+                    )}
+
+                    {showDivLedger && (
+                      <DividendLedgerTable 
+                        dividends={dividendsList}
+                        activePortfolioRole={activePortfolioRole}
+                        baseCurrency={summary.base_currency}
+                        onEditDividendClick={(div) => {
+                          setEditingDividend(div);
+                          setShowAddDividendModal(true);
+                        }}
+                        onDeleteDividendClick={handleDeleteDividend}
+                        style={{ flex: showDivTopRow && (showDivForecast || showDivCalendar) ? 1 : 1, minHeight: 0, marginTop: '0px' }}
+                        onScrollToBottomChange={setIsDividendLedgerAtBottom}
+                      />
+                    )}
                   </>
                 )}
 

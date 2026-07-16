@@ -163,6 +163,66 @@ class BaseDataProvider:
 
 class YFinanceProvider(BaseDataProvider):
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
+        from yfinance.data import YfData
+        
+        symbols_clean = [s.upper().strip() for s in symbols + fx_pairs if s.strip()]
+        if not symbols_clean:
+            return {"stocks": {}, "fx": {}}
+            
+        res = {"stocks": {}, "fx": {}}
+        try:
+            url = "https://query2.finance.yahoo.com/v7/finance/quote"
+            params = {
+                "symbols": ",".join(symbols_clean)
+            }
+            # Instantiate YfData to handle automatic cookie/crumb authentication
+            data_inst = YfData(session=YF_SESSION)
+            r = data_inst.get(url=url, params=params)
+            if r.status_code == 200:
+                data = r.json()
+                result_list = data.get("quoteResponse", {}).get("result", [])
+                for quote in result_list:
+                    symbol = quote.get("symbol", "").upper().strip()
+                    live_price = quote.get("regularMarketPrice") or quote.get("regularMarketPrice") or 0.0
+                    prev_close = quote.get("regularMarketPreviousClose") or live_price
+                    company_name = quote.get("longName") or quote.get("shortName") or symbol
+                    currency = quote.get("currency")
+                    timezone = quote.get("exchangeTimezoneName")
+                    exchange = quote.get("fullExchangeName") or quote.get("exchange")
+                    
+                    if symbol in fx_pairs:
+                        res["fx"][symbol] = live_price
+                    else:
+                        res["stocks"][symbol] = {
+                            "live_price": live_price,
+                            "previous_close": prev_close,
+                            "company_name": company_name,
+                            "native_currency": currency,
+                            "timezone": timezone,
+                            "exchange": exchange
+                        }
+            else:
+                print(f"[DataProvider] Bulk quotes API failed: {r.status_code} - {r.text}")
+        except Exception as e:
+            print(f"[DataProvider] Error in download_bulk_live_prices: {e}")
+            
+        # Fallback for any symbols that were NOT returned by the quote API (e.g. if the API is down)
+        missing_stocks = [s for s in symbols if s not in res["stocks"]]
+        missing_fx = [f for f in fx_pairs if f not in res["fx"]]
+        if missing_stocks or missing_fx:
+            print(f"[DataProvider] Bulk quotes API had missing keys, falling back to download for {missing_stocks} / {missing_fx}")
+            try:
+                fallback_res = self._download_bulk_live_prices_fallback(missing_stocks, missing_fx)
+                for k, v in fallback_res["stocks"].items():
+                    res["stocks"][k] = v
+                for k, v in fallback_res["fx"].items():
+                    res["fx"][k] = v
+            except Exception as fb_err:
+                print(f"[DataProvider] Fallback bulk download failed: {fb_err}")
+                
+        return res
+
+    def _download_bulk_live_prices_fallback(self, symbols: list, fx_pairs: list) -> dict:
         all_missing = symbols + fx_pairs
         if not all_missing:
             return {"stocks": {}, "fx": {}}
@@ -233,7 +293,7 @@ class YFinanceProvider(BaseDataProvider):
                 res["fx"][pair] = rate
                 
         except Exception as e:
-            print(f"YFinance bulk prefetch failed: {e}")
+            print(f"Fallback YFinance bulk prefetch failed: {e}")
             
         return res
 
@@ -424,14 +484,14 @@ class YFinanceProvider(BaseDataProvider):
                         closes = df['Close'].dropna()
                         is_pence = sym in pence_symbols
                         for idx, val in closes.items():
-                            dt = idx.to_pydatetime().date()
+                            dt = pd.to_datetime(idx).date()
                             prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
                     if 'Dividends' in df.columns:
                         divs = df['Dividends'].dropna()
                         is_pence = sym in pence_symbols
                         for idx, val in divs.items():
                             if float(val) > 0:
-                                dt = idx.to_pydatetime().date()
+                                dt = pd.to_datetime(idx).date()
                                 dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
                 else:
                     # Multi-index columns
@@ -442,7 +502,7 @@ class YFinanceProvider(BaseDataProvider):
                                 closes = closes_df[sym].dropna()
                                 is_pence = sym in pence_symbols
                                 for idx, val in closes.items():
-                                    dt = idx.to_pydatetime().date()
+                                    dt = pd.to_datetime(idx).date()
                                     prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
                     if 'Dividends' in df.columns:
                         divs_df = df['Dividends']
@@ -452,7 +512,7 @@ class YFinanceProvider(BaseDataProvider):
                                 is_pence = sym in pence_symbols
                                 for idx, val in divs.items():
                                     if float(val) > 0:
-                                        dt = idx.to_pydatetime().date()
+                                        dt = pd.to_datetime(idx).date()
                                         dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
         except Exception as e:
             print(f"YFinance bulk historical stock download failed: {e}")
@@ -487,7 +547,7 @@ class YFinanceProvider(BaseDataProvider):
                         closes = closes.squeeze()
                     closes = closes.dropna()
                     for idx, val in closes.items():
-                        dt = idx.to_pydatetime().date()
+                        dt = pd.to_datetime(idx).date()
                         prices_dict[dt] = float(val) / 100.0 if is_pence else float(val)
                 if 'Dividends' in df.columns:
                     divs = df['Dividends']
@@ -496,7 +556,7 @@ class YFinanceProvider(BaseDataProvider):
                     divs = divs.dropna()
                     for idx, val in divs.items():
                         if float(val) > 0:
-                            dt = idx.to_pydatetime().date()
+                            dt = pd.to_datetime(idx).date()
                             dividends_dict[dt] = float(val) / 100.0 if is_pence else float(val)
         except Exception as e:
             print(f"YFinance single historical stock download failed for {symbol}: {e}")
@@ -514,7 +574,7 @@ class YFinanceProvider(BaseDataProvider):
                     closes = closes.squeeze()
                 closes = closes.dropna()
                 for idx, val in closes.items():
-                    dt = idx.to_pydatetime().date()
+                    dt = pd.to_datetime(idx).date()
                     prices_dict[dt] = float(val)
         except Exception as e:
             print(f"YFinance historical FX download failed for {pair}: {e}")

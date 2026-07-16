@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Calendar } from 'lucide-react';
+import { TrendingUp, Calendar, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchDividendForecast } from '../../services/calculationService';
 
@@ -142,8 +142,72 @@ export function DividendForecast({
 
   if (error) {
     return (
-      <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--color-red)' }}>
-        <span>⚠️ {t('dividends.forecast_error', 'Error calculating dividend forecast')}: {error}</span>
+      <div className="glass-panel" style={{
+        height: '100%',
+        padding: '1.25rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        background: 'linear-gradient(135deg, rgba(16, 24, 40, 0.45) 0%, rgba(10, 15, 26, 0.7) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '12px',
+        position: 'relative',
+        minHeight: '280px',
+        ...style
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+            <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
+            {t('dividends.forecast_title', '12-Month Forward Dividend Forecast')}
+          </h3>
+          {onClose && (
+            <button 
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClose(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} 
+              title="Hide Card"
+              onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <span style={{ fontSize: '0.75rem' }}>✕</span>
+            </button>
+          )}
+        </div>
+        
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          textAlign: 'center',
+          padding: '2rem 1rem',
+          gap: '0.75rem',
+          background: 'rgba(239, 68, 68, 0.03)',
+          border: '1px dashed rgba(239, 68, 68, 0.15)',
+          borderRadius: '8px',
+          marginTop: '0.5rem'
+        }}>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '50%', 
+            background: 'rgba(239, 68, 68, 0.08)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            color: 'var(--color-red)',
+            marginBottom: '0.25rem'
+          }}>
+            <AlertCircle size={20} />
+          </div>
+          <div style={{ fontWeight: 600, color: 'white', fontSize: '0.92rem' }}>
+            {t('dividends.forecast_error_title', 'Calculation Error')}
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', maxWidth: '320px', lineHeight: '1.4' }}>
+            {t('dividends.forecast_error', 'Error calculating dividend forecast')}: {error}
+          </div>
+        </div>
       </div>
     );
   }
