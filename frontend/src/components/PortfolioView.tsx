@@ -1463,14 +1463,14 @@ export function PortfolioView({
 
                     {/* Collapsible Split-Pane Grid for Dividends */}
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
-                      <div style={{ flex: showDivLedger ? 1.1 : 1, minHeight: showDivLedger ? '360px' : 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ flex: showDivLedger ? 1.6 : 1, minHeight: showDivLedger ? '360px' : 0, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
                         <div 
                           style={{ 
                             display: 'grid', 
                             gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
                             gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
-                            height: '100%',
-                            marginBottom: '0px',
+                            flex: 1,
+                            minHeight: showDivLedger ? '360px' : 0,
                             animation: 'fadeIn 0.25s ease-out'
                           }} 
                           className="portfolio-grid"

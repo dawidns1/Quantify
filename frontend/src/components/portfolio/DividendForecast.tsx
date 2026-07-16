@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { TrendingUp, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchDividendForecast } from '../../services/calculationService';
 
@@ -49,18 +49,12 @@ export function DividendForecast({
 
   const holdingsKey = JSON.stringify(holdings.map(h => ({ symbol: h.symbol, shares: h.shares })));
 
-  useEffect(() => {
+  const loadData = () => {
     if (!activePortfolioId) return;
-
-    const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      setData(JSON.parse(cached));
-    }
-
     setLoading(true);
     setError(null);
     const jwtToken = session?.access_token || null;
+    const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
 
     fetchDividendForecast(apiBaseUrl, jwtToken, activePortfolioId, baseCurrency, account, linkCash)
       .then((res) => {
@@ -74,6 +68,17 @@ export function DividendForecast({
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    if (!activePortfolioId) return;
+
+    const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setData(JSON.parse(cached));
+    }
+    loadData();
   }, [activePortfolioId, baseCurrency, account, linkCash, holdingsKey, apiBaseUrl, session?.access_token]);
 
   const formatCurrency = (val: number) => {
@@ -207,6 +212,40 @@ export function DividendForecast({
           <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', maxWidth: '320px', lineHeight: '1.4' }}>
             {t('dividends.forecast_error', 'Error calculating dividend forecast')}: {error}
           </div>
+          <button
+            onClick={() => loadData()}
+            disabled={loading}
+            style={{
+              marginTop: '0.5rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: 'var(--color-red)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              padding: '6px 14px',
+              borderRadius: '6px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+              }
+            }}
+          >
+            <RefreshCw size={12} style={{ animation: loading ? 'spin-spinner 1.5s linear infinite' : 'none' }} />
+            {loading ? t('common.loading', 'Loading...') : t('common.retry', 'Retry Calculation')}
+          </button>
         </div>
       </div>
     );
