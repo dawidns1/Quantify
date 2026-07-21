@@ -125,8 +125,6 @@ export function DividendCalendar({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      minHeight: 0,
-      overflowY: 'auto',
       padding: isExpanded ? '1rem' : '0.65rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
