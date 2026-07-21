@@ -365,7 +365,7 @@ export function DividendForecast({
               position: 'relative'
             }}>
               {data.monthly_amounts.map((amount, idx) => {
-                const heightPercent = amount > 0 ? `${(amount / maxMonthValue) * 100}%` : '0%';
+                const heightPercent = amount > 0 ? `${(amount / maxMonthValue) * 78}%` : '0%';
                 const monthName = data.months[idx];
                 const isHovered = hoveredMonthIndex === idx;
 
@@ -402,7 +402,7 @@ export function DividendForecast({
                     {amount > 0 && (
                       <span style={{
                         position: 'absolute',
-                        bottom: `calc(${heightPercent} + 6px)`,
+                        bottom: `calc(${heightPercent} + 4px)`,
                         fontSize: isExpanded ? '0.72rem' : '0.62rem',
                         fontWeight: 700,
                         color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',

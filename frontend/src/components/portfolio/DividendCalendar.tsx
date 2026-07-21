@@ -260,7 +260,7 @@ export function DividendCalendar({
           });
         }}
         style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: '4px' }}
-        className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : ''}`}
+        className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : 'side-by-side'}`}
       >
         {monthlyData.map(m => {
           const uniqueTickers = Array.from(new Set(m.payments.map(p => p.symbol.toUpperCase()))).slice(0, 3);
