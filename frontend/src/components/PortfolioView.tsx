@@ -1387,10 +1387,9 @@ export function PortfolioView({
                 display: subTab === 'dividends' ? 'flex' : 'none',
                 flexDirection: 'column',
                 flex: 1,
-                height: '100%',
                 minHeight: 0,
                 position: 'relative',
-                overflow: 'hidden'
+                overflowY: 'auto'
               }}>
 
 
@@ -1474,13 +1473,11 @@ export function PortfolioView({
                     {/* Collapsible Split-Pane Grid for Dividends */}
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
                       <div style={{ 
-                        flex: showDivLedger ? '0 0 250px' : 1, 
-                        height: showDivLedger ? '250px' : '100%', 
-                        minHeight: 0, 
+                        flex: '0 0 auto', 
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
-                        marginBottom: showDivLedger ? '0.25rem' : '0px'
+                        marginBottom: showDivLedger ? '0.5rem' : '0px'
                       }}>
                         <div 
                           style={{ 
