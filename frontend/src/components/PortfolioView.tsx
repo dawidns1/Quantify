@@ -1474,12 +1474,12 @@ export function PortfolioView({
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
                       <div style={{ 
                         flex: showDivLedger ? '0 0 auto' : 1, 
-                        height: showDivLedger ? '390px' : '100%', 
-                        minHeight: showDivLedger ? '390px' : 0, 
+                        height: showDivLedger ? 'auto' : '100%', 
+                        minHeight: 0, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
-                        marginBottom: showDivLedger ? '0.5rem' : '0px'
+                        marginBottom: showDivLedger ? '0.25rem' : '0px'
                       }}>
                         <div 
                           style={{ 
@@ -1811,8 +1811,7 @@ export function PortfolioView({
                         }}
                         onDeleteDividendClick={handleDeleteDividend}
                         style={{ 
-                          flex: showDivTopRow && (showDivForecast || showDivCalendar) ? '1 1 auto' : 1, 
-                          height: showDivTopRow && (showDivForecast || showDivCalendar) ? 'auto' : '100%', 
+                          flex: 1, 
                           minHeight: showDivTopRow && (showDivForecast || showDivCalendar) ? '320px' : 0, 
                           marginTop: '0px' 
                         }}
