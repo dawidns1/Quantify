@@ -133,6 +133,7 @@ export function DividendCalendar({
       display: 'flex',
       flexDirection: 'column',
       gap: isExpanded ? '1rem' : '0.5rem',
+      overflowY: 'auto',
       ...style
     }}>
       {/* Header with Year Switcher */}
