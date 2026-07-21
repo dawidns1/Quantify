@@ -358,6 +358,7 @@ export function DividendForecast({
               justifyContent: 'space-between',
               alignItems: 'stretch',
               flex: 1,
+              height: isExpanded ? '200px' : '160px',
               minHeight: '160px',
               padding: '0 0.5rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',

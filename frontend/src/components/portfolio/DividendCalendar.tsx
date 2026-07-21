@@ -259,7 +259,7 @@ export function DividendCalendar({
             y: e.clientY - rect.top
           });
         }}
-        style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}
+        style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: '4px' }}
         className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : ''}`}
       >
         {monthlyData.map(m => {
