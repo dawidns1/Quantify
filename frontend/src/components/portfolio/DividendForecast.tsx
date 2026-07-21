@@ -348,7 +348,7 @@ export function DividendForecast({
             }}
             style={{ position: 'relative', marginTop: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            <span style={{ fontSize: isExpanded ? '0.8rem' : '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '1rem', letterSpacing: '0.5px' }}>
+            <span style={{ fontSize: isExpanded ? '0.8rem' : '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: isExpanded ? '1rem' : '0.4rem', letterSpacing: '0.5px' }}>
               {t('dividends.monthly_projection', 'Monthly Cash Flow Projections')}
             </span>
 
@@ -358,7 +358,7 @@ export function DividendForecast({
               justifyContent: 'space-between',
               alignItems: 'stretch',
               flex: 1,
-              minHeight: isExpanded ? '120px' : '80px',
+              minHeight: isExpanded ? '140px' : '100px',
               padding: '0 0.5rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
               gap: '3%',

@@ -1388,7 +1388,8 @@ export function PortfolioView({
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0,
-                position: 'relative'
+                position: 'relative',
+                overflowY: 'auto'
               }}>
 
 
@@ -1472,13 +1473,14 @@ export function PortfolioView({
                     {/* Collapsible Split-Pane Grid for Dividends */}
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
                       <div style={{ 
-                        flex: showDivLedger ? 1.8 : 1, 
-                        minHeight: 0, 
+                        flex: showDivLedger ? 'none' : 1, 
+                        height: showDivLedger ? '340px' : '100%', 
+                        minHeight: showDivLedger ? '340px' : 0, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
-                        overflow: 'visible',
-                        padding: showDivLedger ? '2px 4px 6px 4px' : '2px 4px'
+                        overflow: 'hidden',
+                        marginBottom: showDivLedger ? '0.5rem' : '0px'
                       }}>
                         <div 
                           style={{ 
@@ -1633,9 +1635,10 @@ export function PortfolioView({
                           justifyContent: 'center',
                           position: 'relative',
                           width: '100%',
-                          height: '12px',
+                          height: '16px',
+                          flexShrink: 0,
                           zIndex: 10,
-                          margin: '0.2rem 0'
+                          margin: '0.25rem 0'
                         }}
                       >
                         <div 
@@ -1808,7 +1811,12 @@ export function PortfolioView({
                           setShowAddDividendModal(true);
                         }}
                         onDeleteDividendClick={handleDeleteDividend}
-                        style={{ flex: showDivTopRow && (showDivForecast || showDivCalendar) ? 1 : 1, minHeight: 0, marginTop: '0px' }}
+                        style={{ 
+                          flex: showDivTopRow && (showDivForecast || showDivCalendar) ? 'none' : 1, 
+                          height: showDivTopRow && (showDivForecast || showDivCalendar) ? '320px' : '100%', 
+                          minHeight: showDivTopRow && (showDivForecast || showDivCalendar) ? '320px' : 0, 
+                          marginTop: '0px' 
+                        }}
                         onScrollToBottomChange={setIsDividendLedgerAtBottom}
                       />
                     )}
