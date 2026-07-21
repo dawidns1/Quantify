@@ -121,20 +121,20 @@ export function DividendCalendar({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      padding: isExpanded ? '1rem' : '0.5rem 0.65rem',
+      padding: '0.65rem 0.85rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
       display: 'flex',
       flexDirection: 'column',
-      gap: isExpanded ? '1rem' : '0.25rem',
+      gap: '0.35rem',
       overflow: 'hidden',
       ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: isExpanded ? '1.25rem' : '0.92rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'white' }}>
-          <Calendar size={isExpanded ? 18 : 16} style={{ color: 'var(--color-primary)' }} />
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'white' }}>
+          <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -195,21 +195,21 @@ export function DividendCalendar({
       <div style={{
         background: 'rgba(59, 130, 246, 0.04)',
         border: '1px dashed rgba(59, 130, 246, 0.25)',
-        padding: isExpanded ? '0.6rem 0.8rem' : '0.25rem 0.5rem',
+        padding: '0.35rem 0.6rem',
         borderRadius: '6px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-          <span style={{ fontSize: isExpanded ? '0.75rem' : '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
-          <span style={{ fontSize: isExpanded ? '1.65rem' : '0.98rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
+          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal, baseCurrency)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem' }}>
-          <span style={{ fontSize: isExpanded ? '0.72rem' : '0.6rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
-          <span style={{ fontSize: isExpanded ? '1.1rem' : '0.82rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
+          <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal / 12, baseCurrency)}
           </span>
         </div>
@@ -225,7 +225,7 @@ export function DividendCalendar({
             y: e.clientY - rect.top
           });
         }}
-        style={{ flex: 1, minHeight: 0 }}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: '2px' }}
         className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : 'side-by-side'}`}
       >
         {monthlyData.map(m => {
@@ -245,10 +245,10 @@ export function DividendCalendar({
                 background: hasPayments ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.005)',
                 border: '1px solid rgba(255, 255, 255, 0.04)',
                 borderRadius: '6px',
-                padding: isExpanded ? '0.65rem' : '0.3rem 0.45rem',
+                padding: '0.35rem 0.5rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: isExpanded ? '0.4rem' : '0.15rem',
+                gap: '0.2rem',
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'var(--transition-smooth)'
