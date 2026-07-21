@@ -125,14 +125,14 @@ export function DividendCalendar({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      padding: '1rem',
+      padding: isExpanded ? '1rem' : '0.65rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
       display: 'flex',
       flexDirection: 'column',
-      gap: '1rem',
+      gap: isExpanded ? '1rem' : '0.5rem',
       ...style
     }}>
       {/* Header with Year Switcher */}
@@ -228,7 +228,7 @@ export function DividendCalendar({
       <div style={{
         background: 'rgba(59, 130, 246, 0.04)',
         border: '1px dashed rgba(59, 130, 246, 0.25)',
-        padding: '0.6rem 0.8rem',
+        padding: isExpanded ? '0.6rem 0.8rem' : '0.45rem 0.65rem',
         borderRadius: '8px',
         display: 'flex',
         justifyContent: 'space-between',

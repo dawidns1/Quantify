@@ -1388,8 +1388,7 @@ export function PortfolioView({
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0,
-                position: 'relative',
-                overflowY: 'auto'
+                position: 'relative'
               }}>
 
 
@@ -1473,13 +1472,12 @@ export function PortfolioView({
                     {/* Collapsible Split-Pane Grid for Dividends */}
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
                       <div style={{ 
-                        flex: showDivLedger ? 1.6 : 1, 
-                        minHeight: showDivLedger ? '400px' : 0, 
+                        flex: showDivLedger ? 1.4 : 1, 
+                        minHeight: 0, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
-                        overflow: 'hidden',
-                        paddingBottom: showDivLedger ? '8px' : '0px'
+                        overflow: 'hidden'
                       }}>
                         <div 
                           style={{ 
@@ -1809,7 +1807,7 @@ export function PortfolioView({
                           setShowAddDividendModal(true);
                         }}
                         onDeleteDividendClick={handleDeleteDividend}
-                        style={{ flex: showDivTopRow && (showDivForecast || showDivCalendar) ? 1 : 1, minHeight: showDivTopRow && (showDivForecast || showDivCalendar) ? '300px' : 0, marginTop: '0px' }}
+                        style={{ flex: showDivTopRow && (showDivForecast || showDivCalendar) ? 1 : 1, minHeight: 0, marginTop: '0px' }}
                         onScrollToBottomChange={setIsDividendLedgerAtBottom}
                       />
                     )}

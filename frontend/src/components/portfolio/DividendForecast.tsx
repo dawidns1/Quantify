@@ -258,10 +258,10 @@ export function DividendForecast({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      padding: '1.25rem',
+      padding: isExpanded ? '1.25rem' : '0.75rem',
       display: 'flex',
       flexDirection: 'column',
-      gap: '1rem',
+      gap: isExpanded ? '1rem' : '0.5rem',
       background: 'linear-gradient(135deg, rgba(16, 24, 40, 0.45) 0%, rgba(10, 15, 26, 0.7) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
@@ -305,9 +305,9 @@ export function DividendForecast({
           <span>{t('dividends.no_forecast_data', 'No forward dividend data available. Add dividend-paying assets to see projections.')}</span>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: isExpanded ? '1rem' : '0.5rem', flex: 1 }}>
           {/* Key Metrics row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isExpanded ? '0.75rem' : '0.5rem' }}>
             {/* Metric 1 */}
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', padding: isExpanded ? '0.85rem 1rem' : '0.65rem 0.75rem' }}>
               <span style={{ fontSize: isExpanded ? '0.75rem' : '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
@@ -358,11 +358,10 @@ export function DividendForecast({
               justifyContent: 'space-between',
               alignItems: 'stretch',
               flex: 1,
-              height: isExpanded ? '200px' : '160px',
-              minHeight: '160px',
+              minHeight: isExpanded ? '140px' : '100px',
               padding: '0 0.5rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
-              gap: '4%',
+              gap: '3%',
               position: 'relative'
             }}>
               {data.monthly_amounts.map((amount, idx) => {
@@ -442,14 +441,12 @@ export function DividendForecast({
 
                     {/* Month Label */}
                     <span style={{
-                      fontSize: isExpanded ? '0.72rem' : '0.65rem',
+                      fontSize: isExpanded ? '0.72rem' : '0.62rem',
                       color: isHovered ? 'var(--text-primary)' : 'var(--text-muted)',
-                      marginTop: '0.4rem',
+                      marginTop: '0.35rem',
                       fontWeight: isHovered ? 700 : 500,
                       zIndex: 1,
-                      transform: 'translateY(15px)',
-                      position: 'absolute',
-                      bottom: '-20px'
+                      textAlign: 'center'
                     }}>
                       {monthLabel(monthName)}
                     </span>
@@ -457,9 +454,6 @@ export function DividendForecast({
                 );
               })}
             </div>
-
-            {/* Spacing for absolute month labels */}
-            <div style={{ height: '20px' }} />
 
             {/* Ticker contributions Tooltip Box */}
             {hoveredMonthIndex !== null && (() => {
