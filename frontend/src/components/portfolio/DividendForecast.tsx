@@ -266,7 +266,6 @@ export function DividendForecast({
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
       position: 'relative',
-      overflowY: 'auto',
       ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

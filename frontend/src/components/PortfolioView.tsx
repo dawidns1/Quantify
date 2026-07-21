@@ -1477,8 +1477,8 @@ export function PortfolioView({
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
-                        overflow: 'hidden',
-                        paddingBottom: showDivLedger ? '4px' : '0px'
+                        overflow: 'visible',
+                        padding: showDivLedger ? '2px 4px 6px 4px' : '2px 4px'
                       }}>
                         <div 
                           style={{ 
