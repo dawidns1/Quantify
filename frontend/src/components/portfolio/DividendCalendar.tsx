@@ -1,12 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X, Copy, Check } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Share2, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface DividendCalendarProps {
   dividends: any[];
   baseCurrency: string;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
   onClose?: () => void;
   viewMode?: 'both' | 'calendar' | 'forecast';
   apiBaseUrl?: string;
@@ -19,8 +17,6 @@ interface DividendCalendarProps {
 export function DividendCalendar({ 
   dividends, 
   baseCurrency,
-  onMoveUp,
-  onMoveDown,
   onClose,
   viewMode,
   apiBaseUrl,
@@ -125,23 +121,23 @@ export function DividendCalendar({
   return (
     <div className="glass-panel" style={{
       height: '100%',
-      padding: isExpanded ? '1rem' : '0.65rem',
+      padding: isExpanded ? '1rem' : '0.5rem 0.65rem',
       background: 'linear-gradient(135deg, rgba(18, 24, 38, 0.6) 0%, rgba(13, 17, 28, 0.75) 100%)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '12px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
       display: 'flex',
       flexDirection: 'column',
-      gap: isExpanded ? '1rem' : '0.5rem',
+      gap: isExpanded ? '1rem' : '0.25rem',
+      overflow: 'hidden',
       ...style
     }}>
-      {/* Header with Year Switcher */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: isExpanded ? '1.25rem' : '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-          <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
+        <h3 style={{ margin: 0, fontSize: isExpanded ? '1.25rem' : '0.92rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'white' }}>
+          <Calendar size={isExpanded ? 18 : 16} style={{ color: 'var(--color-primary)' }} />
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {apiBaseUrl && activePortfolioId && jwtToken && (
             <button
               onClick={handleCopyFeed}
@@ -151,76 +147,47 @@ export function DividendCalendar({
                 border: copied ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
                 color: copied ? 'var(--color-green)' : 'var(--text-secondary)',
                 borderRadius: '6px',
-                padding: '4px 8px',
-                fontSize: '0.72rem',
+                padding: '3px 6px',
+                fontSize: '0.68rem',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.3rem',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.2s'
               }}
             >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
-              <span>{copied ? t('calendar.copied', 'Synced!') : t('calendar.subscribe', 'Sync Calendar')}</span>
+              {copied ? <Check size={11} /> : <Share2 size={11} />}
+              <span>{copied ? t('calendar.feed_copied', 'Copied!') : t('calendar.btn_feed', 'iCal Feed')}</span>
             </button>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '6px', padding: '2px 4px' }}>
             <button 
               onClick={handlePrevYear} 
-              disabled={availableYears.indexOf(selectedYear) === availableYears.length - 1}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', opacity: availableYears.indexOf(selectedYear) === availableYears.length - 1 ? 0.3 : 1 }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
-              {selectedYear}
-            </span>
-            <button 
-              onClick={handleNextYear} 
               disabled={availableYears.indexOf(selectedYear) === 0}
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', opacity: availableYears.indexOf(selectedYear) === 0 ? 0.3 : 1 }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: availableYears.indexOf(selectedYear) === 0 ? 0.3 : 1, padding: '2px', display: 'flex', alignItems: 'center' }}
             >
-              <ChevronRight size={16} />
+              <ChevronLeft size={12} />
+            </button>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'white', minWidth: '38px', textAlign: 'center', fontFamily: 'monospace' }}>{selectedYear}</span>
+            <button 
+              onClick={handleNextYear}
+              disabled={availableYears.indexOf(selectedYear) === availableYears.length - 1}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: availableYears.indexOf(selectedYear) === availableYears.length - 1 ? 0.3 : 1, padding: '2px', display: 'flex', alignItems: 'center' }}
+            >
+              <ChevronRight size={12} />
             </button>
           </div>
-
-          {(onMoveUp || onMoveDown || onClose) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '0.75rem' }}>
-              {onMoveUp && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title={t('dashboard.move_up', 'Move Up')}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <ChevronUp size={14} />
-                </button>
-              )}
-              {onMoveDown && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title={t('dashboard.move_down', 'Move Down')}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <ChevronDown size={14} />
-                </button>
-              )}
-              {onClose && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onClose(); }} 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-                  title={t('dashboard.hide_card', 'Hide Card')}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+          {onClose && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onClose(); }} 
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
+              title="Hide Card"
+              onMouseEnter={(e) => e.currentTarget.style.color = 'white'} 
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <span style={{ fontSize: '0.75rem' }}>✕</span>
+            </button>
           )}
         </div>
       </div>
@@ -228,27 +195,26 @@ export function DividendCalendar({
       <div style={{
         background: 'rgba(59, 130, 246, 0.04)',
         border: '1px dashed rgba(59, 130, 246, 0.25)',
-        padding: isExpanded ? '0.6rem 0.8rem' : '0.45rem 0.65rem',
-        borderRadius: '8px',
+        padding: isExpanded ? '0.6rem 0.8rem' : '0.25rem 0.5rem',
+        borderRadius: '6px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-          <span style={{ fontSize: isExpanded ? '0.75rem' : '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
-          <span style={{ fontSize: isExpanded ? '1.65rem' : '1.35rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+          <span style={{ fontSize: isExpanded ? '0.75rem' : '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('calendar.yearly_cash_flow', 'Yearly Dividend Cash Flow')}</span>
+          <span style={{ fontSize: isExpanded ? '1.65rem' : '0.98rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal, baseCurrency)}
           </span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
-          <span style={{ fontSize: isExpanded ? '0.72rem' : '0.68rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
-          <span style={{ fontSize: isExpanded ? '1.1rem' : '0.92rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem' }}>
+          <span style={{ fontSize: isExpanded ? '0.72rem' : '0.6rem', color: 'var(--text-muted)' }}>{t('calendar.avg_monthly_income', 'Avg. Monthly Income')}</span>
+          <span style={{ fontSize: isExpanded ? '1.1rem' : '0.82rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
             {formatCurrency(yearlyTotal / 12, baseCurrency)}
           </span>
         </div>
       </div>
 
-      {/* 12-Month Grid */}
       <div 
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
@@ -259,7 +225,7 @@ export function DividendCalendar({
             y: e.clientY - rect.top
           });
         }}
-        style={{ overflowY: 'auto', flex: 1, minHeight: 0, paddingRight: '4px' }}
+        style={{ flex: 1, minHeight: 0 }}
         className={`dividend-calendar-grid ${viewMode === 'calendar' ? 'full-width' : 'side-by-side'}`}
       >
         {monthlyData.map(m => {
@@ -278,11 +244,11 @@ export function DividendCalendar({
               style={{
                 background: hasPayments ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.005)',
                 border: '1px solid rgba(255, 255, 255, 0.04)',
-                borderRadius: '8px',
-                padding: '0.65rem',
+                borderRadius: '6px',
+                padding: isExpanded ? '0.65rem' : '0.3rem 0.45rem',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.4rem',
+                gap: isExpanded ? '0.4rem' : '0.15rem',
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'var(--transition-smooth)'
