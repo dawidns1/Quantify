@@ -1474,7 +1474,7 @@ export function PortfolioView({
                     {showDivTopRow && (showDivForecast || showDivCalendar) && (
                       <div style={{ 
                         flex: showDivLedger ? 1.6 : 1, 
-                        minHeight: showDivLedger ? '360px' : 0, 
+                        minHeight: showDivLedger ? '400px' : 0, 
                         display: 'flex', 
                         flexDirection: 'column', 
                         minWidth: 0, 
@@ -1487,7 +1487,7 @@ export function PortfolioView({
                             gridTemplateColumns: (showDivForecast && showDivCalendar) ? '1.2fr 12px 1fr' : '1fr', 
                             gap: (showDivForecast && showDivCalendar) ? '0px' : '0.75rem', 
                             flex: 1,
-                            minHeight: showDivLedger ? '360px' : 0,
+                            minHeight: 0,
                             animation: 'fadeIn 0.25s ease-out'
                           }} 
                           className="portfolio-grid"
