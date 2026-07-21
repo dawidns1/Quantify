@@ -6,7 +6,9 @@ import {
   Menu,
   LayoutGrid,
   Layout,
-  Scale
+  Scale,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 
 
@@ -1353,67 +1355,7 @@ export function PortfolioView({
 
                 {/* Desktop view */}
                 {!isMobile && (
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden' }}>
-                    {/* Segmented View Mode Switcher Header Bar */}
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center', 
-                      padding: '0.2rem 0 0.5rem 0',
-                      flexShrink: 0 
-                    }}>
-                      <div style={{ 
-                        display: 'flex', 
-                        background: 'rgba(15, 23, 42, 0.85)', 
-                        border: '1px solid rgba(255, 255, 255, 0.1)', 
-                        borderRadius: '8px', 
-                        padding: '3px', 
-                        gap: '4px',
-                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
-                      }}>
-                        <button
-                          type="button"
-                          onClick={() => setDividendViewMode('overview')}
-                          style={{
-                            padding: '0.4rem 1.25rem',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            borderRadius: '6px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: dividendViewMode === 'overview' ? 'var(--color-primary)' : 'transparent',
-                            color: dividendViewMode === 'overview' ? '#ffffff' : 'var(--text-muted)',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                          }}
-                        >
-                          <span>📊</span> {t('dividends.view_projections', 'Forecast & Calendar')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDividendViewMode('ledger')}
-                          style={{
-                            padding: '0.4rem 1.25rem',
-                            fontSize: '0.82rem',
-                            fontWeight: 700,
-                            borderRadius: '6px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: dividendViewMode === 'ledger' ? 'var(--color-primary)' : 'transparent',
-                            color: dividendViewMode === 'ledger' ? '#ffffff' : 'var(--text-muted)',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem'
-                          }}
-                        >
-                          <span>📜</span> {t('dividends.view_ledger', 'Payout Ledger')}
-                        </button>
-                      </div>
-                    </div>
-
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
                     {/* Mode 1: Forecast & Calendar side-by-side (Full Height 100%, ZERO SCROLLBARS) */}
                     {dividendViewMode === 'overview' && (
                       <div 
@@ -1438,7 +1380,7 @@ export function PortfolioView({
                             account={selectedAccount}
                             linkCash={linkCash}
                             holdings={holdings}
-                            isExpanded={true}
+                            isExpanded={false}
                           />
                         </div>
                         <div style={{ minWidth: 0, height: '100%' }}>
@@ -1448,7 +1390,7 @@ export function PortfolioView({
                             apiBaseUrl={apiBaseUrl}
                             activePortfolioId={activePortfolioId}
                             jwtToken={session?.access_token || null}
-                            isExpanded={true}
+                            isExpanded={false}
                             viewMode="both"
                           />
                         </div>
@@ -1472,6 +1414,82 @@ export function PortfolioView({
                         />
                       </div>
                     )}
+
+                    {/* Floating Circular Action Icon Buttons (Bottom-Right Corner) */}
+                    <div style={{
+                      position: 'absolute',
+                      right: '16px',
+                      bottom: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      zIndex: 999
+                    }}>
+                      {/* Button 1: Toggle View Mode Icon Button */}
+                      <button
+                        type="button"
+                        onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
+                        title={dividendViewMode === 'overview' ? t('dividends.view_ledger_tooltip', 'View Payout Ledger') : t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '50%',
+                          background: 'rgba(15, 23, 42, 0.92)',
+                          border: '1px solid rgba(6, 182, 212, 0.45)',
+                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 14px rgba(6, 182, 212, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.1)';
+                          e.currentTarget.style.borderColor = 'var(--color-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
+                        }}
+                      >
+                        {dividendViewMode === 'overview' ? <FileText size={19} /> : <TrendingUp size={19} />}
+                      </button>
+
+                      {/* Button 2: Add Dividend Button (ONLY visible in Ledger View!) */}
+                      {dividendViewMode === 'ledger' && activePortfolioRole !== 'viewer' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingDividend(null);
+                            setShowAddDividendModal(true);
+                          }}
+                          title={t('dividends.add_payout_tooltip', 'Add Dividend Payout')}
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 20px rgba(6, 182, 212, 0.45)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.1)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          <Plus size={21} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
