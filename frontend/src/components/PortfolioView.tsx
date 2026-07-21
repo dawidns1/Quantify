@@ -120,7 +120,6 @@ export function PortfolioView({
   const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingDividend, setEditingDividend] = useState<any | null>(null);
-  const [isDividendLedgerAtBottom, setIsDividendLedgerAtBottom] = useState(false);
   const [isHoldingsAtBottom, setIsHoldingsAtBottom] = useState(false);
   const [isLedgerAtBottom, setIsLedgerAtBottom] = useState(false);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
@@ -1410,7 +1409,6 @@ export function PortfolioView({
                           }}
                           onDeleteDividendClick={handleDeleteDividend}
                           style={{ flex: 1, height: '100%', minHeight: 0 }}
-                          onScrollToBottomChange={setIsDividendLedgerAtBottom}
                         />
                       </div>
                     )}
@@ -1540,7 +1538,6 @@ export function PortfolioView({
                         }}
                         onDeleteDividendClick={handleDeleteDividend}
                         style={{ flex: 'none', minHeight: 'auto', height: 'auto', marginTop: '0px' }}
-                        onScrollToBottomChange={setIsDividendLedgerAtBottom}
                       />
                     )}
 
@@ -1872,25 +1869,19 @@ export function PortfolioView({
       />
 
       {/* Floating Action Button (FAB) */}
-      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (() => {
+      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && subTab !== 'dividends' && (() => {
         const hideFAB = isMobile && (
           (subTab === 'overview' && mobileOverviewTab === 'holdings' && isHoldingsAtBottom) ||
-          (subTab === 'ledger' && isLedgerAtBottom) ||
-          (subTab === 'dividends' && mobileDividendsTab === 'ledger' && isDividendLedgerAtBottom)
+          (subTab === 'ledger' && isLedgerAtBottom)
         );
         return (
           <button
             onClick={() => {
               if (!triggerRandomUpsell()) {
-                if (subTab === 'dividends') {
-                  setEditingDividend(null);
-                  setShowAddDividendModal(true);
-                } else {
-                  setShowAddModal(true);
-                }
+                setShowAddModal(true);
               }
             }}
-            title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
+            title={t('dashboard.add_tx_shortcut', 'Add Transaction')}
             style={{
               position: 'fixed',
               bottom: '2rem',
@@ -1911,7 +1902,7 @@ export function PortfolioView({
               outline: 'none',
               opacity: hideFAB ? 0 : 1,
               pointerEvents: hideFAB ? 'none' : 'auto',
-              transform: hideFAB ? 'scale(0)' : 'scale(1)'
+              transform: hideFAB ? 'translateY(100px) scale(0.8)' : 'scale(1)'
             }}
             onMouseEnter={(e) => {
               if (hideFAB) return;
