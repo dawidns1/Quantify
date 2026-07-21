@@ -35,7 +35,7 @@ export function DividendForecast({
   holdings,
   onClose,
   style,
-  isExpanded = false
+  isExpanded: _isExpanded = false
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
   const [data, setData] = useState<ForecastData | null>(() => {
@@ -378,8 +378,6 @@ export function DividendForecast({
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
-                      justifyContent: 'flex-end',
-                      alignItems: 'center',
                       position: 'relative',
                       cursor: 'pointer'
                     }}
@@ -392,62 +390,74 @@ export function DividendForecast({
                         position: 'absolute',
                         bottom: 0,
                         width: '120%',
-                        height: '110%',
+                        height: '100%',
                         background: 'rgba(255, 255, 255, 0.015)',
                         borderRadius: '6px',
                         zIndex: 0
                       }} />
                     )}
 
-                    {/* Amount Label above the bar */}
-                    {amount > 0 && (
-                      <span style={{
-                        position: 'absolute',
-                        bottom: `calc(${heightPercent} + 4px)`,
-                        fontSize: '0.68rem',
-                        fontWeight: 700,
-                        color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',
-                        fontFamily: 'monospace',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap',
-                        zIndex: 2,
-                        transition: 'bottom 0.2s ease-in-out, color 0.2s ease-in-out'
-                      }}>
-                        {formatBarAmount(amount)}
-                      </span>
-                    )}
+                    {/* Dedicated Bar Area Container */}
+                    <div style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      position: 'relative',
+                      minHeight: 0
+                    }}>
+                      {/* Amount Label above the bar */}
+                      {amount > 0 && (
+                        <span style={{
+                          position: 'absolute',
+                          bottom: `calc(${heightPercent} + 4px)`,
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',
+                          fontFamily: 'monospace',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          zIndex: 2,
+                          transition: 'bottom 0.2s ease-in-out, color 0.2s ease-in-out'
+                        }}>
+                          {formatBarAmount(amount)}
+                        </span>
+                      )}
 
-                    {/* Bar */}
-                    {amount > 0 ? (
-                      <div style={{
-                        width: '100%',
-                        height: heightPercent,
-                        background: isHovered 
-                          ? 'linear-gradient(to top, rgba(6, 182, 212, 0.8), rgba(16, 185, 129, 0.8))'
-                          : 'linear-gradient(to top, rgba(6, 182, 212, 0.35), rgba(16, 185, 129, 0.45))',
-                        boxShadow: isHovered 
-                          ? '0 0 12px rgba(6, 182, 212, 0.35)' 
-                          : 'none',
-                        border: isHovered
-                          ? '1px solid rgba(6, 182, 212, 0.8)'
-                          : '1px solid rgba(16, 185, 129, 0.15)',
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'all 0.2s ease-in-out',
-                        zIndex: 1,
-                        position: 'relative'
-                      }} />
-                    ) : (
-                      <div style={{ height: '0%', width: '100%' }} />
-                    )}
+                      {/* Bar */}
+                      {amount > 0 ? (
+                        <div style={{
+                          width: '100%',
+                          height: heightPercent,
+                          background: isHovered 
+                            ? 'linear-gradient(to top, rgba(6, 182, 212, 0.8), rgba(16, 185, 129, 0.8))'
+                            : 'linear-gradient(to top, rgba(6, 182, 212, 0.35), rgba(16, 185, 129, 0.45))',
+                          boxShadow: isHovered 
+                            ? '0 0 12px rgba(6, 182, 212, 0.35)' 
+                            : 'none',
+                          border: isHovered
+                            ? '1px solid rgba(6, 182, 212, 0.8)'
+                            : '1px solid rgba(16, 185, 129, 0.15)',
+                          borderRadius: '4px 4px 0 0',
+                          transition: 'all 0.2s ease-in-out',
+                          zIndex: 1,
+                          position: 'relative'
+                        }} />
+                      ) : (
+                        <div style={{ height: '0%', width: '100%' }} />
+                      )}
+                    </div>
 
-                    {/* Month Label */}
+                    {/* Month Label below bar area */}
                     <span style={{
-                      fontSize: isExpanded ? '0.72rem' : '0.62rem',
+                      fontSize: '0.62rem',
                       color: isHovered ? 'var(--text-primary)' : 'var(--text-muted)',
-                      marginTop: '0.35rem',
+                      marginTop: '0.25rem',
                       fontWeight: isHovered ? 700 : 500,
                       zIndex: 1,
-                      textAlign: 'center'
+                      textAlign: 'center',
+                      flexShrink: 0
                     }}>
                       {monthLabel(monthName)}
                     </span>

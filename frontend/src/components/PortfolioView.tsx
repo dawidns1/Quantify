@@ -1412,82 +1412,6 @@ export function PortfolioView({
                         />
                       </div>
                     )}
-
-                    {/* Floating Circular Action Icon Buttons (Bottom-Right Corner) */}
-                    <div style={{
-                      position: 'absolute',
-                      right: '16px',
-                      bottom: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      zIndex: 999
-                    }}>
-                      {/* Button 1: Toggle View Mode Icon Button */}
-                      <button
-                        type="button"
-                        onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
-                        title={dividendViewMode === 'overview' ? t('dividends.view_ledger_tooltip', 'View Payout Ledger') : t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
-                        style={{
-                          width: '42px',
-                          height: '42px',
-                          borderRadius: '50%',
-                          background: 'rgba(15, 23, 42, 0.92)',
-                          border: '1px solid rgba(6, 182, 212, 0.45)',
-                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 14px rgba(6, 182, 212, 0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'white',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1)';
-                          e.currentTarget.style.borderColor = 'var(--color-primary)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.45)';
-                        }}
-                      >
-                        {dividendViewMode === 'overview' ? <FileText size={19} /> : <TrendingUp size={19} />}
-                      </button>
-
-                      {/* Button 2: Add Dividend Button (ONLY visible in Ledger View!) */}
-                      {dividendViewMode === 'ledger' && activePortfolioRole !== 'viewer' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingDividend(null);
-                            setShowAddDividendModal(true);
-                          }}
-                          title={t('dividends.add_payout_tooltip', 'Add Dividend Payout')}
-                          style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%)',
-                            border: 'none',
-                            boxShadow: '0 4px 20px rgba(6, 182, 212, 0.45)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          <Plus size={21} />
-                        </button>
-                      )}
-                    </div>
                   </div>
                 )}
 
@@ -1868,55 +1792,104 @@ export function PortfolioView({
         reason={upsellReason}
       />
 
-      {/* Floating Action Button (FAB) */}
-      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && subTab !== 'dividends' && (() => {
+      {/* Floating Action Buttons Area (Bottom-Right Corner) */}
+      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (() => {
         const hideFAB = isMobile && (
           (subTab === 'overview' && mobileOverviewTab === 'holdings' && isHoldingsAtBottom) ||
           (subTab === 'ledger' && isLedgerAtBottom)
         );
         return (
-          <button
-            onClick={() => {
-              if (!triggerRandomUpsell()) {
-                setShowAddModal(true);
-              }
-            }}
-            title={t('dashboard.add_tx_shortcut', 'Add Transaction')}
-            style={{
-              position: 'fixed',
-              bottom: '2rem',
-              right: '2rem',
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
-              color: 'white',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
-              zIndex: 99,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              outline: 'none',
-              opacity: hideFAB ? 0 : 1,
-              pointerEvents: hideFAB ? 'none' : 'auto',
-              transform: hideFAB ? 'translateY(100px) scale(0.8)' : 'scale(1)'
-            }}
-            onMouseEnter={(e) => {
-              if (hideFAB) return;
-              e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
-              e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              if (hideFAB) return;
-              e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-              e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
-            }}
-          >
-            <Plus size={24} style={{ strokeWidth: 2.5 }} />
-          </button>
+          <>
+            {/* View Switcher FAB (ONLY in Dividends subTab, rendered side-by-side to the left at right: 6.2rem) */}
+            {subTab === 'dividends' && (
+              <button
+                type="button"
+                onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
+                title={dividendViewMode === 'overview' ? t('dividends.view_ledger_tooltip', 'View Payout Ledger') : t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
+                style={{
+                  position: 'fixed',
+                  bottom: '2rem',
+                  right: '6.2rem',
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))',
+                  border: '1px solid rgba(6, 182, 212, 0.5)',
+                  boxShadow: '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 99,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  outline: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.15)';
+                  e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.7), 0 6px 16px rgba(0, 0, 0, 0.4)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
+                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)';
+                }}
+              >
+                {dividendViewMode === 'overview' ? <FileText size={22} /> : <TrendingUp size={22} />}
+              </button>
+            )}
+
+            {/* Global + FAB Button (ALWAYS present at right: 2rem across ALL tabs!) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!triggerRandomUpsell()) {
+                  if (subTab === 'dividends') {
+                    setEditingDividend(null);
+                    setShowAddDividendModal(true);
+                  } else {
+                    setShowAddModal(true);
+                  }
+                }
+              }}
+              title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
+              style={{
+                position: 'fixed',
+                bottom: '2rem',
+                right: '2rem',
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                color: 'white',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
+                zIndex: 99,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                opacity: hideFAB ? 0 : 1,
+                pointerEvents: hideFAB ? 'none' : 'auto',
+                transform: hideFAB ? 'translateY(100px) scale(0.8)' : 'scale(1)'
+              }}
+              onMouseEnter={(e) => {
+                if (hideFAB) return;
+                e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
+                e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                if (hideFAB) return;
+                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
+              }}
+            >
+              <Plus size={24} style={{ strokeWidth: 2.5 }} />
+            </button>
+          </>
         );
       })()}
 
