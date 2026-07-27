@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound, Eye, EyeOff, Check, Circle } from 'lucide-react';
+import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound, Eye, EyeOff, Check, Circle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +9,8 @@ export function AuthView() {
   const { recoveryMode, setRecoveryMode } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,6 +21,14 @@ export function AuthView() {
   const [submitting, setSubmitting] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otpToken, setOtpToken] = useState('');
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const passwordRules = {
     minLength: password.length >= 8,
@@ -97,7 +107,9 @@ export function AuthView() {
         setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
       } else {
         console.log('[SUPABASE AUTH SIGNUP SUCCESS]:', data);
-        setMessage(t('auth.msgConfirmLinkSent', 'Success! Check your email for the confirmation link.'));
+        setSignUpSuccess(true);
+        setResendCooldown(60);
+        setMessage(t('auth.msgConfirmLinkSent', 'Activation email sent! Check your inbox.'));
       }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -113,6 +125,32 @@ export function AuthView() {
       }
     }
     setSubmitting(false);
+  };
+
+  const handleResendSignUpEmail = async () => {
+    if (resendCooldown > 0 || submitting) return;
+    setError(null);
+    setMessage(null);
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim().toLowerCase(),
+      });
+
+      if (error) {
+        console.error('[SUPABASE RESEND SIGNUP ERROR]:', error);
+        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
+      } else {
+        setMessage(t('auth.msgResentSignUp', 'Activation email resent! Check your inbox.'));
+        setResendCooldown(60);
+      }
+    } catch (err: any) {
+      setError(err.message || t('auth.errorDefault', 'An error occurred.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Request password reset email link
@@ -264,7 +302,6 @@ export function AuthView() {
             <span>{message}</span>
           </div>
         )}
-
         {/* 1. PASSWORD RECOVERY UPDATE FORM */}
         {recoveryMode ? (
           <form noValidate onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
@@ -422,6 +459,96 @@ export function AuthView() {
               {submitting ? t('auth.btnUpdating', 'Updating...') : t('auth.btnUpdatePassword', 'Update Password')}
             </button>
           </form>
+        ) : signUpSuccess ? (
+          /* DEDICATED CHECK YOUR EMAIL SUCCESS SCREEN */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', textAlign: 'center', padding: '0.5rem 0' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'rgba(6, 182, 212, 0.12)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
+              boxShadow: '0 0 20px rgba(6, 182, 212, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#06b6d4'
+            }}>
+              <Mail size={32} />
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#fff', margin: '0 0 0.5rem 0' }}>
+                {t('auth.checkEmailTitle', 'Check your inbox')}
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                {t('auth.checkEmailDesc', 'We sent an activation link to:')}
+              </p>
+              <div style={{
+                marginTop: '0.4rem',
+                fontSize: '0.92rem',
+                fontWeight: 700,
+                color: '#06b6d4',
+                wordBreak: 'break-all',
+                background: 'rgba(255, 255, 255, 0.03)',
+                padding: '0.4rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid var(--panel-border)'
+              }}>
+                {email}
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+              {t('auth.checkEmailSpamNotice', 'Click the link in the email to activate your account. If you do not see it, check your spam folder.')}
+            </p>
+
+            <div style={{ width: '100%', borderTop: '1px solid var(--panel-border)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={handleResendSignUpEmail}
+                disabled={resendCooldown > 0 || submitting}
+                className="glow-btn"
+                style={{
+                  width: '100%',
+                  padding: '0.7rem',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: resendCooldown > 0 || submitting ? 'not-allowed' : 'pointer',
+                  opacity: resendCooldown > 0 || submitting ? 0.6 : 1
+                }}
+              >
+                <RotateCcw size={16} />
+                {submitting
+                  ? t('auth.btnResending', 'Resending...')
+                  : resendCooldown > 0
+                    ? t('auth.btnResendCooldown', 'Resend Email ({{seconds}}s)', { seconds: resendCooldown })
+                    : t('auth.btnResendEmail', 'Resend Activation Email')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSignUpSuccess(false);
+                  setIsSignUp(false);
+                  setError(null);
+                  setMessage(null);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-primary)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                {t('auth.btnBackToSignIn', 'Back to Sign In')}
+              </button>
+            </div>
+          </div>
         ) : isForgotPassword ? (
           showOtpInput ? (
             /* 2a. VERIFY OTP CODE FORM */
