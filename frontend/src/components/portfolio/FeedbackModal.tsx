@@ -3,6 +3,7 @@ import { X, MessageSquare, Check, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../AuthContext';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { APP_VERSION } from './BetaInfoModal';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface FeedbackModalProps {
 export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const { user, session } = useAuth();
   const { apiBaseUrl } = usePortfolio();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [category, setCategory] = useState<'bug' | 'feedback' | 'question' | 'feature_request'>('feedback');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState(user?.email || '');
@@ -40,13 +41,23 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const metadata = {
+        appVersion: APP_VERSION,
+        userAgent: navigator.userAgent,
+        screenResolution: `${window.innerWidth}x${window.innerHeight}`,
+        currentRoute: window.location.href,
+        language: i18n.language || 'en',
+        timestamp: new Date().toISOString(),
+      };
+
       const response = await fetch(`${apiBaseUrl}/api/feedback`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           category,
           message,
-          email: email || null
+          email: email || null,
+          metadata
         })
       });
 

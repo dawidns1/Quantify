@@ -29,6 +29,7 @@ import { SettingsModal } from './portfolio/SettingsModal';
 import { PreferencesModal } from './portfolio/PreferencesModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { FeedbackModal } from './portfolio/FeedbackModal';
+import { BetaInfoModal } from './portfolio/BetaInfoModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
 import { ImportCSVModal } from './portfolio/ImportCSVModal';
@@ -127,6 +128,7 @@ export function PortfolioView({
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showBetaModal, setShowBetaModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
@@ -693,6 +695,7 @@ export function PortfolioView({
         onShareClick={() => setShowShareModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onFeedbackClick={() => setShowFeedbackModal(true)}
+        onBetaClick={() => setShowBetaModal(true)}
         onPreferencesClick={() => setShowPreferencesModal(true)}
         apiBaseUrl={apiBaseUrl}
         onSelectStockSymbol={setSelectedPositionSymbol}
@@ -1591,6 +1594,13 @@ export function PortfolioView({
       <FeedbackModal 
         isOpen={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
+      />
+
+      {/* BETA INFO MODAL */}
+      <BetaInfoModal
+        isOpen={showBetaModal}
+        onClose={() => setShowBetaModal(false)}
+        onOpenFeedback={() => setShowFeedbackModal(true)}
       />
 
       {/* APP PREFERENCES MODAL */}

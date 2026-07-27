@@ -799,11 +799,14 @@ class FeedbackCreate(BaseModel):
     category: str
     message: str
     email: str = None
+    metadata: dict = None
 
 @app.post("/api/feedback")
 def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
     print(f"[FEEDBACK] Received feedback. Category: {fb.category}, Email: {fb.email}")
     print(f"[FEEDBACK] Message: {fb.message}")
+    if fb.metadata:
+        print(f"[FEEDBACK] Metadata: {fb.metadata}")
     
     # Save locally to JSON file
     try:
@@ -817,7 +820,8 @@ def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
                 "timestamp": time.time(),
                 "category": fb.category,
                 "email": fb.email,
-                "message": fb.message
+                "message": fb.message,
+                "metadata": fb.metadata
             }, f, indent=2)
         print(f"[FEEDBACK] Saved locally to {filepath}")
     except Exception as e:
@@ -836,11 +840,14 @@ def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
                 "Content-Type": "application/json",
                 "Prefer": "return=minimal"
             }
-            res = requests.post(url, headers=headers, json={
+            supabase_payload = {
                 "category": fb.category,
                 "message": fb.message,
                 "user_email": fb.email
-            }, timeout=10)
+            }
+            if fb.metadata:
+                supabase_payload["metadata"] = fb.metadata
+            res = requests.post(url, headers=headers, json=supabase_payload, timeout=10)
             print(f"[FEEDBACK] Supabase insertion response code: {res.status_code}")
         except Exception as e:
             print(f"[FEEDBACK] Error sending to Supabase: {e}")

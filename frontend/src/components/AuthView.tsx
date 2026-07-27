@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound } from 'lucide-react';
+import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound, Eye, EyeOff, Check, Circle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
 
@@ -12,11 +12,22 @@ export function AuthView() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otpToken, setOtpToken] = useState('');
+
+  const passwordRules = {
+    minLength: password.length >= 8,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[@$!%*?&#]/.test(password),
+  };
+  const metRulesCount = Object.values(passwordRules).filter(Boolean).length;
 
   // Validate password strength according to rules
   const validatePasswordStrength = (pw: string): boolean => {
@@ -241,15 +252,96 @@ export function AuthView() {
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   id="recovery-password-input"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   className="input-field"
-                  style={{ paddingLeft: '38px', width: '100%' }}
+                  style={{ paddingLeft: '38px', paddingRight: '38px', width: '100%' }}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+
+              {password.length > 0 && (
+                <div style={{
+                  marginTop: '0.6rem',
+                  padding: '0.65rem 0.75rem',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--panel-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                  fontSize: '0.75rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {t('auth.passwordStrength', 'Password Requirements')}:
+                    </span>
+                    <span style={{
+                      fontWeight: 700,
+                      color: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444'
+                    }}>
+                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : t('auth.strengthWeak', 'Weak')}
+                    </span>
+                  </div>
+
+                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${(metRulesCount / 5) * 100}%`,
+                      background: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444',
+                      transition: 'all 0.3s ease'
+                    }} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -258,15 +350,41 @@ export function AuthView() {
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   id="recovery-confirm-password-input"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   className="input-field"
-                  style={{ paddingLeft: '38px', width: '100%' }}
+                  style={{ paddingLeft: '38px', paddingRight: '38px', width: '100%' }}
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+
+              {confirmPassword.length > 0 && (
+                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: password === confirmPassword ? '#22c55e' : '#ef4444' }}>
+                  {password === confirmPassword ? <Check size={12} /> : <Circle size={10} />}
+                  <span>{password === confirmPassword ? t('auth.passwordsMatch', 'Passwords match') : t('auth.passwordsDoNotMatch', 'Passwords do not match')}</span>
+                </div>
+              )}
             </div>
 
             <button
@@ -408,15 +526,98 @@ export function AuthView() {
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input
                   id="login-password-input"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   className="input-field"
-                  style={{ paddingLeft: '38px', width: '100%' }}
+                  style={{ paddingLeft: '38px', paddingRight: '38px', width: '100%' }}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
+
+              {/* Live Password Conformity Checklist when signing up */}
+              {isSignUp && password.length > 0 && (
+                <div style={{
+                  marginTop: '0.6rem',
+                  padding: '0.65rem 0.75rem',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--panel-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                  fontSize: '0.75rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {t('auth.passwordStrength', 'Password Requirements')}:
+                    </span>
+                    <span style={{
+                      fontWeight: 700,
+                      color: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444'
+                    }}>
+                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : t('auth.strengthWeak', 'Weak')}
+                    </span>
+                  </div>
+
+                  {/* Strength meter bar */}
+                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${(metRulesCount / 5) * 100}%`,
+                      background: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444',
+                      transition: 'all 0.3s ease'
+                    }} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#22c55e' : 'var(--text-muted)' }}>
+                      {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
+                      <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {isSignUp && (
@@ -426,15 +627,41 @@ export function AuthView() {
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     id="login-confirm-password-input"
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     className="input-field"
-                    style={{ paddingLeft: '38px', width: '100%' }}
+                    style={{ paddingLeft: '38px', paddingRight: '38px', width: '100%' }}
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
+
+                {confirmPassword.length > 0 && (
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', color: password === confirmPassword ? '#22c55e' : '#ef4444' }}>
+                    {password === confirmPassword ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{password === confirmPassword ? t('auth.passwordsMatch', 'Passwords match') : t('auth.passwordsDoNotMatch', 'Passwords do not match')}</span>
+                  </div>
+                )}
               </div>
             )}
 

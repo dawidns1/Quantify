@@ -4,13 +4,17 @@ import './index.css'
 import './i18n'
 import App from './App.tsx'
 import { AuthProvider } from './AuthContext.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import { Analytics } from '@vercel/analytics/react'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-      <Analytics />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <App />
+        <Analytics />
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
+
