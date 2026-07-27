@@ -87,24 +87,29 @@ export function AuthView() {
         return;
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: emailAddress,
         password,
       });
 
       if (error) {
-        setError(error.message);
+        console.error('[SUPABASE AUTH SIGNUP ERROR]:', error);
+        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
       } else {
+        console.log('[SUPABASE AUTH SIGNUP SUCCESS]:', data);
         setMessage(t('auth.msgConfirmLinkSent', 'Success! Check your email for the confirmation link.'));
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
 
       if (error) {
-        setError(error.message);
+        console.error('[SUPABASE AUTH SIGNIN ERROR]:', error);
+        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
+      } else {
+        console.log('[SUPABASE AUTH SIGNIN SUCCESS]:', data);
       }
     }
     setSubmitting(false);
@@ -130,7 +135,8 @@ export function AuthView() {
       });
 
       if (error) {
-        setError(error.message);
+        console.error('[SUPABASE AUTH RESET ERROR]:', error);
+        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
       } else {
         setMessage(t('auth.msgRecoveryLinkSent', 'Check your email for the recovery link or 6-digit code.'));
         setShowOtpInput(true);
