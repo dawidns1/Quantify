@@ -58,9 +58,25 @@ export function AuthView() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    const emailAddress = email.trim().toLowerCase();
+    if (!emailAddress) {
+      setError(t('auth.errorEnterEmail', 'Please enter your email address.'));
+      return;
+    }
+    if (!password) {
+      setError(t('auth.errorEnterPassword', 'Please enter a password.'));
+      return;
+    }
+
     setSubmitting(true);
 
     if (isSignUp) {
+      if (!confirmPassword) {
+        setError(t('auth.errorEnterConfirmPassword', 'Please confirm your password.'));
+        setSubmitting(false);
+        return;
+      }
       if (password !== confirmPassword) {
         setError(t('auth.errorPasswordsMatch', 'Passwords do not match.'));
         setSubmitting(false);
@@ -72,7 +88,7 @@ export function AuthView() {
       }
 
       const { error } = await supabase.auth.signUp({
-        email,
+        email: emailAddress,
         password,
       });
 
@@ -83,7 +99,7 @@ export function AuthView() {
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailAddress,
         password,
       });
 
@@ -245,7 +261,7 @@ export function AuthView() {
 
         {/* 1. PASSWORD RECOVERY UPDATE FORM */}
         {recoveryMode ? (
-          <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          <form noValidate onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="recovery-password-input">{t('auth.labelNewPassword', 'New Password')}</label>
               <div style={{ position: 'relative' }}>
@@ -281,67 +297,70 @@ export function AuthView() {
                 </button>
               </div>
 
-              {password.length > 0 && (
-                <div style={{
-                  marginTop: '0.6rem',
-                  padding: '0.65rem 0.75rem',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  borderRadius: '8px',
-                  border: '1px solid var(--panel-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.4rem',
-                  fontSize: '0.75rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                      {t('auth.passwordStrength', 'Password Requirements')}:
-                    </span>
-                    <span style={{
-                      fontWeight: 700,
-                      color: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444'
-                    }}>
-                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : t('auth.strengthWeak', 'Weak')}
-                    </span>
+              {/* Password Conformity Checklist - Always visible in recovery mode */}
+              <div style={{
+                marginTop: '0.6rem',
+                padding: '0.65rem 0.75rem',
+                background: 'rgba(15, 23, 42, 0.6)',
+                borderRadius: '8px',
+                border: '1px solid var(--panel-border)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem',
+                fontSize: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {t('auth.passwordStrength', 'Password Requirements')}:
+                  </span>
+                  <span style={{
+                    fontWeight: 700,
+                    color: metRulesCount === 5 ? '#10b981' : metRulesCount >= 3 ? '#06b6d4' : metRulesCount >= 1 ? '#ec4899' : 'var(--text-muted)'
+                  }}>
+                    {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : metRulesCount >= 1 ? t('auth.strengthWeak', 'Weak') : t('auth.strengthEmpty', 'Required')}
+                  </span>
+                </div>
+
+                {/* App Theme Gradient Strength meter bar */}
+                <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${(metRulesCount / 5) * 100}%`,
+                    background: metRulesCount === 5 
+                      ? 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' 
+                      : 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)',
+                    boxShadow: metRulesCount > 0 ? '0 0 10px rgba(6, 182, 212, 0.4)' : 'none',
+                    transition: 'all 0.3s ease'
+                  }} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#10b981' : 'var(--text-muted)' }}>
+                    {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
                   </div>
 
-                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(metRulesCount / 5) * 100}%`,
-                      background: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444',
-                      transition: 'all 0.3s ease'
-                    }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#10b981' : 'var(--text-muted)' }}>
+                    {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#22c55e' : 'var(--text-muted)' }}>
-                      {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#10b981' : 'var(--text-muted)' }}>
+                    {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
+                  </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#22c55e' : 'var(--text-muted)' }}>
-                      {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#10b981' : 'var(--text-muted)' }}>
+                    {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
+                  </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#22c55e' : 'var(--text-muted)' }}>
-                      {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#22c55e' : 'var(--text-muted)' }}>
-                      {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#22c55e' : 'var(--text-muted)' }}>
-                      {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#10b981' : 'var(--text-muted)' }}>
+                    {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
+                    <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="form-group">
@@ -400,7 +419,7 @@ export function AuthView() {
         ) : isForgotPassword ? (
           showOtpInput ? (
             /* 2a. VERIFY OTP CODE FORM */
-            <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            <form noValidate onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', lineHeight: '1.4' }}>
                   {t('auth.recoveryEmailSentText', 'We sent a recovery email to {{email}}. Enter the 6-digit verification code below:', { email })}
@@ -456,7 +475,7 @@ export function AuthView() {
             </form>
           ) : (
             /* 2b. REQUEST FORGOT PASSWORD RESET EMAIL FORM */
-            <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            <form noValidate onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="forgot-email-input">{t('auth.labelEmail', 'Email Address')}</label>
                 <div style={{ position: 'relative' }}>
@@ -502,7 +521,7 @@ export function AuthView() {
           )
         ) : (
           /* 3. STANDARD SIGN IN / SIGN UP FORM */
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          <form noValidate onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             <div className="form-group">
               <label className="form-label" htmlFor="login-email-input">{t('auth.labelEmail', 'Email Address')}</label>
               <div style={{ position: 'relative' }}>
@@ -555,8 +574,8 @@ export function AuthView() {
                 </button>
               </div>
 
-              {/* Live Password Conformity Checklist when signing up */}
-              {isSignUp && password.length > 0 && (
+              {/* Live Password Conformity Checklist - Always visible when signing up */}
+              {isSignUp && (
                 <div style={{
                   marginTop: '0.6rem',
                   padding: '0.65rem 0.75rem',
@@ -574,44 +593,47 @@ export function AuthView() {
                     </span>
                     <span style={{
                       fontWeight: 700,
-                      color: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444'
+                      color: metRulesCount === 5 ? '#10b981' : metRulesCount >= 3 ? '#06b6d4' : metRulesCount >= 1 ? '#ec4899' : 'var(--text-muted)'
                     }}>
-                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : t('auth.strengthWeak', 'Weak')}
+                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : metRulesCount >= 1 ? t('auth.strengthWeak', 'Weak') : t('auth.strengthEmpty', 'Required')}
                     </span>
                   </div>
 
-                  {/* Strength meter bar */}
-                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                  {/* App Theme Gradient Strength meter bar */}
+                  <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
                       width: `${(metRulesCount / 5) * 100}%`,
-                      background: metRulesCount === 5 ? '#22c55e' : metRulesCount >= 3 ? '#eab308' : '#ef4444',
+                      background: metRulesCount === 5 
+                        ? 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' 
+                        : 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)',
+                      boxShadow: metRulesCount > 0 ? '0 0 10px rgba(6, 182, 212, 0.4)' : 'none',
                       transition: 'all 0.3s ease'
                     }} />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#22c55e' : 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#10b981' : 'var(--text-muted)' }}>
                       {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
                       <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#22c55e' : 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#10b981' : 'var(--text-muted)' }}>
                       {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
                       <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#22c55e' : 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#10b981' : 'var(--text-muted)' }}>
                       {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
                       <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#22c55e' : 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#10b981' : 'var(--text-muted)' }}>
                       {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
                       <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#22c55e' : 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#10b981' : 'var(--text-muted)' }}>
                       {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
                       <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
                     </div>
