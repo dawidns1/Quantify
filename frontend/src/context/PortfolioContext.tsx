@@ -592,6 +592,26 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
 
+  // --- Tab Visibility Resume Auto-Heal ---
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (loadingHoldings || loadingTransactions || loadingChart) {
+          console.warn('[PortfolioContext] User returned to tab while sync was in-flight. Resetting stuck loading states and refreshing.');
+          setLoadingHoldings(false);
+          setLoadingTransactions(false);
+          setLoadingChart(false);
+          setLoadingAnalytics(false);
+          if (activePortfolioId) {
+            fetchHoldings(baseCurrency, selectedAccount, true);
+          }
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [loadingHoldings, loadingTransactions, loadingChart, activePortfolioId, baseCurrency, selectedAccount]);
+
   return (
     <PortfolioContext.Provider value={{
       apiBaseUrl,

@@ -1,5 +1,28 @@
 import type { Holding, Summary } from '../types/portfolio';
 
+/**
+ * Fetch helper with explicit 12-second timeout to prevent requests from hanging 
+ * indefinitely when a user switches browser tabs or locks their device.
+ */
+export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Network request timed out after ${timeoutMs / 1000}s (possible tab switch suspension).`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function fetchHoldings(
   apiBaseUrl: string,
   jwtToken: string | null,
@@ -27,7 +50,7 @@ export async function fetchHoldings(
     link_cash: String(linkCash)
   });
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -86,7 +109,7 @@ export async function fetchHistoricalPerformance(
     queryParams.append('benchmarks', benchmarks);
   }
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -107,7 +130,7 @@ export async function searchAssets(
   apiBaseUrl: string,
   query: string
 ): Promise<any[]> {
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(query)}`);
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) {
     let errMsg = 'Asset search failed';
     try {
@@ -146,7 +169,7 @@ export async function fetchUpcomingEvents(
     link_cash: String(linkCash)
   });
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/upcoming-events?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/upcoming-events?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -197,7 +220,7 @@ export async function fetchPortfolioAnalytics(
     link_cash: String(linkCash)
   });
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/analytics?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/analytics?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -247,7 +270,7 @@ export async function fetchDividendForecast(
     link_cash: String(linkCash)
   });
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/dividend-forecast?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/dividend-forecast?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -294,7 +317,7 @@ export async function fetchAIInsights(
     force_refresh: String(forceRefresh)
   });
 
-  const response = await fetch(`${apiBaseUrl}/api/portfolio/${portfolioId}/ai-insights?${queryParams.toString()}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/ai-insights?${queryParams.toString()}`, {
     method: 'GET',
     headers
   });
@@ -309,5 +332,3 @@ export async function fetchAIInsights(
   }
   return response.json();
 }
-
-
