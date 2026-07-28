@@ -637,14 +637,19 @@ def get_portfolio_holdings_jwt(
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
+    t_start = time.time()
     try:
+        t_sub_start = time.time()
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        t_sub = (time.time() - t_sub_start) * 1000
+
+        t_calc_start = time.time()
         res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
-        print(f"[DEBUG] Holdings response summary: {res.get('summary')}")
-        print(f"[DEBUG] Holdings count: {len(res.get('holdings', []))}")
-        if res.get('holdings'):
-            print(f"[DEBUG] First holding position: {res.get('holdings')[0]}")
+        t_calc = (time.time() - t_calc_start) * 1000
+
+        t_total = (time.time() - t_start) * 1000
+        print(f"[PERF BREAKDOWN] [HOLDINGS] Total: {t_total:.2f}ms | Supabase: {t_sub:.2f}ms | Calculation: {t_calc:.2f}ms")
         return res
     except HTTPException:
         raise
@@ -665,11 +670,22 @@ def get_historical_portfolio_nav_jwt(
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
+    t_start = time.time()
     try:
+        t_sub_start = time.time()
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        t_sub = (time.time() - t_sub_start) * 1000
+
         benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None
-        return PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings, benchmarks_list)
+        
+        t_calc_start = time.time()
+        res = PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings, benchmarks_list)
+        t_calc = (time.time() - t_calc_start) * 1000
+
+        t_total = (time.time() - t_start) * 1000
+        print(f"[PERF BREAKDOWN] [HISTORICAL NAV] Total: {t_total:.2f}ms | Supabase: {t_sub:.2f}ms | Calculation: {t_calc:.2f}ms")
+        return res
     except HTTPException:
         raise
     except Exception as e:
@@ -688,10 +704,20 @@ def get_portfolio_analytics_jwt(
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
+    t_start = time.time()
     try:
+        t_sub_start = time.time()
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        return PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings)
+        t_sub = (time.time() - t_sub_start) * 1000
+
+        t_calc_start = time.time()
+        res = PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings)
+        t_calc = (time.time() - t_calc_start) * 1000
+
+        t_total = (time.time() - t_start) * 1000
+        print(f"[PERF BREAKDOWN] [ANALYTICS] Total: {t_total:.2f}ms | Supabase: {t_sub:.2f}ms | Calculation: {t_calc:.2f}ms")
+        return res
     except HTTPException:
         raise
     except Exception as e:
@@ -710,10 +736,20 @@ def get_portfolio_dividend_forecast_jwt(
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
+    t_start = time.time()
     try:
+        t_sub_start = time.time()
         transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
         settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        return PortfolioManager.calculate_dividend_forecast(transactions, base_currency, account, link_cash, settings)
+        t_sub = (time.time() - t_sub_start) * 1000
+
+        t_calc_start = time.time()
+        res = PortfolioManager.calculate_dividend_forecast(transactions, base_currency, account, link_cash, settings)
+        t_calc = (time.time() - t_calc_start) * 1000
+
+        t_total = (time.time() - t_start) * 1000
+        print(f"[PERF BREAKDOWN] [DIVIDEND FORECAST] Total: {t_total:.2f}ms | Supabase: {t_sub:.2f}ms | Calculation: {t_calc:.2f}ms")
+        return res
     except HTTPException:
         raise
     except Exception as e:

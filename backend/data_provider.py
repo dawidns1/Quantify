@@ -248,7 +248,11 @@ class YFinanceProvider(BaseDataProvider):
                         else:
                             prices_series = pd.Series(dtype=float)
                             
-                    non_nan_series = prices_series.dropna()
+                    if hasattr(prices_series, 'dropna'):
+                        non_nan_series = prices_series.dropna()
+                    else:
+                        non_nan_series = pd.Series([prices_series] if prices_series is not None else [])
+
                     if not non_nan_series.empty:
                         live_price = float(non_nan_series.iloc[-1])
                         if len(non_nan_series) >= 2:
@@ -281,7 +285,10 @@ class YFinanceProvider(BaseDataProvider):
                         else:
                             prices_series = pd.Series(dtype=float)
                             
-                    non_nan_series = prices_series.dropna()
+                    if hasattr(prices_series, 'dropna'):
+                        non_nan_series = prices_series.dropna()
+                    else:
+                        non_nan_series = pd.Series([prices_series] if prices_series is not None else [])
                     if not non_nan_series.empty:
                         rate = float(non_nan_series.iloc[-1])
                 except Exception as pair_err:
@@ -572,10 +579,14 @@ class YFinanceProvider(BaseDataProvider):
                 closes = df_fx['Close']
                 if isinstance(closes, pd.DataFrame):
                     closes = closes.squeeze()
-                closes = closes.dropna()
-                for idx, val in closes.items():
-                    dt = pd.to_datetime(idx).date()
-                    prices_dict[dt] = float(val)
+                if hasattr(closes, 'dropna'):
+                    closes = closes.dropna()
+                    if isinstance(closes, pd.Series):
+                        for idx, val in closes.items():
+                            dt = pd.to_datetime(idx).date()
+                            prices_dict[dt] = float(val)
+                    elif isinstance(closes, (int, float, np.number)):
+                        prices_dict[date.today()] = float(closes)
         except Exception as e:
             print(f"YFinance historical FX download failed for {pair}: {e}")
         return prices_dict
