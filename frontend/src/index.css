@@ -213,6 +213,13 @@ body.low-perf .glow-card::after {
   -webkit-text-fill-color: transparent;
 }
 
+svg.gradient-text,
+.gradient-text svg {
+  color: var(--color-primary);
+  stroke: var(--color-primary);
+  filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.45));
+}
+
 /* ==========================================
    Buttons and Form Controls
    ========================================== */

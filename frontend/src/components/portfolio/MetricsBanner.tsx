@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronUp, ChevronDown, X, BarChart3 } from 'lucide-react';
 import type { Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
@@ -43,8 +43,8 @@ export function MetricsBanner({
     }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} /> {t('metrics.header', 'Portfolio Metrics')}
+        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <BarChart3 size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('metrics.header', 'Portfolio Metrics')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (

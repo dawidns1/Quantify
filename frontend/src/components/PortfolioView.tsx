@@ -710,34 +710,46 @@ export function PortfolioView({
       <main className="main-content">
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
-          {/* Glowing Neon Top Progress Bar */}
-          {/* Glowing Neon Top Progress Bar */}
+          {/* Floating Bottom-Center Glassmorphism Loading Pill */}
           {(loadingHoldings || loadingPortfolios || loadingTransactions) && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, pointerEvents: 'none' }}>
-              <div className="shimmer-progress-bar" />
-              <div 
-                className="pulse"
-                style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  fontSize: '0.65rem',
-                  color: 'var(--color-primary)',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  background: 'rgba(15, 23, 42, 0.95)',
-                  backdropFilter: 'blur(4px)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(6, 182, 212, 0.2)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                  pointerEvents: 'none'
-                }}
-              >
-                {loadingPortfolios ? 'Syncing portfolios...' :
-                 loadingTransactions ? 'Fetching transactions ledger...' :
-                 loadingHoldings ? 'Recalculating live holdings & prices...' : 'Synchronizing data...'}
-              </div>
+            <div style={{
+              position: 'fixed',
+              bottom: isMobile ? '70px' : '24px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              background: 'rgba(10, 15, 26, 0.92)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.25)',
+              padding: '0.45rem 1.1rem',
+              borderRadius: '30px'
+            }}>
+              <div className="spinner-ring" style={{
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                border: '2px solid rgba(255, 255, 255, 0.1)',
+                borderTopColor: '#06b6d4',
+                borderRightColor: 'rgba(6, 182, 212, 0.5)',
+                flexShrink: 0
+              }} />
+              <span style={{
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: 'white',
+                letterSpacing: '0.2px',
+                whiteSpace: 'nowrap'
+              }}>
+                {loadingPortfolios ? t('dashboard.syncing_portfolios', 'Syncing portfolios...') :
+                 loadingTransactions ? t('dashboard.syncing_transactions', 'Fetching transaction ledger...') :
+                 loadingHoldings ? t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...') : 
+                 t('dashboard.syncing_generic', 'Synchronizing data...')}
+              </span>
             </div>
           )}
           
@@ -1812,8 +1824,8 @@ export function PortfolioView({
         );
         return (
           <>
-            {/* View Switcher FAB (ONLY in Dividends subTab, rendered side-by-side to the left at right: 6.2rem) */}
-            {subTab === 'dividends' && (
+            {/* View Switcher FAB (ONLY in Desktop Dividends subTab, rendered side-by-side to the left at right: 6.2rem) */}
+            {!isMobile && subTab === 'dividends' && (
               <button
                 type="button"
                 onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
