@@ -151,7 +151,7 @@ export function PreferencesModal({
                 <Coins size={12} style={{ color: 'var(--color-primary)' }} />
                 {t('modals.preferences.label_currency', 'Base Currency')}
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
                 {(['PLN', 'USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY'] as const).map((curr) => (
                   <button 
                     key={curr}
