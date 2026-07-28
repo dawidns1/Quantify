@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Share2, Check } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Share2, Check, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface DividendCalendarProps {
@@ -133,8 +133,8 @@ export function DividendCalendar({
       ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'white' }}>
-          <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+          <Calendar size={18} className="gradient-text" style={{ flexShrink: 0 }} />
           <span>{t('calendar.income_header', 'Dividend Income Calendar')}</span>
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -186,7 +186,7 @@ export function DividendCalendar({
               onMouseEnter={(e) => e.currentTarget.style.color = 'white'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
-              <span style={{ fontSize: '0.75rem' }}>✕</span>
+              <X size={14} />
             </button>
           )}
         </div>

@@ -270,8 +270,8 @@ export function DividendForecast({
       ...style
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'white' }}>
-          <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
+        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
+          <TrendingUp size={18} className="gradient-text" style={{ flexShrink: 0 }} />
           {t('dividends.forecast_title', '12-Month Forward Dividend Forecast')}
         </h3>
         {onClose && (

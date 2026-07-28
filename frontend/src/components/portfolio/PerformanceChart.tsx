@@ -424,8 +424,8 @@ export const PerformanceChart = memo(function PerformanceChart({
       {/* Header Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '0.4rem', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Activity size={14} className="gradient-text" /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
+          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
           </h4>
           {chartMode === 'value' && performanceIndicator && (
             <span style={{

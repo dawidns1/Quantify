@@ -113,8 +113,8 @@ export function UpcomingEvents({
   return (
     <div className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> {t('events.header', 'Upcoming Corporate Events')}
+        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Calendar size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('events.header', 'Upcoming Corporate Events')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onMoveUp && (

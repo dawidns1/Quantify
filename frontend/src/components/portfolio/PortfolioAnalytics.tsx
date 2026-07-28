@@ -113,8 +113,8 @@ export function PortfolioAnalytics({
     }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '0.5rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Shield size={16} style={{ color: 'var(--color-primary)' }} /> {t('analytics.header', 'Performance & Risk Analytics')}
+        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Shield size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('analytics.header', 'Performance & Risk Analytics')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onRefresh && (

@@ -53,7 +53,7 @@ export function FXHedgingVisualizer({ holding, baseCurrency }: FXHedgingVisualiz
       marginTop: '0.5rem'
     }}>
       <h4 style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-        <Globe size={14} style={{ color: 'var(--color-primary)' }} />
+        <Globe size={18} className="gradient-text" style={{ flexShrink: 0 }} />
         <span>{t('fx.header')}</span>
       </h4>
 

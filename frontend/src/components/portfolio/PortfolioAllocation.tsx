@@ -158,7 +158,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
     <div className="glass-panel allocation-section" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1rem', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <PieChart size={16} className="gradient-text" /> {t('allocation.title', 'Portfolio Allocation')}
+          <PieChart size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('allocation.title', 'Portfolio Allocation')}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {onRebalanceClick && (

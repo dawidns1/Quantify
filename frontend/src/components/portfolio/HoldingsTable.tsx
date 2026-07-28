@@ -610,7 +610,10 @@ export function HoldingsTable({
       boxShadow: isMobile ? 'none' : undefined
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.15rem' }}>{t('holdings.header', 'Holding Asset Summary')}</h3>
+        <h3 className="portfolio-section-title" style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.15rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Briefcase size={18} className="gradient-text" style={{ flexShrink: 0 }} />
+          <span>{t('holdings.header', 'Holding Asset Summary')}</span>
+        </h3>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
           {/* Segmented Switch for Unit View Mode */}

@@ -190,7 +190,7 @@ export function RebalancingPlanner({
         {/* Title & Actions Row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'white' }}>
-            <Scale size={18} style={{ color: 'var(--color-primary)' }} />
+            <Scale size={18} className="gradient-text" style={{ flexShrink: 0 }} />
             {t('rebalance.title', 'Target Allocation Planner')}
           </h3>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
