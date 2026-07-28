@@ -39,6 +39,7 @@ import { DividendCalendar } from './portfolio/DividendCalendar';
 import { DividendForecast } from './portfolio/DividendForecast';
 import { RebalancingPlanner } from './portfolio/RebalancingPlanner';
 import { StockDetailsModal } from './portfolio/StockDetailsModal';
+import { TelemetryModal } from './portfolio/TelemetryModal';
 
 import { 
   createPortfolio,
@@ -130,6 +131,7 @@ export function PortfolioView({
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showBetaModal, setShowBetaModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+  const [showTelemetryModal, setShowTelemetryModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
@@ -1641,6 +1643,13 @@ export function PortfolioView({
         setBaseCurrency={setBaseCurrency}
         linkCash={linkCash}
         setLinkCash={setLinkCash}
+        onOpenTelemetry={() => setShowTelemetryModal(true)}
+      />
+
+      {/* SYSTEM TELEMETRY & DIAGNOSTICS MODAL */}
+      <TelemetryModal 
+        isOpen={showTelemetryModal}
+        onClose={() => setShowTelemetryModal(false)}
       />
 
       {/* PORTFOLIO DIVIDENDS OVERRIDES MODAL */}

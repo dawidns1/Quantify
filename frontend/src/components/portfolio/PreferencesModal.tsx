@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu, Wallet } from 'lucide-react';
+import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu, Wallet, Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BaseCurrencyType } from '../../context/PortfolioContext';
 
@@ -10,6 +10,7 @@ interface PreferencesModalProps {
   setBaseCurrency: (val: BaseCurrencyType) => void;
   linkCash: boolean;
   setLinkCash: (val: boolean) => void;
+  onOpenTelemetry?: () => void;
 }
 
 export function PreferencesModal({
@@ -18,7 +19,8 @@ export function PreferencesModal({
   baseCurrency,
   setBaseCurrency,
   linkCash,
-  setLinkCash
+  setLinkCash,
+  onOpenTelemetry
 }: PreferencesModalProps) {
   const { t, i18n } = useTranslation();
   
@@ -302,6 +304,50 @@ export function PreferencesModal({
                 </div>
               </div>
             </div>
+            {/* Telemetry & System Diagnostics Button */}
+            {onOpenTelemetry && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.25rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Activity size={12} style={{ color: '#06b6d4' }} />
+                  {t('modals.preferences.label_telemetry', 'System Diagnostics')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenTelemetry();
+                  }}
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(6, 182, 212, 0.35)',
+                    background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    width: '100%',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.6)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)';
+                    e.currentTarget.style.background = 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(15, 23, 42, 0.4) 100%)';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Activity size={14} style={{ color: '#06b6d4' }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'white' }}>
+                      {t('modals.preferences.btn_inspect_telemetry', 'System Telemetry & Performance Logs')}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>Inspect ➔</span>
+                </button>
+              </div>
+            )}
 
             {/* Footer Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>

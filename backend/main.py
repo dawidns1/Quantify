@@ -1407,6 +1407,16 @@ def export_portfolio_csv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error exporting CSV: {str(e)}")
 
+@app.post("/api/telemetry/log")
+async def log_telemetry_event(payload: dict = Body(...)):
+    """Receives real-time browser performance & error telemetry for logging and analysis."""
+    action = payload.get("actionName", "unknown")
+    duration = payload.get("durationMs", 0)
+    status = payload.get("status", "info")
+    error = payload.get("errorMessage", "")
+    print(f"[CLIENT TELEMETRY] [{status.upper()}] Action: {action} | Duration: {duration}ms | Error: {error}")
+    return {"status": "recorded"}
+
 # Serve Frontend static assets if compiled in production
 frontend_dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
 if os.path.exists(frontend_dist_path):

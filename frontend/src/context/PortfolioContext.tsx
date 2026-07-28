@@ -9,6 +9,7 @@ import {
 import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
 import { fetchUserPortfolios, createPortfolio } from '../services/supabaseService';
 import { fetchTransactions as fetchTransactionsService } from '../services/transactionService';
+import { telemetry } from '../utils/telemetry';
 
 export type BaseCurrencyType = 'PLN' | 'USD' | 'EUR' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY';
 
@@ -303,6 +304,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     if (!activePortfolioId) return;
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
+    const traceId = telemetry.startTrace('fetch_holdings', 'performance', { portfolio_id: activePortfolioId, currency: curr, account: accountFilter });
     try {
       const jwtToken = session?.access_token || null;
       const result = await fetchHoldingsService(
@@ -321,6 +323,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         curr !== latestParamsRef.current.baseCurrency ||
         accountFilter !== latestParamsRef.current.selectedAccount
       ) {
+        telemetry.endTrace(traceId, 'success', undefined, { discarded: true });
         return; // Discard stale response
       }
 
@@ -335,8 +338,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
       localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
-    } catch (err) {
+      
+      telemetry.endTrace(traceId, 'success', undefined, { holdings_count: result.holdings?.length || 0 });
+    } catch (err: any) {
       console.error('Error fetching holdings:', err);
+      telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
       if (requestId === holdingsRequestIdRef.current) {
         if (!silent) setLoadingHoldings(false);
