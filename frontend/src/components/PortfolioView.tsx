@@ -8,7 +8,10 @@ import {
   Layout,
   Scale,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Check,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 
 
@@ -145,18 +148,23 @@ export function PortfolioView({
   const isAnyLoading = loadingHoldings || loadingPortfolios || loadingTransactions;
   const [showLoadingPill, setShowLoadingPill] = useState(false);
   const [activeLoadingText, setActiveLoadingText] = useState('');
+  const [pillStatus, setPillStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [pillErrorMsg, setPillErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAnyLoading) {
       setShowLoadingPill(true);
+      setPillStatus('loading');
+      setPillErrorMsg(null);
       if (loadingPortfolios) setActiveLoadingText(t('dashboard.syncing_portfolios', 'Syncing portfolios...'));
       else if (loadingTransactions) setActiveLoadingText(t('dashboard.syncing_transactions', 'Fetching transaction ledger...'));
       else if (loadingHoldings) setActiveLoadingText(t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...'));
       else setActiveLoadingText(t('dashboard.syncing_generic', 'Synchronizing data...'));
-    } else {
+    } else if (pillStatus === 'loading') {
+      setPillStatus('success');
       const timer = setTimeout(() => {
         setShowLoadingPill(false);
-      }, 400);
+      }, 1200);
       return () => clearTimeout(timer);
     }
   }, [isAnyLoading, loadingPortfolios, loadingTransactions, loadingHoldings, t]);
@@ -731,45 +739,103 @@ export function PortfolioView({
       <main className="main-content">
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
-          {/* Floating Bottom-Center Ultra-Sleek Glassmorphism Loading Pill */}
+          {/* Floating Bottom-Center Smart Status & Retry Glassmorphism Pill */}
           {showLoadingPill && (
             <div style={{
               position: 'fixed',
               bottom: isMobile ? '70px' : '24px',
               left: '50%',
-              transform: isAnyLoading ? 'translate(-50%, 0)' : 'translate(-50%, 8px)',
-              opacity: isAnyLoading ? 1 : 0,
+              transform: showLoadingPill ? 'translate(-50%, 0)' : 'translate(-50%, 12px)',
+              opacity: showLoadingPill ? 1 : 0,
               transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
               zIndex: 9999,
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              background: 'rgba(10, 15, 26, 0.88)',
+              gap: '0.55rem',
+              background: pillStatus === 'error' ? 'rgba(24, 12, 18, 0.94)' : pillStatus === 'success' ? 'rgba(10, 24, 20, 0.94)' : 'rgba(10, 15, 26, 0.92)',
               backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(6, 182, 212, 0.3)',
-              boxShadow: '0 6px 24px rgba(0, 0, 0, 0.45), 0 0 14px rgba(6, 182, 212, 0.2)',
-              padding: '0.35rem 0.85rem',
+              border: pillStatus === 'error' ? '1px solid rgba(239, 68, 68, 0.45)' : pillStatus === 'success' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(6, 182, 212, 0.35)',
+              boxShadow: pillStatus === 'error' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.25)' : pillStatus === 'success' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(6, 182, 212, 0.2)',
+              padding: '0.4rem 0.95rem',
               borderRadius: '24px'
             }}>
-              <div className="spinner-ring" style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                border: '2px solid rgba(255, 255, 255, 0.1)',
-                borderTopColor: '#06b6d4',
-                borderRightColor: 'rgba(6, 182, 212, 0.5)',
-                flexShrink: 0
-              }} />
-              <span style={{
-                fontSize: '0.72rem',
-                fontWeight: 500,
-                color: 'rgba(255, 255, 255, 0.9)',
-                letterSpacing: '0.2px',
-                whiteSpace: 'nowrap'
-              }}>
-                {activeLoadingText}
-              </span>
+              {pillStatus === 'loading' && (
+                <>
+                  <div className="spinner-ring" style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255, 255, 255, 0.1)',
+                    borderTopColor: '#06b6d4',
+                    borderRightColor: 'rgba(6, 182, 212, 0.5)',
+                    flexShrink: 0
+                  }} />
+                  <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 500, letterSpacing: '0.2px', whiteSpace: 'nowrap' }}>
+                    {activeLoadingText}
+                  </span>
+                </>
+              )}
+
+              {pillStatus === 'success' && (
+                <>
+                  <Check size={14} style={{ color: 'var(--color-green)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {t('dashboard.sync_complete', 'Portfolio synced')}
+                  </span>
+                </>
+              )}
+
+              {pillStatus === 'error' && (
+                <>
+                  <AlertTriangle size={14} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                    {pillErrorMsg || t('dashboard.sync_failed', 'Sync timed out')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPillStatus('loading');
+                      setPillErrorMsg(null);
+                      fetchHoldings(baseCurrency, selectedAccount);
+                      fetchTransactions();
+                    }}
+                    style={{
+                      background: 'rgba(6, 182, 212, 0.2)',
+                      border: '1px solid rgba(6, 182, 212, 0.5)',
+                      color: '#06b6d4',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      marginLeft: '0.25rem'
+                    }}
+                  >
+                    <RefreshCw size={10} />
+                    {t('common.retry', 'Retry')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowLoadingPill(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginLeft: '0.2rem'
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </>
+              )}
             </div>
           )}
           

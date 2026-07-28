@@ -8,7 +8,7 @@ import re
 from datetime import datetime
 from typing import List
 import yfinance as yf
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
