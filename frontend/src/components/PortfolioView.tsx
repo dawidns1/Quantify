@@ -1609,6 +1609,8 @@ export function PortfolioView({
         onClose={() => setShowPreferencesModal(false)}
         baseCurrency={baseCurrency}
         setBaseCurrency={setBaseCurrency}
+        linkCash={linkCash}
+        setLinkCash={setLinkCash}
       />
 
       {/* PORTFOLIO DIVIDENDS OVERRIDES MODAL */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu } from 'lucide-react';
+import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BaseCurrencyType } from '../../context/PortfolioContext';
 
@@ -8,13 +8,17 @@ interface PreferencesModalProps {
   onClose: () => void;
   baseCurrency: BaseCurrencyType;
   setBaseCurrency: (val: BaseCurrencyType) => void;
+  linkCash: boolean;
+  setLinkCash: (val: boolean) => void;
 }
 
 export function PreferencesModal({
   isOpen,
   onClose,
   baseCurrency,
-  setBaseCurrency
+  setBaseCurrency,
+  linkCash,
+  setLinkCash
 }: PreferencesModalProps) {
   const { t, i18n } = useTranslation();
   
@@ -22,6 +26,7 @@ export function PreferencesModal({
   const [selectedCurrency, setSelectedCurrency] = useState<BaseCurrencyType>('USD');
   const [selectedDensity, setSelectedDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [lowPerfMode, setLowPerfMode] = useState<boolean>(false);
+  const [selectedLinkCash, setSelectedLinkCash] = useState<boolean>(true);
   
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
@@ -37,6 +42,7 @@ export function PreferencesModal({
       }
       setSelectedLanguage(currentLang);
       setSelectedCurrency(baseCurrency);
+      setSelectedLinkCash(linkCash);
       
       const currentDensity = (localStorage.getItem('settings_row_density') as 'comfortable' | 'compact') || 'comfortable';
       setSelectedDensity(currentDensity);
@@ -47,15 +53,16 @@ export function PreferencesModal({
       setSuccessMsg(false);
       setSaving(false);
     }
-  }, [isOpen, baseCurrency, i18n.language]);
+  }, [isOpen, baseCurrency, linkCash, i18n.language]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     setSaving(true);
 
-    // Apply currency
+    // Apply currency & cash linking
     setBaseCurrency(selectedCurrency);
+    setLinkCash(selectedLinkCash);
 
     // Apply language
     i18n.changeLanguage(selectedLanguage);
@@ -162,6 +169,67 @@ export function PreferencesModal({
                     {curr}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Link Cash Balance Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Wallet size={12} style={{ color: 'var(--color-primary)' }} />
+                {t('modals.preferences.label_link_cash', 'Link Cash Balance')}
+              </label>
+              <div 
+                onClick={() => setSelectedLinkCash(!selectedLinkCash)}
+                style={{
+                  padding: '0.65rem 0.8rem',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'rgba(255, 255, 255, 0.01)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>
+                    {t('modals.preferences.link_cash_title', 'Auto-adjust Cash on Trades & Dividends')}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: '1.3' }}>
+                    {t('modals.preferences.link_cash_desc', 'Automatically add dividend payouts and stock trades to fiat cash positions.')}
+                  </span>
+                </div>
+                <div style={{
+                  width: '36px',
+                  height: '20px',
+                  borderRadius: '10px',
+                  background: selectedLinkCash ? 'var(--color-primary)' : 'rgba(255,255,255,0.1)',
+                  position: 'relative',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    position: 'absolute',
+                    top: '2px',
+                    left: selectedLinkCash ? '18px' : '2px',
+                    transition: 'all 0.2s ease'
+                  }} />
+                </div>
               </div>
             </div>
 
