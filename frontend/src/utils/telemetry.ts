@@ -11,14 +11,25 @@ export interface TelemetryLogEvent {
   metadata?: Record<string, any>;
 }
 
+interface ActiveTrace {
+  actionName: string;
+  startTime: number;
+  eventType: 'performance' | 'interaction';
+  metadata?: Record<string, any>;
+  backgroundedCount: number;
+  backgroundStartTime?: number;
+  totalBackgroundMs: number;
+}
+
 class TelemetryManager {
-  private activeTraces: Map<string, { actionName: string; startTime: number; eventType: 'performance' | 'interaction'; metadata?: Record<string, any> }> = new Map();
+  private activeTraces: Map<string, ActiveTrace> = new Map();
   private localLogs: TelemetryLogEvent[] = [];
   private readonly MAX_LOCAL_LOGS = 150;
   private readonly STORAGE_KEY = 'quantifi_telemetry_logs_v1';
 
   constructor() {
     this.loadFromStorage();
+    this.setupVisibilityListener();
   }
 
   private loadFromStorage() {
@@ -40,16 +51,52 @@ class TelemetryManager {
     }
   }
 
+  private setupVisibilityListener() {
+    if (typeof document === 'undefined') return;
+    document.addEventListener('visibilitychange', () => {
+      const now = performance.now();
+      const isHidden = document.hidden;
+      if (isHidden) {
+        this.activeTraces.forEach((trace) => {
+          trace.backgroundStartTime = now;
+          trace.backgroundedCount = (trace.backgroundedCount || 0) + 1;
+        });
+        if (this.activeTraces.size > 0) {
+          this.logError('tab_switched_background', 'App switched to background during active fetch', {
+            active_traces: Array.from(this.activeTraces.values()).map(t => t.actionName)
+          });
+        }
+      } else {
+        this.activeTraces.forEach((trace) => {
+          if (trace.backgroundStartTime) {
+            const bgMs = now - trace.backgroundStartTime;
+            trace.totalBackgroundMs = (trace.totalBackgroundMs || 0) + bgMs;
+            trace.backgroundStartTime = undefined;
+          }
+        });
+        if (this.activeTraces.size > 0) {
+          this.logError('tab_returned_foreground', 'App returned to foreground', {
+            active_traces: Array.from(this.activeTraces.values()).map(t => t.actionName)
+          });
+        }
+      }
+    });
+  }
+
   /**
    * Start high-precision timing trace for a user action or API sync
    */
   public startTrace(actionName: string, eventType: 'performance' | 'interaction' = 'performance', metadata?: Record<string, any>): string {
     const traceId = `${actionName}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = performance.now();
     this.activeTraces.set(traceId, {
       actionName,
-      startTime: performance.now(),
+      startTime: now,
       eventType,
-      metadata
+      metadata,
+      backgroundedCount: 0,
+      backgroundStartTime: typeof document !== 'undefined' && document.hidden ? now : undefined,
+      totalBackgroundMs: 0
     });
     return traceId;
   }
@@ -62,8 +109,15 @@ class TelemetryManager {
     if (!trace) return null;
 
     const endTime = performance.now();
+    let totalBgMs = trace.totalBackgroundMs;
+    if (trace.backgroundStartTime) {
+      totalBgMs += (endTime - trace.backgroundStartTime);
+    }
+
     const durationMs = Math.round((endTime - trace.startTime) * 100) / 100;
     this.activeTraces.delete(traceId);
+
+    const wasBackgrounded = trace.backgroundedCount > 0 || totalBgMs > 50;
 
     const event: TelemetryLogEvent = {
       id: traceId,
@@ -73,7 +127,13 @@ class TelemetryManager {
       durationMs,
       status,
       errorMessage,
-      metadata: { ...(trace.metadata || {}), ...(extraMeta || {}) }
+      metadata: {
+        ...(trace.metadata || {}),
+        ...(extraMeta || {}),
+        was_backgrounded: wasBackgrounded,
+        tab_switches: trace.backgroundedCount,
+        background_time_ms: Math.round(totalBgMs)
+      }
     };
 
     this.localLogs.unshift(event);
