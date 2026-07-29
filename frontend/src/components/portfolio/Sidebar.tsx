@@ -304,23 +304,44 @@ export function Sidebar({
         gap: '0.4rem',
         position: 'relative'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{t('sidebar.logged_in_as', 'Logged in as')}</span>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
-              {user?.email}
-            </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+          {/* Row 1: Logged-in user email with subtle avatar badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#06b6d4',
+              fontWeight: 700,
+              fontSize: '0.7rem',
+              flexShrink: 0
+            }}>
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+              <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>{t('sidebar.logged_in_as', 'Logged in as')}</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
+                {user?.email}
+              </span>
+            </div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', flexShrink: 0 }}>
+          {/* Row 2: Sleek Action Toolbar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(0, 0, 0, 0.2)', padding: '4px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
             <button 
               onClick={onShareClick}
               style={{
+                flex: 1,
                 background: 'rgba(6, 182, 212, 0.08)',
                 border: '1px solid rgba(6, 182, 212, 0.25)',
                 color: '#06b6d4',
                 borderRadius: '4px',
-                padding: '4px',
+                padding: '4px 0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -339,14 +360,16 @@ export function Sidebar({
             >
               <Share2 size={13} />
             </button>
+
             <button 
               onClick={onPreferencesClick}
               style={{
+                flex: 1,
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 color: 'var(--text-secondary)',
                 borderRadius: '4px',
-                padding: '4px',
+                padding: '4px 0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -365,14 +388,16 @@ export function Sidebar({
             >
               <SlidersHorizontal size={13} />
             </button>
+
             <button 
               onClick={onFeedbackClick}
               style={{
+                flex: 1,
                 background: 'rgba(6, 182, 212, 0.06)',
                 border: '1px solid rgba(6, 182, 212, 0.15)',
                 color: 'var(--color-primary)',
                 borderRadius: '4px',
-                padding: '4px',
+                padding: '4px 0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -380,17 +405,27 @@ export function Sidebar({
                 transition: 'var(--transition-smooth)'
               }}
               title={t('sidebar.feedback', 'Feedback & Bug Report')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.18)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.06)';
+              }}
             >
               <MessageSquare size={13} />
             </button>
+
             <button 
               onClick={signOut}
               style={{
-                background: 'rgba(239, 68, 68, 0.06)',
-                border: '1px solid rgba(239, 68, 68, 0.15)',
+                flex: 1,
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
                 color: 'var(--color-red)',
                 borderRadius: '4px',
-                padding: '4px',
+                padding: '4px 0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -398,6 +433,14 @@ export function Sidebar({
                 transition: 'var(--transition-smooth)'
               }}
               title={t('sidebar.sign_out', 'Sign Out')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--color-red)';
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+              }}
             >
               <LogOut size={13} />
             </button>
