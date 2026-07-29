@@ -18,6 +18,7 @@ interface ShareModalProps {
   onClose: () => void;
   activePortfolioId: string | null;
   activePortfolioName?: string;
+  portfolios?: { id: string; name: string; role?: string }[];
   showCustomConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
   apiBaseUrl?: string;
 }
@@ -27,6 +28,7 @@ export function ShareModal({
   onClose,
   activePortfolioId,
   activePortfolioName,
+  portfolios = [],
   showCustomConfirm,
   apiBaseUrl
 }: ShareModalProps) {
@@ -34,6 +36,7 @@ export function ShareModal({
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'share' | 'referral'>('share');
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(activePortfolioId);
 
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -55,14 +58,18 @@ export function ShareModal({
 
   const personalReferralLink = user ? `${window.location.origin}/?ref=${user.id.slice(0, 8)}` : '';
 
+  const targetPortfolioId = selectedPortfolioId || activePortfolioId;
+  const currentPortfolioObj = portfolios.find(p => p.id === targetPortfolioId);
+  const currentPortfolioName = currentPortfolioObj?.name || activePortfolioName || 'My Portfolio';
+
   // Load members and active invite link
-  const loadSharingData = async () => {
-    if (!activePortfolioId) return;
+  const loadSharingData = async (portId: string | null) => {
+    if (!portId) return;
     setLoadingMembers(true);
     try {
       const [membersData, activeInvite] = await Promise.all([
-        fetchPortfolioMembers(activePortfolioId),
-        fetchActiveInvitation(activePortfolioId)
+        fetchPortfolioMembers(portId),
+        fetchActiveInvitation(portId)
       ]);
       setMembers(membersData);
       if (activeInvite) {
@@ -79,8 +86,10 @@ export function ShareModal({
   };
 
   useEffect(() => {
-    if (isOpen && activePortfolioId) {
-      loadSharingData();
+    if (isOpen) {
+      const initialId = activePortfolioId || portfolios[0]?.id || null;
+      setSelectedPortfolioId(initialId);
+      loadSharingData(initialId);
       setInviteError(null);
       setInviteSuccess(null);
       setInviteEmail('');
@@ -91,12 +100,18 @@ export function ShareModal({
     }
   }, [isOpen, activePortfolioId]);
 
+  useEffect(() => {
+    if (isOpen && selectedPortfolioId) {
+      loadSharingData(selectedPortfolioId);
+    }
+  }, [selectedPortfolioId]);
+
   const handleGenerateLink = async () => {
-    if (!activePortfolioId || !user) return;
+    if (!targetPortfolioId || !user) return;
     setCreatingLink(true);
     setInviteError(null);
     try {
-      const invite = await createInvitationLink(activePortfolioId, linkRole, user.id);
+      const invite = await createInvitationLink(targetPortfolioId, linkRole, user.id);
       setActiveLink(`${window.location.origin}/?invite=${invite.id}`);
       setCopiedLink(false);
     } catch (err: any) {
@@ -108,9 +123,9 @@ export function ShareModal({
   };
 
   const handleRevokeLink = async () => {
-    if (!activePortfolioId) return;
+    if (!targetPortfolioId) return;
     try {
-      await revokeInvitationLink(activePortfolioId);
+      await revokeInvitationLink(targetPortfolioId);
       setActiveLink(null);
       setCopiedLink(false);
     } catch (err: any) {
@@ -149,16 +164,16 @@ export function ShareModal({
 
     try {
       // 1. Try to add directly if registered
-      await inviteMemberByEmail(activePortfolioId!, email, inviteRole, members);
+      await inviteMemberByEmail(targetPortfolioId!, email, inviteRole, members);
       setInviteSuccess(t('modals.share.success_msg', `Invitation sent to ${email}`));
       setInviteEmail('');
-      loadSharingData();
+      loadSharingData(targetPortfolioId);
     } catch (err: any) {
       // 2. If unregistered, generate invite link & send email via backend!
       try {
         let linkToUse = activeLink;
         if (!linkToUse && user) {
-          const invite = await createInvitationLink(activePortfolioId!, inviteRole, user.id);
+          const invite = await createInvitationLink(targetPortfolioId!, inviteRole, user.id);
           linkToUse = `${window.location.origin}/?invite=${invite.id}`;
           setActiveLink(linkToUse);
         }
@@ -171,7 +186,7 @@ export function ShareModal({
               recipient_email: email,
               inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
               invite_url: linkToUse,
-              portfolio_name: activePortfolioName || 'My Portfolio',
+              portfolio_name: currentPortfolioName,
               is_portfolio: true
             })
           });
@@ -230,8 +245,8 @@ export function ShareModal({
       t('modals.share.confirm_remove_desc', 'Are you sure you want to remove this member from this portfolio?'),
       async () => {
         try {
-          await removeMember(activePortfolioId!, userId);
-          loadSharingData();
+          await removeMember(targetPortfolioId!, userId);
+          loadSharingData(targetPortfolioId);
         } catch (err: any) {
           console.error('Error removing member:', err);
           alert(t('modals.share.err_failed_remove', 'Failed to remove member: ') + err.message);
@@ -243,8 +258,8 @@ export function ShareModal({
 
   const handleChangeMemberRole = async (userId: string, newRole: 'editor' | 'viewer') => {
     try {
-      await updateMemberRole(activePortfolioId!, userId, newRole);
-      loadSharingData();
+      await updateMemberRole(targetPortfolioId!, userId, newRole);
+      loadSharingData(targetPortfolioId);
     } catch (err: any) {
       console.error('Error updating member role:', err);
       alert(t('modals.share.err_failed_update', 'Failed to update role: ') + err.message);
@@ -293,10 +308,9 @@ export function ShareModal({
                 boxShadow: activeTab === 'share' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none'
               }}
             >
-              <Share2 size={14} style={{ color: activeTab === 'share' ? '#06b6d4' : undefined }} />
+              <Users size={14} style={{ color: activeTab === 'share' ? '#06b6d4' : undefined }} />
               {t('modals.share.tab_share_portfolio', 'Share Portfolio')}
             </button>
-
             <button
               type="button"
               onClick={() => setActiveTab('referral')}
@@ -326,12 +340,23 @@ export function ShareModal({
           {/* TAB 1: SHARE PORTFOLIO */}
           {activeTab === 'share' && (
             <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                <span>{t('modals.share.sharing_access_to', 'Sharing access to:')}</span>
-                <span style={{ fontWeight: 700, color: '#06b6d4', background: 'rgba(6, 182, 212, 0.12)', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(6, 182, 212, 0.35)', fontSize: '0.76rem' }}>
-                  {activePortfolioName || 'My Portfolio'}
-                </span>
-              </div>
+              {portfolios.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.85rem', flexShrink: 0 }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    {t('modals.share.select_portfolio', 'Select Portfolio to Share')}
+                  </label>
+                  <select
+                    className="input-field"
+                    style={{ width: '100%', height: '36px', padding: '0.45rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', cursor: 'pointer' }}
+                    value={targetPortfolioId || ''}
+                    onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                  >
+                    {portfolios.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} {p.role ? `(${p.role})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {inviteError && (
                 <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.65rem 0.75rem', background: 'var(--color-red-glow)', border: '1px solid var(--color-red)', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.82rem' }}>

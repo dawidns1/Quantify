@@ -1672,6 +1672,7 @@ export function PortfolioView({
           onClose={() => setShowShareModal(false)}
           activePortfolioId={activePortfolioId}
           activePortfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio'}
+          portfolios={portfolios}
           showCustomConfirm={showCustomConfirm}
           apiBaseUrl={apiBaseUrl}
         />

@@ -245,28 +245,6 @@ export function SettingsModal({
                   <option value="fifo">{t('modals.settings.fifo')}</option>
                 </select>
               </div>
-              <div 
-                onClick={() => !isViewer && setAddDividendsToCash(!addDividendsToCash)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  cursor: isViewer ? 'default' : 'pointer',
-                  marginTop: '0.45rem',
-                  userSelect: 'none'
-                }}
-              >
-                <input 
-                  type="checkbox"
-                  disabled={isViewer}
-                  checked={addDividendsToCash}
-                  onChange={() => {}}
-                  style={{ accentColor: 'var(--color-primary)', cursor: isViewer ? 'default' : 'pointer' }}
-                />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                  {t('modals.settings.add_div_to_cash', 'Auto-add dividends to cash balance')}
-                </span>
-              </div>
             </div>
 
             {/* Analytics Configuration */}

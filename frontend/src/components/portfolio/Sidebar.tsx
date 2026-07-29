@@ -314,6 +314,32 @@ export function Sidebar({
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', flexShrink: 0 }}>
             <button 
+              onClick={onShareClick}
+              style={{
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.25)',
+                color: '#06b6d4',
+                borderRadius: '4px',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+              title={t('modals.share.title', 'Share & Invite')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#06b6d4';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.08)';
+              }}
+            >
+              <Share2 size={13} />
+            </button>
+            <button 
               onClick={onPreferencesClick}
               style={{
                 background: 'rgba(255, 255, 255, 0.03)',
@@ -561,22 +587,13 @@ export function Sidebar({
                               onClick={(e) => e.stopPropagation()}
                             >
                               {isActive && (
-                                <>
-                                  <button
-                                    onClick={() => onShareClick?.()}
-                                    title="Share Portfolio"
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                  >
-                                    <Share2 size={12} />
-                                  </button>
-                                  <button
-                                    onClick={() => onSettingsClick?.()}
-                                    title="Portfolio Settings"
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                  >
-                                    <Settings size={12} />
-                                  </button>
-                                </>
+                                <button
+                                  onClick={() => onSettingsClick?.()}
+                                  title="Portfolio Settings"
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <Settings size={12} />
+                                </button>
                               )}
                               <button 
                                 onClick={(e) => {
