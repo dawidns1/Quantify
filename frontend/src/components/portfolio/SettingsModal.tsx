@@ -108,8 +108,9 @@ export function SettingsModal({
     <>
       <div className="modal-backdrop" onClick={onClose} style={{ cursor: 'pointer' }} />
       <div className="modal-overlay-container">
-        <div className="modal-content" style={{ maxWidth: '520px', width: '95%' }}>
-          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div className="modal-content" style={{ maxWidth: '520px', width: '95%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '1.25rem 1.25rem 1rem 1.25rem', overflow: 'hidden' }}>
+          {/* Header (Fixed Sticky Top) */}
+          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexShrink: 0 }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.2rem' }}>
               <Settings size={20} className="gradient-text" />
               <span style={{ fontWeight: 700 }}>{t('modals.settings.title')}</span>
@@ -123,7 +124,8 @@ export function SettingsModal({
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Form Content (Custom Scrollable Body) */}
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)', padding: '0.75rem 1rem', borderRadius: '8px', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <HelpCircle size={16} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
               <div>
@@ -137,7 +139,7 @@ export function SettingsModal({
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
                 {t('modals.settings.tax_mapping_title')}
               </span>
@@ -329,46 +331,47 @@ export function SettingsModal({
               </div>
             </div>
 
-            {/* Footer Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
-              <button 
-                onClick={onClose}
-                className="cancel-btn"
-                style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: '6px' }}
-              >
-                {t('modals.common_cancel')}
-              </button>
-              
-              {!isViewer && (
-                <button 
-                  onClick={handleSave}
-                  disabled={saving || successMsg}
-                  className="glow-btn"
-                  style={{ 
-                    padding: '0.45rem 1rem', 
-                    fontSize: '0.8rem', 
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    background: successMsg ? 'var(--color-green)' : 'var(--color-primary)',
-                    borderColor: successMsg ? 'var(--color-green)' : 'var(--color-primary)'
-                  }}
-                >
-                  {successMsg ? (
-                    <>
-                      <Check size={14} /> {t('modals.settings.btn_saved')}
-                    </>
-                  ) : (
-                    <>
-                      <Save size={14} /> {saving ? t('modals.settings.btn_saving') : t('modals.settings.btn_save')}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-
           </div>
+
+          {/* Footer Buttons (Fixed Sticky Bottom) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem', flexShrink: 0 }}>
+            <button 
+              onClick={onClose}
+              className="cancel-btn"
+              style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: '6px' }}
+            >
+              {t('modals.common_cancel')}
+            </button>
+            
+            {!isViewer && (
+              <button 
+                onClick={handleSave}
+                disabled={saving || successMsg}
+                className="glow-btn"
+                style={{ 
+                  padding: '0.45rem 1rem', 
+                  fontSize: '0.8rem', 
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: successMsg ? 'var(--color-green)' : 'var(--color-primary)',
+                  borderColor: successMsg ? 'var(--color-green)' : 'var(--color-primary)'
+                }}
+              >
+                {successMsg ? (
+                  <>
+                    <Check size={14} /> {t('modals.settings.btn_saved')}
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} /> {saving ? t('modals.settings.btn_saving') : t('modals.settings.btn_save')}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
         </div>
       </div>
     </>

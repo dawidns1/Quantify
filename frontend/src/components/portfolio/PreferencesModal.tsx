@@ -103,9 +103,9 @@ export function PreferencesModal({
     <>
       <div className="modal-backdrop" onClick={onClose} style={{ cursor: 'pointer' }} />
       <div className="modal-overlay-container">
-        <div className="modal-content" style={{ maxWidth: '420px', width: '95%' }}>
-          {/* Header */}
-          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div className="modal-content" style={{ maxWidth: '440px', width: '95%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '1.25rem 1.25rem 1rem 1.25rem', overflow: 'hidden' }}>
+          {/* Header (Fixed Sticky Top) */}
+          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexShrink: 0 }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.15rem' }}>
               <SlidersHorizontal size={18} className="gradient-text" />
               <span style={{ fontWeight: 700 }}>{t('modals.preferences.title', 'Application Preferences')}</span>
@@ -115,8 +115,8 @@ export function PreferencesModal({
             </button>
           </div>
 
-          {/* Form Content */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          {/* Form Content (Custom Scrollable Body) */}
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
             
             {/* Subtitle / Description */}
             <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -348,37 +348,37 @@ export function PreferencesModal({
                 </button>
               </div>
             )}
-
-            {/* Footer Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
-              <button 
-                onClick={handleSave}
-                disabled={saving || successMsg}
-                className="glow-btn"
-                style={{ 
-                  padding: '0.45rem 1rem', 
-                  fontSize: '0.8rem', 
-                  borderRadius: '6px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  background: successMsg ? 'var(--color-green)' : 'var(--color-primary)',
-                  borderColor: successMsg ? 'var(--color-green)' : 'var(--color-primary)'
-                }}
-              >
-                {successMsg ? (
-                  <>
-                    <Check size={14} /> {t('modals.preferences.btn_saved', 'Saved!')}
-                  </>
-                ) : (
-                  <>
-                    <Save size={14} /> {saving ? t('modals.preferences.btn_saving', 'Saving...') : t('modals.preferences.btn_save', 'Save Preferences')}
-                  </>
-                )}
-              </button>
-            </div>
-
           </div>
+
+          {/* Footer Buttons (Fixed Sticky Bottom) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem', flexShrink: 0 }}>
+            <button 
+              onClick={handleSave}
+              disabled={saving || successMsg}
+              className="glow-btn"
+              style={{ 
+                padding: '0.45rem 1rem', 
+                fontSize: '0.8rem', 
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: successMsg ? 'var(--color-green)' : 'var(--color-primary)',
+                borderColor: successMsg ? 'var(--color-green)' : 'var(--color-primary)'
+              }}
+            >
+              {successMsg ? (
+                <>
+                  <Check size={14} /> {t('modals.preferences.btn_saved', 'Saved!')}
+                </>
+              ) : (
+                <>
+                  <Save size={14} /> {saving ? t('modals.preferences.btn_saving', 'Saving...') : t('modals.preferences.btn_save', 'Save Preferences')}
+                </>
+              )}
+            </button>
+          </div>
+
         </div>
       </div>
     </>
