@@ -259,8 +259,8 @@ export function AuthView() {
 
   // Determine what layout to show
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem', width: '100%' }}>
-      <div className="glass-panel custom-scrollbar" style={{ width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', padding: '1.75rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '2rem 1rem', width: '100%', boxSizing: 'border-box' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '2rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', textAlign: 'center' }}>
           <img 
