@@ -17,14 +17,18 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   activePortfolioId: string | null;
+  activePortfolioName?: string;
   showCustomConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
+  apiBaseUrl?: string;
 }
 
 export function ShareModal({
   isOpen,
   onClose,
   activePortfolioId,
-  showCustomConfirm
+  activePortfolioName,
+  showCustomConfirm,
+  apiBaseUrl
 }: ShareModalProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -37,6 +41,7 @@ export function ShareModal({
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [activeLink, setActiveLink] = useState<string | null>(null);
   const [linkRole, setLinkRole] = useState<'editor' | 'viewer'>('viewer');
@@ -140,26 +145,77 @@ export function ShareModal({
       return;
     }
 
+    setSendingEmail(true);
+
     try {
+      // 1. Try to add directly if registered
       await inviteMemberByEmail(activePortfolioId!, email, inviteRole, members);
       setInviteSuccess(t('modals.share.success_msg', `Invitation sent to ${email}`));
       setInviteEmail('');
       loadSharingData();
     } catch (err: any) {
-      console.error('Error inviting member:', err);
-      setInviteError(err.message || "An error occurred.");
+      // 2. If unregistered, generate invite link & send email via backend!
+      try {
+        let linkToUse = activeLink;
+        if (!linkToUse && user) {
+          const invite = await createInvitationLink(activePortfolioId!, inviteRole, user.id);
+          linkToUse = `${window.location.origin}/?invite=${invite.id}`;
+          setActiveLink(linkToUse);
+        }
+
+        if (apiBaseUrl && linkToUse) {
+          await fetch(`${apiBaseUrl}/api/share/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipient_email: email,
+              inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
+              invite_url: linkToUse,
+              portfolio_name: activePortfolioName || 'My Portfolio',
+              is_portfolio: true
+            })
+          });
+        }
+
+        setInviteSuccess(`Invitation email sent to ${email}!`);
+        setInviteEmail('');
+      } catch (sendErr: any) {
+        console.error('Error inviting member:', err);
+        setInviteError(err.message || "An error occurred.");
+      }
+    } finally {
+      setSendingEmail(false);
     }
   };
 
   // Handle direct referral email invitation
-  const handleSendReferralInvite = (e: React.FormEvent) => {
+  const handleSendReferralInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     const email = referralEmail.trim().toLowerCase();
     if (!email) return;
 
-    setReferralSuccess(`App invitation link prepared for ${email}!`);
-    setReferralEmail('');
-    setTimeout(() => setReferralSuccess(null), 4000);
+    setSendingEmail(true);
+    try {
+      if (apiBaseUrl) {
+        await fetch(`${apiBaseUrl}/api/share/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipient_email: email,
+            inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
+            invite_url: personalReferralLink,
+            is_portfolio: false
+          })
+        });
+      }
+      setReferralSuccess(`Invitation email dispatched to ${email}!`);
+      setReferralEmail('');
+      setTimeout(() => setReferralSuccess(null), 4000);
+    } catch (err: any) {
+      console.error('Error sending referral email:', err);
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   // Remove member from portfolio
@@ -201,13 +257,13 @@ export function ShareModal({
     <>
       <div className="modal-backdrop" onClick={onClose} style={{ cursor: 'pointer' }} />
       <div className="modal-overlay-container">
-        <div className="modal-content glass-panel" style={{ maxWidth: '500px', padding: '1.25rem' }}>
+        <div className="modal-content glass-panel" style={{ maxWidth: '520px', width: '95%', height: '520px', display: 'flex', flexDirection: 'column', padding: '1.25rem', overflow: 'hidden' }}>
           
           {/* Header */}
-          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexShrink: 0 }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '1.15rem' }}>
               <Share2 size={20} className="gradient-text" /> 
-              <span>{t('modals.share.title', 'Invite & Share')}</span>
+              <span>{t('modals.share.title', 'Share & Invite')}</span>
             </h3>
             <button onClick={onClose} className="modal-close-btn">
               <X size={18} />
@@ -215,7 +271,7 @@ export function ShareModal({
           </div>
 
           {/* Top Tabs: Share Portfolio vs Invite Friends */}
-          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '8px', marginBottom: '1.25rem', border: '1px solid var(--panel-border)' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '4px', borderRadius: '8px', marginBottom: '1rem', border: '1px solid var(--panel-border)', flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => setActiveTab('share')}
@@ -269,7 +325,14 @@ export function ShareModal({
 
           {/* TAB 1: SHARE PORTFOLIO */}
           {activeTab === 'share' && (
-            <>
+            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                <span>{t('modals.share.sharing_access_to', 'Sharing access to:')}</span>
+                <span style={{ fontWeight: 700, color: '#06b6d4', background: 'rgba(6, 182, 212, 0.12)', padding: '2px 8px', borderRadius: '12px', border: '1px solid rgba(6, 182, 212, 0.35)', fontSize: '0.76rem' }}>
+                  {activePortfolioName || 'My Portfolio'}
+                </span>
+              </div>
+
               {inviteError && (
                 <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.65rem 0.75rem', background: 'var(--color-red-glow)', border: '1px solid var(--color-red)', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.82rem' }}>
                   <AlertCircle size={16} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
@@ -317,8 +380,8 @@ export function ShareModal({
                   </select>
                 </div>
 
-                <button type="submit" className="glow-btn" style={{ padding: '0 1rem', height: '36px', boxSizing: 'border-box', borderRadius: '6px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {t('modals.share.invite_btn', 'Invite')}
+                <button type="submit" disabled={sendingEmail} className="glow-btn" style={{ padding: '0 1rem', height: '36px', boxSizing: 'border-box', borderRadius: '6px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {sendingEmail ? t('modals.share.btn_sending', 'Sending...') : t('modals.share.invite_btn', 'Invite')}
                 </button>
               </form>
 
@@ -451,12 +514,12 @@ export function ShareModal({
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
 
           {/* TAB 2: INVITE FRIENDS */}
           {activeTab === 'referral' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
               <div style={{ background: 'rgba(6, 182, 212, 0.06)', border: '1px solid rgba(6, 182, 212, 0.2)', padding: '0.85rem', borderRadius: '8px' }}>
                 <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 0.35rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <UserPlus size={16} style={{ color: '#06b6d4' }} />
@@ -522,8 +585,8 @@ export function ShareModal({
                     required
                   />
                 </div>
-                <button type="submit" className="glow-btn" style={{ padding: '0 1.1rem', height: '36px', borderRadius: '6px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {t('modals.share.btn_send_app_invite', 'Send Invite')}
+                <button type="submit" disabled={sendingEmail} className="glow-btn" style={{ padding: '0 1.1rem', height: '36px', borderRadius: '6px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {sendingEmail ? t('modals.share.btn_sending', 'Sending...') : t('modals.share.btn_send_app_invite', 'Send Invite')}
                 </button>
               </form>
             </div>

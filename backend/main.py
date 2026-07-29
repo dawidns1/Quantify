@@ -890,6 +890,110 @@ def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
             
     return {"status": "ok", "message": "Feedback submitted successfully"}
 
+PORTFOLIO_SHARE_EMAIL_HTML = """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Portfolio Shared With You</title></head>
+<body style="margin:0;padding:0;background-color:#0b0f19;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <div style="width:100%;background-color:#0b0f19;padding:40px 10px;">
+    <div style="max-width:520px;margin:0 auto;background:linear-gradient(135deg, #131a2a 0%, #0f1623 100%);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px 32px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="font-size:28px;font-weight:800;color:#ffffff;margin:0;letter-spacing:-0.5px;">Quanti<span style="color:#06b6d4;">Fi</span></h1>
+      </div>
+      <div style="text-align:center;"><span style="display:inline-block;padding:4px 12px;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);color:#06b6d4;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;">Portfolio Share</span></div>
+      <h2 style="font-size:20px;font-weight:700;color:#f8fafc;margin-top:0;margin-bottom:12px;text-align:center;">A Portfolio Was Shared With You</h2>
+      <p style="font-size:15px;line-height:1.6;color:#94a3b8;margin-bottom:32px;text-align:center;">
+        <b>{inviter_name}</b> invited you to view and collaborate on the portfolio <b>"{portfolio_name}"</b> on QuantiFi. Click below to accept and open it.
+      </p>
+      <div style="text-align:center;margin-bottom:32px;">
+        <a href="{invite_url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);color:#ffffff !important;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;box-shadow:0 4px 20px rgba(6,182,212,0.4);" target="_blank">Accept & Open Portfolio ➔</a>
+      </div>
+      <p style="font-size:12px;color:#64748b;text-align:center;line-height:1.5;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px;">
+        If you weren't expecting this portfolio share, you can safely ignore this email.<br>© 2026 QuantiFi. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+APP_REFERRAL_EMAIL_HTML = """<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>You're Invited to QuantiFi</title></head>
+<body style="margin:0;padding:0;background-color:#0b0f19;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e2e8f0;">
+  <div style="width:100%;background-color:#0b0f19;padding:40px 10px;">
+    <div style="max-width:520px;margin:0 auto;background:linear-gradient(135deg, #131a2a 0%, #0f1623 100%);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px 32px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="font-size:28px;font-weight:800;color:#ffffff;margin:0;letter-spacing:-0.5px;">Quanti<span style="color:#06b6d4;">Fi</span></h1>
+      </div>
+      <div style="text-align:center;"><span style="display:inline-block;padding:4px 12px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;">Special Invitation</span></div>
+      <h2 style="font-size:20px;font-weight:700;color:#f8fafc;margin-top:0;margin-bottom:12px;text-align:center;">Your Friend Invited You to QuantiFi</h2>
+      <p style="font-size:15px;line-height:1.6;color:#94a3b8;margin-bottom:32px;text-align:center;">
+        <b>{inviter_name}</b> invited you to join QuantiFi. Track your stock portfolios, dividends, and Net Asset Value in real-time. Click below to start building your portfolios.
+      </p>
+      <div style="text-align:center;margin-bottom:32px;">
+        <a href="{referral_url}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);color:#ffffff !important;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;box-shadow:0 4px 20px rgba(6,182,212,0.4);" target="_blank">Join QuantiFi ➔</a>
+      </div>
+      <p style="font-size:12px;color:#64748b;text-align:center;line-height:1.5;border-top:1px solid rgba(255,255,255,0.08);padding-top:24px;">
+        If you don't wish to join, you can safely ignore this message.<br>© 2026 QuantiFi. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+class SendShareEmailRequest(BaseModel):
+    recipient_email: str
+    inviter_name: Optional[str] = "A QuantiFi user"
+    invite_url: str
+    portfolio_name: Optional[str] = "Portfolio"
+    is_portfolio: bool = True
+
+@app.post("/api/share/send-email")
+def send_share_email(req: SendShareEmailRequest):
+    resend_api_key = os.environ.get("RESEND_API_KEY")
+    sender_email = os.environ.get("SENDER_EMAIL", "QuantiFi <onboarding@resend.dev>")
+    
+    if req.is_portfolio:
+        subject = f"{req.inviter_name} shared the portfolio '{req.portfolio_name}' with you on QuantiFi"
+        html_body = PORTFOLIO_SHARE_EMAIL_HTML.format(
+            inviter_name=req.inviter_name,
+            portfolio_name=req.portfolio_name,
+            invite_url=req.invite_url
+        )
+    else:
+        subject = f"{req.inviter_name} invited you to join QuantiFi"
+        html_body = APP_REFERRAL_EMAIL_HTML.format(
+            inviter_name=req.inviter_name,
+            referral_url=req.invite_url
+        )
+        
+    if not resend_api_key:
+        print(f"[SHARE EMAIL] RESEND_API_KEY not set. Simulated sending email to {req.recipient_email}")
+        return {"status": "simulated", "message": f"Invitation link generated and email logged for {req.recipient_email}"}
+        
+    try:
+        res = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": sender_email,
+                "to": [req.recipient_email],
+                "subject": subject,
+                "html": html_body
+            },
+            timeout=10
+        )
+        if res.status_code in [200, 201]:
+            return {"status": "sent", "id": res.json().get("id")}
+        else:
+            print(f"[SHARE EMAIL ERROR] Resend error {res.status_code}: {res.text}")
+            return {"status": "simulated", "message": f"Resend API response: {res.text}"}
+    except Exception as e:
+        print(f"[SHARE EMAIL ERROR] Failed: {e}")
+        return {"status": "simulated", "message": str(e)}
+
 def parse_transactions_csv(csv_content: str):
     f = io.StringIO(csv_content.strip())
     reader = csv.reader(f)
