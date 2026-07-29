@@ -425,6 +425,11 @@
     "btn_confirm": "Confirm Import"
   },
   "auth": {
+    "errorInvalidEmail": "Please enter a valid email address.",
+    "errorInvalidCredentials": "Invalid email or password. Please check your details and try again.",
+    "errorEmailNotConfirmed": "Your email address has not been activated yet. Please check your inbox for the activation link.",
+    "errorRateLimit": "Too many requests. Please wait a minute before trying again.",
+    "errorUserAlreadyExists": "An account with this email address already exists. Please sign in instead.",
     "errorPasswordLength": "Password must be at least 8 characters long.",
     "errorPasswordUppercase": "Password must contain at least one uppercase letter.",
     "errorPasswordLowercase": "Password must contain at least one lowercase letter.",

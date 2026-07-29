@@ -425,6 +425,11 @@
     "btn_confirm": "Potwierdź import"
   },
   "auth": {
+    "errorInvalidEmail": "Wprowadź poprawny adres e-mail.",
+    "errorInvalidCredentials": "Niepoprawny e-mail lub hasło. Sprawdź dane i spróbuj ponownie.",
+    "errorEmailNotConfirmed": "Twój adres e-mail nie został jeszcze aktywowany. Sprawdź skrzynkę i kliknij link aktywacyjny.",
+    "errorRateLimit": "Zbyt wiele prób. Odczekaj minutę przed ponowną próbą.",
+    "errorUserAlreadyExists": "Konto z tym adresem e-mail już istnieje. Zaloguj się zamiast tego.",
     "errorPasswordLength": "Hasło musi mieć co najmniej 8 znaków.",
     "errorPasswordUppercase": "Hasło musi zawierać co najmniej jedną wielką literę.",
     "errorPasswordLowercase": "Hasło musi zawierać co najmniej jedną małą literę.",

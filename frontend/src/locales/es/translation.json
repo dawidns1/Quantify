@@ -425,6 +425,11 @@
     "btn_confirm": "Confirmar importación"
   },
   "auth": {
+    "errorInvalidEmail": "Por favor, introduzca una dirección de correo electrónico válida.",
+    "errorInvalidCredentials": "Correo electrónico o contraseña no válidos. Por favor, verifique sus datos e intente de nuevo.",
+    "errorEmailNotConfirmed": "Su dirección de correo electrónico aún no ha sido activada. Revise su bandeja de entrada.",
+    "errorRateLimit": "Demasiadas solicitudes. Por favor, espere un minuto antes de volver a intentarlo.",
+    "errorUserAlreadyExists": "Ya existe una cuenta con este correo electrónico. Por favor, inicie sesión.",
     "errorPasswordLength": "La contraseña debe tener al menos 8 caracteres.",
     "errorPasswordUppercase": "La contraseña debe contener al menos una letra mayúscula.",
     "errorPasswordLowercase": "La contraseña debe contener al menos una letra minúscula.",

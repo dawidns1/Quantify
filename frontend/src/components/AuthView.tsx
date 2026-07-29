@@ -64,6 +64,26 @@ export function AuthView() {
     return true;
   };
 
+  const formatAuthError = (err: any): string => {
+    if (!err) return t('auth.errorDefault', 'An error occurred.');
+    const code = err.code || '';
+    const msg = err.message || '';
+
+    if (code === 'invalid_credentials' || msg.includes('Invalid login credentials')) {
+      return t('auth.errorInvalidCredentials', 'Invalid email or password. Please check your details and try again.');
+    }
+    if (code === 'email_not_confirmed' || msg.includes('Email not confirmed')) {
+      return t('auth.errorEmailNotConfirmed', 'Your email address has not been activated yet. Please check your inbox for the activation link.');
+    }
+    if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') {
+      return t('auth.errorRateLimit', 'Too many requests. Please wait a minute before trying again.');
+    }
+    if (code === 'user_already_exists' || msg.includes('User already registered')) {
+      return t('auth.errorUserAlreadyExists', 'An account with this email address already exists. Please sign in instead.');
+    }
+    return code ? `${msg} (Code: ${code})` : msg;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -74,6 +94,13 @@ export function AuthView() {
       setError(t('auth.errorEnterEmail', 'Please enter your email address.'));
       return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailAddress)) {
+      setError(t('auth.errorInvalidEmail', 'Please enter a valid email address.'));
+      return;
+    }
+
     if (!password) {
       setError(t('auth.errorEnterPassword', 'Please enter a password.'));
       return;
@@ -104,12 +131,18 @@ export function AuthView() {
 
       if (error) {
         console.error('[SUPABASE AUTH SIGNUP ERROR]:', error);
-        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
+        setError(formatAuthError(error));
       } else {
         console.log('[SUPABASE AUTH SIGNUP SUCCESS]:', data);
-        setSignUpSuccess(true);
-        setResendCooldown(60);
-        setMessage(t('auth.msgConfirmLinkSent', 'Activation email sent! Check your inbox.'));
+        // Supabase returns an empty identities array if user already exists (enumeration protection)
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setError(t('auth.errorUserAlreadyExists', 'An account with this email address already exists. Please sign in instead.'));
+          setIsSignUp(false); // Auto-switch to Sign In tab!
+        } else {
+          setSignUpSuccess(true);
+          setResendCooldown(60);
+          setMessage(t('auth.msgConfirmLinkSent', 'Activation email sent! Check your inbox.'));
+        }
       }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -119,7 +152,7 @@ export function AuthView() {
 
       if (error) {
         console.error('[SUPABASE AUTH SIGNIN ERROR]:', error);
-        setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
+        setError(formatAuthError(error));
       } else {
         console.log('[SUPABASE AUTH SIGNIN SUCCESS]:', data);
       }
