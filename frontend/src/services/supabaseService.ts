@@ -211,3 +211,14 @@ export async function joinPortfolioViaInviteToken(inviteToken: string): Promise<
   if (error) throw error;
   return data;
 }
+
+export async function deleteUserAccount(): Promise<void> {
+  // Try calling delete_user_account RPC
+  try {
+    await supabase.rpc('delete_user_account');
+  } catch (err) {
+    console.warn('RPC delete_user_account failed, clearing session:', err);
+  }
+  // Sign out user locally to redirect to auth view
+  await supabase.auth.signOut();
+}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu, Wallet, Activity } from 'lucide-react';
+import { X, Check, Save, SlidersHorizontal, Globe, Coins, LayoutGrid, Cpu, Wallet, Activity, Trash2, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { BaseCurrencyType } from '../../context/PortfolioContext';
+import { deleteUserAccount } from '../../services/supabaseService';
 
 interface PreferencesModalProps {
   isOpen: boolean;
@@ -32,6 +33,22 @@ export function PreferencesModal({
   
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteUserAccount();
+      onClose();
+    } catch (err) {
+      console.error('Error deleting user account:', err);
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -348,6 +365,47 @@ export function PreferencesModal({
                 </button>
               </div>
             )}
+
+            {/* 7. Danger Zone - Delete Account */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-red)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangle size={15} style={{ color: 'var(--color-red)' }} />
+                {t('modals.preferences.danger_zone', 'Danger Zone')}
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  background: 'rgba(239, 68, 68, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  width: '100%',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Trash2 size={14} style={{ color: 'var(--color-red)' }} />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#f87171' }}>
+                    {t('modals.preferences.btn_delete_account', 'Delete My Account')}
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700 }}>Delete ➔</span>
+              </button>
+            </div>
+
           </div>
 
           {/* Footer Buttons (Fixed Sticky Bottom) */}
@@ -381,6 +439,51 @@ export function PreferencesModal({
 
         </div>
       </div>
+
+      {/* Confirmation Modal for Account Deletion */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(6px)', padding: '1rem' }}>
+          <div className="glass-panel" style={{ maxWidth: '420px', width: '100%', padding: '1.5rem', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <AlertTriangle size={22} style={{ color: 'var(--color-red)' }} />
+              <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>
+                {t('modals.preferences.confirm_delete_title', 'Delete Account?')}
+              </h4>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              {t('modals.preferences.confirm_delete_desc', 'Are you sure you want to permanently delete your QuantiFi account? All your portfolios, transaction histories, and settings will be permanently erased. This action cannot be undone.')}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="cancel-btn"
+                style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: '6px' }}
+              >
+                {t('modals.common_cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  background: 'var(--color-red)',
+                  borderColor: 'var(--color-red)',
+                  color: 'white',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: 'none'
+                }}
+              >
+                {deletingAccount ? t('modals.preferences.deleting', 'Deleting...') : t('modals.preferences.btn_confirm_delete', 'Yes, Delete My Account')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
