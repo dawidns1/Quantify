@@ -4,7 +4,25 @@ import { AuthView } from './components/AuthView';
 import { PortfolioProvider } from './context/PortfolioContext';
 import { useTranslation } from 'react-i18next';
 
-const PortfolioView = lazy(() => import('./components/PortfolioView').then(module => ({ default: module.PortfolioView })));
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasBeenRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page_has_been_refreshed') || 'false'
+    );
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page_has_been_refreshed', 'false');
+      return component;
+    } catch (error: any) {
+      if (!pageHasBeenRefreshed) {
+        window.sessionStorage.setItem('page_has_been_refreshed', 'true');
+        window.location.reload();
+      }
+      throw error;
+    }
+  });
+
+const PortfolioView = lazyWithRetry(() => import('./components/PortfolioView').then(module => ({ default: module.PortfolioView })));
 
 // In local dev, backend runs on port 8000. In production, it's served on the same origin.
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
@@ -22,6 +40,19 @@ function App() {
   const { t } = useTranslation();
 
   useEffect(() => {
+    const handleChunkError = (e: PromiseRejectionEvent) => {
+      const reason = e.reason?.message || String(e.reason || '');
+      if (/Failed to fetch dynamically imported module|Importing a module script failed/i.test(reason)) {
+        const pageHasBeenRefreshed = JSON.parse(window.sessionStorage.getItem('page_has_been_refreshed') || 'false');
+        if (!pageHasBeenRefreshed) {
+          window.sessionStorage.setItem('page_has_been_refreshed', 'true');
+          window.location.reload();
+        }
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleChunkError);
+
     const params = new URLSearchParams(window.location.search);
     const inviteToken = params.get('invite');
     if (inviteToken) {
@@ -30,6 +61,8 @@ function App() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
     }
+
+    return () => window.removeEventListener('unhandledrejection', handleChunkError);
   }, []);
 
   const [lowPerf, setLowPerf] = useState(() => {
