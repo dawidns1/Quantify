@@ -55,8 +55,15 @@ function App() {
 
     const params = new URLSearchParams(window.location.search);
     const inviteToken = params.get('invite');
+    const refCode = params.get('ref');
+
     if (inviteToken) {
       localStorage.setItem('pending_portfolio_invite', inviteToken);
+    }
+    if (refCode) {
+      localStorage.setItem('pending_referral_code', refCode);
+    }
+    if (inviteToken || refCode) {
       // Clean up URL parameter to keep it neat
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
