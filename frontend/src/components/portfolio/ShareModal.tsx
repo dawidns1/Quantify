@@ -55,6 +55,7 @@ export function ShareModal({
   const [referralEmail, setReferralEmail] = useState('');
   const [copiedReferralLink, setCopiedReferralLink] = useState(false);
   const [referralSuccess, setReferralSuccess] = useState<string | null>(null);
+  const [referralError, setReferralError] = useState<string | null>(null);
 
   const personalReferralLink = user ? `${window.location.origin}/?ref=${user.id.slice(0, 8)}` : '';
 
@@ -97,6 +98,7 @@ export function ShareModal({
       setCopiedLink(false);
       setCopiedReferralLink(false);
       setReferralSuccess(null);
+      setReferralError(null);
     }
   }, [isOpen, activePortfolioId]);
 
@@ -178,25 +180,29 @@ export function ShareModal({
           setActiveLink(linkToUse);
         }
 
-        if (apiBaseUrl && linkToUse) {
-          await fetch(`${apiBaseUrl}/api/share/send-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recipient_email: email,
-              inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
-              invite_url: linkToUse,
-              portfolio_name: currentPortfolioName,
-              is_portfolio: true
-            })
-          });
+        const baseUrl = apiBaseUrl || '';
+        const res = await fetch(`${baseUrl}/api/share/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipient_email: email,
+            inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
+            invite_url: linkToUse || `${window.location.origin}/?invite=default`,
+            portfolio_name: currentPortfolioName,
+            is_portfolio: true
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || data.message || 'Failed to dispatch email.');
         }
 
-        setInviteSuccess(`Invitation email sent to ${email}!`);
+        setInviteSuccess(data.message || `Invitation email sent to ${email}!`);
         setInviteEmail('');
       } catch (sendErr: any) {
-        console.error('Error inviting member:', err);
-        setInviteError(err.message || "An error occurred.");
+        console.error('Error inviting member:', sendErr);
+        setInviteError(sendErr.message || "An error occurred.");
       }
     } finally {
       setSendingEmail(false);
@@ -210,24 +216,32 @@ export function ShareModal({
     if (!email) return;
 
     setSendingEmail(true);
+    setReferralError(null);
+    setReferralSuccess(null);
+
     try {
-      if (apiBaseUrl) {
-        await fetch(`${apiBaseUrl}/api/share/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipient_email: email,
-            inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
-            invite_url: personalReferralLink,
-            is_portfolio: false
-          })
-        });
+      const baseUrl = apiBaseUrl || '';
+      const res = await fetch(`${baseUrl}/api/share/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient_email: email,
+          inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
+          invite_url: personalReferralLink,
+          is_portfolio: false
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || 'Failed to send invitation email.');
       }
-      setReferralSuccess(`Invitation email dispatched to ${email}!`);
+
+      setReferralSuccess(data.message || `Invitation email dispatched to ${email}!`);
       setReferralEmail('');
-      setTimeout(() => setReferralSuccess(null), 4000);
     } catch (err: any) {
       console.error('Error sending referral email:', err);
+      setReferralError(err.message || 'Failed to send email invitation.');
     } finally {
       setSendingEmail(false);
     }
@@ -587,7 +601,14 @@ export function ShareModal({
                 </div>
               </div>
 
-              {/* Direct Email Referral Invite */}
+              {/* Direct Email Referral Invite Banners */}
+              {referralError && (
+                <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.65rem 0.75rem', background: 'var(--color-red-glow)', border: '1px solid var(--color-red)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                  <AlertCircle size={16} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
+                  <span>{referralError}</span>
+                </div>
+              )}
+
               {referralSuccess && (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.65rem 0.75rem', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--color-green)', borderRadius: '8px', color: '#22c55e', fontSize: '0.82rem' }}>
                   <span>{referralSuccess}</span>
