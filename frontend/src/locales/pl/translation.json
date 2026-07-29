@@ -50,6 +50,7 @@
   "metrics": {
     "header": "Metryki Portfela",
     "nav": "Wycena netto aktywów (NAV)",
+    "nav_tooltip": "Obliczane w czasie rzeczywistym na podstawie kursów giełdowych i kursów walut na żywo.",
     "day_return": "Zwrot dzisiejszy",
     "total_return": "Wynik całkowity",
     "cost_basis": "Suma nakładów (Koszt)",
@@ -190,11 +191,25 @@
     "viewer_empty_warning": "Ten portfel jest pusty i masz do niego dostęp tylko do odczytu.",
     "search_history_placeholder": "Szukaj w historii...",
     "performance": "Wyniki",
+    "performance_tooltip": "Punkty wykresu NAV są obliczane na podstawie oficjalnych dziennych cen zamknięcia i dziennych kursów zamknięcia walut.",
+    "syncing_portfolios": "Synchronizowanie portfeli...",
+    "syncing_transactions": "Pobieranie historii transakcji...",
+    "syncing_holdings": "Przeliczanie pozycji i kursów walut...",
+    "syncing_generic": "Synchronizacja danych...",
+    "sync_complete": "Portfel zsynchronizowany",
+    "sync_failed": "Przekroczono czas oczekiwania",
     "move_up": "Przesuń w górę",
     "move_down": "Przesuń w dół",
     "hide_card": "Ukryj kartę",
     "computing_performance": "Obliczanie wyników...",
     "refetching": "Odświeżanie..."
+  },
+  "telemetry": {
+    "title": "Telemetria Systemowa i Inspekcja Wydajności",
+    "copy_logs": "Kopiuj Logi dla AI",
+    "copied": "Skopiowano dla AI!",
+    "no_logs": "Brak zarejestrowanych zdarzeń telemetrii.",
+    "no_logs_desc": "Wykonaj akcje w aplikacji lub odśwież stronę, aby wygenerować metryki."
   },
   "modals": {
     "common_close": "Zamknij",

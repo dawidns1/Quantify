@@ -50,6 +50,7 @@
   "metrics": {
     "header": "Métricas del portafolio",
     "nav": "Valor neto de activos (NAV)",
+    "nav_tooltip": "Calculado en tiempo real utilizando cotizaciones de mercado y tipos de cambio en vivo.",
     "day_return": "Retorno del día",
     "total_return": "Retorno total",
     "cost_basis": "Base de costo total",
@@ -190,11 +191,25 @@
     "viewer_empty_warning": "Este portafolio está vacío y tiene acceso de solo lectura.",
     "search_history_placeholder": "Buscar historial...",
     "performance": "Rendimiento",
+    "performance_tooltip": "Los puntos del gráfico NAV se calculan utilizando precios de cierre oficiales diarios y tipos de cambio de cierre diarios.",
+    "syncing_portfolios": "Sincronizando portafolios...",
+    "syncing_transactions": "Obteniendo historial de transacciones...",
+    "syncing_holdings": "Recalculando posiciones y precios en vivo...",
+    "syncing_generic": "Sincronizando datos...",
+    "sync_complete": "Portafolio sincronizado",
+    "sync_failed": "Tiempo de espera agotado",
     "move_up": "Mover hacia arriba",
     "move_down": "Mover hacia abajo",
     "hide_card": "Ocultar tarjeta",
     "computing_performance": "Calculando rendimiento...",
     "refetching": "Actualizando..."
+  },
+  "telemetry": {
+    "title": "Telemetría del Sistema e Inspección de Rendimiento",
+    "copy_logs": "Copiar Registros para IA",
+    "copied": "¡Copiado para IA!",
+    "no_logs": "Sin eventos de telemetría registrados.",
+    "no_logs_desc": "Interactúa con la aplicación o actualiza para generar métricas."
   },
   "modals": {
     "common_close": "Cerrar",

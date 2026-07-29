@@ -50,6 +50,7 @@
   "metrics": {
     "header": "Portfolio Metrics",
     "nav": "Net Asset Value (NAV)",
+    "nav_tooltip": "Computed in real-time using live streaming stock quotes and live FX rates.",
     "day_return": "Day Return",
     "total_return": "Total Return",
     "cost_basis": "Total Cost Basis",
@@ -190,11 +191,25 @@
     "viewer_empty_warning": "This portfolio is empty and you have read-only access.",
     "search_history_placeholder": "Search history...",
     "performance": "Performance",
+    "performance_tooltip": "Historical NAV chart points are calculated using daily official closing prices and daily FX closing rates.",
+    "syncing_portfolios": "Syncing portfolios...",
+    "syncing_transactions": "Fetching transaction ledger...",
+    "syncing_holdings": "Recalculating live holdings & prices...",
+    "syncing_generic": "Synchronizing data...",
+    "sync_complete": "Portfolio synced",
+    "sync_failed": "Sync timed out",
     "move_up": "Move Up",
     "move_down": "Move Down",
     "hide_card": "Hide Card",
     "computing_performance": "Computing performance...",
     "refetching": "Refetching..."
+  },
+  "telemetry": {
+    "title": "System Telemetry & Performance Inspector",
+    "copy_logs": "Copy Log for AI",
+    "copied": "Copied for AI!",
+    "no_logs": "No telemetry events recorded yet.",
+    "no_logs_desc": "Interact with the app or refresh to generate real-time metrics."
   },
   "modals": {
     "common_close": "Close",
