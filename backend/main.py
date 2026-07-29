@@ -950,7 +950,7 @@ class SendShareEmailRequest(BaseModel):
 @app.post("/api/share/send-email")
 def send_share_email(req: SendShareEmailRequest):
     resend_api_key = os.environ.get("RESEND_API_KEY")
-    sender_email = os.environ.get("SENDER_EMAIL", "QuantiFi <onboarding@resend.dev>")
+    sender_email = os.environ.get("SENDER_EMAIL", "QuantiFi <invites@quantifi.site>")
     
     if req.is_portfolio:
         subject = f"{req.inviter_name} shared the portfolio '{req.portfolio_name}' with you on QuantiFi"
