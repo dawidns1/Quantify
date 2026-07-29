@@ -230,23 +230,22 @@ class YFinanceProvider(BaseDataProvider):
         symbols_str = " ".join(all_missing)
         res = {"stocks": {}, "fx": {}}
         try:
-            df = yf.download(symbols_str, period="5d", progress=False, group_by='ticker', session=YF_SESSION)
+            df = yf.download(symbols_str, period="5d", progress=False, session=YF_SESSION)
             
             for sym in symbols:
                 live_price = 0.0
                 previous_close = 0.0
                 try:
-                    if len(all_missing) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if sym in df.columns.levels[0]:
-                            ticker_df = df[sym]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
+                    if 'Close' in df.columns:
+                        closes = df['Close']
+                        if isinstance(closes, pd.DataFrame) and sym in closes.columns:
+                            prices_series = closes[sym]
+                        elif isinstance(closes, pd.Series):
+                            prices_series = closes
                         else:
                             prices_series = pd.Series(dtype=float)
+                    else:
+                        prices_series = pd.Series(dtype=float)
                             
                     if hasattr(prices_series, 'dropna'):
                         non_nan_series = prices_series.dropna()
@@ -261,11 +260,21 @@ class YFinanceProvider(BaseDataProvider):
                             previous_close = live_price
                 except Exception as sym_err:
                     print(f"Error parsing live bulk data for {sym}: {sym_err}")
+
+                # If bulk download produced 0.0, attempt direct fast_info fetch
+                if not live_price or live_price == 0.0:
+                    try:
+                        t = yf.Ticker(sym, session=YF_SESSION)
+                        fi = t.fast_info
+                        live_price = fi.get("lastPrice") or fi.get("previousClose") or 0.0
+                        previous_close = fi.get("previousClose") or live_price
+                    except Exception as single_err:
+                        print(f"Single ticker fallback failed for {sym}: {single_err}")
                 
                 guessed_currency = guess_native_currency(sym)
                 res["stocks"][sym] = {
-                    "live_price": live_price,
-                    "previous_close": previous_close,
+                    "live_price": float(live_price) if live_price else 0.0,
+                    "previous_close": float(previous_close) if previous_close else 0.0,
                     "company_name": sym,
                     "native_currency": guessed_currency
                 }

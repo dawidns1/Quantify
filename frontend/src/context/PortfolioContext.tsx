@@ -466,11 +466,16 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   };
 
+  const isCreatingDefaultPortfolioRef = useRef(false);
+
   const loadPortfolios = async () => {
     if (!user) {
       setLoadingPortfolios(false);
       return;
     }
+    if (isCreatingDefaultPortfolioRef.current) return;
+    isCreatingDefaultPortfolioRef.current = true;
+
     setLoadingPortfolios(true);
     try {
       let formatted = await fetchUserPortfolios(user.id);
@@ -501,6 +506,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       console.error('Error loading portfolios:', err);
     } finally {
       setLoadingPortfolios(false);
+      isCreatingDefaultPortfolioRef.current = false;
     }
   };
 
