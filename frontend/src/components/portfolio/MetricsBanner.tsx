@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, ChevronUp, ChevronDown, X, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, ChevronUp, ChevronDown, X, BarChart3, Info } from 'lucide-react';
 import type { Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
@@ -85,8 +85,11 @@ export function MetricsBanner({
 
       {/* Net Asset Value (NAV) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-        <span className="metric-title" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+        <span className="metric-title" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
           {t('metrics.nav', 'Net Asset Value (NAV)')}
+          <span title={t('metrics.nav_tooltip', 'Computed in real-time using live streaming stock quotes and live FX rates.')} style={{ cursor: 'help', display: 'inline-flex', alignItems: 'center' }}>
+            <Info size={12} style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+          </span>
         </span>
         <span className="metric-value" style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'system-ui, sans-serif' }}>
           <AnimateOnChange value={summary.total_value_base} contextId={activePortfolioId}>

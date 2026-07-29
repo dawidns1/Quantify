@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, memo } from 'react';
-import { Activity, ChevronUp, ChevronDown, X, RefreshCw, Search } from 'lucide-react';
+import { Activity, ChevronUp, ChevronDown, X, RefreshCw, Search, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { searchAssets } from '../../services/calculationService';
@@ -424,8 +424,11 @@ export const PerformanceChart = memo(function PerformanceChart({
       {/* Header Row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '0.4rem', width: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Activity size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('dashboard.performance', 'Performance')} ({baseCurrency})
+            <span title={t('dashboard.performance_tooltip', 'Historical NAV chart points are calculated using daily official closing prices and daily FX closing rates.')} style={{ cursor: 'help', display: 'inline-flex', alignItems: 'center' }}>
+              <Info size={12} style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+            </span>
           </h4>
           {chartMode === 'value' && performanceIndicator && (
             <span style={{
