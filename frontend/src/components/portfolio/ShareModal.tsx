@@ -13,6 +13,7 @@ import {
   createInvitationLink,
   revokeInvitationLink
 } from '../../services/supabaseService';
+import { fetchWithTimeout } from '../../services/calculationService';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -151,8 +152,23 @@ export function ShareModal({
     setTimeout(() => setCopiedReferralLink(false), 2000);
   };
 
+  const { session } = useAuth();
   const { apiBaseUrl: contextApiUrl } = usePortfolio();
   const effectiveApiUrl = (apiBaseUrl || contextApiUrl || '').replace(/\/$/, '');
+
+  const getHeaders = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (supabaseUrl) headers['x-supabase-url'] = supabaseUrl;
+    if (supabaseAnonKey) headers['x-supabase-anon-key'] = supabaseAnonKey;
+    return headers;
+  };
 
   // Handle invitation submission for portfolio sharing
   const handleInviteUser = async (e: React.FormEvent) => {
@@ -184,9 +200,9 @@ export function ShareModal({
           setActiveLink(linkToUse);
         }
 
-        const res = await fetch(`${effectiveApiUrl}/api/share/send-email`, {
+        const res = await fetchWithTimeout(`${effectiveApiUrl}/api/share/send-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getHeaders(),
           body: JSON.stringify({
             recipient_email: email,
             inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
@@ -194,7 +210,7 @@ export function ShareModal({
             portfolio_name: currentPortfolioName,
             is_portfolio: true
           })
-        });
+        }, 15000);
 
         const data = await res.json();
         if (!res.ok) {
@@ -206,7 +222,7 @@ export function ShareModal({
       } catch (sendErr: any) {
         console.error('Error inviting member:', sendErr);
         if (sendErr.name === 'TypeError' || sendErr.message?.includes('fetch')) {
-          setInviteError('Network issue reaching backend server. Please verify network connection or backend service status.');
+          setInviteError('Network issue reaching backend email service. Please check network connection.');
         } else {
           setInviteError(sendErr.message || "An error occurred.");
         }
@@ -227,16 +243,16 @@ export function ShareModal({
     setReferralSuccess(null);
 
     try {
-      const res = await fetch(`${effectiveApiUrl}/api/share/send-email`, {
+      const res = await fetchWithTimeout(`${effectiveApiUrl}/api/share/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           recipient_email: email,
           inviter_name: user?.email?.split('@')[0] || 'A QuantiFi user',
           invite_url: personalReferralLink,
           is_portfolio: false
         })
-      });
+      }, 15000);
 
       const data = await res.json();
       if (!res.ok) {
