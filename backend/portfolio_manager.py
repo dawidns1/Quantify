@@ -206,8 +206,19 @@ class PortfolioManager:
         diff = next_open - now_tz
         return max(0.0, diff.total_seconds())
 
+    _last_force_live_time = 0.0
+    _force_live_lock = threading.Lock()
+
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list, force_live: bool = False):
+        if force_live:
+            now_fl = time.time()
+            with cls._force_live_lock:
+                if now_fl - cls._last_force_live_time < 5.0:
+                    force_live = False
+                else:
+                    cls._last_force_live_time = now_fl
+
         now = time.time()
         missing_symbols = []
         missing_fx = []
