@@ -208,11 +208,11 @@ class PortfolioManager:
 
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list, force_live: bool = False):
+        now = time.time()
+        missing_symbols = []
+        missing_fx = []
+        
         with cls._live_prefetch_lock:
-            now = time.time()
-            missing_symbols = []
-            missing_fx = []
-            
             for sym in symbols:
                 sym = sym.upper().strip()
                 cache_entry = cls._live_ticker_cache.get(sym)
@@ -239,22 +239,18 @@ class PortfolioManager:
                 pair = pair.upper().strip()
                 cache_entry = cls._live_fx_cache.get(pair)
                 if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
-                    # Try loading from L2 SQLite Cache
                     sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
                     if sqlite_data:
                         cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
                     else:
                         missing_fx.append(pair)
                     
-            if not missing_symbols and not missing_fx:
-                return
-                
-            print(f"[DEBUG] Prefetching live prices for stocks {missing_symbols} and FX {missing_fx}")
+        if not missing_symbols and not missing_fx:
+            return
             
-            try:
-                res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
-                bulk_entries = []
-                
+        try:
+            res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
+            with cls._live_prefetch_lock:
                 for sym in missing_symbols:
                     stock_data = res["stocks"].get(sym)
                     if not stock_data or stock_data.get("live_price", 0.0) == 0.0:
@@ -310,11 +306,7 @@ class PortfolioManager:
                         "timezone": tz_val,
                         "exchange": ex_val
                     }
-                    # Save to SQLite L2 Cache only
                     save_cached_live_price(sym, cache_payload, supabase_write=False)
-                    
-                    # Accumulate for Supabase bulk write
-                    bulk_entries.append((f"LIVE_PRICE:{sym.upper()}", cache_payload))
                     
                 for pair in missing_fx:
                     rate = res["fx"].get(pair)
@@ -328,23 +320,16 @@ class PortfolioManager:
                         "company_name": pair,
                         "native_currency": "USD"
                     }
-                    # Save to SQLite L2 Cache only
                     save_cached_live_price(pair, cache_payload, supabase_write=False)
-                    
-                    # Accumulate for Supabase bulk write
-                    bulk_entries.append((f"LIVE_PRICE:{pair.upper()}", cache_payload))
-                    
-                if bulk_entries:
-                    save_supabase_kv_bulk(bulk_entries)
-            except Exception as e:
-                print(f"Error prefetching live prices: {e}")
+        except Exception as e:
+            print(f"Error prefetching live prices: {e}")
 
     @classmethod
     def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
+        now = time.time()
+        missing_symbols = []
+        
         with cls._historical_prefetch_lock:
-            now = time.time()
-            missing_symbols = []
-            
             for sym in symbols:
                 sym = sym.upper().strip()
                 cache_entry = cls._historical_stock_cache.get(sym)
@@ -370,12 +355,13 @@ class PortfolioManager:
                     
                 missing_symbols.append(sym)
                 
-            if not missing_symbols:
-                return
-                
-            try:
-                print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {missing_symbols} (start={start_dt})")
-                bulk_prices, bulk_divs = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
+        if not missing_symbols:
+            return
+            
+        try:
+            print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {missing_symbols} (start={start_dt})")
+            bulk_prices, bulk_divs = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
+            with cls._historical_prefetch_lock:
                 bulk_entries = []
                 
                 for sym in missing_symbols:
@@ -422,8 +408,8 @@ class PortfolioManager:
                         
                 if bulk_entries:
                     save_supabase_kv_bulk(bulk_entries)
-            except Exception as e:
-                print(f"Error bulk prefetching historical stock prices: {e}")
+        except Exception as e:
+            print(f"Error bulk prefetching historical stock prices: {e}")
 
     @classmethod
     def get_cached_live_ticker(cls, symbol: str) -> dict:
