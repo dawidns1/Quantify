@@ -6,7 +6,7 @@ import csv
 import io
 import re
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Dict, Any
 import yfinance as yf
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
