@@ -1930,6 +1930,13 @@ class PortfolioManager:
                     else:
                         stock_prices[sym][d] = first_val
                 
+            # Overwrite today's data point with live price to eliminate NAV vs performance chart gap
+            if date.today() in dates_list:
+                live_info = cls.get_cached_live_ticker(sym)
+                live_p = live_info.get("live_price", 0.0) if live_info else 0.0
+                if live_p > 0.0:
+                    stock_prices[sym][date.today()] = live_p
+                
         # Construct symbol_txs and ticker_info_tmp
         symbol_txs = {}
         for tx in sorted_txs:
@@ -1983,6 +1990,10 @@ class PortfolioManager:
                 
             pair = f"{curr}{base_currency}=X"
             fx_rates_hist[curr] = cls.get_cached_historical_fx(pair, start_dt, end_dt)
+            if date.today() in dates_list:
+                live_fx = cls.get_cached_live_fx(pair)
+                if live_fx > 0.0:
+                    fx_rates_hist[curr][date.today()] = live_fx
             
 
         # 7. Compute NAV and Cost Basis for each calendar day
