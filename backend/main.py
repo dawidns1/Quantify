@@ -584,15 +584,24 @@ def calculate_historical_portfolio_nav(req: HoldingsRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating historical performance: {str(e)}")
 
+_supabase_tx_cache = {}
+_supabase_tx_cache_lock = threading.Lock()
+_supabase_settings_cache = {}
+_supabase_settings_cache_lock = threading.Lock()
+
 def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> list:
+    cache_key = (jwt_token, portfolio_id)
+    now = time.time()
+    with _supabase_tx_cache_lock:
+        if cache_key in _supabase_tx_cache:
+            ts, cached_txs = _supabase_tx_cache[cache_key]
+            if now - ts < 10.0:  # 10 second fast RAM cache
+                return cached_txs
+
     url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
     
-    print(f"[DEBUG] fetch_transactions_from_supabase url={url_val} portfolio={portfolio_id}")
-    print(f"[DEBUG] Authorization: {jwt_token[:30]}..." if jwt_token else "[DEBUG] Authorization: None")
-    
     if not url_val or not key_val:
-        print("[DEBUG] Supabase env variables missing!")
         raise HTTPException(status_code=500, detail="Supabase environment variables not configured on backend.")
         
     url = f"{url_val}/rest/v1/transactions"
@@ -606,24 +615,27 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
     
     try:
         response = requests.get(url, headers=headers, timeout=10)
-        print(f"[DEBUG] Supabase response code: {response.status_code}")
         if response.status_code != 200:
-            print(f"[DEBUG] Supabase error response: {response.text}")
             raise HTTPException(
                 status_code=response.status_code, 
                 detail=f"Failed to fetch transactions from Supabase: {response.text}"
             )
         data = response.json()
-        print(f"[DEBUG] Fetched {len(data)} transactions from Supabase")
-        if data:
-            print(f"[DEBUG] First transaction structure: {data[0]}")
-            print(f"[DEBUG] Types: symbol={type(data[0].get('symbol'))}, shares={type(data[0].get('shares'))}, price={type(data[0].get('price'))}")
+        with _supabase_tx_cache_lock:
+            _supabase_tx_cache[cache_key] = (time.time(), data)
         return data
     except requests.exceptions.RequestException as req_err:
-        print(f"[DEBUG] Network error contacting Supabase: {req_err}")
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
 def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> dict:
+    cache_key = (jwt_token, portfolio_id)
+    now = time.time()
+    with _supabase_settings_cache_lock:
+        if cache_key in _supabase_settings_cache:
+            ts, cached_settings = _supabase_settings_cache[cache_key]
+            if now - ts < 10.0:
+                return cached_settings
+
     url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
     if not url_val or not key_val or portfolio_id == 'all':
@@ -638,10 +650,10 @@ def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, su
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            if data and len(data) > 0:
-                return data[0].get("settings") or {}
-        elif response.status_code == 400:
-            print(f"[DEBUG] settings column missing or other bad request. Falling back. Code: {response.status_code}")
+            settings = data[0].get("settings") or {} if (data and len(data) > 0) else {}
+            with _supabase_settings_cache_lock:
+                _supabase_settings_cache[cache_key] = (time.time(), settings)
+            return settings
     except Exception as e:
         print(f"[DEBUG] Error fetching portfolio settings from Supabase: {e}")
     return {}
