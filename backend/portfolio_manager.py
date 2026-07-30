@@ -205,7 +205,7 @@ class PortfolioManager:
         return max(0.0, diff.total_seconds())
 
     @classmethod
-    def prefetch_live_prices(cls, symbols: list, fx_pairs: list):
+    def prefetch_live_prices(cls, symbols: list, fx_pairs: list, force_live: bool = False):
         with cls._live_prefetch_lock:
             now = time.time()
             missing_symbols = []
@@ -214,9 +214,8 @@ class PortfolioManager:
             for sym in symbols:
                 sym = sym.upper().strip()
                 cache_entry = cls._live_ticker_cache.get(sym)
-                if not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
-                    # Try loading from L2 SQLite Cache
-                    sqlite_data = get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
+                if force_live or not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
+                    sqlite_data = None if force_live else get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
                     if sqlite_data:
                         cls._live_ticker_cache[sym] = (sqlite_data["last_updated"], {
                             "live_price": sqlite_data["live_price"],
@@ -1382,7 +1381,7 @@ class PortfolioManager:
         return cls.calculate_holdings(cls.get_transactions(), base_currency, account, link_cash)
 
     @classmethod
-    def calculate_holdings(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def calculate_holdings(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_live: bool = False) -> dict:
         base_currency = base_currency.upper().strip()
         
         if account and account.lower() != "all":
@@ -1411,7 +1410,7 @@ class PortfolioManager:
             if curr != base_currency:
                 fx_pairs_to_prefetch.append(f"{curr}{base_currency}=X")
         
-        cls.prefetch_live_prices(symbols_to_prefetch, fx_pairs_to_prefetch)
+        cls.prefetch_live_prices(symbols_to_prefetch, fx_pairs_to_prefetch, force_live)
         
         # Gather live ticker info for stocks (cached)
         ticker_info = {}

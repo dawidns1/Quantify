@@ -299,7 +299,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   const fetchHoldings = async (
     curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
-    silent = false
+    silent = false,
+    forceLive = true
   ) => {
     if (!activePortfolioId) return;
     if (!silent) setLoadingHoldings(true);
@@ -313,7 +314,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         activePortfolioId,
         curr,
         accountFilter,
-        linkCash
+        linkCash,
+        forceLive
       );
 
       // Prevent race conditions: check if parameters changed or newer request started

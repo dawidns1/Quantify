@@ -630,6 +630,7 @@ def get_portfolio_holdings_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
+    force_live: bool = False,
     authorization: str = Header(None),
     x_supabase_url: str = Header(None),
     x_supabase_anon_key: str = Header(None)
@@ -645,7 +646,7 @@ def get_portfolio_holdings_jwt(
         t_sub = (time.time() - t_sub_start) * 1000
 
         t_calc_start = time.time()
-        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
+        res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings, force_live)
         t_calc = (time.time() - t_calc_start) * 1000
 
         t_total = (time.time() - t_start) * 1000

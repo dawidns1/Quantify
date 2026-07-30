@@ -29,7 +29,8 @@ export async function fetchHoldings(
   portfolioId: string,
   baseCurrency: string,
   account: string,
-  linkCash: boolean
+  linkCash: boolean,
+  forceLive: boolean = false
 ): Promise<{ holdings: Holding[]; summary: Summary; dividends_list?: any[]; next_check_seconds?: number }> {
   const headers: Record<string, string> = {};
   if (jwtToken) {
@@ -47,7 +48,8 @@ export async function fetchHoldings(
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
-    link_cash: String(linkCash)
+    link_cash: String(linkCash),
+    force_live: String(forceLive)
   });
 
   const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
