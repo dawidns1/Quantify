@@ -48,7 +48,9 @@ class PortfolioManager:
     _symbol_fetch_locks = {}
     _fetch_locks_lock = threading.Lock()
 
-    # Caches for historical performance and portfolio analytics calculations
+    # Caches for holdings, historical performance, and portfolio analytics calculations
+    _calculation_cache = {}  # key -> (timestamp, result)
+    _calculation_cache_lock = threading.Lock()
     _historical_perf_cache = {}  # key -> (timestamp, result)
     _historical_perf_cache_lock = threading.Lock()
     _portfolio_analytics_cache = {}  # key -> (timestamp, result)
@@ -1386,6 +1388,20 @@ class PortfolioManager:
     @classmethod
     def calculate_holdings(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_live: bool = False) -> dict:
         base_currency = base_currency.upper().strip()
+        account_val = account or "All"
+        settings_val = portfolio_settings or {}
+        
+        tx_hash = cls._get_transactions_hash(transactions)
+        settings_hash = cls._get_settings_hash(settings_val)
+        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
+        
+        now = time.time()
+        if not force_live:
+            with cls._calculation_cache_lock:
+                if cache_key in cls._calculation_cache:
+                    ts, result = cls._calculation_cache[cache_key]
+                    if now - ts < 15.0:  # 15 seconds fast calculation cache
+                        return result
         
         if account and account.lower() != "all":
             transactions = [tx for tx in transactions if tx.get("account", "Default").lower() == account.lower()]
@@ -1818,7 +1834,7 @@ class PortfolioManager:
             else:
                 next_check_seconds = max(15, min(int(min_seconds_to_open), 86400))
 
-        return {
+        res_dict = {
             "summary": {
                 "total_cost_base": round(total_cost_base, 2),
                 "total_value_base": round(total_value_base, 2),
@@ -1834,6 +1850,9 @@ class PortfolioManager:
             "dividends_list": merged_divs,
             "next_check_seconds": next_check_seconds
         }
+        with cls._calculation_cache_lock:
+            cls._calculation_cache[cache_key] = (time.time(), res_dict)
+        return res_dict
 
     @classmethod
     def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None) -> dict:
