@@ -162,55 +162,74 @@ class BaseDataProvider:
 
 
 class YFinanceProvider(BaseDataProvider):
+    def fetch_v8_chart_quote(self, symbol: str) -> dict:
+        symbol = symbol.upper().strip()
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=2d&interval=1d"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        try:
+            r = YF_SESSION.get(url, headers=headers, timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                results = data.get("chart", {}).get("result", [])
+                if results:
+                    meta = results[0].get("meta", {})
+                    live_price = meta.get("regularMarketPrice") or 0.0
+                    prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or live_price
+                    company_name = meta.get("longName") or meta.get("shortName") or symbol
+                    currency = meta.get("currency") or guess_native_currency(symbol)
+                    timezone = meta.get("exchangeTimezoneName") or "UTC"
+                    exchange = meta.get("exchangeName") or ""
+                    return {
+                        "symbol": symbol,
+                        "live_price": float(live_price),
+                        "previous_close": float(prev_close),
+                        "company_name": company_name,
+                        "native_currency": currency.upper().strip(),
+                        "timezone": timezone,
+                        "exchange": exchange
+                    }
+        except Exception as e:
+            print(f"[DataProvider] Error fetching v8 chart quote for {symbol}: {e}")
+        return None
+
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
-        from yfinance.data import YfData
+        from concurrent.futures import ThreadPoolExecutor
         
-        symbols_clean = [s.upper().strip() for s in symbols + fx_pairs if s.strip()]
-        if not symbols_clean:
+        all_symbols = list(set([s.upper().strip() for s in symbols + fx_pairs if s.strip()]))
+        if not all_symbols:
             return {"stocks": {}, "fx": {}}
             
         res = {"stocks": {}, "fx": {}}
+        
         try:
-            url = "https://query2.finance.yahoo.com/v7/finance/quote"
-            params = {
-                "symbols": ",".join(symbols_clean)
-            }
-            # Instantiate YfData to handle automatic cookie/crumb authentication
-            data_inst = YfData(session=YF_SESSION)
-            r = data_inst.get(url=url, params=params)
-            if r.status_code == 200:
-                data = r.json()
-                result_list = data.get("quoteResponse", {}).get("result", [])
-                for quote in result_list:
-                    symbol = quote.get("symbol", "").upper().strip()
-                    live_price = quote.get("regularMarketPrice") or quote.get("regularMarketPrice") or 0.0
-                    prev_close = quote.get("regularMarketPreviousClose") or live_price
-                    company_name = quote.get("longName") or quote.get("shortName") or symbol
-                    currency = quote.get("currency")
-                    timezone = quote.get("exchangeTimezoneName")
-                    exchange = quote.get("fullExchangeName") or quote.get("exchange")
-                    
-                    if symbol in fx_pairs:
-                        res["fx"][symbol] = live_price
-                    else:
-                        res["stocks"][symbol] = {
-                            "live_price": live_price,
-                            "previous_close": prev_close,
-                            "company_name": company_name,
-                            "native_currency": currency,
-                            "timezone": timezone,
-                            "exchange": exchange
-                        }
-            else:
-                print(f"[DataProvider] Bulk quotes API failed: {r.status_code} - {r.text}")
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                quotes = list(executor.map(self.fetch_v8_chart_quote, all_symbols))
+                
+            for q in quotes:
+                if not q or q.get("live_price", 0.0) == 0.0:
+                    continue
+                sym = q["symbol"]
+                if sym in fx_pairs:
+                    res["fx"][sym] = q["live_price"]
+                else:
+                    res["stocks"][sym] = {
+                        "live_price": q["live_price"],
+                        "previous_close": q["previous_close"],
+                        "company_name": q["company_name"],
+                        "native_currency": q["native_currency"],
+                        "timezone": q["timezone"],
+                        "exchange": q["exchange"]
+                    }
         except Exception as e:
-            print(f"[DataProvider] Error in download_bulk_live_prices: {e}")
+            print(f"[DataProvider] Error in download_bulk_live_prices v8: {e}")
             
-        # Fallback for any symbols that were NOT returned by the quote API (e.g. if the API is down)
+        # Fallback for any symbols that failed v8 fetch
         missing_stocks = [s for s in symbols if s not in res["stocks"]]
         missing_fx = [f for f in fx_pairs if f not in res["fx"]]
         if missing_stocks or missing_fx:
-            print(f"[DataProvider] Bulk quotes API had missing keys, falling back to download for {missing_stocks} / {missing_fx}")
+            print(f"[DataProvider] Fallback for missing: {missing_stocks} / {missing_fx}")
             try:
                 fallback_res = self._download_bulk_live_prices_fallback(missing_stocks, missing_fx)
                 for k, v in fallback_res["stocks"].items():
@@ -218,7 +237,7 @@ class YFinanceProvider(BaseDataProvider):
                 for k, v in fallback_res["fx"].items():
                     res["fx"][k] = v
             except Exception as fb_err:
-                print(f"[DataProvider] Fallback bulk download failed: {fb_err}")
+                print(f"[DataProvider] Fallback failed: {fb_err}")
                 
         return res
 
@@ -299,6 +318,10 @@ class YFinanceProvider(BaseDataProvider):
         return res
 
     def download_live_ticker(self, symbol: str) -> dict:
+        v8_quote = self.fetch_v8_chart_quote(symbol)
+        if v8_quote and v8_quote.get("live_price", 0.0) > 0.0:
+            return v8_quote
+
         live_price = 0.0
         company_name = symbol
         native_currency = "USD"
