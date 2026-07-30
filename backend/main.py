@@ -8,10 +8,10 @@ import re
 from datetime import datetime
 from typing import List
 import yfinance as yf
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File, Body
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, UploadFile, File, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import requests
 
@@ -109,14 +109,36 @@ class HoldingsRequest(BaseModel):
 
 app = FastAPI(title="Stock Screener API")
 
-# Enable CORS for local development
+# Explicit CORS configuration for production and local environments
+origins = [
+    "https://quantifi.site",
+    "https://www.quantifi.site",
+    "https://quantifi-app.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For local usage, allow all. Can restrict to ["http://localhost:5173"] in production.
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.quantifi\.site|https://.*\.vercel\.app|http://localhost:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "https://quantifi.site")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true"
+        }
+    )
 
 def start_cache_warmer():
     def warmer_loop():
