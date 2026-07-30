@@ -1484,7 +1484,7 @@ class PortfolioManager:
             pair = f"{curr}{base_currency}=X"
             fx_rates[curr] = cls.get_cached_live_fx(pair)
             
-        # Calculate ex-dividend payouts and cache them
+        # Calculate ex-dividend payouts and cache them (max 1 year back for fast holdings response)
         earliest_date = date.today() - timedelta(days=365)
         for tx in sorted_txs:
             tx_date_str = tx.get("date", "")
@@ -1495,6 +1495,8 @@ class PortfolioManager:
                         earliest_date = tx_dt
                 except:
                     pass
+        # Cap earliest_date to 365 days ago to prevent downloading multi-year history on fast holdings fetch
+        earliest_date = max(earliest_date, date.today() - timedelta(days=365))
                     
         if symbols_to_prefetch:
             cls.prefetch_historical_stock_prices(symbols_to_prefetch, earliest_date, date.today())

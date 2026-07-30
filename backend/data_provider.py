@@ -477,25 +477,13 @@ class YFinanceProvider(BaseDataProvider):
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
 
         try:
-            # Check London-listed / other pence suffix indicators
+            # Check London-listed / other pence suffix indicators instantly without slow network calls
             pence_symbols = set()
             for sym in symbols:
                 symbol_upper = sym.upper().strip()
-                if symbol_upper.endswith(".L") or symbol_upper.endswith(".JO") or symbol_upper.endswith(".TA"):
-                    try:
-                        # Check our hardcoded overrides first to avoid queries
-                        if sym in CURRENCY_OVERRIDES and CURRENCY_OVERRIDES[sym] == "USD":
-                            is_pence = False
-                        else:
-                            ticker = yf.Ticker(sym, session=YF_SESSION)
-                            curr = ticker.fast_info.get("currency")
-                            if not curr:
-                                curr = (ticker.info or {}).get("currency")
-                            is_pence = curr.upper().strip() in {"GBP", "GBX", "ZAC", "ILA"} if curr else True
-                    except Exception:
-                        is_pence = True
-                    if is_pence:
-                        pence_symbols.add(sym)
+                curr = guess_native_currency(symbol_upper)
+                if curr in {"GBP", "GBX", "ZAC", "ILA"}:
+                    pence_symbols.add(sym)
 
             # Download all historical prices in a single bulk request!
             df = yf.download(symbols, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
