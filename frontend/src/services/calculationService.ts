@@ -1,10 +1,10 @@
 import type { Holding, Summary } from '../types/portfolio';
 
 /**
- * Fetch helper with explicit 12-second timeout to prevent requests from hanging 
+ * Fetch helper with explicit 30-second timeout to prevent requests from hanging 
  * indefinitely when a user switches browser tabs or locks their device.
  */
-export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000): Promise<Response> {
+export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
