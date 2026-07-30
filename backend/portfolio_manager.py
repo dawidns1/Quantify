@@ -715,9 +715,9 @@ class PortfolioManager:
                             # Ensure we don't duplicate
                             exists = any(ev["symbol"] == symbol and ev["type"] == "Dividend" and ev["date"] == proj_date.isoformat() for ev in compiled_events)
                             if not exists:
-                                # Get currency from cache info or default
-                                cached_info = cls.get_cached_live_ticker(symbol)
-                                curr = cached_info.get("native_currency") or "USD"
+                                # Get currency from metadata cache or instant guess without blocking network calls
+                                cached_meta = cls._ticker_metadata_cache.get(symbol) or {}
+                                curr = cached_meta.get("native_currency") or guess_native_currency(symbol)
                                 est_payout = shares * float(hist_payout)
                                 compiled_events.append({
                                     "date": proj_date.isoformat(),
@@ -2550,20 +2550,8 @@ class PortfolioManager:
                 cached = cls._dividend_rate_cache.get(symbol)
                 div_rate = cached[1] if cached else 0.0
                 if div_rate <= 0.0:
-                    # Try fetch
-                    import requests
-                    import yfinance as yf
-                    try:
-                        session = requests.Session()
-                        session.verify = False
-                        session.headers.update({"User-Agent": "Mozilla/5.0"})
-                        ticker = yf.Ticker(symbol, session=session)
-                        info = ticker.info
-                        rate = info.get("dividendRate") or info.get("trailingAnnualDividendRate")
-                        div_rate = float(rate) if rate else 0.0
-                        cls._dividend_rate_cache[symbol] = (time.time(), div_rate)
-                    except:
-                        pass
+                    meta = cls._ticker_metadata_cache.get(symbol) or {}
+                    div_rate = float(meta.get("dividend_rate", 0.0) or 0.0)
                 
                 if div_rate > 0.0:
                     # Calculate expected annual net using account-specific shares & tax rates
