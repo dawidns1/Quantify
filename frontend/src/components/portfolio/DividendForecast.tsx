@@ -64,8 +64,10 @@ export function DividendForecast({
         setData(res);
       })
       .catch((err) => {
-        console.error('Error fetching dividend forecast:', err);
-        setError(err.message || 'Failed to load forecast');
+        if (err?.message !== 'Tab suspended (background).') {
+          console.error('Error fetching dividend forecast:', err);
+          setError(err.message || 'Failed to load forecast');
+        }
       })
       .finally(() => {
         setLoading(false);

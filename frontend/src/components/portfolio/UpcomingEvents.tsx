@@ -67,7 +67,9 @@ export function UpcomingEvents({
         setEvents(eventsData);
       })
       .catch((err) => {
-        console.error('Error fetching upcoming events:', err);
+        if (err?.message !== 'Tab suspended (background).') {
+          console.error('Error fetching upcoming events:', err);
+        }
       })
       .finally(() => {
         setLoading(false);

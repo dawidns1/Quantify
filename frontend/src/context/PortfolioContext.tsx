@@ -345,9 +345,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       
-      telemetry.endTrace(traceId, 'success', undefined, { holdings_count: result.holdings?.length || 0 });
     } catch (err: any) {
-      console.error('Error fetching holdings:', err);
+      if (err?.message !== 'Tab suspended (background).') {
+        console.error('Error fetching holdings:', err);
+      }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
       if (requestId === holdingsRequestIdRef.current) {
@@ -562,7 +563,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     if (document.visibilityState === 'visible') {
       const delay = nextCheckSeconds > 0 ? nextCheckSeconds : 300;
       timeout = setTimeout(() => {
-        fetchHoldings(baseCurrency, selectedAccount, true);
+        if (document.visibilityState === 'visible') {
+          fetchHoldings(baseCurrency, selectedAccount, true);
+        }
       }, delay * 1000);
     }
     

@@ -5,6 +5,11 @@ import type { Holding, Summary } from '../types/portfolio';
  * indefinitely when a user switches browser tabs or locks their device.
  */
 export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 30000): Promise<Response> {
+  // If the user's browser tab is hidden in the background, do not start network requests
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+    throw new Error('Tab suspended (background).');
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -15,6 +20,9 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
     return response;
   } catch (error: any) {
     if (error.name === 'AbortError') {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        throw new Error('Tab suspended (background).');
+      }
       throw new Error(`Network request timed out after ${timeoutMs / 1000}s (possible tab switch suspension).`);
     }
     throw error;
