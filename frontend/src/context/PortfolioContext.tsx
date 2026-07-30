@@ -303,7 +303,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
     silent = false,
-    forceLive = true
+    forceLive = false
   ) => {
     if (!activePortfolioId) return;
     if (!silent) setLoadingHoldings(true);
