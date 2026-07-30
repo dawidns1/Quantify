@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Share2, X, AlertCircle, Users, Shield, UserPlus, Link, Copy, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../AuthContext';
+import { usePortfolio } from '../../context/PortfolioContext';
 import type { Member } from '../../types/portfolio';
 import { 
   fetchPortfolioMembers, 
@@ -150,6 +151,9 @@ export function ShareModal({
     setTimeout(() => setCopiedReferralLink(false), 2000);
   };
 
+  const { apiBaseUrl: contextApiUrl } = usePortfolio();
+  const effectiveApiUrl = (apiBaseUrl || contextApiUrl || '').replace(/\/$/, '');
+
   // Handle invitation submission for portfolio sharing
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,8 +184,7 @@ export function ShareModal({
           setActiveLink(linkToUse);
         }
 
-        const baseUrl = apiBaseUrl || '';
-        const res = await fetch(`${baseUrl}/api/share/send-email`, {
+        const res = await fetch(`${effectiveApiUrl}/api/share/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -202,7 +205,11 @@ export function ShareModal({
         setInviteEmail('');
       } catch (sendErr: any) {
         console.error('Error inviting member:', sendErr);
-        setInviteError(sendErr.message || "An error occurred.");
+        if (sendErr.name === 'TypeError' || sendErr.message?.includes('fetch')) {
+          setInviteError('Network issue reaching backend server. Please verify network connection or backend service status.');
+        } else {
+          setInviteError(sendErr.message || "An error occurred.");
+        }
       }
     } finally {
       setSendingEmail(false);
@@ -220,8 +227,7 @@ export function ShareModal({
     setReferralSuccess(null);
 
     try {
-      const baseUrl = apiBaseUrl || '';
-      const res = await fetch(`${baseUrl}/api/share/send-email`, {
+      const res = await fetch(`${effectiveApiUrl}/api/share/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -241,7 +247,11 @@ export function ShareModal({
       setReferralEmail('');
     } catch (err: any) {
       console.error('Error sending referral email:', err);
-      setReferralError(err.message || 'Failed to send email invitation.');
+      if (err.name === 'TypeError' || err.message?.includes('fetch')) {
+        setReferralError('Unable to connect to backend email service. Please check network connection.');
+      } else {
+        setReferralError(err.message || 'Failed to send email invitation.');
+      }
     } finally {
       setSendingEmail(false);
     }

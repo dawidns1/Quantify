@@ -132,6 +132,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
     if (!activeId) return [];
     try {
+      const tsStr = localStorage.getItem(`cached_holdings_ts_${activeId}_${baseCurr}_${selAcc}`);
+      const isExpired = !tsStr || (Date.now() - parseInt(tsStr, 10) > 300000);
+      if (isExpired) return [];
       const cached = localStorage.getItem(`cached_holdings_${activeId}_${baseCurr}_${selAcc}`);
       return cached ? JSON.parse(cached) : [];
     } catch (e) {
@@ -338,6 +341,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       
       // Cache the fresh data
       localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
+      localStorage.setItem(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
       localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       

@@ -475,6 +475,7 @@ class PortfolioManager:
             previous_close = res.get("previous_close", live_price)
             timezone = res.get("timezone", "Unknown")
             exchange = res.get("exchange", "")
+            is_stale = False
         except Exception as e:
             print(f"Error fetching live data for {symbol}: {e}")
             fallback_data = None
@@ -491,6 +492,7 @@ class PortfolioManager:
                 previous_close = fallback_data.get("previous_close", live_price)
                 timezone = fallback_data.get("timezone", "UTC")
                 exchange = fallback_data.get("exchange", "")
+                is_stale = True
             else:
                 live_price = 0.0
                 company_name = symbol
@@ -499,6 +501,7 @@ class PortfolioManager:
                 previous_close = 0.0
                 timezone = "Unknown"
                 exchange = ""
+                is_stale = True
             
         # Determine asset class friendly name
         if symbol.startswith("CASH_"):
