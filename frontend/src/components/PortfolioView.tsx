@@ -1075,6 +1075,15 @@ export function PortfolioView({
                           </button>
                           <button 
                             type="button"
+                            onClick={() => setShowImportModal(true)}
+                            className="cancel-btn"
+                            style={{ padding: '0.65rem 1.75rem', fontSize: '0.85rem', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(6, 182, 212, 0.3)', background: 'rgba(6, 182, 212, 0.08)', color: '#06b6d4', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                          >
+                            <FileText size={16} />
+                            {t('dashboard.btn_import_csv', 'Import CSV Statement')}
+                          </button>
+                          <button 
+                            type="button"
                             onClick={handleLoadDemoData}
                             disabled={loadingDemo}
                             className="cancel-btn"
