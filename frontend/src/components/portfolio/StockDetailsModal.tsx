@@ -100,6 +100,7 @@ interface StockDetailsModalProps {
   baseCurrency: string;
   dividends?: any[];
   accountColors?: Record<string, string>;
+  portfolioSettings?: Record<string, any>;
   onAddTransactionClick: (symbol: string) => void;
   onStartEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -116,6 +117,7 @@ export function StockDetailsModal({
   baseCurrency,
   dividends = [],
   accountColors = {},
+  portfolioSettings = {},
   onAddTransactionClick,
   onStartEditTransaction,
   onDeleteTransaction
@@ -485,59 +487,97 @@ export function StockDetailsModal({
   const positionTransactionsFilteredAndSorted = useMemo(() => {
     if (!selectedPositionSymbol) return [];
     
-    // 1. Get ALL transactions for this symbol sorted by date ascending for FIFO matching
+    // 1. Get ALL transactions for this symbol sorted by date ascending for matching
     const allSymbolTxs = transactions
       .filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase())
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // FIFO tracking structures
+    const costBasisMethod = (portfolioSettings?.cost_basis_method || 'FIFO').toUpperCase();
+    const isWavg = costBasisMethod === 'AVERAGE' || costBasisMethod === 'WAVG';
+
+    // Tracking structures
     const buyLots: Record<string, { initialShares: number; openShares: number; avgCostPerShare: number }> = {};
     const sellResults: Record<string, { costBasisPerShare: number; realizedGainVal: number; realizedGainPct: number }> = {};
 
-    for (const tx of allSymbolTxs) {
-      if (tx.type === 'BUY') {
-        const costBasis = (tx.shares * tx.price) + tx.fees;
-        const avgCost = tx.shares > 0 ? costBasis / tx.shares : tx.price;
-        buyLots[tx.id] = {
-          initialShares: tx.shares,
-          openShares: tx.shares,
-          avgCostPerShare: avgCost
-        };
-      }
-    }
-
-    for (const tx of allSymbolTxs) {
-      if (tx.type === 'SELL') {
-        let sharesToSell = tx.shares;
-        let totalCostBasisOfSold = 0;
-        let matchedShares = 0;
-
-        for (const buyTx of allSymbolTxs) {
-          if (buyTx.type !== 'BUY') continue;
-          if (buyTx.date > tx.date) break;
-
-          const lot = buyLots[buyTx.id];
-          if (!lot || lot.openShares <= 0) continue;
-
-          const take = Math.min(sharesToSell, lot.openShares);
-          lot.openShares -= take;
-          sharesToSell -= take;
-          totalCostBasisOfSold += take * lot.avgCostPerShare;
-          matchedShares += take;
-
-          if (sharesToSell <= 0) break;
+    if (!isWavg) {
+      // --- FIFO MATCHING METHOD ---
+      for (const tx of allSymbolTxs) {
+        if (tx.type === 'BUY') {
+          const costBasis = (tx.shares * tx.price) + tx.fees;
+          const avgCost = tx.shares > 0 ? costBasis / tx.shares : tx.price;
+          buyLots[tx.id] = {
+            initialShares: tx.shares,
+            openShares: tx.shares,
+            avgCostPerShare: avgCost
+          };
         }
+      }
 
-        const effectiveCostBasis = matchedShares > 0 ? totalCostBasisOfSold : (tx.shares * tx.price);
-        const sellProceeds = (tx.shares * tx.price) - tx.fees;
-        const realizedGainVal = sellProceeds - effectiveCostBasis;
-        const realizedGainPct = effectiveCostBasis > 0 ? (realizedGainVal / effectiveCostBasis) * 100 : 0;
+      for (const tx of allSymbolTxs) {
+        if (tx.type === 'SELL') {
+          let sharesToSell = tx.shares;
+          let totalCostBasisOfSold = 0;
+          let matchedShares = 0;
 
-        sellResults[tx.id] = {
-          costBasisPerShare: tx.shares > 0 ? effectiveCostBasis / tx.shares : 0,
-          realizedGainVal,
-          realizedGainPct
-        };
+          for (const buyTx of allSymbolTxs) {
+            if (buyTx.type !== 'BUY') continue;
+            if (buyTx.date > tx.date) break;
+
+            const lot = buyLots[buyTx.id];
+            if (!lot || lot.openShares <= 0) continue;
+
+            const take = Math.min(sharesToSell, lot.openShares);
+            lot.openShares -= take;
+            sharesToSell -= take;
+            totalCostBasisOfSold += take * lot.avgCostPerShare;
+            matchedShares += take;
+
+            if (sharesToSell <= 0) break;
+          }
+
+          const effectiveCostBasis = matchedShares > 0 ? totalCostBasisOfSold : (tx.shares * tx.price);
+          const sellProceeds = (tx.shares * tx.price) - tx.fees;
+          const realizedGainVal = sellProceeds - effectiveCostBasis;
+          const realizedGainPct = effectiveCostBasis > 0 ? (realizedGainVal / effectiveCostBasis) * 100 : 0;
+
+          sellResults[tx.id] = {
+            costBasisPerShare: tx.shares > 0 ? effectiveCostBasis / tx.shares : 0,
+            realizedGainVal,
+            realizedGainPct
+          };
+        }
+      }
+    } else {
+      // --- WEIGHTED AVERAGE MATCHING METHOD ---
+      let runningShares = 0;
+      let runningTotalCost = 0;
+
+      for (const tx of allSymbolTxs) {
+        if (tx.type === 'BUY') {
+          const cost = (tx.shares * tx.price) + tx.fees;
+          runningTotalCost += cost;
+          runningShares += tx.shares;
+          buyLots[tx.id] = {
+            initialShares: tx.shares,
+            openShares: tx.shares,
+            avgCostPerShare: runningShares > 0 ? runningTotalCost / runningShares : tx.price
+          };
+        } else if (tx.type === 'SELL') {
+          const currentAvgCost = runningShares > 0 ? runningTotalCost / runningShares : tx.price;
+          const costOfSold = tx.shares * currentAvgCost;
+          runningTotalCost = Math.max(0, runningTotalCost - costOfSold);
+          runningShares = Math.max(0, runningShares - tx.shares);
+          
+          const sellProceeds = (tx.shares * tx.price) - tx.fees;
+          const realizedGainVal = sellProceeds - costOfSold;
+          const realizedGainPct = costOfSold > 0 ? (realizedGainVal / costOfSold) * 100 : 0;
+
+          sellResults[tx.id] = {
+            costBasisPerShare: currentAvgCost,
+            realizedGainVal,
+            realizedGainPct
+          };
+        }
       }
     }
 
@@ -1076,9 +1116,27 @@ export function StockDetailsModal({
                 {/* Transaction History Section Header & Search */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flexShrink: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {t('holdings.transaction_ledger', 'Transaction Ledger')}
-                    </h4>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {t('holdings.transaction_ledger', 'Transaction Ledger')}
+                      </h4>
+                      <span 
+                        style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          background: 'rgba(255,255,255,0.04)', 
+                          color: 'var(--text-muted)', 
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.3rem'
+                        }}
+                        title={`Trade returns calculated via ${portfolioSettings?.cost_basis_method === 'AVERAGE' || portfolioSettings?.cost_basis_method === 'WAVG' ? 'Weighted Average Cost Basis' : 'FIFO (First-In, First-Out)'}`}
+                      >
+                        Cost Basis: <strong style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{portfolioSettings?.cost_basis_method === 'AVERAGE' || portfolioSettings?.cost_basis_method === 'WAVG' ? 'Weighted Average' : 'FIFO'}</strong>
+                      </span>
+                    </div>
                     {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
                       <div className="search-container" style={{ 
                         width: '100%', 

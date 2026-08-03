@@ -6,6 +6,7 @@ import {
   Globe, 
   Plus, 
   ChevronDown, 
+  ChevronUp,
   Briefcase, 
   Edit2, 
   Trash2, 
@@ -38,6 +39,7 @@ interface SidebarProps {
   onCreatePortfolio: () => void;
   onRenamePortfolio: (id: string) => void;
   onDeletePortfolio: (id: string) => void;
+  onReorderPortfolios?: (newPortfolios: Portfolio[]) => void;
   sidebarOpen?: boolean;
   onCloseSidebar?: () => void;
   subTab: 'overview' | 'ledger' | 'dividends';
@@ -66,6 +68,7 @@ export function Sidebar({
   onCreatePortfolio,
   onRenamePortfolio,
   onDeletePortfolio,
+  onReorderPortfolios,
   sidebarOpen = false,
   onCloseSidebar,
   subTab,
@@ -81,6 +84,10 @@ export function Sidebar({
   activePortfolioRole = 'owner',
   accountColors = {}
 }: SidebarProps) {
+
+  // ... rest of component logic ...
+  // Find where portfolios.map is rendered
+  // (We'll also add pIndex to portfolios.map((portfolio, pIndex) => ...))
   const { user } = useAuth();
   const { t } = useTranslation();
   const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
@@ -573,7 +580,7 @@ export function Sidebar({
               {/* Nested Portfolios under All Assets */}
               {allAssetsExpanded && (
                 <div className="tree-sub-list">
-                  {portfolios.map((portfolio) => {
+                  {portfolios.map((portfolio, pIndex) => {
                     const isActive = activePortfolioId === portfolio.id;
                     const isExpanded = !!expandedPortfolios[portfolio.id];
                     const accounts = portfolioAccountsMap[portfolio.id] || [];
@@ -609,7 +616,7 @@ export function Sidebar({
                             textOverflow: 'ellipsis', 
                             whiteSpace: 'nowrap', 
                             paddingRight: portfolio.role === 'owner' 
-                              ? (isActive ? '4.5rem' : '2.5rem') 
+                              ? (isActive ? '5.8rem' : '3.8rem') 
                               : '0.5rem',
                             fontSize: '0.82rem'
                           }}>
@@ -627,10 +634,68 @@ export function Sidebar({
                                 transform: 'translateY(-50%)',
                                 zIndex: 10,
                                 display: isActive ? 'flex' : undefined,
-                                gap: '0.35rem'
+                                gap: '0.25rem',
+                                alignItems: 'center'
                               }} 
                               onClick={(e) => e.stopPropagation()}
                             >
+                              {/* Up / Down Reordering chevrons */}
+                              {portfolios.length > 1 && onReorderPortfolios && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', opacity: 0.8 }}>
+                                  <button
+                                    disabled={pIndex === 0}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (pIndex > 0) {
+                                        const newOrder = [...portfolios];
+                                        const temp = newOrder[pIndex];
+                                        newOrder[pIndex] = newOrder[pIndex - 1];
+                                        newOrder[pIndex - 1] = temp;
+                                        onReorderPortfolios(newOrder);
+                                      }
+                                    }}
+                                    title="Move Portfolio Up"
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: pIndex === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)',
+                                      cursor: pIndex === 0 ? 'default' : 'pointer',
+                                      padding: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      lineHeight: 1
+                                    }}
+                                  >
+                                    <ChevronUp size={10} />
+                                  </button>
+                                  <button
+                                    disabled={pIndex === portfolios.length - 1}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (pIndex < portfolios.length - 1) {
+                                        const newOrder = [...portfolios];
+                                        const temp = newOrder[pIndex];
+                                        newOrder[pIndex] = newOrder[pIndex + 1];
+                                        newOrder[pIndex + 1] = temp;
+                                        onReorderPortfolios(newOrder);
+                                      }
+                                    }}
+                                    title="Move Portfolio Down"
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)',
+                                      cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
+                                      padding: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      lineHeight: 1
+                                    }}
+                                  >
+                                    <ChevronDown size={10} />
+                                  </button>
+                                </div>
+                              )}
                               {isActive && (
                                 <button
                                   onClick={() => onSettingsClick?.()}

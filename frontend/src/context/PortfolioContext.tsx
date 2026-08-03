@@ -507,6 +507,23 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         formatted = [defaultPortfolio];
       }
 
+      const savedOrderRaw = localStorage.getItem('cached_portfolio_order');
+      if (savedOrderRaw) {
+        try {
+          const savedOrderIds: string[] = JSON.parse(savedOrderRaw);
+          formatted.sort((a, b) => {
+            const idxA = savedOrderIds.indexOf(a.id);
+            const idxB = savedOrderIds.indexOf(b.id);
+            if (idxA === -1 && idxB === -1) return 0;
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+          });
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+
       setPortfolios(formatted);
       localStorage.setItem('cached_portfolios', JSON.stringify(formatted));
 

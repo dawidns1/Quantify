@@ -720,6 +720,10 @@ export function PortfolioView({
         onCreatePortfolio={handleCreatePortfolio}
         onRenamePortfolio={handleRenamePortfolio}
         onDeletePortfolio={handleDeletePortfolio}
+        onReorderPortfolios={(newPortfolios) => {
+          setPortfolios(newPortfolios);
+          localStorage.setItem('cached_portfolio_order', JSON.stringify(newPortfolios.map(p => p.id)));
+        }}
         sidebarOpen={sidebarOpen}
         onCloseSidebar={() => setSidebarOpen(false)}
         subTab={subTab}
@@ -1824,6 +1828,7 @@ export function PortfolioView({
           baseCurrency={summary.base_currency}
           dividends={dividendsList}
           accountColors={activeAccountColors}
+          portfolioSettings={activePortfolio?.settings || {}}
           onAddTransactionClick={(symbol) => {
             setQuickActionData({ symbol, type: 'BUY' });
             setShowAddModal(true);
