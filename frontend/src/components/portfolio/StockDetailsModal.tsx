@@ -596,7 +596,6 @@ export function StockDetailsModal({
 
     // 3. Map with totalLocal and FIFO metrics
     const holding = holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
-    const currentPrice = holding?.current_price_local || 0;
 
     const listWithTotals = list.map(tx => {
       const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
@@ -612,10 +611,18 @@ export function StockDetailsModal({
         openShares = lot ? lot.openShares : tx.shares;
         isFullyClosed = openShares <= 0.00001;
 
-        if (currentPrice > 0) {
+        if (holding && holding.current_price_local > 0) {
+          const txCurr = (tx.currency || 'USD').toUpperCase();
+          const holdingCurr = (holding.currency || 'USD').toUpperCase();
+          let livePriceInTxCurrency = holding.current_price_local;
+
+          if (txCurr !== holdingCurr && holding.fx_rate && holding.fx_rate > 0) {
+            livePriceInTxCurrency = holding.current_price_local * holding.fx_rate;
+          }
+
           const avgCost = lot ? lot.avgCostPerShare : (tx.price + (tx.fees / (tx.shares || 1)));
           const costBasisForOpen = openShares * avgCost;
-          const currentValueForOpen = openShares * currentPrice;
+          const currentValueForOpen = openShares * livePriceInTxCurrency;
           gainVal = currentValueForOpen - costBasisForOpen;
           gainPct = costBasisForOpen > 0 ? (gainVal / costBasisForOpen) * 100 : 0;
         }

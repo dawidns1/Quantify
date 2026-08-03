@@ -125,7 +125,6 @@ export function LedgerTable({
 
       // Map BUY lots after FIFO matching
       const holding = holdings.find(h => (h.symbol || '').toUpperCase() === sym);
-      const currentPrice = holding?.current_price_local || 0;
 
       for (const tx of sortedSymTxs) {
         if (tx.type === 'BUY') {
@@ -135,10 +134,18 @@ export function LedgerTable({
 
           let gainVal = 0;
           let gainPct = 0;
-          if (currentPrice > 0) {
+          if (holding && holding.current_price_local > 0) {
+            const txCurr = (tx.currency || 'USD').toUpperCase();
+            const holdingCurr = (holding.currency || 'USD').toUpperCase();
+            let livePriceInTxCurrency = holding.current_price_local;
+
+            if (txCurr !== holdingCurr && holding.fx_rate && holding.fx_rate > 0) {
+              livePriceInTxCurrency = holding.current_price_local * holding.fx_rate;
+            }
+
             const avgCost = lot ? lot.avgCostPerShare : (tx.price + (tx.fees / (tx.shares || 1)));
             const costBasisForOpen = openShares * avgCost;
-            const currentValueForOpen = openShares * currentPrice;
+            const currentValueForOpen = openShares * livePriceInTxCurrency;
             gainVal = currentValueForOpen - costBasisForOpen;
             gainPct = costBasisForOpen > 0 ? (gainVal / costBasisForOpen) * 100 : 0;
           }
@@ -456,13 +463,13 @@ export function LedgerTable({
                   {t('ledger.col_shares', 'Shares')} {renderSortArrow('shares')}
                 </th>
                 <th onClick={() => handleSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  {t('ledger.col_price', 'Price')} (Local) {renderSortArrow('price')}
+                  {t('ledger.col_price', 'Price')} {renderSortArrow('price')}
                 </th>
                 <th onClick={() => handleSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  {t('ledger.col_fees', 'Fees')} (Local) {renderSortArrow('fees')}
+                  {t('ledger.col_fees', 'Fees')} {renderSortArrow('fees')}
                 </th>
                 <th onClick={() => handleSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
-                  {t('ledger.col_value', 'Net Value')} (Local) {renderSortArrow('total')}
+                  {t('ledger.col_value', 'Total Value')} {renderSortArrow('total')}
                 </th>
                 <th onClick={() => handleSort('return')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                   {t('ledger.col_return', 'Return')} {renderSortArrow('return')}
