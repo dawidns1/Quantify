@@ -298,6 +298,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     return list;
   }, [allTransactions, activePortfolioId, selectedAccount]);
 
+  const activeHoldingsAbortControllerRef = useRef<AbortController | null>(null);
+
   // --- Fetch Actions ---
   const fetchHoldings = async (
     curr: BaseCurrencyType = baseCurrency,
@@ -306,6 +308,14 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     forceLive = false
   ) => {
     if (!activePortfolioId) return;
+
+    // Abort previous in-flight request if user rapidly clicked between accounts/portfolios
+    if (activeHoldingsAbortControllerRef.current) {
+      activeHoldingsAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    activeHoldingsAbortControllerRef.current = abortController;
+
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
     const traceId = telemetry.startTrace('fetch_holdings', 'performance', { portfolio_id: activePortfolioId, currency: curr, account: accountFilter });
@@ -318,7 +328,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         curr,
         accountFilter,
         linkCash,
-        forceLive
+        forceLive,
+        abortController.signal
       );
 
       // Prevent race conditions: check if parameters changed or newer request started
@@ -346,7 +357,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       
     } catch (err: any) {
-      if (err?.message !== 'Tab suspended (background).') {
+      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.') {
         console.error('Error fetching holdings:', err);
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
@@ -535,11 +546,19 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedH = localStorage.getItem(`cached_holdings_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedS = localStorage.getItem(`cached_summary_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      if (cachedH) setHoldings(JSON.parse(cachedH));
-      if (cachedS) setSummary(JSON.parse(cachedS));
-      if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
+      let hasCache = false;
+      if (cachedH && cachedS) {
+        try {
+          setHoldings(JSON.parse(cachedH));
+          setSummary(JSON.parse(cachedS));
+          if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
+          hasCache = true;
+        } catch (e) {
+          hasCache = false;
+        }
+      }
 
-      fetchHoldings(baseCurrency, selectedAccount, false);
+      fetchHoldings(baseCurrency, selectedAccount, hasCache);
     } else {
       setLoadingHoldings(false);
     }

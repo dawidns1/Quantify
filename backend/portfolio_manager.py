@@ -1463,6 +1463,13 @@ class PortfolioManager:
                 except Exception as ex:
                     print(f"Error resolving currency mismatch for {symbol}: {ex}")
 
+                # If still not resolved after download attempt, populate from transaction currency immediately
+                if not native_currency:
+                    native_currency = tx_curr
+                    info["native_currency"] = native_currency
+                    if symbol in cls._ticker_metadata_cache:
+                        cls._ticker_metadata_cache[symbol]["native_currency"] = native_currency
+
             # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
             # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.
             suffix = symbol.split(".")[-1] if "." in symbol else ""

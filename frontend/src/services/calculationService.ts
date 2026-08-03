@@ -12,6 +12,14 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  if (options.signal) {
+    if (options.signal.aborted) {
+      throw new Error('Request cancelled.');
+    }
+    options.signal.addEventListener('abort', () => controller.abort());
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -20,6 +28,9 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
     return response;
   } catch (error: any) {
     if (error.name === 'AbortError') {
+      if (options.signal?.aborted) {
+        throw new Error('Request cancelled.');
+      }
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         throw new Error('Tab suspended (background).');
       }
@@ -38,7 +49,8 @@ export async function fetchHoldings(
   baseCurrency: string,
   account: string,
   linkCash: boolean,
-  forceLive: boolean = false
+  forceLive: boolean = false,
+  signal?: AbortSignal
 ): Promise<{ holdings: Holding[]; summary: Summary; dividends_list?: any[]; next_check_seconds?: number }> {
   const headers: Record<string, string> = {};
   if (jwtToken) {
@@ -62,7 +74,8 @@ export async function fetchHoldings(
 
   const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
     method: 'GET',
-    headers
+    headers,
+    signal
   });
 
   if (!response.ok) {
