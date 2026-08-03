@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { History, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
+import { getAccountNeonTheme } from '../../utils/accountColors';
 
 interface LedgerTableProps {
   transactions: Transaction[];
@@ -486,9 +487,24 @@ export function LedgerTable({
                       {tx.symbol}
                     </td>
                     <td>
-                      <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                        {tx.account || 'Default'}
-                      </span>
+                      {(() => {
+                        const theme = getAccountNeonTheme(tx.account);
+                        return (
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            padding: '2px 7px', 
+                            borderRadius: '4px', 
+                            background: theme.bg, 
+                            color: theme.hex, 
+                            border: theme.border,
+                            boxShadow: theme.glow,
+                            fontWeight: 700,
+                            letterSpacing: '0.3px'
+                          }}>
+                            {tx.account || 'Default'}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                       {formatShares(tx.shares)}

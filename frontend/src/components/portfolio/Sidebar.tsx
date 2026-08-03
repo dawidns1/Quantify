@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAccountNeonTheme } from '../../utils/accountColors';
 import { 
   Settings,
   LogOut, 
@@ -8,7 +9,6 @@ import {
   Briefcase, 
   Edit2, 
   Trash2, 
-  CreditCard,
   Share2,
   MessageSquare,
   Eye,
@@ -671,11 +671,12 @@ export function Sidebar({
                           <div className="tree-sub-list">
                             {accounts.map((accName) => {
                               const isAccActive = isActive && selectedAccount === accName;
+                              const accTheme = getAccountNeonTheme(accName);
                               return (
                                 <div 
                                   key={accName}
                                   className={`tree-node ${isAccActive ? 'active' : ''}`}
-                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem' }}
+                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
                                   onClick={() => {
                                     setActivePortfolioId(portfolio.id);
                                     setActivePortfolioRole(portfolio.role);
@@ -684,7 +685,16 @@ export function Sidebar({
                                     if (onCloseSidebar) onCloseSidebar();
                                   }}
                                 >
-                                  <CreditCard size={12} />
+                                  <div 
+                                    style={{
+                                      width: '7px',
+                                      height: '7px',
+                                      borderRadius: '50%',
+                                      background: accTheme.hex,
+                                      boxShadow: accTheme.glow,
+                                      flexShrink: 0
+                                    }}
+                                  />
                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {accName}
                                   </span>

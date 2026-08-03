@@ -3,6 +3,7 @@ import { History, Plus, X, Edit2, Trash2, ArrowUpDown, Search } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import type { Holding, Transaction } from '../../types/portfolio';
 import { FXHedgingVisualizer } from './FXHedgingVisualizer';
+import { getAccountNeonTheme } from '../../utils/accountColors';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -753,9 +754,24 @@ export function StockDetailsModal({
                             <tr key={ev.id} className="interactive-row-modal">
                               <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{ev.date}</td>
                               <td>
-                                <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
-                                  {ev.account}
-                                </span>
+                                {(() => {
+                                  const theme = getAccountNeonTheme(ev.account);
+                                  return (
+                                    <span style={{ 
+                                      fontSize: '0.75rem', 
+                                      padding: '2px 7px', 
+                                      borderRadius: '4px', 
+                                      background: theme.bg, 
+                                      color: theme.hex, 
+                                      border: theme.border,
+                                      boxShadow: theme.glow,
+                                      fontWeight: 700,
+                                      letterSpacing: '0.3px'
+                                    }}>
+                                      {ev.account || 'Default'}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td>
                                 <span style={{ 
@@ -1160,9 +1176,24 @@ export function StockDetailsModal({
                                 {tx.date}
                               </td>
                               <td>
-                                <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                  {tx.account || 'Default'}
-                                </span>
+                                {(() => {
+                                  const theme = getAccountNeonTheme(tx.account);
+                                  return (
+                                    <span style={{ 
+                                      fontSize: '0.75rem', 
+                                      padding: '2px 7px', 
+                                      borderRadius: '4px', 
+                                      background: theme.bg, 
+                                      color: theme.hex, 
+                                      border: theme.border,
+                                      boxShadow: theme.glow,
+                                      fontWeight: 700,
+                                      letterSpacing: '0.3px'
+                                    }}>
+                                      {tx.account || 'Default'}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td>
                                 <span style={{ 
