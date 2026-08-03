@@ -51,6 +51,7 @@ interface SidebarProps {
   onSelectStockSymbol: (symbol: string) => void;
   onAddTransactionClick?: (symbol: string) => void;
   activePortfolioRole?: 'owner' | 'editor' | 'viewer';
+  accountColors?: Record<string, string>;
 }
 
 export function Sidebar({
@@ -77,7 +78,8 @@ export function Sidebar({
   apiBaseUrl,
   onSelectStockSymbol,
   onAddTransactionClick,
-  activePortfolioRole = 'viewer'
+  activePortfolioRole = 'owner',
+  accountColors = {}
 }: SidebarProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -671,12 +673,12 @@ export function Sidebar({
                           <div className="tree-sub-list">
                             {accounts.map((accName) => {
                               const isAccActive = isActive && selectedAccount === accName;
-                              const accTheme = getAccountNeonTheme(accName);
+                              const accTheme = getAccountNeonTheme(accName, accountColors);
                               return (
                                 <div 
                                   key={accName}
                                   className={`tree-node ${isAccActive ? 'active' : ''}`}
-                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.45rem' }}
                                   onClick={() => {
                                     setActivePortfolioId(portfolio.id);
                                     setActivePortfolioRole(portfolio.role);
@@ -685,19 +687,46 @@ export function Sidebar({
                                     if (onCloseSidebar) onCloseSidebar();
                                   }}
                                 >
-                                  <div 
-                                    style={{
-                                      width: '7px',
-                                      height: '7px',
-                                      borderRadius: '50%',
-                                      background: accTheme.hex,
-                                      boxShadow: accTheme.glow,
-                                      flexShrink: 0
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflow: 'hidden' }}>
+                                    <div 
+                                      style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        borderRadius: '50%',
+                                        background: accTheme.hex,
+                                        boxShadow: accTheme.glow,
+                                        flexShrink: 0,
+                                        cursor: 'pointer'
+                                      }}
+                                      title="Sub-account neon color (Customize in Portfolio Settings)"
+                                    />
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {accName}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActivePortfolioId(portfolio.id);
+                                      setActivePortfolioRole(portfolio.role);
+                                      if (onSettingsClick) onSettingsClick();
                                     }}
-                                  />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {accName}
-                                  </span>
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: '2px',
+                                      cursor: 'pointer',
+                                      color: 'var(--text-muted)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      opacity: 0.6
+                                    }}
+                                    className="hover-opacity"
+                                    title="Customize account colors & settings"
+                                  >
+                                    <Settings size={11} />
+                                  </button>
                                 </div>
                               );
                             })}

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, Settings, Check, HelpCircle, Save } from 'lucide-react';
+import { X, Settings, Check, HelpCircle, Save, Palette } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Portfolio } from '../../types/portfolio';
 import { updatePortfolioSettings } from '../../services/supabaseService';
+import { NEON_PALETTE, getAccountNeonTheme } from '../../utils/accountColors';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const { t } = useTranslation();
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
+  const [accountColors, setAccountColors] = useState<Record<string, string>>({});
   const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
   const [costBasisMethod, setCostBasisMethod] = useState<'average_cost' | 'fifo'>('average_cost');
@@ -48,6 +50,7 @@ export function SettingsModal({
         }
       });
       setAccountTaxRates(initialRates);
+      setAccountColors(portfolio.settings?.accountColors || portfolio.settings?.account_colors || {});
       setRiskFreeRate(portfolio.settings?.risk_free_rate !== undefined ? portfolio.settings.risk_free_rate : 2.0);
       setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
       setCostBasisMethod(portfolio.settings?.cost_basis_method || 'average_cost');
@@ -85,6 +88,8 @@ export function SettingsModal({
       const updatedSettings = {
         ...portfolio.settings,
         accountTaxRates,
+        accountColors,
+        account_colors: accountColors,
         risk_free_rate: riskFreeRate,
         beta_benchmark: betaBenchmark,
         cost_basis_method: costBasisMethod,
@@ -209,6 +214,84 @@ export function SettingsModal({
                           />
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('modals.settings.tax_suffix')}</span>
                         </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Sub-Account Neon Theme Colors Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Palette size={14} style={{ color: 'var(--color-primary)' }} />
+                Sub-Account Neon Theme Colors
+              </span>
+
+              {portfolioAccounts.length === 0 ? (
+                <div style={{ padding: '0.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  {t('modals.settings.no_accounts')}
+                </div>
+              ) : (
+                portfolioAccounts.map(accName => {
+                  const currentTheme = getAccountNeonTheme(accName, accountColors);
+                  return (
+                    <div 
+                      key={accName} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        padding: '0.65rem 0.85rem',
+                        borderRadius: '8px',
+                        gap: '1rem',
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div 
+                          style={{ 
+                            width: '10px', 
+                            height: '10px', 
+                            borderRadius: '50%', 
+                            background: currentTheme.hex, 
+                            boxShadow: currentTheme.glow,
+                            flexShrink: 0
+                          }} 
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {accName}
+                        </span>
+                      </div>
+
+                      {/* Color Swatch Picker Buttons */}
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        {Object.entries(NEON_PALETTE).map(([key, t]) => {
+                          const isSelected = (accountColors[accName] || '').toLowerCase() === key || currentTheme.hex === t.hex;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              disabled={isViewer}
+                              onClick={() => setAccountColors(prev => ({ ...prev, [accName]: key }))}
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                background: t.hex,
+                                border: isSelected ? '2px solid #ffffff' : '1px solid transparent',
+                                boxShadow: isSelected ? t.glow : 'none',
+                                cursor: isViewer ? 'default' : 'pointer',
+                                transition: 'all 0.15s ease',
+                                padding: 0,
+                                transform: isSelected ? 'scale(1.15)' : 'scale(1)'
+                              }}
+                              title={t.label}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   );

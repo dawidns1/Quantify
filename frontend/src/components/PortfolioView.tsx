@@ -697,6 +697,9 @@ export function PortfolioView({
     setShowAddModal(true);
   };
 
+  const activePortfolio = portfolios.find(p => p.id === activePortfolioId);
+  const activeAccountColors = activePortfolio?.settings?.accountColors || activePortfolio?.settings?.account_colors || {};
+
   return (
     <div className="app-layout">
       {/* Mobile Sidebar Backdrop Overlay */}
@@ -733,6 +736,7 @@ export function PortfolioView({
           setShowAddModal(true);
         }}
         activePortfolioRole={activePortfolioRole}
+        accountColors={activeAccountColors}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -1449,6 +1453,7 @@ export function PortfolioView({
                   onExportCSVClick={handleExportCSV}
                   style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
                   onScrollToBottomChange={setIsLedgerAtBottom}
+                  accountColors={activeAccountColors}
                 />
               </div>
 
@@ -1818,6 +1823,7 @@ export function PortfolioView({
           holdings={holdings}
           baseCurrency={summary.base_currency}
           dividends={dividendsList}
+          accountColors={activeAccountColors}
           onAddTransactionClick={(symbol) => {
             setQuickActionData({ symbol, type: 'BUY' });
             setShowAddModal(true);

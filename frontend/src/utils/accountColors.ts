@@ -53,13 +53,34 @@ export const NEON_PALETTE: Record<string, NeonColorTheme> = {
 
 const PALETTE_KEYS = Object.keys(NEON_PALETTE);
 
+export function buildCustomNeonTheme(hex: string): NeonColorTheme {
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map(c => c + c).join('');
+  }
+  const r = parseInt(cleanHex.substring(0, 2), 16) || 6;
+  const g = parseInt(cleanHex.substring(2, 4), 16) || 182;
+  const b = parseInt(cleanHex.substring(4, 6), 16) || 212;
+
+  return {
+    hex: `#${cleanHex}`,
+    label: 'Custom',
+    bg: `rgba(${r}, ${g}, ${b}, 0.15)`,
+    border: `1px solid rgba(${r}, ${g}, ${b}, 0.45)`,
+    glow: `0 0 8px rgba(${r}, ${g}, ${b}, 0.35)`
+  };
+}
+
 export function getAccountNeonTheme(accountName: string = 'Default', customColorsMap?: Record<string, string>): NeonColorTheme {
   const normName = (accountName || 'Default').trim();
   
   if (customColorsMap && customColorsMap[normName]) {
-    const keyOrHex = customColorsMap[normName].toLowerCase();
-    if (NEON_PALETTE[keyOrHex]) {
-      return NEON_PALETTE[keyOrHex];
+    const val = customColorsMap[normName].toLowerCase();
+    if (NEON_PALETTE[val]) {
+      return NEON_PALETTE[val];
+    }
+    if (val.startsWith('#')) {
+      return buildCustomNeonTheme(val);
     }
   }
 
