@@ -131,6 +131,7 @@ export function StockDetailsModal({
 
   // Search & sorting states for modal transaction ledger
   const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [modalStatusFilter, setModalStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [modalSortField, setModalSortField] = useState('date');
   const [modalSortAsc, setModalSortAsc] = useState(false);
 
@@ -581,8 +582,21 @@ export function StockDetailsModal({
       }
     }
 
-    // 2. Filter list by search query
+    // 2. Filter list by search query & status filter
     let list = transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
+
+    if (modalStatusFilter === 'open') {
+      list = list.filter(tx => {
+        const lot = buyLots[tx.id];
+        return tx.type === 'BUY' && lot && lot.openShares > 0;
+      });
+    } else if (modalStatusFilter === 'closed') {
+      list = list.filter(tx => {
+        const lot = buyLots[tx.id];
+        return tx.type === 'SELL' || (lot && lot.openShares <= 0.00001);
+      });
+    }
+
     if (modalSearchQuery.trim()) {
       const q = modalSearchQuery.toLowerCase().trim();
       list = list.filter(tx => 
@@ -1145,46 +1159,103 @@ export function StockDetailsModal({
                       </span>
                     </div>
                     {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
-                      <div className="search-container" style={{ 
-                        width: '100%', 
-                        maxWidth: '260px', 
-                        background: 'rgba(10, 15, 28, 0.75)', 
-                        border: '1px solid rgba(6, 182, 212, 0.3)', 
-                        borderRadius: '8px', 
-                        height: '34px',
-                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}>
-                        <Search size={14} className="search-icon" style={{ left: '0.75rem', color: 'var(--color-primary)' }} />
-                        <input
-                          type="text"
-                          className="search-input"
-                          placeholder={t('ledger.search_placeholder', 'Search transactions...')}
-                          value={modalSearchQuery}
-                          onChange={(e) => setModalSearchQuery(e.target.value)}
-                          style={{ 
-                            paddingLeft: '2.2rem', 
-                            paddingRight: modalSearchQuery ? '2rem' : '0.75rem', 
-                            fontSize: '0.8rem', 
-                            color: '#ffffff',
-                            background: 'transparent',
-                            border: 'none',
-                            width: '100%',
-                            height: '100%',
-                            outline: 'none'
-                          }}
-                        />
-                        {modalSearchQuery && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        <div className="search-container" style={{ 
+                          width: '100%', 
+                          maxWidth: '220px', 
+                          background: 'rgba(10, 15, 28, 0.75)', 
+                          border: '1px solid rgba(6, 182, 212, 0.3)', 
+                          borderRadius: '8px', 
+                          height: '32px',
+                          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}>
+                          <Search size={14} className="search-icon" style={{ left: '0.75rem', color: 'var(--color-primary)' }} />
+                          <input
+                            type="text"
+                            className="search-input"
+                            placeholder={t('ledger.search_placeholder', 'Search transactions...')}
+                            value={modalSearchQuery}
+                            onChange={(e) => setModalSearchQuery(e.target.value)}
+                            style={{ 
+                              paddingLeft: '2.2rem', 
+                              paddingRight: modalSearchQuery ? '2rem' : '0.75rem', 
+                              fontSize: '0.78rem', 
+                              color: '#ffffff',
+                              background: 'transparent',
+                              border: 'none',
+                              width: '100%',
+                              height: '100%',
+                              outline: 'none'
+                            }}
+                          />
+                          {modalSearchQuery && (
+                            <button 
+                              className="search-clear-btn" 
+                              onClick={() => setModalSearchQuery('')}
+                              style={{ right: '0.6rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            >
+                              <X size={13} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Filter Pills */}
+                        <div style={{ display: 'flex', gap: '2px', background: 'rgba(0, 0, 0, 0.3)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.08)', height: '32px', alignItems: 'center' }}>
                           <button 
-                            className="search-clear-btn" 
-                            onClick={() => setModalSearchQuery('')}
-                            style={{ right: '0.6rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            type="button"
+                            onClick={() => setModalStatusFilter('all')} 
+                            style={{ 
+                              padding: '3px 9px', 
+                              fontSize: '0.72rem', 
+                              fontWeight: modalStatusFilter === 'all' ? 700 : 500, 
+                              borderRadius: '4px', 
+                              border: 'none', 
+                              background: modalStatusFilter === 'all' ? 'rgba(6, 182, 212, 0.2)' : 'transparent', 
+                              color: modalStatusFilter === 'all' ? '#06b6d4' : 'var(--text-muted)', 
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
                           >
-                            <X size={13} />
+                            {t('ledger.filter_all', 'All')}
                           </button>
-                        )}
+                          <button 
+                            type="button"
+                            onClick={() => setModalStatusFilter('open')} 
+                            style={{ 
+                              padding: '3px 9px', 
+                              fontSize: '0.72rem', 
+                              fontWeight: modalStatusFilter === 'open' ? 700 : 500, 
+                              borderRadius: '4px', 
+                              border: 'none', 
+                              background: modalStatusFilter === 'open' ? 'rgba(16, 185, 129, 0.2)' : 'transparent', 
+                              color: modalStatusFilter === 'open' ? '#10b981' : 'var(--text-muted)', 
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {t('ledger.filter_open', 'Open Lots')}
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setModalStatusFilter('closed')} 
+                            style={{ 
+                              padding: '3px 9px', 
+                              fontSize: '0.72rem', 
+                              fontWeight: modalStatusFilter === 'closed' ? 700 : 500, 
+                              borderRadius: '4px', 
+                              border: 'none', 
+                              background: modalStatusFilter === 'closed' ? 'rgba(239, 68, 68, 0.2)' : 'transparent', 
+                              color: modalStatusFilter === 'closed' ? '#ef4444' : 'var(--text-muted)', 
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {t('ledger.filter_closed', 'Closed Lots')}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

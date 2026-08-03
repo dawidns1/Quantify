@@ -426,8 +426,8 @@ export function LedgerTable({
               )}
             </div>
           )}
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {t('ledger.total_operations', 'Total operations recorded')}: {filteredTransactions.length}
+          <span style={{ fontSize: '0.83rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            {t('ledger.total_operations', 'Total operations recorded')}: <span style={{ display: 'inline-block', minWidth: '28px', textAlign: 'left', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-primary)' }}>{filteredTransactions.length}</span>
           </span>
         </div>
       </div>
