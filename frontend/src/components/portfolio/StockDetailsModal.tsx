@@ -1126,6 +1126,9 @@ export function StockDetailsModal({
                           <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                             {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
                           </th>
+                          <th onClick={() => handleModalSort('account')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_account', 'Account')} {renderModalSortArrow('account')}
+                          </th>
                           <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                             {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
                           </th>
@@ -1155,6 +1158,11 @@ export function StockDetailsModal({
                             <tr key={tx.id} className="interactive-row-modal">
                               <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
                                 {tx.date}
+                              </td>
+                              <td>
+                                <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                  {tx.account || 'Default'}
+                                </span>
                               </td>
                               <td>
                                 <span style={{ 

@@ -485,8 +485,10 @@ export function LedgerTable({
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       {tx.symbol}
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      {tx.account || 'Default'}
+                    <td>
+                      <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        {tx.account || 'Default'}
+                      </span>
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                       {formatShares(tx.shares)}
