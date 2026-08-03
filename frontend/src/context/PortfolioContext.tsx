@@ -309,12 +309,18 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
 
-    // Abort previous in-flight request if user rapidly clicked between accounts/portfolios
-    if (activeHoldingsAbortControllerRef.current) {
+    // Only abort previous in-flight request if portfolio or base currency changed
+    if (
+      activeHoldingsAbortControllerRef.current &&
+      (latestParamsRef.current.activePortfolioId !== activePortfolioId ||
+       latestParamsRef.current.baseCurrency !== curr)
+    ) {
       activeHoldingsAbortControllerRef.current.abort();
+      activeHoldingsAbortControllerRef.current = new AbortController();
+    } else if (!activeHoldingsAbortControllerRef.current) {
+      activeHoldingsAbortControllerRef.current = new AbortController();
     }
-    const abortController = new AbortController();
-    activeHoldingsAbortControllerRef.current = abortController;
+    const abortController = activeHoldingsAbortControllerRef.current;
 
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
@@ -332,12 +338,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         abortController.signal
       );
 
-      // Prevent race conditions: check if parameters changed or newer request started
+      // Prevent race conditions: check if portfolio or currency changed
       if (
-        requestId < holdingsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
-        curr !== latestParamsRef.current.baseCurrency ||
-        accountFilter !== latestParamsRef.current.selectedAccount
+        curr !== latestParamsRef.current.baseCurrency
       ) {
         telemetry.endTrace(traceId, 'success', undefined, { discarded: true });
         return; // Discard stale response
