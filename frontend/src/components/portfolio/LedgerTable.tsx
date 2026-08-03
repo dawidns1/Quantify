@@ -14,6 +14,7 @@ interface LedgerTableProps {
   onExportCSVClick?: () => void;
   style?: React.CSSProperties;
   onScrollToBottomChange?: (isAtBottom: boolean) => void;
+  accountColors?: Record<string, string>;
 }
 
 export function LedgerTable({
@@ -25,7 +26,8 @@ export function LedgerTable({
   onImportCSVClick,
   onExportCSVClick,
   style,
-  onScrollToBottomChange
+  onScrollToBottomChange,
+  accountColors = {}
 }: LedgerTableProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -488,7 +490,7 @@ export function LedgerTable({
                     </td>
                     <td>
                       {(() => {
-                        const theme = getAccountNeonTheme(tx.account);
+                        const theme = getAccountNeonTheme(tx.account, accountColors);
                         return (
                           <span style={{ 
                             fontSize: '0.75rem', 

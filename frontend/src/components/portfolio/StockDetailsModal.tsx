@@ -99,6 +99,7 @@ interface StockDetailsModalProps {
   holdings: Holding[];
   baseCurrency: string;
   dividends?: any[];
+  accountColors?: Record<string, string>;
   onAddTransactionClick: (symbol: string) => void;
   onStartEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -114,6 +115,7 @@ export function StockDetailsModal({
   holdings,
   baseCurrency,
   dividends = [],
+  accountColors = {},
   onAddTransactionClick,
   onStartEditTransaction,
   onDeleteTransaction
@@ -755,7 +757,7 @@ export function StockDetailsModal({
                               <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{ev.date}</td>
                               <td>
                                 {(() => {
-                                  const theme = getAccountNeonTheme(ev.account);
+                                  const theme = getAccountNeonTheme(ev.account, accountColors);
                                   return (
                                     <span style={{ 
                                       fontSize: '0.75rem', 
@@ -1177,7 +1179,7 @@ export function StockDetailsModal({
                               </td>
                               <td>
                                 {(() => {
-                                  const theme = getAccountNeonTheme(tx.account);
+                                  const theme = getAccountNeonTheme(tx.account, accountColors);
                                   return (
                                     <span style={{ 
                                       fontSize: '0.75rem', 
