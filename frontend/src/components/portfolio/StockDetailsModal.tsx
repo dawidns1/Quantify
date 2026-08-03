@@ -97,6 +97,7 @@ interface StockDetailsModalProps {
   transactions: Transaction[];
   holdings: Holding[];
   baseCurrency: string;
+  dividends?: any[];
   onAddTransactionClick: (symbol: string) => void;
   onStartEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -111,6 +112,7 @@ export function StockDetailsModal({
   transactions,
   holdings,
   baseCurrency,
+  dividends = [],
   onAddTransactionClick,
   onStartEditTransaction,
   onDeleteTransaction
@@ -384,6 +386,99 @@ export function StockDetailsModal({
     return <ArrowUpDown size={11} style={{ marginLeft: '2px', display: 'inline' }} />;
   };
 
+  const isCashTicker = selectedPositionSymbol?.startsWith('CASH_') ?? false;
+  const cashCurrency = isCashTicker ? selectedPositionSymbol!.replace('CASH_', '').toUpperCase() : '';
+
+  const cashAuditTrail = useMemo(() => {
+    if (!isCashTicker || !cashCurrency) return [];
+
+    const events: Array<{
+      id: string;
+      date: string;
+      type: 'DIVIDEND' | 'DEPOSIT' | 'BUY' | 'SELL';
+      account: string;
+      description: string;
+      amount: number;
+      txRef?: any;
+    }> = [];
+
+    // 1. Transactions matching this currency or CASH_ ticker
+    for (const tx of transactions) {
+      const txCurr = (tx.currency || 'USD').toUpperCase();
+      const txSymbol = (tx.symbol || '').toUpperCase();
+      const account = tx.account || 'Default';
+
+      if (txSymbol === `CASH_${cashCurrency}`) {
+        const amount = tx.shares * tx.price * (tx.type === 'BUY' ? 1 : -1);
+        events.push({
+          id: tx.id,
+          date: tx.date,
+          type: tx.type === 'BUY' ? 'DEPOSIT' : 'SELL',
+          account,
+          description: tx.type === 'BUY' ? `Manual Cash Deposit (${cashCurrency})` : `Manual Cash Withdrawal (${cashCurrency})`,
+          amount,
+          txRef: tx
+        });
+      } else if (txCurr === cashCurrency && !txSymbol.startsWith('CASH_')) {
+        const cost = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+        const amount = tx.type === 'BUY' ? -cost : cost;
+        events.push({
+          id: tx.id,
+          date: tx.date,
+          type: tx.type === 'BUY' ? 'BUY' : 'SELL',
+          account,
+          description: tx.type === 'BUY' ? `Stock Purchase: ${tx.symbol} (${tx.shares} sh @ ${tx.price})` : `Stock Sale Proceeds: ${tx.symbol} (${tx.shares} sh @ ${tx.price})`,
+          amount,
+          txRef: tx
+        });
+      }
+    }
+
+    // 2. Dividend overrides / payouts matching this currency
+    for (const div of dividends) {
+      if (div.is_deleted) continue;
+      const divAcc = div.account || 'Default';
+      const divDate = div.date || div.ex_date || '';
+      const divCurr = (div.currency || div.native_currency || cashCurrency).toUpperCase();
+
+      if (divCurr !== cashCurrency) continue;
+
+      const shares = div.shares || 0;
+      const payout = div.payout_per_share || div.payout || 0;
+      const gross = (shares > 0 && payout > 0) ? (shares * payout) : (div.net_amount || div.amount || div.net_pln || 0);
+
+      if (gross > 0 && divDate) {
+        events.push({
+          id: div.id || `div_${divDate}_${div.symbol}`,
+          date: divDate,
+          type: 'DIVIDEND',
+          account: divAcc,
+          description: `Dividend Payout: ${div.symbol} (${shares ? `${shares} sh @ ${payout}` : `Net Dividend`})`,
+          amount: gross
+        });
+      }
+    }
+
+    // Sort chronologically ascending
+    events.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Calculate running cash balance with non-negative floor on stock BUYs
+    let runningCash = 0;
+    return events.map(ev => {
+      if (ev.type === 'BUY') {
+        runningCash += ev.amount; // ev.amount is negative
+        if (runningCash < 0) runningCash = 0;
+      } else {
+        runningCash += ev.amount;
+        if (runningCash < 0) runningCash = 0;
+      }
+      return {
+        ...ev,
+        runningBalance: runningCash
+      };
+    });
+  }, [isCashTicker, cashCurrency, transactions, dividends]);
+
   const positionTransactionsFilteredAndSorted = useMemo(() => {
     if (!selectedPositionSymbol) return [];
     
@@ -604,382 +699,517 @@ export function StockDetailsModal({
             gap: '1.25rem',
             willChange: 'scroll-position'
           }}>
-            {/* Quick Summary Dashboard */}
-            {holdingDetails && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', flexShrink: 0 }}>
-                <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_shares', 'Shares')}</span>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                    {holdingDetails.shares.toFixed(4).replace(/\.?0+$/, '')}
-                  </span>
+            {isCashTicker ? (
+              <>
+                {/* Cash Reserve Dashboard Card */}
+                <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)', border: '1px solid rgba(6, 182, 212, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderRadius: '12px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.25rem' }}>
+                      {holdingDetails?.name || `${cashCurrency} Cash Reserve`}
+                    </span>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'white', fontFamily: 'monospace' }}>
+                      {formatFinancialValue(holdingDetails?.shares || (cashAuditTrail[cashAuditTrail.length - 1]?.runningBalance || 0), cashCurrency)}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '6px', background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.25)', fontWeight: 600 }}>
+                      {cashAuditTrail.length} Cash Events Recorded
+                    </span>
+                  </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_avg_cost', 'Avg Cost')}</span>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                    {formatFinancialValue(holdingDetails.avg_cost_local, holdingDetails.currency)}
-                  </span>
-                </div>
-                <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_price', 'Market Price')}</span>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                    {formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)}
-                  </span>
-                </div>
-                <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_current', 'Current Value')}</span>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                    {formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}
-                  </span>
-                </div>
-                <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_gain_loss', 'Gain/Loss')}</span>
-                  <span style={{ 
-                    fontSize: '1rem', 
-                    fontWeight: 700, 
-                    color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
-                    fontFamily: 'monospace' 
-                  }}>
-                    {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)}
-                  </span>
-                </div>
-              </div>
-            )}
 
-            {/* Price Chart Container */}
-            <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)', flexShrink: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
-                    {t('holdings.price_performance', 'Price Performance')} ({holdingDetails?.currency || 'USD'})
-                  </span>
-                  {!loadingDetails && selectedStockDetails && (() => {
-                    if (!modalChartData || modalChartData.length < 2) return null;
-                    const startPrice = modalChartData[0].price;
-                    const endPrice = modalChartData[modalChartData.length - 1].price;
-                    const changeVal = endPrice - startPrice;
-                    const changePct = (changeVal / startPrice) * 100;
-                    const isPositive = changeVal >= 0;
-                    return (
-                      <span style={{
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        fontFamily: 'monospace',
-                        color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
-                        background: isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                        padding: '1px 6px',
-                        borderRadius: '4px',
-                        border: `1px solid ${isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`,
-                        marginLeft: '4px'
-                      }}>
-                        {isPositive ? '+' : ''}{changeVal.toFixed(2)} ({isPositive ? '+' : ''}{changePct.toFixed(2)}%)
+                {/* Cash Statement Audit Table */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flex: 1 }}>
+                  <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Cash Statement & Audit Ledger ({cashCurrency})
+                  </h4>
+
+                  {cashAuditTrail.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
+                      No cash transactions or dividends recorded for {cashCurrency}.
+                    </p>
+                  ) : (
+                    <div style={{ 
+                      maxHeight: '380px', 
+                      overflowY: 'auto',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '10px',
+                      background: 'rgba(0, 0, 0, 0.15)'
+                    }}>
+                      <table className="screener-table" style={{ fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Date</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Account</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Type</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Description</th>
+                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Amount</th>
+                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Running Cash</th>
+                            {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...cashAuditTrail].reverse().map((ev) => (
+                            <tr key={ev.id} className="interactive-row-modal">
+                              <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{ev.date}</td>
+                              <td>
+                                <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                                  {ev.account}
+                                </span>
+                              </td>
+                              <td>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px', 
+                                  fontSize: '0.72rem', 
+                                  fontWeight: 700,
+                                  background: ev.type === 'DIVIDEND' || ev.type === 'DEPOSIT' || ev.type === 'SELL' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                  color: ev.type === 'DIVIDEND' || ev.type === 'DEPOSIT' || ev.type === 'SELL' ? '#10b981' : '#ef4444',
+                                  border: ev.type === 'DIVIDEND' || ev.type === 'DEPOSIT' || ev.type === 'SELL' ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                }}>
+                                  {ev.type}
+                                </span>
+                              </td>
+                              <td style={{ color: 'var(--text-primary)', fontSize: '0.82rem' }}>{ev.description}</td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: ev.amount >= 0 ? '#10b981' : '#ef4444' }}>
+                                {ev.amount >= 0 ? '+' : ''}{formatFinancialValue(ev.amount, cashCurrency)}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                {formatFinancialValue(ev.runningBalance, cashCurrency)}
+                              </td>
+                              {activePortfolioRole !== 'viewer' && (
+                                <td style={{ textAlign: 'center' }}>
+                                  {ev.txRef ? (
+                                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                                      <button 
+                                        onClick={() => {
+                                          setSelectedPositionSymbol(null);
+                                          onStartEditTransaction(ev.txRef);
+                                        }}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                                        title="Edit Transaction"
+                                      >
+                                        <Edit2 size={13} />
+                                      </button>
+                                      <button 
+                                        onClick={() => onDeleteTransaction(ev.txRef.id)}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-red)' }}
+                                        title="Delete Transaction"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Auto</span>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Quick Summary Dashboard */}
+                {holdingDetails && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', flexShrink: 0 }}>
+                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_shares', 'Shares')}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                        {holdingDetails.shares.toFixed(4).replace(/\.?0+$/, '')}
                       </span>
-                    );
-                  })()}
-                </div>
-                
-                {/* Modal range selector pills */}
-                {!loadingDetails && selectedStockDetails && (
-                  <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-                    {(['1M', '3M', '1Y', '3Y', 'MAX'] as const).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setModalRange(r)}
-                        style={{
-                          background: modalRange === r ? 'var(--color-primary)' : 'transparent',
-                          color: modalRange === r ? 'white' : 'var(--text-secondary)',
-                          border: 'none',
-                          padding: '0.15rem 0.4rem',
-                          fontSize: '0.65rem',
-                          fontWeight: 600,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'var(--transition-smooth)'
-                        }}
-                      >
-                        {r}
-                      </button>
-                    ))}
+                    </div>
+                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_avg_cost', 'Avg Cost')}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                        {formatFinancialValue(holdingDetails.avg_cost_local, holdingDetails.currency)}
+                      </span>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_price', 'Market Price')}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+                        {formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)}
+                      </span>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_current', 'Current Value')}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                        {formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}
+                      </span>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_gain_loss', 'Gain/Loss')}</span>
+                      <span style={{ 
+                        fontSize: '1rem', 
+                        fontWeight: 700, 
+                        color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
+                        fontFamily: 'monospace' 
+                      }}>
+                        {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)}
+                      </span>
+                    </div>
                   </div>
                 )}
-              </div>
-              
-              <div style={{ height: '140px', position: 'relative' }}>
-                {loadingDetails ? (
-                  <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }} className="pulse">
-                    {t('holdings.loading_price_details', 'Loading price details...')}
-                  </div>
-                ) : modalChartFormatted ? (
-                  <Line 
-                    options={modalChartOptions}
-                    data={modalChartFormatted}
-                    plugins={modalChartPlugins}
-                  />
-                ) : (
-                  <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {t('holdings.no_price_history', 'No price history available.')}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {holdingDetails && (
-              <div style={{ flexShrink: 0 }}>
-                <FXHedgingVisualizer 
-                  holding={holdingDetails} 
-                  baseCurrency={baseCurrency} 
-                />
-              </div>
-            )}
-
-            {/* COMPANY KEY METRICS & ANNUAL FINANCIALS */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.85rem',
-              background: 'rgba(255, 255, 255, 0.015)',
-              border: '1px solid var(--panel-border)',
-              borderRadius: '12px',
-              padding: '1.25rem',
-              flexShrink: 0
-            }}>
-              {detailsError ? (
-                <div style={{ color: 'var(--color-red)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>
-                  {detailsError}
-                </div>
-              ) : (!selectedStockDetails && !loadingDetails) ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem', fontSize: '0.85rem' }}>
-                  {t('holdings.ticker_metadata_unavailable', 'Corporate metrics and financials are currently unavailable for this ticker.')}
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                  
-                  {/* Left sub-column: Key metrics table */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '0.4rem' }}>
-                      {t('holdings.key_statistics', 'Key Statistics')}
-                    </h4>
+                {/* Price Chart Container */}
+                <div className="glass-panel" style={{ padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'rgba(0, 0, 0, 0.12)', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
+                        {t('holdings.price_performance', 'Price Performance')} ({holdingDetails?.currency || 'USD'})
+                      </span>
+                      {!loadingDetails && selectedStockDetails && (() => {
+                        if (!modalChartData || modalChartData.length < 2) return null;
+                        const startPrice = modalChartData[0].price;
+                        const endPrice = modalChartData[modalChartData.length - 1].price;
+                        const changeVal = endPrice - startPrice;
+                        const changePct = (changeVal / startPrice) * 100;
+                        const isPositive = changeVal >= 0;
+                        return (
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                            color: isPositive ? 'var(--color-green)' : 'var(--color-red)',
+                            background: isPositive ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            border: `1px solid ${isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`,
+                            marginLeft: '4px'
+                          }}>
+                            {isPositive ? '+' : ''}{changeVal.toFixed(2)} ({isPositive ? '+' : ''}{changePct.toFixed(2)}%)
+                          </span>
+                        );
+                      })()}
+                    </div>
                     
-                    {loadingDetails || !selectedStockDetails ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
-                        {[1, 2, 3, 4].map(i => (
-                          <div key={i} className="pulse" style={{ height: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }} />
-                        ))}
+                    {/* Modal range selector pills */}
+                    <div style={{ display: 'flex', gap: '2px', background: 'rgba(0, 0, 0, 0.3)', padding: '2px', borderRadius: '6px' }}>
+                      {(['1M', '3M', '1Y', '3Y', 'MAX'] as const).map(range => (
+                        <button
+                          key={range}
+                          onClick={() => setModalRange(range)}
+                          style={{
+                            padding: '2px 8px',
+                            fontSize: '0.7rem',
+                            fontWeight: modalRange === range ? 700 : 500,
+                            borderRadius: '4px',
+                            border: 'none',
+                            background: modalRange === range ? 'var(--color-primary)' : 'transparent',
+                            color: modalRange === range ? 'white' : 'var(--text-muted)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {range}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ height: '170px', position: 'relative', width: '100%' }}>
+                    {loadingDetails ? (
+                      <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }} className="pulse">
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('holdings.loading_chart', 'Loading price history...')}</span>
                       </div>
+                    ) : modalChartFormatted ? (
+                      <Line 
+                        options={modalChartOptions}
+                        data={modalChartFormatted}
+                        plugins={modalChartPlugins}
+                      />
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.8rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.trailing_pe', 'Trailing P/E')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.trailing_pe ? selectedStockDetails.overview.trailing_pe.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.forward_pe', 'Forward P/E')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.forward_pe ? selectedStockDetails.overview.forward_pe.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.peg_ratio', 'PEG Ratio')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.peg_ratio ? selectedStockDetails.overview.peg_ratio.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.pb_ratio', 'P/B Ratio')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.price_to_book ? selectedStockDetails.overview.price_to_book.toFixed(2) : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.profit_margin', 'Profit Margin')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.profit_margin ? `${(selectedStockDetails.overview.profit_margin * 100).toFixed(2)}%` : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.roe', 'Return on Equity (ROE)')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.roe ? `${(selectedStockDetails.overview.roe * 100).toFixed(2)}%` : '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.div_yield', 'Dividend Yield')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.dividend_yield ? `${(selectedStockDetails.overview.dividend_yield * 100).toFixed(2)}%` : '0.00%'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.1rem' }}>
-                          <span style={{ color: 'var(--text-muted)' }}>{t('holdings.beta', 'Beta (3Y Volatility)')}</span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                            {selectedStockDetails.overview?.beta ? selectedStockDetails.overview.beta.toFixed(2) : '—'}
-                          </span>
-                        </div>
+                      <div style={{ height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        {t('holdings.no_price_history', 'No price history available.')}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Right sub-column: Annual Financials Chart */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '0.4rem' }}>
-                      {t('holdings.annual_financials', 'Annual Financials')}
+                {holdingDetails && (
+                  <div style={{ flexShrink: 0 }}>
+                    <FXHedgingVisualizer 
+                      holding={holdingDetails} 
+                      baseCurrency={baseCurrency} 
+                    />
+                  </div>
+                )}
+
+                {/* COMPANY KEY METRICS & ANNUAL FINANCIALS */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  flexShrink: 0
+                }}>
+                  {detailsError ? (
+                    <div style={{ color: 'var(--color-red)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem 0' }}>
+                      {detailsError}
+                    </div>
+                  ) : (!selectedStockDetails && !loadingDetails) ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem', fontSize: '0.85rem' }}>
+                      {t('holdings.ticker_metadata_unavailable', 'Corporate metrics and financials are currently unavailable for this ticker.')}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                      
+                      {/* Left sub-column: Key metrics table */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '0.4rem' }}>
+                          {t('holdings.key_statistics', 'Key Statistics')}
+                        </h4>
+                        
+                        {loadingDetails || !selectedStockDetails ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
+                            {[1, 2, 3, 4].map(i => (
+                              <div key={i} className="pulse" style={{ height: '16px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '4px' }} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.trailing_pe', 'Trailing P/E')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.trailing_pe ? selectedStockDetails.overview.trailing_pe.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.forward_pe', 'Forward P/E')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.forward_pe ? selectedStockDetails.overview.forward_pe.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.peg_ratio', 'PEG Ratio')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.peg_ratio ? selectedStockDetails.overview.peg_ratio.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.pb_ratio', 'P/B Ratio')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.price_to_book ? selectedStockDetails.overview.price_to_book.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.profit_margin', 'Profit Margin')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.profit_margin ? `${(selectedStockDetails.overview.profit_margin * 100).toFixed(2)}%` : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.roe', 'Return on Equity (ROE)')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.roe ? `${(selectedStockDetails.overview.roe * 100).toFixed(2)}%` : '—'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '0.3rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.div_yield', 'Dividend Yield')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.dividend_yield ? `${(selectedStockDetails.overview.dividend_yield * 100).toFixed(2)}%` : '0.00%'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.1rem' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{t('holdings.beta', 'Beta (3Y Volatility)')}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                {selectedStockDetails.overview?.beta ? selectedStockDetails.overview.beta.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right sub-column: Annual Financials Chart */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '0.4rem' }}>
+                          {t('holdings.annual_financials', 'Annual Financials')}
+                        </h4>
+                        
+                        {loadingDetails || !selectedStockDetails ? (
+                          <div style={{ height: '239px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0, 0, 0, 0.1)', borderRadius: '8px' }} className="pulse">
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('holdings.loading_financials', 'Loading financials...')}</span>
+                          </div>
+                        ) : (!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
+                          <div style={{ height: '239px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0, 0, 0, 0.1)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                            {t('holdings.no_financials_available', 'Annual balance sheet metrics are unavailable.')}
+                          </div>
+                        ) : (
+                          <div style={{ height: '239px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
+                            {financialsChartData && (
+                              <Bar 
+                                options={financialsChartOptions}
+                                data={financialsChartData}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Transaction History Section Header & Search */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {t('holdings.transaction_ledger', 'Transaction Ledger')}
                     </h4>
-                    
-                    {loadingDetails || !selectedStockDetails ? (
-                      <div style={{ height: '239px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0, 0, 0, 0.1)', borderRadius: '8px' }} className="pulse">
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('holdings.loading_financials', 'Loading financials...')}</span>
-                      </div>
-                    ) : (!selectedStockDetails.financials || selectedStockDetails.financials.length === 0) ? (
-                      <div style={{ height: '239px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0, 0, 0, 0.1)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {t('holdings.no_financials_available', 'Annual balance sheet metrics are unavailable.')}
-                      </div>
-                    ) : (
-                      <div style={{ height: '239px', position: 'relative', background: 'rgba(0, 0, 0, 0.12)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '0.5rem' }}>
-                        {financialsChartData && (
-                          <Bar 
-                            options={financialsChartOptions}
-                            data={financialsChartData}
-                          />
+                    {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
+                      <div className="search-container" style={{ 
+                        width: '100%', 
+                        maxWidth: '260px', 
+                        background: 'rgba(10, 15, 28, 0.75)', 
+                        border: '1px solid rgba(6, 182, 212, 0.3)', 
+                        borderRadius: '8px', 
+                        height: '34px',
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        <Search size={14} className="search-icon" style={{ left: '0.75rem', color: 'var(--color-primary)' }} />
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder={t('ledger.search_placeholder', 'Search transactions...')}
+                          value={modalSearchQuery}
+                          onChange={(e) => setModalSearchQuery(e.target.value)}
+                          style={{ 
+                            paddingLeft: '2.2rem', 
+                            paddingRight: modalSearchQuery ? '2rem' : '0.75rem', 
+                            fontSize: '0.8rem', 
+                            color: '#ffffff',
+                            background: 'transparent',
+                            border: 'none',
+                            width: '100%',
+                            height: '100%',
+                            outline: 'none'
+                          }}
+                        />
+                        {modalSearchQuery && (
+                          <button 
+                            className="search-clear-btn" 
+                            onClick={() => setModalSearchQuery('')}
+                            style={{ right: '0.6rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          >
+                            <X size={13} />
+                          </button>
                         )}
                       </div>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Transaction History Section Header & Search */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flexShrink: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {t('holdings.transaction_ledger', 'Transaction Ledger')}
-                </h4>
-                {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
-                  <div className="search-container" style={{ 
-                    width: '100%', 
-                    maxWidth: '260px', 
-                    background: 'rgba(10, 15, 28, 0.75)', 
-                    border: '1px solid rgba(6, 182, 212, 0.3)', 
-                    borderRadius: '8px', 
-                    height: '34px',
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center'
+                {positionTransactionsFilteredAndSorted.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0, flexShrink: 0 }}>
+                    {t('holdings.no_tx_found_for', 'No transactions found for')} {selectedPositionSymbol}.
+                  </p>
+                ) : (
+                  <div style={{ 
+                    maxHeight: '320px', 
+                    overflowY: 'auto',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '10px',
+                    background: 'rgba(0, 0, 0, 0.15)',
+                    flexShrink: 0
                   }}>
-                    <Search size={14} className="search-icon" style={{ left: '0.75rem', color: 'var(--color-primary)' }} />
-                    <input
-                      type="text"
-                      className="search-input"
-                      placeholder={t('ledger.search_placeholder', 'Search transactions...')}
-                      value={modalSearchQuery}
-                      onChange={(e) => setModalSearchQuery(e.target.value)}
-                      style={{ 
-                        paddingLeft: '2.2rem', 
-                        paddingRight: modalSearchQuery ? '2rem' : '0.75rem', 
-                        fontSize: '0.8rem', 
-                        color: '#ffffff',
-                        background: 'transparent',
-                        border: 'none',
-                        width: '100%',
-                        height: '100%',
-                        outline: 'none'
-                      }}
-                    />
-                    {modalSearchQuery && (
-                      <button 
-                        className="search-clear-btn" 
-                        onClick={() => setModalSearchQuery('')}
-                        style={{ right: '0.6rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <X size={13} />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {positionTransactionsFilteredAndSorted.length === 0 ? (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0, flexShrink: 0 }}>
-                  {t('holdings.no_tx_found_for', 'No transactions found for')} {selectedPositionSymbol}.
-                </p>
-              ) : (
-                <div style={{ 
-                  maxHeight: '320px', 
-                  overflowY: 'auto',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '10px',
-                  background: 'rgba(0, 0, 0, 0.15)',
-                  flexShrink: 0
-                }}>
-                  <table className="screener-table" style={{ fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                        <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
-                        </th>
-                        <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
-                        </th>
-                        <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_shares', 'Shares')} {renderModalSortArrow('shares')}
-                        </th>
-                        <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_price', 'Price')} {renderModalSortArrow('price')}
-                        </th>
-                        <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_fees', 'Fees')} {renderModalSortArrow('fees')}
-                        </th>
-                        <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_value', 'Total')} {renderModalSortArrow('total')}
-                        </th>
-                        <th onClick={() => handleModalSort('return')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
-                          {t('ledger.col_return', 'Return')} {renderModalSortArrow('return')}
-                        </th>
-                        {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('ledger.col_actions', 'Actions')}</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {positionTransactionsFilteredAndSorted.map((tx) => {
-                        const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
-                        const gainPct = (tx as any).gainPct;
-                        return (
-                          <tr key={tx.id} className="interactive-row-modal">
-                            <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                              {tx.date}
-                            </td>
-                            <td>
-                              <span style={{ 
-                                padding: '2px 6px', 
-                                borderRadius: '4px', 
-                                fontSize: '0.72rem', 
-                                fontWeight: 700,
-                                background: tx.type === 'BUY' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                                color: tx.type === 'BUY' ? 'var(--color-green)' : 'var(--color-red)'
-                              }}>
-                                {tx.type === 'BUY' ? t('ledger.type_buy', 'BUY') : t('ledger.type_sell', 'SELL')}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
-                              {tx.shares.toFixed(4).replace(/\.?0+$/, '')}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                              {formatFinancialValue(tx.price, tx.currency)}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                              {tx.fees > 0 ? formatFinancialValue(tx.fees, tx.currency) : '—'}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {formatFinancialValue(totalLocal, tx.currency)}
-                            </td>
-                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                              {tx.type === 'BUY' ? (
-                                (tx as any).isFullyClosed ? (
-                                  <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
-                                    Closed
-                                  </span>
-                                ) : gainPct !== undefined && !isNaN(gainPct) ? (
-                                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <table className="screener-table" style={{ fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
+                          <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
+                          </th>
+                          <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
+                          </th>
+                          <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_shares', 'Shares')} {renderModalSortArrow('shares')}
+                          </th>
+                          <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_price', 'Price')} {renderModalSortArrow('price')}
+                          </th>
+                          <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_fees', 'Fees')} {renderModalSortArrow('fees')}
+                          </th>
+                          <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_value', 'Total')} {renderModalSortArrow('total')}
+                          </th>
+                          <th onClick={() => handleModalSort('return')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                            {t('ledger.col_return', 'Return')} {renderModalSortArrow('return')}
+                          </th>
+                          {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('ledger.col_actions', 'Actions')}</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {positionTransactionsFilteredAndSorted.map((tx) => {
+                          const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+                          const gainPct = (tx as any).gainPct;
+                          return (
+                            <tr key={tx.id} className="interactive-row-modal">
+                              <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                {tx.date}
+                              </td>
+                              <td>
+                                <span style={{ 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px', 
+                                  fontSize: '0.72rem', 
+                                  fontWeight: 700,
+                                  background: tx.type === 'BUY' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                  color: tx.type === 'BUY' ? 'var(--color-green)' : 'var(--color-red)'
+                                }}>
+                                  {tx.type === 'BUY' ? t('ledger.type_buy', 'BUY') : t('ledger.type_sell', 'SELL')}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                {tx.shares.toFixed(4).replace(/\.?0+$/, '')}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                {formatFinancialValue(tx.price, tx.currency)}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                                {tx.fees > 0 ? formatFinancialValue(tx.fees, tx.currency) : '—'}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
+                                {formatFinancialValue(totalLocal, tx.currency)}
+                              </td>
+                              <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                {tx.type === 'BUY' ? (
+                                  (tx as any).isFullyClosed ? (
+                                    <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                                      Closed
+                                    </span>
+                                  ) : gainPct !== undefined && !isNaN(gainPct) ? (
+                                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                      <span style={{
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                        color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                                        border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                      }}>
+                                        {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                                      </span>
+                                      {(tx as any).openShares < tx.shares && (
+                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                          {(tx as any).openShares.toFixed(2)}/{tx.shares} open
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                                  )
+                                ) : (
+                                  gainPct !== undefined && !isNaN(gainPct) ? (
                                     <span style={{
                                       padding: '2px 6px',
                                       borderRadius: '4px',
@@ -989,86 +1219,66 @@ export function StockDetailsModal({
                                       color: gainPct >= 0 ? '#10b981' : '#ef4444',
                                       border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
                                     }}>
-                                      {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                                      {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
                                     </span>
-                                    {(tx as any).openShares < tx.shares && (
-                                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                        {(tx as any).openShares.toFixed(2)}/{tx.shares} open
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
-                                )
-                              ) : (
-                                gainPct !== undefined && !isNaN(gainPct) ? (
-                                  <span style={{
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.72rem',
-                                    fontWeight: 700,
-                                    background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                    color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                                    border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
-                                  }}>
-                                    {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
-                                  </span>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
-                                )
-                              )}
-                            </td>
-                            {activePortfolioRole !== 'viewer' && (
-                              <td style={{ textAlign: 'center' }}>
-                                <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
-                                  <button 
-                                    onClick={() => {
-                                      setSelectedPositionSymbol(null);
-                                      onStartEditTransaction(tx);
-                                    }}
-                                    className="ledger-delete-btn"
-                                    style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                                    title={t('modals.add_tx.edit_title', 'Edit Transaction')}
-                                  >
-                                    <Edit2 size={13} />
-                                  </button>
-                                  <button 
-                                    onClick={() => onDeleteTransaction(tx.id)}
-                                    className="ledger-delete-btn"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
-                                    title={t('ledger.action_delete', 'Delete')}
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                                  )
+                                )}
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                              {activePortfolioRole !== 'viewer' && (
+                                <td style={{ textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                                    <button 
+                                      onClick={() => {
+                                        setSelectedPositionSymbol(null);
+                                        onStartEditTransaction(tx);
+                                      }}
+                                      className="ledger-delete-btn"
+                                      style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
+                                      title={t('modals.add_tx.edit_title', 'Edit Transaction')}
+                                    >
+                                      <Edit2 size={13} />
+                                    </button>
+                                    <button 
+                                      onClick={() => onDeleteTransaction(tx.id)}
+                                      className="ledger-delete-btn"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: '4px', borderRadius: '4px' }}
+                                      title={t('ledger.action_delete', 'Delete')}
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem', flexShrink: 0 }}>
-                <button
-                  onClick={() => setSelectedPositionSymbol(null)}
-                  className="glow-btn"
-                  style={{
-                    padding: '0.55rem 1.5rem',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    color: 'var(--text-primary)',
-                    borderColor: 'var(--panel-border)',
-                    boxShadow: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  {t('modals.common_close', 'Close')}
-                </button>
-              </div>
+            {/* Shared Modal Close Button Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem', flexShrink: 0 }}>
+              <button
+                onClick={() => setSelectedPositionSymbol(null)}
+                className="glow-btn"
+                style={{
+                  padding: '0.55rem 1.5rem',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'var(--text-primary)',
+                  borderColor: 'var(--panel-border)',
+                  boxShadow: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {t('modals.common_close', 'Close')}
+              </button>
             </div>
           </div>
         </div>

@@ -1817,6 +1817,7 @@ export function PortfolioView({
           transactions={transactions}
           holdings={holdings}
           baseCurrency={summary.base_currency}
+          dividends={dividendsList}
           onAddTransactionClick={(symbol) => {
             setQuickActionData({ symbol, type: 'BUY' });
             setShowAddModal(true);
