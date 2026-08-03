@@ -410,6 +410,32 @@ export function PreferencesModal({
 
           {/* Footer Buttons (Fixed Sticky Bottom) */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.75rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.8rem',
+                borderRadius: '6px',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
+              {t('modals.common_cancel', 'Cancel')}
+            </button>
+
             <button 
               onClick={handleSave}
               disabled={saving || successMsg}
