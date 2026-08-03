@@ -678,7 +678,7 @@ export function Sidebar({
                                 <div 
                                   key={accName}
                                   className={`tree-node ${isAccActive ? 'active' : ''}`}
-                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.45rem' }}
+                                  style={{ fontSize: '0.78rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
                                   onClick={() => {
                                     setActivePortfolioId(portfolio.id);
                                     setActivePortfolioRole(portfolio.role);
@@ -687,46 +687,29 @@ export function Sidebar({
                                     if (onCloseSidebar) onCloseSidebar();
                                   }}
                                 >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflow: 'hidden' }}>
-                                    <div 
-                                      style={{
-                                        width: '8px',
-                                        height: '8px',
-                                        borderRadius: '50%',
-                                        background: accTheme.hex,
-                                        boxShadow: accTheme.glow,
-                                        flexShrink: 0,
-                                        cursor: 'pointer'
-                                      }}
-                                      title="Sub-account neon color (Customize in Portfolio Settings)"
-                                    />
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {accName}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
+                                  <div 
+                                    style={{
+                                      width: '9px',
+                                      height: '9px',
+                                      borderRadius: '50%',
+                                      background: accTheme.hex,
+                                      boxShadow: accTheme.glow,
+                                      flexShrink: 0,
+                                      cursor: 'pointer',
+                                      transition: 'transform 0.15s ease'
+                                    }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActivePortfolioId(portfolio.id);
                                       setActivePortfolioRole(portfolio.role);
                                       if (onSettingsClick) onSettingsClick();
                                     }}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      padding: '2px',
-                                      cursor: 'pointer',
-                                      color: 'var(--text-muted)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      opacity: 0.6
-                                    }}
-                                    className="hover-opacity"
-                                    title="Customize account colors & settings"
-                                  >
-                                    <Settings size={11} />
-                                  </button>
+                                    title="Click to customize sub-account color & settings"
+                                    className="hover-scale"
+                                  />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {accName}
+                                  </span>
                                 </div>
                               );
                             })}

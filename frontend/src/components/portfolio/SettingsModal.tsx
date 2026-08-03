@@ -145,8 +145,9 @@ export function SettingsModal({
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
-                {t('modals.settings.tax_mapping_title')}
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Palette size={14} style={{ color: 'var(--color-primary)' }} />
+                Sub-Account Settings & Neon Themes
               </span>
 
               {portfolioAccounts.length === 0 ? (
@@ -158,6 +159,7 @@ export function SettingsModal({
                   const rate = accountTaxRates[accName] !== undefined ? accountTaxRates[accName] : 0.19;
                   const isExempt = rate === 0;
                   const percentDisplay = (rate * 100).toFixed(0);
+                  const currentTheme = getAccountNeonTheme(accName, accountColors);
 
                   return (
                     <div 
@@ -167,18 +169,64 @@ export function SettingsModal({
                         alignItems: 'center', 
                         justifyContent: 'space-between', 
                         background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        padding: '0.65rem 0.85rem',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        padding: '0.7rem 0.85rem',
                         borderRadius: '8px',
                         gap: '1rem',
                         flexWrap: 'wrap'
                       }}
                     >
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', minWidth: '120px' }}>
-                        {accName}
-                      </span>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {/* Left: Glowing Neon Dot + Account Name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: '120px' }}>
+                        <div 
+                          style={{ 
+                            width: '10px', 
+                            height: '10px', 
+                            borderRadius: '50%', 
+                            background: currentTheme.hex, 
+                            boxShadow: currentTheme.glow,
+                            flexShrink: 0
+                          }} 
+                          title="Current Sub-Account Neon Theme"
+                        />
+                        <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {accName}
+                        </span>
+                      </div>
+
+                      {/* Right: Color Swatches + Tax Controls */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        {/* Neon Color Swatches */}
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                          {Object.entries(NEON_PALETTE).map(([key, t]) => {
+                            const isSelected = (accountColors[accName] || '').toLowerCase() === key || currentTheme.hex === t.hex;
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                disabled={isViewer}
+                                onClick={() => setAccountColors(prev => ({ ...prev, [accName]: key }))}
+                                style={{
+                                  width: '20px',
+                                  height: '20px',
+                                  borderRadius: '50%',
+                                  background: t.hex,
+                                  border: isSelected ? '2px solid #ffffff' : '1px solid transparent',
+                                  boxShadow: isSelected ? t.glow : 'none',
+                                  cursor: isViewer ? 'default' : 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  padding: 0,
+                                  transform: isSelected ? 'scale(1.18)' : 'scale(1)'
+                                }}
+                                title={t.label}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.1)' }} />
+
                         {/* Tax Exempt Checkbox */}
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', color: isExempt ? 'var(--color-primary)' : 'var(--text-secondary)', cursor: isViewer ? 'default' : 'pointer', userSelect: 'none' }}>
                           <input 
@@ -201,8 +249,8 @@ export function SettingsModal({
                             min="0"
                             max="100"
                             style={{ 
-                              width: '55px', 
-                              padding: '0.25rem', 
+                              width: '52px', 
+                              padding: '0.2rem 0.25rem', 
                               fontSize: '0.78rem', 
                               textAlign: 'center',
                               background: isExempt ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
@@ -214,84 +262,6 @@ export function SettingsModal({
                           />
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('modals.settings.tax_suffix')}</span>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Sub-Account Neon Theme Colors Selector */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Palette size={14} style={{ color: 'var(--color-primary)' }} />
-                Sub-Account Neon Theme Colors
-              </span>
-
-              {portfolioAccounts.length === 0 ? (
-                <div style={{ padding: '0.5rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  {t('modals.settings.no_accounts')}
-                </div>
-              ) : (
-                portfolioAccounts.map(accName => {
-                  const currentTheme = getAccountNeonTheme(accName, accountColors);
-                  return (
-                    <div 
-                      key={accName} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '8px',
-                        gap: '1rem',
-                        flexWrap: 'wrap'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div 
-                          style={{ 
-                            width: '10px', 
-                            height: '10px', 
-                            borderRadius: '50%', 
-                            background: currentTheme.hex, 
-                            boxShadow: currentTheme.glow,
-                            flexShrink: 0
-                          }} 
-                        />
-                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {accName}
-                        </span>
-                      </div>
-
-                      {/* Color Swatch Picker Buttons */}
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        {Object.entries(NEON_PALETTE).map(([key, t]) => {
-                          const isSelected = (accountColors[accName] || '').toLowerCase() === key || currentTheme.hex === t.hex;
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              disabled={isViewer}
-                              onClick={() => setAccountColors(prev => ({ ...prev, [accName]: key }))}
-                              style={{
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: '50%',
-                                background: t.hex,
-                                border: isSelected ? '2px solid #ffffff' : '1px solid transparent',
-                                boxShadow: isSelected ? t.glow : 'none',
-                                cursor: isViewer ? 'default' : 'pointer',
-                                transition: 'all 0.15s ease',
-                                padding: 0,
-                                transform: isSelected ? 'scale(1.15)' : 'scale(1)'
-                              }}
-                              title={t.label}
-                            />
-                          );
-                        })}
                       </div>
                     </div>
                   );
