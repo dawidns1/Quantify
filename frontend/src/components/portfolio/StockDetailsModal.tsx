@@ -450,6 +450,9 @@ export function StockDetailsModal({
       } else if (modalSortField === 'total') {
         valA = a.totalLocal;
         valB = b.totalLocal;
+      } else if (modalSortField === 'return') {
+        valA = a.gainPct;
+        valB = b.gainPct;
       } else {
         valA = a.date;
         valB = b.date;
@@ -779,25 +782,45 @@ export function StockDetailsModal({
                 <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   {t('holdings.transaction_ledger', 'Transaction Ledger')}
                 </h4>
-                
                 {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
-                  <div className="search-container" style={{ width: '100%', maxWidth: '240px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--panel-border)', borderRadius: '8px', height: '32px' }}>
-                    <Search size={14} className="search-icon" style={{ left: '0.65rem' }} />
+                  <div className="search-container" style={{ 
+                    width: '100%', 
+                    maxWidth: '260px', 
+                    background: 'rgba(10, 15, 28, 0.75)', 
+                    border: '1px solid rgba(6, 182, 212, 0.3)', 
+                    borderRadius: '8px', 
+                    height: '34px',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <Search size={14} className="search-icon" style={{ left: '0.75rem', color: 'var(--color-primary)' }} />
                     <input
                       type="text"
                       className="search-input"
                       placeholder={t('ledger.search_placeholder', 'Search transactions...')}
                       value={modalSearchQuery}
                       onChange={(e) => setModalSearchQuery(e.target.value)}
-                      style={{ paddingLeft: '2.1rem', fontSize: '0.78rem' }}
+                      style={{ 
+                        paddingLeft: '2.2rem', 
+                        paddingRight: modalSearchQuery ? '2rem' : '0.75rem', 
+                        fontSize: '0.8rem', 
+                        color: '#ffffff',
+                        background: 'transparent',
+                        border: 'none',
+                        width: '100%',
+                        height: '100%',
+                        outline: 'none'
+                      }}
                     />
                     {modalSearchQuery && (
                       <button 
                         className="search-clear-btn" 
                         onClick={() => setModalSearchQuery('')}
-                        style={{ right: '0.6rem' }}
+                        style={{ right: '0.6rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
-                        <X size={12} />
+                        <X size={13} />
                       </button>
                     )}
                   </div>
@@ -820,30 +843,34 @@ export function StockDetailsModal({
                   <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                        <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('date')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_date', 'Date')} {renderModalSortArrow('date')}
                         </th>
-                        <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('type')} style={{ cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_type', 'Type')} {renderModalSortArrow('type')}
                         </th>
-                        <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('shares')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_shares', 'Shares')} {renderModalSortArrow('shares')}
                         </th>
-                        <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('price')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_price', 'Price')} {renderModalSortArrow('price')}
                         </th>
-                        <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('fees')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_fees', 'Fees')} {renderModalSortArrow('fees')}
                         </th>
-                        <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>
+                        <th onClick={() => handleModalSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
                           {t('ledger.col_value', 'Total')} {renderModalSortArrow('total')}
                         </th>
-                        {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#101524', zIndex: 10 }}>{t('ledger.col_actions', 'Actions')}</th>}
+                        <th onClick={() => handleModalSort('return')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>
+                          {t('ledger.col_return', 'Return')} {renderModalSortArrow('return')}
+                        </th>
+                        {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('ledger.col_actions', 'Actions')}</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {positionTransactionsFilteredAndSorted.map((tx) => {
                         const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+                        const gainPct = (tx as any).gainPct;
                         return (
                           <tr key={tx.id} className="interactive-row-modal">
                             <td style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
@@ -872,6 +899,23 @@ export function StockDetailsModal({
                             </td>
                             <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-primary)' }}>
                               {formatFinancialValue(totalLocal, tx.currency)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                              {tx.type === 'BUY' && gainPct !== undefined && !isNaN(gainPct) ? (
+                                <span style={{
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                  color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                                  border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                }}>
+                                  {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              )}
                             </td>
                             {activePortfolioRole !== 'viewer' && (
                               <td style={{ textAlign: 'center' }}>
