@@ -1546,52 +1546,74 @@ class PortfolioManager:
             dividends_by_symbol_acc[(sym, acc)]["net_base"] += d["net_base"]
             dividends_by_symbol_acc[(sym, acc)]["net_native"] += d["net_native"]
                 
-        # Calculate cash balances per account and currency
+        # Calculate cash balances per account and currency chronologically
         cash_balances = {}
-        for tx in sorted_txs:
-            tx_account = tx.get("account", "Default") or "Default"
-            tx_curr = tx.get("currency", "USD").upper().strip()
-            symbol = tx.get("symbol", "").upper().strip()
-            tx_type = tx.get("type", "BUY")
-            shares = tx.get("shares", 0.0)
-            price = tx.get("price", 0.0)
-            fees = tx.get("fees", 0.0)
-            
-            cash_balances.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
-            
-            if symbol.startswith("CASH_"):
-                cash_currency = symbol.split("_")[1] if "_" in symbol else tx_curr
-                cash_balances.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
-                amount = shares * price
-                if tx_type == "BUY":
-                    cash_balances[tx_account][cash_currency] += amount
-                elif tx_type == "SELL":
-                    cash_balances[tx_account][cash_currency] -= amount
-            else:
-                if link_cash:
-                    amount = shares * price
-                    if tx_type == "BUY":
-                        cash_balances[tx_account][tx_curr] -= (amount + fees)
-                    elif tx_type == "SELL":
-                        cash_balances[tx_account][tx_curr] += (amount - fees)
-                        
-        # Add net dividends to cash balances
         add_divs_to_cash = True
         if portfolio_settings and isinstance(portfolio_settings, dict):
             add_divs_to_cash = portfolio_settings.get("add_dividends_to_cash", portfolio_settings.get("addDividendsToCash", True))
 
+        # Build chronological timeline of events (Transactions + Dividends)
+        timeline_events = []
+        for tx in sorted_txs:
+            timeline_events.append({
+                "type": "TX",
+                "date": tx.get("date", ""),
+                "data": tx
+            })
+            
         if link_cash and add_divs_to_cash:
-            for (symbol, acc), div_data in dividends_by_symbol_acc.items():
-                if div_data["net_native"] > 0.0:
-                    native_curr = ticker_info[symbol]["native_currency"]
-                    cash_balances.setdefault(acc, {}).setdefault(native_curr, 0.0)
-                    cash_balances[acc][native_curr] += div_data["net_native"]
-                    
-        # Apply zero floor rule per account and currency
-        for acc in cash_balances:
-            for curr in cash_balances[acc]:
-                if cash_balances[acc][curr] < 0.0:
-                    cash_balances[acc][curr] = 0.0
+            for d in merged_divs:
+                if d.get("net_native", 0.0) > 0.0:
+                    ex_d_str = d.get("ex_date") or d.get("date") or ""
+                    timeline_events.append({
+                        "type": "DIVIDEND",
+                        "date": ex_d_str,
+                        "data": d
+                    })
+
+        # Sort timeline by date ascending
+        timeline_events.sort(key=lambda x: x["date"])
+
+        for event in timeline_events:
+            if event["type"] == "TX":
+                tx = event["data"]
+                tx_account = tx.get("account", "Default") or "Default"
+                tx_curr = tx.get("currency", "USD").upper().strip()
+                symbol = tx.get("symbol", "").upper().strip()
+                tx_type = tx.get("type", "BUY")
+                shares = tx.get("shares", 0.0)
+                price = tx.get("price", 0.0)
+                fees = tx.get("fees", 0.0)
+                amount = shares * price
+
+                cash_balances.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
+
+                if symbol.startswith("CASH_"):
+                    cash_currency = symbol.split("_")[1] if "_" in symbol else tx_curr
+                    cash_balances.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                    if tx_type == "BUY":
+                        cash_balances[tx_account][cash_currency] += amount
+                    elif tx_type == "SELL":
+                        cash_balances[tx_account][cash_currency] -= amount
+                        if cash_balances[tx_account][cash_currency] < 0.0:
+                            cash_balances[tx_account][cash_currency] = 0.0
+                else:
+                    if link_cash:
+                        if tx_type == "BUY":
+                            cash_balances[tx_account][tx_curr] -= (amount + fees)
+                            # Non-negative floor on stock BUY: assume unlogged external cash deposit funded the deficit
+                            if cash_balances[tx_account][tx_curr] < 0.0:
+                                cash_balances[tx_account][tx_curr] = 0.0
+                        elif tx_type == "SELL":
+                            cash_balances[tx_account][tx_curr] += (amount - fees)
+
+            elif event["type"] == "DIVIDEND":
+                d = event["data"]
+                sym = d["symbol"]
+                acc = d["account"]
+                native_curr = ticker_info.get(sym, {}).get("native_currency", "USD")
+                cash_balances.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                cash_balances[acc][native_curr] += d["net_native"]
                     
         # Sum cash balances across accounts
         final_cash = {}

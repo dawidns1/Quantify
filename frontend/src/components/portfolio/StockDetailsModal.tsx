@@ -387,10 +387,64 @@ export function StockDetailsModal({
   const positionTransactionsFilteredAndSorted = useMemo(() => {
     if (!selectedPositionSymbol) return [];
     
-    // 1. Filter by symbol
+    // 1. Get ALL transactions for this symbol sorted by date ascending for FIFO matching
+    const allSymbolTxs = transactions
+      .filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase())
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // FIFO tracking structures
+    const buyLots: Record<string, { initialShares: number; openShares: number; avgCostPerShare: number }> = {};
+    const sellResults: Record<string, { costBasisPerShare: number; realizedGainVal: number; realizedGainPct: number }> = {};
+
+    for (const tx of allSymbolTxs) {
+      if (tx.type === 'BUY') {
+        const costBasis = (tx.shares * tx.price) + tx.fees;
+        const avgCost = tx.shares > 0 ? costBasis / tx.shares : tx.price;
+        buyLots[tx.id] = {
+          initialShares: tx.shares,
+          openShares: tx.shares,
+          avgCostPerShare: avgCost
+        };
+      }
+    }
+
+    for (const tx of allSymbolTxs) {
+      if (tx.type === 'SELL') {
+        let sharesToSell = tx.shares;
+        let totalCostBasisOfSold = 0;
+        let matchedShares = 0;
+
+        for (const buyTx of allSymbolTxs) {
+          if (buyTx.type !== 'BUY') continue;
+          if (buyTx.date > tx.date) break;
+
+          const lot = buyLots[buyTx.id];
+          if (!lot || lot.openShares <= 0) continue;
+
+          const take = Math.min(sharesToSell, lot.openShares);
+          lot.openShares -= take;
+          sharesToSell -= take;
+          totalCostBasisOfSold += take * lot.avgCostPerShare;
+          matchedShares += take;
+
+          if (sharesToSell <= 0) break;
+        }
+
+        const effectiveCostBasis = matchedShares > 0 ? totalCostBasisOfSold : (tx.shares * tx.price);
+        const sellProceeds = (tx.shares * tx.price) - tx.fees;
+        const realizedGainVal = sellProceeds - effectiveCostBasis;
+        const realizedGainPct = effectiveCostBasis > 0 ? (realizedGainVal / effectiveCostBasis) * 100 : 0;
+
+        sellResults[tx.id] = {
+          costBasisPerShare: tx.shares > 0 ? effectiveCostBasis / tx.shares : 0,
+          realizedGainVal,
+          realizedGainPct
+        };
+      }
+    }
+
+    // 2. Filter list by search query
     let list = transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
-    
-    // 2. Filter by search query
     if (modalSearchQuery.trim()) {
       const q = modalSearchQuery.toLowerCase().trim();
       list = list.filter(tx => 
@@ -401,8 +455,8 @@ export function StockDetailsModal({
         tx.price.toString().includes(q)
       );
     }
-    
-    // 3. Map with totalLocal and return metrics
+
+    // 3. Map with totalLocal and FIFO metrics
     const holding = holdings.find(h => h.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase());
     const currentPrice = holding?.current_price_local || 0;
 
@@ -411,19 +465,37 @@ export function StockDetailsModal({
       
       let gainVal = 0;
       let gainPct = 0;
-      
-      if (tx.type === 'BUY' && currentPrice > 0) {
-        const costBasis = (tx.shares * tx.price) + tx.fees;
-        const currentValue = tx.shares * currentPrice;
-        gainVal = currentValue - costBasis;
-        gainPct = costBasis > 0 ? (gainVal / costBasis) * 100 : 0;
+      let openShares = tx.shares;
+      let isFullyClosed = false;
+      let isRealized = false;
+
+      if (tx.type === 'BUY') {
+        const lot = buyLots[tx.id];
+        openShares = lot ? lot.openShares : tx.shares;
+        isFullyClosed = openShares <= 0.00001;
+
+        if (currentPrice > 0) {
+          const avgCost = lot ? lot.avgCostPerShare : (tx.price + (tx.fees / (tx.shares || 1)));
+          const costBasisForOpen = openShares * avgCost;
+          const currentValueForOpen = openShares * currentPrice;
+          gainVal = currentValueForOpen - costBasisForOpen;
+          gainPct = costBasisForOpen > 0 ? (gainVal / costBasisForOpen) * 100 : 0;
+        }
+      } else if (tx.type === 'SELL') {
+        isRealized = true;
+        const res = sellResults[tx.id];
+        gainVal = res ? res.realizedGainVal : 0;
+        gainPct = res ? res.realizedGainPct : 0;
       }
 
       return {
         ...tx,
         totalLocal,
         gainVal,
-        gainPct
+        gainPct,
+        openShares,
+        isFullyClosed,
+        isRealized
       };
     });
 
@@ -901,20 +973,49 @@ export function StockDetailsModal({
                               {formatFinancialValue(totalLocal, tx.currency)}
                             </td>
                             <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                              {tx.type === 'BUY' && gainPct !== undefined && !isNaN(gainPct) ? (
-                                <span style={{
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
-                                  background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                  color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                                  border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
-                                }}>
-                                  {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
-                                </span>
+                              {tx.type === 'BUY' ? (
+                                (tx as any).isFullyClosed ? (
+                                  <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                                    Closed
+                                  </span>
+                                ) : gainPct !== undefined && !isNaN(gainPct) ? (
+                                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    <span style={{
+                                      padding: '2px 6px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                      color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                                      border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                    }}>
+                                      {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                                    </span>
+                                    {(tx as any).openShares < tx.shares && (
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                        {(tx as any).openShares.toFixed(2)}/{tx.shares} open
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                                )
                               ) : (
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                                gainPct !== undefined && !isNaN(gainPct) ? (
+                                  <span style={{
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                    color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                                    border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                  }}>
+                                    {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
+                                  </span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                                )
                               )}
                             </td>
                             {activePortfolioRole !== 'viewer' && (
