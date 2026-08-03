@@ -1346,6 +1346,8 @@ class PortfolioManager:
             raise ValueError("Price cannot be negative")
         if fees < 0:
             raise ValueError("Fees cannot be negative")
+        if date and date > date.today().strftime("%Y-%m-%d"):
+            raise ValueError("Transaction date cannot be in the future")
 
         data = cls._load_data()
         

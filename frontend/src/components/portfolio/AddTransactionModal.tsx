@@ -315,8 +315,13 @@ export function AddTransactionModal({
       }
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
     if (!formDate) {
       setFormError('Please select a date.');
+      return;
+    }
+    if (formDate > todayStr) {
+      setFormError(t('modals.add_tx.err_future_date', 'Transaction date cannot be in the future.'));
       return;
     }
 
@@ -560,6 +565,7 @@ export function AddTransactionModal({
                 <input 
                   id="form-date"
                   type="date" 
+                  max={new Date().toISOString().split('T')[0]}
                   className="input-field"
                   style={{ width: '100%' }}
                   value={formDate}

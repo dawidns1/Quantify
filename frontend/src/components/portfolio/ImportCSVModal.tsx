@@ -175,11 +175,25 @@ export function ImportCSVModal({
       return;
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const validPayload = payload.filter(tx => 
+      tx.symbol &&
+      tx.shares > 0 &&
+      tx.price >= 0 &&
+      tx.fees >= 0 &&
+      (!tx.date || tx.date <= todayStr)
+    );
+
+    if (validPayload.length === 0) {
+      setError(t('import.err_invalid_rows', 'No valid transactions to import (all selected rows had invalid numbers or future dates).'));
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
-      await saveTransactionsBulk(payload);
+      await saveTransactionsBulk(validPayload);
       onImportComplete();
       onClose();
     } catch (err: any) {

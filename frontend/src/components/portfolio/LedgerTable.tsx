@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 interface LedgerTableProps {
   transactions: Transaction[];
+  holdings?: any[];
   activePortfolioRole: string;
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -16,6 +17,7 @@ interface LedgerTableProps {
 
 export function LedgerTable({
   transactions,
+  holdings = [],
   activePortfolioRole,
   onEditTransaction,
   onDeleteTransaction,
@@ -28,6 +30,7 @@ export function LedgerTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest transactions first
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
   const wasAtBottomRef = useRef(false);
 
@@ -36,7 +39,7 @@ export function LedgerTable({
     if (onScrollToBottomChange) {
       onScrollToBottomChange(false);
     }
-  }, [transactions.length, searchQuery, onScrollToBottomChange]);
+  }, [transactions.length, searchQuery, statusFilter, onScrollToBottomChange]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -50,26 +53,146 @@ export function LedgerTable({
     }
   };
 
-  // Local filtering by Symbol or Account name
+  // Precompute FIFO lot matching across all transactions grouped by symbol
+  const fifoProcessedTransactions = useMemo(() => {
+    // Group transactions by symbol
+    const txsBySymbol: Record<string, Transaction[]> = {};
+    for (const tx of transactions) {
+      const sym = (tx.symbol || '').toUpperCase().trim();
+      if (!txsBySymbol[sym]) {
+        txsBySymbol[sym] = [];
+      }
+      txsBySymbol[sym].push(tx);
+    }
+
+    const processedMap: Record<string, { openShares: number; isFullyClosed: boolean; gainVal: number; gainPct: number; isRealized: boolean }> = {};
+
+    for (const [sym, symTxs] of Object.entries(txsBySymbol)) {
+      const sortedSymTxs = [...symTxs].sort((a, b) => a.date.localeCompare(b.date));
+      const buyLots: Record<string, { initialShares: number; openShares: number; avgCostPerShare: number }> = {};
+
+      for (const tx of sortedSymTxs) {
+        if (tx.type === 'BUY') {
+          const costBasis = (tx.shares * tx.price) + tx.fees;
+          const avgCost = tx.shares > 0 ? costBasis / tx.shares : tx.price;
+          buyLots[tx.id] = {
+            initialShares: tx.shares,
+            openShares: tx.shares,
+            avgCostPerShare: avgCost
+          };
+        }
+      }
+
+      for (const tx of sortedSymTxs) {
+        if (tx.type === 'SELL') {
+          let sharesToSell = tx.shares;
+          let totalCostBasisOfSold = 0;
+          let matchedShares = 0;
+
+          for (const buyTx of sortedSymTxs) {
+            if (buyTx.type !== 'BUY') continue;
+            if (buyTx.date > tx.date) break;
+
+            const lot = buyLots[buyTx.id];
+            if (!lot || lot.openShares <= 0) continue;
+
+            const take = Math.min(sharesToSell, lot.openShares);
+            lot.openShares -= take;
+            sharesToSell -= take;
+            totalCostBasisOfSold += take * lot.avgCostPerShare;
+            matchedShares += take;
+
+            if (sharesToSell <= 0) break;
+          }
+
+          const effectiveCostBasis = matchedShares > 0 ? totalCostBasisOfSold : (tx.shares * tx.price);
+          const sellProceeds = (tx.shares * tx.price) - tx.fees;
+          const realizedGainVal = sellProceeds - effectiveCostBasis;
+          const realizedGainPct = effectiveCostBasis > 0 ? (realizedGainVal / effectiveCostBasis) * 100 : 0;
+
+          processedMap[tx.id] = {
+            openShares: 0,
+            isFullyClosed: true,
+            gainVal: realizedGainVal,
+            gainPct: realizedGainPct,
+            isRealized: true
+          };
+        }
+      }
+
+      // Map BUY lots after FIFO matching
+      const holding = holdings.find(h => (h.symbol || '').toUpperCase() === sym);
+      const currentPrice = holding?.current_price_local || 0;
+
+      for (const tx of sortedSymTxs) {
+        if (tx.type === 'BUY') {
+          const lot = buyLots[tx.id];
+          const openShares = lot ? lot.openShares : tx.shares;
+          const isFullyClosed = openShares <= 0.00001;
+
+          let gainVal = 0;
+          let gainPct = 0;
+          if (currentPrice > 0) {
+            const avgCost = lot ? lot.avgCostPerShare : (tx.price + (tx.fees / (tx.shares || 1)));
+            const costBasisForOpen = openShares * avgCost;
+            const currentValueForOpen = openShares * currentPrice;
+            gainVal = currentValueForOpen - costBasisForOpen;
+            gainPct = costBasisForOpen > 0 ? (gainVal / costBasisForOpen) * 100 : 0;
+          }
+
+          processedMap[tx.id] = {
+            openShares,
+            isFullyClosed,
+            gainVal,
+            gainPct,
+            isRealized: false
+          };
+        }
+      }
+    }
+
+    return processedMap;
+  }, [transactions, holdings]);
+
+  // Local filtering by Symbol, Account name, and Status Filter (All / Open / Closed)
   const filteredTransactions = useMemo(() => {
-    if (!searchQuery.trim()) return transactions;
+    let list = transactions;
+
+    if (statusFilter === 'open') {
+      list = list.filter(tx => {
+        const proc = fifoProcessedTransactions[tx.id];
+        return tx.type === 'BUY' && proc && proc.openShares > 0;
+      });
+    } else if (statusFilter === 'closed') {
+      list = list.filter(tx => {
+        const proc = fifoProcessedTransactions[tx.id];
+        return tx.type === 'SELL' || (proc && proc.isFullyClosed);
+      });
+    }
+
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase().trim();
-    return transactions.filter(tx => 
+    return list.filter(tx => 
       tx.symbol.toLowerCase().includes(q) || 
       (tx.account || 'Default').toLowerCase().includes(q) ||
       tx.date.includes(q) ||
       tx.type.toLowerCase().includes(q)
     );
-  }, [transactions, searchQuery]);
+  }, [transactions, searchQuery, statusFilter, fifoProcessedTransactions]);
 
   // Sorting logic for all columns
   const sortedTransactions = useMemo(() => {
-    // Precompute totalLocal to sort efficiently
     const list = filteredTransactions.map(tx => {
       const totalLocal = (tx.shares * tx.price) + (tx.type === 'BUY' ? tx.fees : -tx.fees);
+      const proc = fifoProcessedTransactions[tx.id];
       return {
         ...tx,
-        totalLocal
+        totalLocal,
+        gainVal: proc?.gainVal ?? 0,
+        gainPct: proc?.gainPct ?? 0,
+        openShares: proc?.openShares ?? tx.shares,
+        isFullyClosed: proc?.isFullyClosed ?? false,
+        isRealized: proc?.isRealized ?? false
       };
     });
 
@@ -101,6 +224,9 @@ export function LedgerTable({
       } else if (sortField === 'total') {
         valA = a.totalLocal;
         valB = b.totalLocal;
+      } else if (sortField === 'return') {
+        valA = a.gainPct;
+        valB = b.gainPct;
       } else {
         valA = a.date;
         valB = b.date;
@@ -118,7 +244,7 @@ export function LedgerTable({
     });
 
     return list;
-  }, [filteredTransactions, sortField, sortAsc]);
+  }, [filteredTransactions, sortField, sortAsc, fifoProcessedTransactions]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -164,22 +290,79 @@ export function LedgerTable({
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           {/* Search Input */}
           {transactions.length > 0 && (
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                placeholder={t('ledger.search_placeholder', 'Search ledger...')} 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field"
-                style={{ 
-                  paddingLeft: '30px', 
-                  fontSize: '0.78rem', 
-                  height: '32px', 
-                  width: '200px',
-                  borderRadius: '6px'
-                }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  placeholder={t('ledger.search_placeholder', 'Search ledger...')} 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input-field"
+                  style={{ 
+                    paddingLeft: '30px', 
+                    fontSize: '0.78rem', 
+                    height: '32px', 
+                    width: '180px',
+                    borderRadius: '6px'
+                  }}
+                />
+              </div>
+
+              {/* Filter Pills */}
+              <div style={{ display: 'flex', gap: '2px', background: 'rgba(0, 0, 0, 0.3)', padding: '2px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.08)', height: '32px', alignItems: 'center' }}>
+                <button 
+                  type="button"
+                  onClick={() => setStatusFilter('all')} 
+                  style={{ 
+                    padding: '3px 9px', 
+                    fontSize: '0.72rem', 
+                    fontWeight: statusFilter === 'all' ? 700 : 500, 
+                    borderRadius: '4px', 
+                    border: 'none', 
+                    background: statusFilter === 'all' ? 'rgba(6, 182, 212, 0.2)' : 'transparent', 
+                    color: statusFilter === 'all' ? '#06b6d4' : 'var(--text-muted)', 
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {t('ledger.filter_all', 'All')}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setStatusFilter('open')} 
+                  style={{ 
+                    padding: '3px 9px', 
+                    fontSize: '0.72rem', 
+                    fontWeight: statusFilter === 'open' ? 700 : 500, 
+                    borderRadius: '4px', 
+                    border: 'none', 
+                    background: statusFilter === 'open' ? 'rgba(16, 185, 129, 0.2)' : 'transparent', 
+                    color: statusFilter === 'open' ? '#10b981' : 'var(--text-muted)', 
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {t('ledger.filter_open', 'Open Lots')}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setStatusFilter('closed')} 
+                  style={{ 
+                    padding: '3px 9px', 
+                    fontSize: '0.72rem', 
+                    fontWeight: statusFilter === 'closed' ? 700 : 500, 
+                    borderRadius: '4px', 
+                    border: 'none', 
+                    background: statusFilter === 'closed' ? 'rgba(239, 68, 68, 0.2)' : 'transparent', 
+                    color: statusFilter === 'closed' ? '#ef4444' : 'var(--text-muted)', 
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {t('ledger.filter_closed', 'Closed Lots')}
+                </button>
+              </div>
             </div>
           )}
           {activePortfolioRole !== 'viewer' && onImportCSVClick && (
@@ -234,7 +417,7 @@ export function LedgerTable({
             </div>
           )}
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {t('ledger.total_operations', 'Total operations recorded')}: {transactions.length}
+            {t('ledger.total_operations', 'Total operations recorded')}: {filteredTransactions.length}
           </span>
         </div>
       </div>
@@ -247,7 +430,7 @@ export function LedgerTable({
         </div>
       ) : filteredTransactions.length === 0 ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <p>{t('ledger.no_matches', 'No transactions match your search query.')}</p>
+          <p>{t('ledger.no_matches', 'No transactions match your search query or status filter.')}</p>
         </div>
       ) : (
         <div className="table-wrapper" onScroll={handleScroll} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
@@ -278,6 +461,9 @@ export function LedgerTable({
                 <th onClick={() => handleSort('total')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
                   {t('ledger.col_value', 'Net Value')} (Local) {renderSortArrow('total')}
                 </th>
+                <th onClick={() => handleSort('return')} style={{ textAlign: 'right', cursor: 'pointer', userSelect: 'none' }}>
+                  {t('ledger.col_return', 'Return')} {renderSortArrow('return')}
+                </th>
                 <th style={{ textAlign: 'center', cursor: 'default', background: 'rgba(255, 255, 255, 0.01)' }}>
                   {t('ledger.col_actions', 'Actions')}
                 </th>
@@ -285,6 +471,7 @@ export function LedgerTable({
             </thead>
             <tbody>
               {sortedTransactions.map((tx) => {
+                const gainPct = (tx as any).gainPct;
                 return (
                   <tr key={tx.id} className="interactive-row">
                     <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
@@ -312,6 +499,52 @@ export function LedgerTable({
                     </td>
                     <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
                       {formatCurrency(tx.totalLocal, tx.currency)}
+                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                      {tx.type === 'BUY' ? (
+                        (tx as any).isFullyClosed ? (
+                          <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                            Closed
+                          </span>
+                        ) : gainPct !== undefined && !isNaN(gainPct) ? (
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                              border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                            }}>
+                              {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
+                            </span>
+                            {(tx as any).openShares < tx.shares && (
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                {(tx as any).openShares.toFixed(2)}/{tx.shares} open
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                        )
+                      ) : (
+                        gainPct !== undefined && !isNaN(gainPct) ? (
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                            border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                          }}>
+                            {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                        )
+                      )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {activePortfolioRole === 'viewer' ? (

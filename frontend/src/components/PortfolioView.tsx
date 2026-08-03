@@ -1441,6 +1441,7 @@ export function PortfolioView({
               }}>
                 <LedgerTable 
                   transactions={transactions}
+                  holdings={holdings}
                   activePortfolioRole={activePortfolioRole}
                   onEditTransaction={handleStartEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}

@@ -123,6 +123,11 @@ export function AddDividendModal({
       setFormError(t('modals.add_div.err_date'));
       return;
     }
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr > todayStr) {
+      setFormError(t('modals.add_div.err_future_date', 'Dividend date cannot be in the future.'));
+      return;
+    }
     if (!account) {
       setFormError(t('modals.add_div.err_account'));
       return;
@@ -320,6 +325,7 @@ export function AddDividendModal({
                 <label className="form-label">{t('modals.add_div.label_date')}</label>
                 <input
                   type="date"
+                  max={new Date().toISOString().split('T')[0]}
                   className="input-field"
                   disabled={isOverrideMode}
                   value={formDate}
