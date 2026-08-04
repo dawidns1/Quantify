@@ -178,23 +178,6 @@ init_db()
 
 def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
     """Gets cached live price if not older than max_age_seconds."""
-    # 1. Fast local SQLite DB read (0.001 ms)
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM live_prices WHERE symbol = ? AND (last_updated IS NOT NULL AND (? - last_updated) < ?)",
-            (symbol.upper(), time.time(), max_age_seconds)
-        )
-        row = cursor.fetchone()
-        if row:
-            return dict(row)
-    except Exception as e:
-        print(f"[DB] Live price read error for {symbol}: {e}")
-    finally:
-        conn.close()
-
-    # 2. Fallback to Supabase KV if not found in local DB
     if SUPABASE_URL and SUPABASE_KEY:
         row = get_supabase_kv(f"LIVE_PRICE:{symbol.upper()}")
         if row:
@@ -205,31 +188,23 @@ def get_cached_live_price(symbol: str, max_age_seconds: float = 900.0) -> dict:
                     val["last_updated"] = updated_at.timestamp()
                     val.setdefault("timezone", "UTC")
                     val.setdefault("exchange", "")
-                    save_cached_live_price(symbol, val, supabase_write=False)
                     return val
             except Exception as e:
                 print(f"[Supabase Cache] Live price parse error for {symbol}: {e}")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM live_prices WHERE symbol = ? AND (last_updated IS NOT NULL AND (? - last_updated) < ?)",
+        (symbol.upper(), time.time(), max_age_seconds)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
     return None
 
 def get_expired_cached_live_price(symbol: str) -> dict:
     """Gets cached live price regardless of age as a fallback."""
-    # 1. Fast local SQLite DB read (0.001 ms)
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM live_prices WHERE symbol = ?",
-            (symbol.upper(),)
-        )
-        row = cursor.fetchone()
-        if row:
-            return dict(row)
-    except Exception as e:
-        print(f"[DB] Expired live price read error for {symbol}: {e}")
-    finally:
-        conn.close()
-
-    # 2. Fallback to Supabase KV if not found in local DB
     if SUPABASE_URL and SUPABASE_KEY:
         row = get_supabase_kv(f"LIVE_PRICE:{symbol.upper()}")
         if row:
@@ -242,6 +217,16 @@ def get_expired_cached_live_price(symbol: str) -> dict:
                 return val
             except Exception as e:
                 print(f"[Supabase Cache] Expired live price parse error for {symbol}: {e}")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM live_prices WHERE symbol = ?",
+        (symbol.upper(),)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
     return None
 
 def save_cached_live_price(symbol: str, data: dict, supabase_write: bool = True):
@@ -283,36 +268,7 @@ def save_cached_live_price(symbol: str, data: dict, supabase_write: bool = True)
 # --- API FOR HISTORICAL DAILY PRICES ---
 
 def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) -> tuple:
-    """Returns (prices_dict, dividends_dict) from daily_prices table (0ms local DB first)."""
-    # 1. Fast local SQLite DB read
-    conn = get_connection()
-    try:
-        start_str = start_date.strftime("%Y-%m-%d")
-        end_str = end_date.strftime("%Y-%m-%d")
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT date, close, dividend FROM daily_prices WHERE symbol = ? AND date BETWEEN ? AND ? ORDER BY date ASC",
-            (symbol.upper(), start_str, end_str)
-        )
-        rows = cursor.fetchall()
-        if rows:
-            prices_dict = {}
-            dividends_dict = {}
-            for row in rows:
-                try:
-                    dt = datetime.strptime(row["date"], "%Y-%m-%d").date()
-                    prices_dict[dt] = float(row["close"])
-                    if row["dividend"] and float(row["dividend"]) > 0:
-                        dividends_dict[dt] = float(row["dividend"])
-                except Exception:
-                    pass
-            return prices_dict, dividends_dict
-    except Exception as e:
-        print(f"[DB] Historical prices read error for {symbol}: {e}")
-    finally:
-        conn.close()
-
-    # 2. Fallback to Supabase KV if missing in local DB
+    """Returns (prices_dict, dividends_dict) from daily_prices table."""
     if SUPABASE_URL and SUPABASE_KEY:
         row = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
         if row:
@@ -329,12 +285,36 @@ def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) 
                 
                 filtered_prices = {d: p for d, p in prices_dict.items() if start_date <= d <= end_date}
                 filtered_dividends = {d: div for d, div in dividends_dict.items() if start_date <= d <= end_date}
-                save_cached_historical_prices(symbol, filtered_prices, filtered_dividends, supabase_write=False)
                 return filtered_prices, filtered_dividends
             except Exception as e:
                 print(f"[Supabase Cache] Historical parse error: {e}")
                 
-    return {}, {}
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+    
+    cursor.execute(
+        "SELECT date, close, dividend FROM daily_prices WHERE symbol = ? AND date BETWEEN ? AND ? ORDER BY date ASC",
+        (symbol.upper(), start_str, end_str)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    
+    prices_dict = {}
+    dividends_dict = {}
+    
+    for row in rows:
+        try:
+            dt = datetime.strptime(row["date"], "%Y-%m-%d").date()
+            prices_dict[dt] = float(row["close"])
+            if row["dividend"] and float(row["dividend"]) > 0:
+                dividends_dict[dt] = float(row["dividend"])
+        except Exception:
+            pass
+            
+    return prices_dict, dividends_dict
 
 def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict, supabase_write: bool = True):
     """Saves historical daily prices and dividends to daily_prices table."""
@@ -390,40 +370,7 @@ def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict, su
 # --- API FOR UPCOMING CORPORATE EVENTS ---
 
 def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0, ignore_ttl: bool = False) -> list:
-    """Gets cached upcoming events if they are not older than max_age_seconds (0ms local DB first)."""
-    # 1. Fast local SQLite DB read
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT last_updated FROM upcoming_events WHERE symbol = ? LIMIT 1",
-            (symbol.upper(),)
-        )
-        row = cursor.fetchone()
-        if row:
-            if ignore_ttl or (time.time() - row["last_updated"] <= max_age_seconds):
-                cursor.execute(
-                    "SELECT symbol, event_type, event_date, description, last_div_val, currency FROM upcoming_events WHERE symbol = ?",
-                    (symbol.upper(),)
-                )
-                rows = cursor.fetchall()
-                events = []
-                for r in rows:
-                    events.append({
-                        "symbol": r["symbol"],
-                        "type": r["event_type"],
-                        "date": r["event_date"],
-                        "description": r["description"],
-                        "last_dividend_value": r["last_div_val"],
-                        "currency": r["currency"]
-                    })
-                return events
-    except Exception as e:
-        print(f"[DB] Upcoming events read error for {symbol}: {e}")
-    finally:
-        conn.close()
-
-    # 2. Fallback to Supabase KV if missing in local DB
+    """Gets cached upcoming events if they are not older than max_age_seconds (unless ignore_ttl is True)."""
     if SUPABASE_URL and SUPABASE_KEY:
         row = get_supabase_kv(f"UPCOMING_EVENTS:{symbol.upper()}")
         if row:
@@ -435,8 +382,44 @@ def get_cached_upcoming_events(symbol: str, max_age_seconds: float = 43200.0, ig
                     return val.get("events") or []
             except Exception:
                 pass
-
-    return None
+                
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Check if there is any cached record at all
+    cursor.execute(
+        "SELECT last_updated FROM upcoming_events WHERE symbol = ? LIMIT 1",
+        (symbol.upper(),)
+    )
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        return None
+        
+    if not ignore_ttl and (time.time() - row["last_updated"] > max_age_seconds):
+        conn.close()
+        return None
+        
+    # Fetch events
+    cursor.execute(
+        "SELECT symbol, event_type, event_date, description, last_div_val, currency FROM upcoming_events WHERE symbol = ?",
+        (symbol.upper(),)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    
+    events = []
+    for r in rows:
+        events.append({
+            "symbol": r["symbol"],
+            "type": r["event_type"],
+            "date": r["event_date"],
+            "description": r["description"],
+            "last_dividend_value": r["last_div_val"],
+            "currency": r["currency"]
+        })
+    return events
 
 def update_upcoming_events_timestamp(symbol: str):
     """Updates the last_updated timestamp for all cached events of a symbol to the current time."""

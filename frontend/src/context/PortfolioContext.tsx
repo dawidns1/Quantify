@@ -298,8 +298,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     return list;
   }, [allTransactions, activePortfolioId, selectedAccount]);
 
-  const activeHoldingsAbortControllerRef = useRef<AbortController | null>(null);
-
   // --- Fetch Actions ---
   const fetchHoldings = async (
     curr: BaseCurrencyType = baseCurrency,
@@ -308,13 +306,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     forceLive = false
   ) => {
     if (!activePortfolioId) return;
-
-    // Abort previous in-flight request if user rapidly clicked between accounts/portfolios or hit refresh
-    if (activeHoldingsAbortControllerRef.current) {
-      activeHoldingsAbortControllerRef.current.abort();
-    }
-    const abortController = new AbortController();
-    activeHoldingsAbortControllerRef.current = abortController;
 
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
@@ -328,16 +319,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         curr,
         accountFilter,
         linkCash,
-        forceLive,
-        abortController.signal
+        forceLive
       );
 
-      // Prevent race conditions: check if a newer request started or portfolio/currency changed
-      if (
-        requestId < holdingsRequestIdRef.current ||
-        activePortfolioId !== latestParamsRef.current.activePortfolioId ||
-        curr !== latestParamsRef.current.baseCurrency
-      ) {
+      // Prevent race conditions: ensure only the latest request updates state
+      if (requestId !== holdingsRequestIdRef.current) {
         telemetry.endTrace(traceId, 'success', undefined, { discarded: true });
         return; // Discard stale response
       }
@@ -562,20 +548,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedH = localStorage.getItem(`cached_holdings_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedS = localStorage.getItem(`cached_summary_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
-      let hasCache = false;
       if (cachedH && cachedS) {
         try {
           setHoldings(JSON.parse(cachedH));
           setSummary(JSON.parse(cachedS));
           if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
-          hasCache = true;
-          setLoadingHoldings(false);
-        } catch (e) {
-          hasCache = false;
-        }
+        } catch (e) {}
       }
 
-      fetchHoldings(baseCurrency, selectedAccount, hasCache);
+      fetchHoldings(baseCurrency, selectedAccount, false);
     } else {
       setLoadingHoldings(false);
     }
