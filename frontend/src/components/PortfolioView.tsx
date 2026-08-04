@@ -1523,6 +1523,7 @@ export function PortfolioView({
                           dividends={dividendsList}
                           activePortfolioRole={activePortfolioRole}
                           baseCurrency={summary.base_currency}
+                          accountColors={activeAccountColors}
                           onEditDividendClick={(div) => {
                             setEditingDividend(div);
                             setShowAddDividendModal(true);
@@ -1576,6 +1577,7 @@ export function PortfolioView({
                         dividends={dividendsList}
                         activePortfolioRole={activePortfolioRole}
                         baseCurrency={summary.base_currency}
+                        accountColors={activeAccountColors}
                         onEditDividendClick={(div) => {
                           setEditingDividend(div);
                           setShowAddDividendModal(true);

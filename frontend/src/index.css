@@ -475,16 +475,17 @@ svg.gradient-text,
 
 .screener-table tbody tr {
   cursor: pointer;
-  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.05s ease;
+  will-change: background-color;
 }
 
 .screener-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: rgba(255, 255, 255, 0.045) !important;
 }
 
 .screener-table tbody tr td:first-child {
   position: relative;
-  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.05s ease;
 }
 
 .screener-table tbody tr:hover td:first-child {

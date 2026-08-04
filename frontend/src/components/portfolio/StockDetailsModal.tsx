@@ -1153,7 +1153,7 @@ export function StockDetailsModal({
 
                 {/* Transaction History Section Header & Search */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {t('holdings.transaction_ledger', 'Transaction Ledger')}
@@ -1176,7 +1176,7 @@ export function StockDetailsModal({
                       </span>
                     </div>
                     {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'nowrap' }}>
                         <div className="search-container" style={{ 
                           width: '100%', 
                           maxWidth: '220px', 
@@ -1350,17 +1350,8 @@ export function StockDetailsModal({
                                   );
                                 })()}
                               </td>
-                              <td>
-                                <span style={{ 
-                                  padding: '2px 6px', 
-                                  borderRadius: '4px', 
-                                  fontSize: '0.72rem', 
-                                  fontWeight: 700,
-                                  background: tx.type === 'BUY' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                                  color: tx.type === 'BUY' ? 'var(--color-green)' : 'var(--color-red)'
-                                }}>
-                                  {tx.type === 'BUY' ? t('ledger.type_buy', 'BUY') : t('ledger.type_sell', 'SELL')}
-                                </span>
+                              <td style={{ fontWeight: 700, fontSize: '0.8rem', color: tx.type === 'BUY' ? '#10b981' : '#ef4444' }}>
+                                {tx.type === 'BUY' ? t('ledger.type_buy', 'BUY') : t('ledger.type_sell', 'SELL')}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                 {tx.shares.toFixed(4).replace(/\.?0+$/, '')}
@@ -1377,7 +1368,7 @@ export function StockDetailsModal({
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                 {tx.type === 'BUY' ? (
                                   (tx as any).isFullyClosed ? (
-                                    <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                                       Closed
                                     </span>
                                   ) : gainPct !== undefined && !isNaN(gainPct) ? (
@@ -1385,13 +1376,9 @@ export function StockDetailsModal({
                                       <span 
                                         title="Capital Price Return (price appreciation excluding dividends)"
                                         style={{
-                                          padding: '2px 6px',
-                                          borderRadius: '4px',
-                                          fontSize: '0.72rem',
+                                          fontSize: '0.78rem',
                                           fontWeight: 700,
-                                          background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                          color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                                          border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                          color: gainPct >= 0 ? '#10b981' : '#ef4444'
                                         }}
                                       >
                                         {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
@@ -1408,13 +1395,9 @@ export function StockDetailsModal({
                                 ) : (
                                   gainPct !== undefined && !isNaN(gainPct) ? (
                                     <span style={{
-                                      padding: '2px 6px',
-                                      borderRadius: '4px',
-                                      fontSize: '0.72rem',
+                                      fontSize: '0.78rem',
                                       fontWeight: 700,
-                                      background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                      color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                                      border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                      color: gainPct >= 0 ? '#10b981' : '#ef4444'
                                     }}>
                                       {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
                                     </span>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, Edit2, Trash2, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getAccountNeonTheme } from '../../utils/accountColors';
 
 interface DividendLedgerTableProps {
   dividends: any[];
@@ -10,6 +11,7 @@ interface DividendLedgerTableProps {
   onDeleteDividendClick: (div: any) => void;
   style?: React.CSSProperties;
   onScrollToBottomChange?: (isAtBottom: boolean) => void;
+  accountColors?: Record<string, string>;
 }
 
 export function DividendLedgerTable({
@@ -19,7 +21,8 @@ export function DividendLedgerTable({
   onEditDividendClick,
   onDeleteDividendClick,
   style,
-  onScrollToBottomChange
+  onScrollToBottomChange,
+  accountColors = {}
 }: DividendLedgerTableProps) {
   const wasAtBottomRef = useRef(false);
   const { t } = useTranslation();
@@ -249,8 +252,25 @@ export function DividendLedgerTable({
                         {div.symbol}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      {div.account || 'Default'}
+                    <td>
+                      {(() => {
+                        const theme = getAccountNeonTheme(div.account, accountColors);
+                        return (
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            padding: '2px 7px', 
+                            borderRadius: '4px', 
+                            background: theme.bg, 
+                            color: theme.hex, 
+                            border: theme.border,
+                            boxShadow: theme.glow,
+                            fontWeight: 700,
+                            letterSpacing: '0.3px'
+                          }}>
+                            {div.account || 'Default'}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 500, fontSize: '0.8rem' }}>
                       {div.shares}

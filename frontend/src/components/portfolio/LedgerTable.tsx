@@ -454,7 +454,7 @@ export function LedgerTable({
                   {t('ledger.col_type', 'Type')} {renderSortArrow('type')}
                 </th>
                 <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  {t('ledger.col_symbol', 'Symbol')} {renderSortArrow('symbol')}
+                  {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
                 </th>
                 <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                   {t('ledger.col_account', 'Account')} {renderSortArrow('account')}
@@ -487,10 +487,8 @@ export function LedgerTable({
                     <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
                       {tx.date}
                     </td>
-                    <td>
-                      <span className={`ledger-type-badge ${tx.type === 'BUY' ? 'badge-buy' : 'badge-sell'}`}>
-                        {tx.type === 'BUY' ? t('modals.add_tx.type_buy', 'Buy') : t('modals.add_tx.type_sell', 'Sell')}
-                      </span>
+                    <td style={{ fontWeight: 700, fontSize: '0.8rem', color: tx.type === 'BUY' ? '#10b981' : '#ef4444' }}>
+                      {tx.type === 'BUY' ? t('modals.add_tx.type_buy', 'Buy') : t('modals.add_tx.type_sell', 'Sell')}
                     </td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       {tx.symbol}
@@ -530,19 +528,15 @@ export function LedgerTable({
                     <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                       {tx.type === 'BUY' ? (
                         (tx as any).isFullyClosed ? (
-                          <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                             Closed
                           </span>
                         ) : gainPct !== undefined && !isNaN(gainPct) ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                             <span style={{
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontSize: '0.72rem',
+                              fontSize: '0.78rem',
                               fontWeight: 700,
-                              background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                              color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                              border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                              color: gainPct >= 0 ? '#10b981' : '#ef4444'
                             }}>
                               {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
                             </span>
@@ -558,13 +552,9 @@ export function LedgerTable({
                       ) : (
                         gainPct !== undefined && !isNaN(gainPct) ? (
                           <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontSize: '0.72rem',
+                            fontSize: '0.78rem',
                             fontWeight: 700,
-                            background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                            color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                            border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                            color: gainPct >= 0 ? '#10b981' : '#ef4444'
                           }}>
                             {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
                           </span>
