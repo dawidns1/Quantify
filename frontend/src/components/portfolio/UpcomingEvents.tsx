@@ -67,7 +67,7 @@ export function UpcomingEvents({
         setEvents(eventsData);
       })
       .catch((err) => {
-        if (err?.message !== 'Tab suspended (background).') {
+        if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
           console.error('Error fetching upcoming events:', err);
         }
       })

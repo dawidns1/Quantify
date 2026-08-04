@@ -362,7 +362,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
       if (requestId === holdingsRequestIdRef.current) {
-        if (!silent) setLoadingHoldings(false);
+        setLoadingHoldings(false);
       }
     }
   };
@@ -569,6 +569,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setSummary(JSON.parse(cachedS));
           if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
           hasCache = true;
+          setLoadingHoldings(false);
         } catch (e) {
           hasCache = false;
         }
