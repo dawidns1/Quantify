@@ -922,13 +922,16 @@ export function StockDetailsModal({
                     </div>
                     <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
                       <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_gain_loss', 'Gain/Loss')}</span>
-                      <span style={{ 
-                        fontSize: '1rem', 
-                        fontWeight: 700, 
-                        color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
-                        fontFamily: 'monospace' 
-                      }}>
-                        {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)}
+                      <span 
+                        style={{ 
+                          fontSize: '1rem', 
+                          fontWeight: 700, 
+                          color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
+                          fontFamily: 'monospace' 
+                        }}
+                        title="Total Return (includes capital gains + net dividends)"
+                      >
+                        {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)} ({holdingDetails.gain_percent >= 0 ? '+' : ''}{holdingDetails.gain_percent.toFixed(2)}%)
                       </span>
                     </div>
                   </div>
@@ -1365,15 +1368,18 @@ export function StockDetailsModal({
                                     </span>
                                   ) : gainPct !== undefined && !isNaN(gainPct) ? (
                                     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                      <span style={{
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
-                                        background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                        color: gainPct >= 0 ? '#10b981' : '#ef4444',
-                                        border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
-                                      }}>
+                                      <span 
+                                        title="Capital Price Return (price appreciation excluding dividends)"
+                                        style={{
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          fontSize: '0.72rem',
+                                          fontWeight: 700,
+                                          background: gainPct >= 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                          color: gainPct >= 0 ? '#10b981' : '#ef4444',
+                                          border: gainPct >= 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                                        }}
+                                      >
                                         {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%
                                       </span>
                                       {(tx as any).openShares < tx.shares && (
