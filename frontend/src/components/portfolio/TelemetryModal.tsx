@@ -258,15 +258,25 @@ export function TelemetryModal({ isOpen, onClose }: TelemetryModalProps) {
                       background: 'rgba(239, 68, 68, 0.08)',
                       padding: '0.35rem 0.6rem',
                       borderRadius: '4px',
-                      marginTop: '0.2rem'
+                      marginTop: '0.2rem',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                      whiteSpace: 'pre-wrap'
                     }}>
-                      <AlertTriangle size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                      <AlertTriangle size={12} style={{ display: 'inline', marginRight: '4px', flexShrink: 0 }} />
                       {log.errorMessage}
                     </div>
                   )}
 
                   {log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    <div style={{ 
+                      fontSize: '0.68rem', 
+                      color: 'var(--text-muted)', 
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                      whiteSpace: 'pre-wrap'
+                    }}>
                       {JSON.stringify(log.metadata)}
                     </div>
                   )}

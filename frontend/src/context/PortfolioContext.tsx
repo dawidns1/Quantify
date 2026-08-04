@@ -260,6 +260,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   };
 
   const holdingsRequestIdRef = useRef(0);
+  const isFetchingHoldingsRef = useRef(false);
+  const lastTabSwitchRef = useRef(0);
   const chartRequestIdRef = useRef(0);
   const analyticsRequestIdRef = useRef(0);
 
@@ -307,6 +309,12 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
 
+    // Deduplicate silent concurrent requests to avoid network queue flooding
+    if (silent && isFetchingHoldingsRef.current) {
+      return;
+    }
+    isFetchingHoldingsRef.current = true;
+
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
     const traceId = telemetry.startTrace('fetch_holdings', 'performance', { portfolio_id: activePortfolioId, currency: curr, account: accountFilter });
@@ -347,6 +355,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
+      isFetchingHoldingsRef.current = false;
       if (requestId === holdingsRequestIdRef.current) {
         setLoadingHoldings(false);
       }
@@ -562,14 +571,23 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
 
-  // Set up live polling for real-time price updates when active portfolios exist
-  // Uses backend next_check_seconds to schedule the next check, suspending polling entirely when tab is hidden
+  // Set up live polling & debounced tab visibility handler for real-time price updates
   useEffect(() => {
     if (!activePortfolioId || portfolios.length === 0) return;
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Force refresh immediately when tab becomes visible
+        const now = Date.now();
+        if (now - lastTabSwitchRef.current < 3000) return; // Debounce rapid tab toggling
+        lastTabSwitchRef.current = now;
+
+        if (loadingHoldings || loadingTransactions || loadingChart) {
+          setLoadingHoldings(false);
+          setLoadingTransactions(false);
+          setLoadingChart(false);
+          setLoadingAnalytics(false);
+        }
+
         fetchHoldings(baseCurrency, selectedAccount, true);
       }
     };
@@ -590,7 +608,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (timeout) clearTimeout(timeout);
     };
-  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds]);
+  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
 
   // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
@@ -623,26 +641,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       setLoadingAnalytics(false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
-
-  // --- Tab Visibility Resume Auto-Heal ---
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        if (loadingHoldings || loadingTransactions || loadingChart) {
-          console.warn('[PortfolioContext] User returned to tab while sync was in-flight. Resetting stuck loading states and refreshing.');
-          setLoadingHoldings(false);
-          setLoadingTransactions(false);
-          setLoadingChart(false);
-          setLoadingAnalytics(false);
-          if (activePortfolioId) {
-            fetchHoldings(baseCurrency, selectedAccount, true);
-          }
-        }
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [loadingHoldings, loadingTransactions, loadingChart, activePortfolioId, baseCurrency, selectedAccount]);
 
   return (
     <PortfolioContext.Provider value={{
