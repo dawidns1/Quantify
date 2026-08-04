@@ -242,79 +242,56 @@ class YFinanceProvider(BaseDataProvider):
         return res
 
     def _download_bulk_live_prices_fallback(self, symbols: list, fx_pairs: list) -> dict:
-        all_missing = symbols + fx_pairs
+        all_missing = list(set([s.upper().strip() for s in symbols + fx_pairs if s.strip()]))
         if not all_missing:
             return {"stocks": {}, "fx": {}}
 
-        symbols_str = " ".join(all_missing)
         res = {"stocks": {}, "fx": {}}
-        try:
-            for sym in symbols:
-                live_price = 0.0
-                previous_close = 0.0
-                try:
-                    t = yf.Ticker(sym, session=YF_SESSION)
-                    fi = t.fast_info
-                    live_price = fi.get("lastPrice") or fi.get("lastMarketPrice") or fi.get("previousClose") or 0.0
-                    previous_close = fi.get("previousClose") or fi.get("regularMarketPreviousClose") or live_price
-                except Exception as sym_err:
-                    print(f"Error fetching fast_info for {sym}: {sym_err}")
 
-                # If fast_info failed, attempt 5d daily download fallback
+        def fetch_single_fallback(sym):
+            live_price = 0.0
+            previous_close = 0.0
+            tz = "UTC"
+            ex = ""
+            try:
+                t = yf.Ticker(sym, session=YF_SESSION)
+                fi = t.fast_info
+                live_price = fi.get("lastPrice") or fi.get("lastMarketPrice") or fi.get("previousClose") or 0.0
+                previous_close = fi.get("previousClose") or fi.get("regularMarketPreviousClose") or live_price
+                tz = fi.get("timezone") or "UTC"
+                ex = fi.get("exchange") or ""
+            except Exception:
+                pass
+            return sym, live_price, previous_close, tz, ex
+
+        from concurrent.futures import ThreadPoolExecutor
+        try:
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                results = list(executor.map(fetch_single_fallback, all_missing))
+            for sym, live_price, previous_close, tz, ex in results:
                 if not live_price or live_price == 0.0:
-                    try:
-                        df = yf.download(sym, period="5d", progress=False, session=YF_SESSION)
-                        if not df.empty and 'Close' in df.columns:
-                            closes = df['Close'].dropna()
-                            if not closes.empty:
-                                live_price = float(closes.iloc[-1])
-                                if len(closes) >= 2:
-                                    previous_close = float(closes.iloc[-2])
-                                else:
-                                    previous_close = live_price
-                    except Exception as single_err:
-                        print(f"Single ticker fallback failed for {sym}: {single_err}")
-                
-                guessed_currency = guess_native_currency(sym)
-                res["stocks"][sym] = {
-                    "live_price": float(live_price) if live_price else 0.0,
-                    "previous_close": float(previous_close) if previous_close else 0.0,
-                    "company_name": sym,
-                    "native_currency": guessed_currency
-                }
-                
-            for pair in fx_pairs:
-                rate = 1.0
-                try:
-                    if len(all_missing) == 1:
-                        ticker_df = df
-                        if isinstance(ticker_df.columns, pd.MultiIndex):
-                            ticker_df.columns = ticker_df.columns.get_level_values(0)
-                        prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                    else:
-                        if pair in df.columns.levels[0]:
-                            ticker_df = df[pair]
-                            prices_series = ticker_df['Close'] if 'Close' in ticker_df.columns else pd.Series(dtype=float)
-                        else:
-                            prices_series = pd.Series(dtype=float)
-                            
-                    if hasattr(prices_series, 'dropna'):
-                        non_nan_series = prices_series.dropna()
-                    else:
-                        non_nan_series = pd.Series([prices_series] if prices_series is not None else [])
-                    if not non_nan_series.empty:
-                        rate = float(non_nan_series.iloc[-1])
-                except Exception as pair_err:
-                    print(f"Error parsing live FX bulk data for {pair}: {pair_err}")
-                
-                if not rate or rate == 1.0 or math.isnan(rate):
-                    base_pair = pair.replace("=X", "")
-                    rate = FALLBACK_RATES.get(base_pair, 1.0)
-                res["fx"][pair] = rate
-                
+                    continue
+                if sym in fx_pairs:
+                    res["fx"][sym] = live_price
+                else:
+                    guessed_currency = guess_native_currency(sym)
+                    res["stocks"][sym] = {
+                        "live_price": float(live_price),
+                        "previous_close": float(previous_close),
+                        "company_name": sym,
+                        "native_currency": guessed_currency,
+                        "timezone": tz,
+                        "exchange": ex
+                    }
         except Exception as e:
             print(f"Fallback YFinance bulk prefetch failed: {e}")
-            
+
+        # Set fallbacks for any remaining FX pairs
+        for pair in fx_pairs:
+            if pair not in res["fx"]:
+                base_pair = pair.replace("=X", "")
+                res["fx"][pair] = FALLBACK_RATES.get(base_pair, 1.0)
+
         return res
 
     def download_live_ticker(self, symbol: str) -> dict:

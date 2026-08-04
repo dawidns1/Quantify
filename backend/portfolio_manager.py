@@ -113,14 +113,25 @@ class PortfolioManager:
         time_float = hour + minute / 60.0
         
         if "WSE" in exchange_str or "WAR" in exchange_str or "Europe/Warsaw" in timezone_str:
-            # GPW: 09:00 - 17:00
+            # GPW (Warsaw): 09:00 - 17:00 CEST
             return 9.0 <= time_float < 17.0
+        elif "GER" in exchange_str or "DE" in exchange_str or "Europe/Berlin" in timezone_str or "XETRA" in exchange_str:
+            # XETRA (Frankfurt): 09:00 - 17:30 CEST
+            return 9.0 <= time_float < 17.5
+        elif "LSE" in exchange_str or "Europe/London" in timezone_str:
+            # London Stock Exchange: 08:00 - 16:30 BST
+            return 8.0 <= time_float < 16.5
+        elif "AMS" in exchange_str or "PAR" in exchange_str or "MIL" in exchange_str or "MAD" in exchange_str or "Europe/Amsterdam" in timezone_str or "Europe/Paris" in timezone_str or "Europe/Rome" in timezone_str or "Europe/Madrid" in timezone_str:
+            # Euronext / European Exchanges: 09:00 - 17:30 CEST
+            return 9.0 <= time_float < 17.5
         elif "America/New_York" in timezone_str or exchange_str in ["NMS", "NYQ", "ASE"]:
-            # US: 09:30 - 16:00
+            # US Exchanges: 09:30 - 16:00 EDT
             return 9.5 <= time_float < 16.0
-        elif "CCY" in exchange_str or "forex" in exchange_str.lower() or timezone_str == "UTC":
+        elif "CCY" in exchange_str or "forex" in exchange_str.lower() or (symbol and symbol.upper().endswith("=X")):
+            # FX Currency pairs: 24/5 (Mon 00:00 to Fri 23:59)
             return True
         else:
+            # Default European trading hours
             return 9.0 <= time_float < 17.5
 
     @classmethod
@@ -236,12 +247,33 @@ class PortfolioManager:
                             "company_name": sqlite_data["company_name"],
                             "native_currency": sqlite_data["native_currency"]
                         })
+                        tz_val = sqlite_data.get("timezone")
+                        ex_val = sqlite_data.get("exchange")
+                        if not tz_val or tz_val == "UTC":
+                            sym_upper = sym.upper().strip()
+                            if sym_upper.endswith(".WA"):
+                                tz_val, ex_val = "Europe/Warsaw", "WSE"
+                            elif sym_upper.endswith(".DE"):
+                                tz_val, ex_val = "Europe/Berlin", "GER"
+                            elif sym_upper.endswith(".L"):
+                                tz_val, ex_val = "Europe/London", "LSE"
+                            elif sym_upper.endswith(".AS"):
+                                tz_val, ex_val = "Europe/Amsterdam", "AMS"
+                            elif sym_upper.endswith(".PA"):
+                                tz_val, ex_val = "Europe/Paris", "PAR"
+                            elif sym_upper.endswith(".MI"):
+                                tz_val, ex_val = "Europe/Rome", "MIL"
+                            elif sym_upper.endswith(".MC"):
+                                tz_val, ex_val = "Europe/Madrid", "MAD"
+                            elif "." not in sym_upper and not sym_upper.endswith("=X") and sym_upper not in ["USD", "PLN", "EUR"]:
+                                tz_val, ex_val = "America/New_York", "NMS"
+
                         cls._ticker_metadata_cache[sym] = {
                             "company_name": sqlite_data["company_name"],
                             "native_currency": sqlite_data["native_currency"].upper().strip(),
                             "asset_class": "Equity",
-                            "timezone": sqlite_data["timezone"],
-                            "exchange": sqlite_data["exchange"]
+                            "timezone": tz_val or "UTC",
+                            "exchange": ex_val or ""
                         }
                     else:
                         missing_symbols.append(sym)
