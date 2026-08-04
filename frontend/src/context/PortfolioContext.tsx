@@ -309,18 +309,12 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
 
-    // Only abort previous in-flight request if portfolio or base currency changed
-    if (
-      activeHoldingsAbortControllerRef.current &&
-      (latestParamsRef.current.activePortfolioId !== activePortfolioId ||
-       latestParamsRef.current.baseCurrency !== curr)
-    ) {
+    // Abort previous in-flight request if user rapidly clicked between accounts/portfolios or hit refresh
+    if (activeHoldingsAbortControllerRef.current) {
       activeHoldingsAbortControllerRef.current.abort();
-      activeHoldingsAbortControllerRef.current = new AbortController();
-    } else if (!activeHoldingsAbortControllerRef.current) {
-      activeHoldingsAbortControllerRef.current = new AbortController();
     }
-    const abortController = activeHoldingsAbortControllerRef.current;
+    const abortController = new AbortController();
+    activeHoldingsAbortControllerRef.current = abortController;
 
     if (!silent) setLoadingHoldings(true);
     const requestId = ++holdingsRequestIdRef.current;
@@ -338,8 +332,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         abortController.signal
       );
 
-      // Prevent race conditions: check if portfolio or currency changed
+      // Prevent race conditions: check if a newer request started or portfolio/currency changed
       if (
+        requestId < holdingsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency
       ) {
