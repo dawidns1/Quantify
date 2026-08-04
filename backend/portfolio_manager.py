@@ -1583,6 +1583,39 @@ class PortfolioManager:
         # Sort timeline by date ascending
         timeline_events.sort(key=lambda x: x["date"])
 
+        # Map each account to its predominant transaction currency (e.g. PLN or EUR)
+        primary_account_currency = {}
+        account_curr_counts = {}
+        for tx in sorted_txs:
+            acc_name = tx.get("account", "Default") or "Default"
+            tx_c = tx.get("currency", "").upper().strip()
+            if tx_c and not tx.get("symbol", "").startswith("CASH_"):
+                account_curr_counts.setdefault(acc_name, {})
+                account_curr_counts[acc_name][tx_c] = account_curr_counts[acc_name].get(tx_c, 0) + 1
+
+        for acc_name, curr_counts in account_curr_counts.items():
+            if curr_counts:
+                primary_account_currency[acc_name] = max(curr_counts.items(), key=lambda x: x[1])[0]
+
+        account_cash_currencies = portfolio_settings.get("accountCashCurrencies", {}) if portfolio_settings else {}
+
+        def get_account_target_currency(acc_name, stock_native_curr):
+            if account_cash_currencies:
+                target = account_cash_currencies.get(acc_name)
+                if not target:
+                    for k, v in account_cash_currencies.items():
+                        if k.lower() == acc_name.lower():
+                            target = v
+                            break
+                if target:
+                    target_upper = target.upper().strip()
+                    if target_upper != "AUTO":
+                        return target_upper
+            acc_primary = primary_account_currency.get(acc_name)
+            if acc_primary:
+                return acc_primary
+            return stock_native_curr
+
         for event in timeline_events:
             if event["type"] == "TX":
                 tx = event["data"]
@@ -1620,9 +1653,22 @@ class PortfolioManager:
                 d = event["data"]
                 sym = d["symbol"]
                 acc = d["account"]
-                native_curr = ticker_info.get(sym, {}).get("native_currency", "USD")
-                cash_balances.setdefault(acc, {}).setdefault(native_curr, 0.0)
-                cash_balances[acc][native_curr] += d["net_native"]
+                native_curr = ticker_info.get(sym, {}).get("native_currency", "USD").upper().strip()
+                target_curr = get_account_target_currency(acc, native_curr)
+
+                net_native = d.get("net_native", 0.0)
+                net_base = d.get("net_base", 0.0)
+
+                if target_curr == native_curr:
+                    dividend_amount = net_native
+                elif target_curr == base_currency:
+                    dividend_amount = net_base
+                else:
+                    fx_target_to_base = fx_rates.get(target_curr, 1.0)
+                    dividend_amount = net_base / fx_target_to_base if fx_target_to_base > 0 else net_base
+
+                cash_balances.setdefault(acc, {}).setdefault(target_curr, 0.0)
+                cash_balances[acc][target_curr] += dividend_amount
                     
         # Sum cash balances across accounts
         final_cash = {}
