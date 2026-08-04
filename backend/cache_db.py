@@ -269,35 +269,12 @@ def save_cached_live_price(symbol: str, data: dict, supabase_write: bool = True)
 
 def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) -> tuple:
     """Returns (prices_dict, dividends_dict) from daily_prices table."""
-    if SUPABASE_URL and SUPABASE_KEY:
-        row = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
-        if row:
-            try:
-                prices_dict = {}
-                dividends_dict = {}
-                val = row["value"]
-                for k, v in val.get("prices", {}).items():
-                    dt = date(int(k[:4]), int(k[5:7]), int(k[8:10]))
-                    prices_dict[dt] = float(v)
-                for k, v in val.get("dividends", {}).items():
-                    dt = date(int(k[:4]), int(k[5:7]), int(k[8:10]))
-                    dividends_dict[dt] = float(v)
-                
-                filtered_prices = {d: p for d, p in prices_dict.items() if start_date <= d <= end_date}
-                filtered_dividends = {d: div for d, div in dividends_dict.items() if start_date <= d <= end_date}
-                return filtered_prices, filtered_dividends
-            except Exception as e:
-                print(f"[Supabase Cache] Historical parse error: {e}")
-                
     conn = get_connection()
     cursor = conn.cursor()
     
-    start_str = start_date.strftime("%Y-%m-%d")
-    end_str = end_date.strftime("%Y-%m-%d")
-    
     cursor.execute(
-        "SELECT date, close, dividend FROM daily_prices WHERE symbol = ? AND date BETWEEN ? AND ? ORDER BY date ASC",
-        (symbol.upper(), start_str, end_str)
+        "SELECT date, close, dividend FROM daily_prices WHERE symbol = ? ORDER BY date ASC",
+        (symbol.upper(),)
     )
     rows = cursor.fetchall()
     conn.close()
@@ -319,7 +296,7 @@ def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) 
 def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict, supabase_write: bool = True):
     """Saves historical daily prices and dividends to daily_prices table."""
     if not prices:
-        return
+        prices = {date(2000, 1, 1): 0.0, date.today(): 0.0}
         
     if supabase_write and SUPABASE_URL and SUPABASE_KEY:
         serialized_prices = {}

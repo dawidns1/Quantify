@@ -376,8 +376,11 @@ class PortfolioManager:
             for sym in symbols:
                 sym = sym.upper().strip()
                 cache_entry = cls._historical_stock_cache.get(sym)
-                if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)) and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
-                    continue
+                if cache_entry and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
+                    if not cache_entry["prices"]:
+                        continue
+                    if (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
+                        continue
                     
                 # Try loading from L2 SQLite Cache
                 sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
@@ -385,15 +388,17 @@ class PortfolioManager:
                     min_date = min(sqlite_prices.keys())
                     max_date = max(sqlite_prices.keys())
                     has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
-                    has_end = (end_dt - max_date <= timedelta(days=3))
+                    has_end = (end_dt - max_date <= timedelta(days=7))
+                    
+                    # Populate memory cache with SQLite prices immediately so calculations never block
+                    cls._historical_stock_cache[sym] = {
+                        "start_date": min_date,
+                        "end_date": max_date,
+                        "last_updated": now,
+                        "prices": sqlite_prices,
+                        "dividends": sqlite_divs
+                    }
                     if has_start and has_end:
-                        cls._historical_stock_cache[sym] = {
-                            "start_date": min_date,
-                            "end_date": max_date,
-                            "last_updated": now,
-                            "prices": sqlite_prices,
-                            "dividends": sqlite_divs
-                        }
                         continue
                     
                 missing_symbols.append(sym)
@@ -433,6 +438,17 @@ class PortfolioManager:
                         }
                         # Save to SQLite L2 Cache only
                         save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
+                    else:
+                        # Cache failed/empty tickers to prevent hammering Yahoo Finance on every request
+                        cls._historical_stock_cache[sym] = {
+                            "start_date": date(2000, 1, 1),
+                            "end_date": date.today(),
+                            "last_updated": now,
+                            "prices": {date(2000, 1, 1): 0.0, date.today(): 0.0},
+                            "dividends": {}
+                        }
+                        save_cached_historical_prices(sym, {}, {}, supabase_write=False)
+                        continue
                         
                         # Accumulate for Supabase bulk write
                         serialized_prices = {}
