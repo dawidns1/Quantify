@@ -930,6 +930,8 @@ class PortfolioManager:
                             "gross_base": round(gross_base, 2),
                             "net_base": round(net_base, 2),
                             "net_native": round(net_native, 2),
+                            "currency": native_curr,
+                            "native_currency": native_curr,
                             "is_override": False,
                             "is_manual": False
                         })
@@ -1089,6 +1091,8 @@ class PortfolioManager:
                         "gross_base": round(gross_base, 2),
                         "net_base": round(net_base, 2),
                         "net_native": round(net_native, 2),
+                        "currency": native_curr,
+                        "native_currency": native_curr,
                         "is_override": True,
                         "is_manual": False
                     })
@@ -1138,6 +1142,8 @@ class PortfolioManager:
                 "gross_base": round(gross_base, 2),
                 "net_base": round(net_base, 2),
                 "net_native": round(net_native, 2),
+                "currency": native_curr,
+                "native_currency": native_curr,
                 "is_override": False,
                 "is_manual": True
             })

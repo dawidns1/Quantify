@@ -445,7 +445,21 @@ export function StockDetailsModal({
       if (div.is_deleted) continue;
       const divAcc = div.account || 'Default';
       const divDate = div.date || div.ex_date || '';
-      const divCurr = (div.currency || div.native_currency || cashCurrency).toUpperCase();
+      
+      let divCurr = (div.currency || div.native_currency || '').toUpperCase();
+      if (!divCurr) {
+        const symbolUpper = (div.symbol || '').toUpperCase();
+        const matchedHolding = holdings.find(h => h.symbol.toUpperCase() === symbolUpper);
+        if (matchedHolding) {
+          divCurr = (matchedHolding.currency || 'USD').toUpperCase();
+        } else if (symbolUpper.endsWith('.WA') || symbolUpper.endsWith('.PL')) {
+          divCurr = 'PLN';
+        } else if (symbolUpper.endsWith('.DE') || symbolUpper.endsWith('.PA') || symbolUpper.endsWith('.MI') || symbolUpper.endsWith('.MC') || symbolUpper.endsWith('.BR')) {
+          divCurr = 'EUR';
+        } else {
+          divCurr = 'USD';
+        }
+      }
 
       if (divCurr !== cashCurrency) continue;
 
@@ -483,7 +497,7 @@ export function StockDetailsModal({
         runningBalance: runningCash
       };
     });
-  }, [isCashTicker, cashCurrency, transactions, dividends]);
+  }, [isCashTicker, cashCurrency, transactions, dividends, holdings]);
 
   const positionTransactionsFilteredAndSorted = useMemo(() => {
     if (!selectedPositionSymbol) return [];
