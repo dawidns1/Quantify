@@ -46,50 +46,50 @@ def get_supabase_kv(key: str) -> dict:
 def save_supabase_kv(key: str, value: dict):
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
-    try:
-        headers = get_supabase_headers()
-        headers["Prefer"] = "resolution=merge-duplicates"
-        payload = {
-            "key": key,
-            "value": value,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }
-        url = f"{SUPABASE_URL}/rest/v1/kv_cache"
-        r = requests.post(url, headers=headers, json=payload, timeout=5)
-        if r.status_code not in (200, 201):
-            headers["Prefer"] = "on-conflict=key"
-            r = requests.post(url, headers=headers, json=payload, timeout=5)
-            if r.status_code not in (200, 201):
-                print(f"[Supabase Cache] Write failed for {key}: {r.status_code} - {r.text}")
-    except Exception as e:
-        print(f"[Supabase Cache] Write error for {key}: {e}")
-
-def save_supabase_kv_bulk(entries: list):
-    """Upserts multiple key-value pairs to Supabase in a single bulk request."""
-    if not SUPABASE_URL or not SUPABASE_KEY or not entries:
-        return
-    try:
-        headers = get_supabase_headers()
-        headers["Prefer"] = "resolution=merge-duplicates"
-        
-        now_str = datetime.now(timezone.utc).isoformat()
-        payload = []
-        for key, value in entries:
-            payload.append({
+    def _async_write():
+        try:
+            headers = get_supabase_headers()
+            headers["Prefer"] = "resolution=merge-duplicates"
+            payload = {
                 "key": key,
                 "value": value,
-                "updated_at": now_str
-            })
-            
-        url = f"{SUPABASE_URL}/rest/v1/kv_cache"
-        r = requests.post(url, headers=headers, json=payload, timeout=5)
-        if r.status_code not in (200, 201):
-            headers["Prefer"] = "on-conflict=key"
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            url = f"{SUPABASE_URL}/rest/v1/kv_cache"
             r = requests.post(url, headers=headers, json=payload, timeout=5)
             if r.status_code not in (200, 201):
-                print(f"[Supabase Cache] Bulk write failed: {r.status_code} - {r.text}")
-    except Exception as e:
-        print(f"[Supabase Cache] Bulk write exception: {e}")
+                headers["Prefer"] = "on-conflict=key"
+                requests.post(url, headers=headers, json=payload, timeout=5)
+        except Exception as e:
+            print(f"[Supabase Cache] Write error for {key}: {e}")
+    threading.Thread(target=_async_write, daemon=True).start()
+
+def save_supabase_kv_bulk(entries: list):
+    """Upserts multiple key-value pairs to Supabase in a single bulk request asynchronously."""
+    if not SUPABASE_URL or not SUPABASE_KEY or not entries:
+        return
+    def _async_bulk_write():
+        try:
+            headers = get_supabase_headers()
+            headers["Prefer"] = "resolution=merge-duplicates"
+            
+            now_str = datetime.now(timezone.utc).isoformat()
+            payload = []
+            for key, value in entries:
+                payload.append({
+                    "key": key,
+                    "value": value,
+                    "updated_at": now_str
+                })
+                
+            url = f"{SUPABASE_URL}/rest/v1/kv_cache"
+            r = requests.post(url, headers=headers, json=payload, timeout=5)
+            if r.status_code not in (200, 201):
+                headers["Prefer"] = "on-conflict=key"
+                requests.post(url, headers=headers, json=payload, timeout=5)
+        except Exception as e:
+            print(f"[Supabase Cache] Bulk write exception: {e}")
+    threading.Thread(target=_async_bulk_write, daemon=True).start()
 
 def get_connection():
     # check_same_thread=False allows us to pass connections across threads, 
