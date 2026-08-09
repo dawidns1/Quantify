@@ -268,7 +268,7 @@ def save_cached_live_price(symbol: str, data: dict, supabase_write: bool = True)
 # --- API FOR HISTORICAL DAILY PRICES ---
 
 def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) -> tuple:
-    """Returns (prices_dict, dividends_dict) from daily_prices table."""
+    """Returns (prices_dict, dividends_dict) from daily_prices table, falling back to Supabase KV if SQLite is empty."""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -291,6 +291,27 @@ def get_cached_historical_prices(symbol: str, start_date: date, end_date: date) 
         except Exception:
             pass
             
+    if not prices_dict:
+        # Fast restore from Supabase KV cloud backup if local SQLite is empty (e.g. Vercel cold starts)
+        kv = get_supabase_kv(f"HIST_PRICES:{symbol.upper()}")
+        if kv and isinstance(kv.get("value"), dict):
+            p_raw = kv["value"].get("prices", {})
+            d_raw = kv["value"].get("dividends", {})
+            for d_str, val in p_raw.items():
+                try:
+                    dt = datetime.strptime(d_str, "%Y-%m-%d").date()
+                    prices_dict[dt] = float(val)
+                except Exception:
+                    pass
+            for d_str, val in d_raw.items():
+                try:
+                    dt = datetime.strptime(d_str, "%Y-%m-%d").date()
+                    dividends_dict[dt] = float(val)
+                except Exception:
+                    pass
+            if prices_dict:
+                save_cached_historical_prices(symbol, prices_dict, dividends_dict, supabase_write=False)
+
     return prices_dict, dividends_dict
 
 def save_cached_historical_prices(symbol: str, prices: dict, dividends: dict, supabase_write: bool = True):

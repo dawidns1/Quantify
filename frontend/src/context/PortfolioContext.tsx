@@ -136,7 +136,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const isExpired = !tsStr || (Date.now() - parseInt(tsStr, 10) > 300000);
       if (isExpired) return [];
       const cached = localStorage.getItem(`cached_holdings_${activeId}_${baseCurr}_${selAcc}`);
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed: Holding[] = JSON.parse(cached);
+      const dayOfWeek = new Date().getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      return isWeekend ? parsed.map(h => ({ ...h, is_live: false })) : parsed;
     } catch (e) {
       return [];
     }
@@ -426,7 +430,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
 
       setChartData(data);
-      localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(data));
+      localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
     } catch (err) {
       console.error('Error fetching historical performance:', err);
     } finally {
@@ -468,7 +472,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
 
       setAnalytics(data);
-      localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(data));
+      localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
     } catch (err) {
       console.error('Error fetching portfolio analytics:', err);
     } finally {
@@ -490,7 +494,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
     setLoadingPortfolios(true);
     try {
-      let formatted = await fetchUserPortfolios(user.id);
+      let formatted: Portfolio[] = await fetchUserPortfolios(user.id);
 
       if (formatted.length === 0) {
         const defaultPortfolio = await createPortfolio(user.id, 'My Portfolio');
@@ -559,7 +563,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       if (cachedH && cachedS) {
         try {
-          setHoldings(JSON.parse(cachedH));
+          const parsedH: Holding[] = JSON.parse(cachedH);
+          const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
+          setHoldings(isWeekend ? parsedH.map(h => ({ ...h, is_live: false })) : parsedH);
           setSummary(JSON.parse(cachedS));
           if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
         } catch (e) {}
@@ -613,13 +619,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
     if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
-      // Synchronously load chart data from cache first
-      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      // Synchronously load chart data from cache first for instant rendering
+      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
       if (cachedC) {
-        setChartData(JSON.parse(cachedC));
-      } else {
-        fetchHistoricalPerformance(baseCurrency, selectedAccount);
+        try {
+          setChartData(JSON.parse(cachedC));
+        } catch (e) {}
       }
+      // Always fetch fresh historical performance to ensure chart updates when linkCash toggles
+      fetchHistoricalPerformance(baseCurrency, selectedAccount);
     } else if (!activePortfolioId || portfolioTransactions.length === 0) {
       setChartData(null);
       setLoadingChart(false);
@@ -629,10 +637,12 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
     if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
-      // Synchronously load analytics from cache first
-      const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      // Synchronously load analytics from cache first for instant rendering
+      const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
       if (cachedA) {
-        setAnalytics(JSON.parse(cachedA));
+        try {
+          setAnalytics(JSON.parse(cachedA));
+        } catch (e) {}
       }
       // Always fetch fresh analytics in the background
       fetchPortfolioAnalytics(baseCurrency, selectedAccount);
