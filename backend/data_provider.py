@@ -109,6 +109,22 @@ def guess_native_currency(symbol: str) -> str:
         return "DKK"
     return "USD"
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as ExecTimeoutError
+
+PROVIDER_EXECUTOR = ThreadPoolExecutor(max_workers=10)
+
+def safe_network_call(func, timeout_sec=4.0, default=None):
+    """Executes a network-bound task in a thread pool with a hard non-blocking timeout."""
+    future = PROVIDER_EXECUTOR.submit(func)
+    try:
+        return future.result(timeout=timeout_sec)
+    except ExecTimeoutError:
+        print(f"[DataProvider] Network operation exceeded hard {timeout_sec}s timeout, returning fallback.")
+        return default
+    except Exception as e:
+        print(f"[DataProvider] Exception in network call: {e}")
+        return default
+
 class BaseDataProvider:
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
         """
@@ -462,10 +478,14 @@ class YFinanceProvider(BaseDataProvider):
                 if curr in {"GBP", "GBX", "ZAC", "ILA"}:
                     pence_symbols.add(sym)
 
-            # Download all historical prices in a single bulk request!
-            df = yf.download(symbols, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
+            # Download all historical prices in a single bulk request with hard timeout!
+            df = safe_network_call(
+                lambda: yf.download(symbols, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION),
+                timeout_sec=4.0,
+                default=pd.DataFrame()
+            )
             
-            if not df.empty:
+            if df is not None and not df.empty:
                 # Normalize columns if single symbol (returns flat columns)
                 if len(symbols) == 1:
                     sym = symbols[0]
@@ -514,7 +534,11 @@ class YFinanceProvider(BaseDataProvider):
         start_str = start_dt.strftime("%Y-%m-%d")
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            df = yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION)
+            df = safe_network_call(
+                lambda: yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION),
+                timeout_sec=4.0,
+                default=pd.DataFrame()
+            )
             is_pence = False
             symbol_upper = symbol.upper().strip()
             if symbol_upper.endswith(".L") or symbol_upper.endswith(".JO") or symbol_upper.endswith(".TA"):
@@ -529,7 +553,7 @@ class YFinanceProvider(BaseDataProvider):
                         is_pence = True
                 except Exception:
                     is_pence = True
-            if not df.empty:
+            if df is not None and not df.empty:
                 if 'Close' in df.columns:
                     closes = df['Close']
                     if isinstance(closes, pd.DataFrame):
@@ -556,8 +580,12 @@ class YFinanceProvider(BaseDataProvider):
         start_str = start_dt.strftime("%Y-%m-%d")
         end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            df_fx = yf.download(pair, start=start_str, end=end_str, progress=False, session=YF_SESSION)
-            if not df_fx.empty and 'Close' in df_fx.columns:
+            df_fx = safe_network_call(
+                lambda: yf.download(pair, start=start_str, end=end_str, progress=False, session=YF_SESSION),
+                timeout_sec=4.0,
+                default=pd.DataFrame()
+            )
+            if df_fx is not None and not df_fx.empty and 'Close' in df_fx.columns:
                 closes = df_fx['Close']
                 if isinstance(closes, pd.DataFrame):
                     closes = closes.squeeze()
