@@ -199,14 +199,9 @@ export const PerformanceChart = memo(function PerformanceChart({
     if (!filteredData || !filteredData.dates || filteredData.dates.length === 0) return null;
     
     // Portfolio cumulative TWR return starting at 0%
-    const getPortGainAt = (idx: number) => {
-      const nav = filteredData.nav[idx];
-      const cost = filteredData.cost_basis[idx];
-      return cost > 0 ? ((nav - cost) / cost) * 100 : 0;
-    };
-    const portGainStart = getPortGainAt(0);
-    const portGainEnd = getPortGainAt(filteredData.nav.length - 1);
-    const portfolioReturn = portGainEnd - portGainStart;
+    const startNAV = filteredData.nav[0] || 1;
+    const endNAV = filteredData.nav[filteredData.nav.length - 1] || 1;
+    const portfolioReturn = startNAV > 0 ? ((endNAV - startNAV) / startNAV) * 100 : 0;
 
     // Benchmarks cumulative returns starting at 0%
     const benchmarkReturns: Record<string, number> = {};
@@ -312,14 +307,8 @@ export const PerformanceChart = memo(function PerformanceChart({
     if (!filteredData) return null;
 
     if (chartMode === 'percent') {
-      const getPortGainAt = (idx: number) => {
-        const nav = filteredData.nav[idx];
-        const cost = filteredData.cost_basis[idx];
-        return cost > 0 ? ((nav - cost) / cost) * 100 : 0;
-      };
-      
-      const portGainStart = getPortGainAt(0);
-      const portfolioPercentData = filteredData.nav.map((_, i) => getPortGainAt(i) - portGainStart);
+      const startNAV = filteredData.nav[0] || 1;
+      const portfolioPercentData = filteredData.nav.map(n => startNAV > 0 ? ((n - startNAV) / startNAV) * 100 : 0);
 
       const datasets = [
         {
