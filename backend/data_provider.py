@@ -28,9 +28,11 @@ if not IS_PRODUCTION:
     except AttributeError:
         pass
 
+from urllib3.util import Retry
+
 class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
     def __init__(self, *args, **kwargs):
-        self.timeout = kwargs.pop("timeout", 5.0)
+        self.timeout = kwargs.pop("timeout", 4.0)
         super().__init__(*args, **kwargs)
 
     def send(self, request, **kwargs):
@@ -41,7 +43,7 @@ class TimeoutHTTPAdapter(requests.adapters.HTTPAdapter):
 
 # Shared requests session with conditional SSL certificate verification and browser User-Agent
 YF_SESSION = requests.Session()
-adapter = TimeoutHTTPAdapter(timeout=5.0)
+adapter = TimeoutHTTPAdapter(timeout=4.0, max_retries=Retry(total=0, connect=0, read=0, redirect=0))
 YF_SESSION.mount("https://", adapter)
 YF_SESSION.mount("http://", adapter)
 

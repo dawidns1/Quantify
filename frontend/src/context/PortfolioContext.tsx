@@ -640,8 +640,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
 
-  // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered after holdings load)
+  // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered 300ms after historical NAV load)
   useEffect(() => {
+    let timer: any;
     if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
       // Synchronously load analytics from cache first for instant rendering
       const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
@@ -650,12 +651,17 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setAnalytics(JSON.parse(cachedA));
         } catch (e) {}
       }
-      // Always fetch fresh analytics in the background
-      fetchPortfolioAnalytics(baseCurrency, selectedAccount);
+      // Stagger fresh analytics request by 300ms to reuse warmed KV cache from historical performance
+      timer = setTimeout(() => {
+        fetchPortfolioAnalytics(baseCurrency, selectedAccount);
+      }, 300);
     } else if (!activePortfolioId || portfolioTransactions.length === 0) {
       setAnalytics(null);
       setLoadingAnalytics(false);
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
 
   return (
