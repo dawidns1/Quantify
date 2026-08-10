@@ -471,125 +471,67 @@ class YFinanceProvider(BaseDataProvider):
                 if curr in {"GBP", "GBX", "ZAC", "ILA"}:
                     pence_symbols.add(sym)
 
-            # Download all historical prices in a single bulk request with hard timeout!
-            df = safe_network_call(
-                lambda: yf.download(symbols, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION),
-                timeout_sec=4.0,
-                default=pd.DataFrame()
-            )
-            
-            if df is not None and not df.empty:
-                # Normalize columns if single symbol (returns flat columns)
-                if len(symbols) == 1:
-                    sym = symbols[0]
-                    if 'Close' in df.columns:
-                        closes = df['Close'].dropna()
-                        is_pence = sym in pence_symbols
-                        for idx, val in closes.items():
-                            dt = pd.to_datetime(idx).date()
-                            prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
-                    if 'Dividends' in df.columns:
-                        divs = df['Dividends'].dropna()
-                        is_pence = sym in pence_symbols
-                        for idx, val in divs.items():
-                            if float(val) > 0:
-                                dt = pd.to_datetime(idx).date()
-                                dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
-                else:
-                    # Multi-index columns
-                    if 'Close' in df.columns:
-                        closes_df = df['Close']
-                        for sym in symbols:
-                            if sym in closes_df.columns:
-                                closes = closes_df[sym].dropna()
-                                is_pence = sym in pence_symbols
-                                for idx, val in closes.items():
-                                    dt = pd.to_datetime(idx).date()
-                                    prices_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
-                    if 'Dividends' in df.columns:
-                        divs_df = df['Dividends']
-                        for sym in symbols:
-                            if sym in divs_df.columns:
-                                divs = divs_df[sym].dropna()
-                                is_pence = sym in pence_symbols
-                                for idx, val in divs.items():
-                                    if float(val) > 0:
-                                        dt = pd.to_datetime(idx).date()
-                                        dividends_by_symbol[sym][dt] = float(val) / 100.0 if is_pence else float(val)
+            for sym in symbols:
+                try:
+                    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5y&interval=1d&events=div"
+                    r = YF_SESSION.get(url, timeout=3.0)
+                    if r.status_code != 200:
+                        continue
+                    data = r.json()
+                    result = data.get("chart", {}).get("result", [])
+                    if not result:
+                        continue
+                        
+                    timestamps = result[0].get("timestamp", [])
+                    indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
+                    closes = indicators.get("close", [])
+                    
+                    is_pence = sym in pence_symbols
+                    scale = 0.01 if is_pence else 1.0
+                    
+                    for ts, close_val in zip(timestamps, closes):
+                        if close_val is not None and not math.isnan(close_val):
+                            dt = datetime.fromtimestamp(ts).date()
+                            if start_dt <= dt <= end_dt:
+                                prices_by_symbol[sym][dt] = float(close_val) * scale
+                            
+                    events = result[0].get("events", {})
+                    divs = events.get("dividends", {})
+                    for d_info in divs.values():
+                        d_ts = d_info.get("date")
+                        d_val = d_info.get("amount")
+                        if d_ts and d_val:
+                            d_dt = datetime.fromtimestamp(d_ts).date()
+                            if start_dt <= d_dt <= end_dt:
+                                dividends_by_symbol[sym][d_dt] = float(d_val) * scale
+                except Exception as e:
+                    print(f"Error fetching v8 historical chart for {sym}: {e}")
         except Exception as e:
             print(f"YFinance bulk historical stock download failed: {e}")
             
         return prices_by_symbol, dividends_by_symbol
 
     def download_historical_stock(self, symbol: str, start_dt: date, end_dt: date) -> tuple:
-        prices_dict = {}
-        dividends_dict = {}
-        start_str = start_dt.strftime("%Y-%m-%d")
-        end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-        try:
-            df = safe_network_call(
-                lambda: yf.download(symbol, start=start_str, end=end_str, progress=False, actions=True, session=YF_SESSION),
-                timeout_sec=4.0,
-                default=pd.DataFrame()
-            )
-            is_pence = False
-            symbol_upper = symbol.upper().strip()
-            if symbol_upper.endswith(".L") or symbol_upper.endswith(".JO") or symbol_upper.endswith(".TA"):
-                try:
-                    ticker = yf.Ticker(symbol, session=YF_SESSION)
-                    curr = ticker.fast_info.get("currency")
-                    if not curr:
-                        curr = guess_native_currency(symbol)
-                    if curr:
-                        is_pence = curr.upper().strip() in {"GBP", "GBX", "ZAC", "ILA"}
-                    else:
-                        is_pence = True
-                except Exception:
-                    is_pence = True
-            if df is not None and not df.empty:
-                if 'Close' in df.columns:
-                    closes = df['Close']
-                    if isinstance(closes, pd.DataFrame):
-                        closes = closes.squeeze()
-                    closes = closes.dropna()
-                    for idx, val in closes.items():
-                        dt = pd.to_datetime(idx).date()
-                        prices_dict[dt] = float(val) / 100.0 if is_pence else float(val)
-                if 'Dividends' in df.columns:
-                    divs = df['Dividends']
-                    if isinstance(divs, pd.DataFrame):
-                        divs = divs.squeeze()
-                    divs = divs.dropna()
-                    for idx, val in divs.items():
-                        if float(val) > 0:
-                            dt = pd.to_datetime(idx).date()
-                            dividends_dict[dt] = float(val) / 100.0 if is_pence else float(val)
-        except Exception as e:
-            print(f"YFinance single historical stock download failed for {symbol}: {e}")
-        return prices_dict, dividends_dict
+        p_dict, d_dict = self.download_historical_stock_bulk([symbol], start_dt, end_dt)
+        return p_dict.get(symbol, {}), d_dict.get(symbol, {})
 
     def download_historical_fx(self, pair: str, start_dt: date, end_dt: date) -> dict:
         prices_dict = {}
-        start_str = start_dt.strftime("%Y-%m-%d")
-        end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
-            df_fx = safe_network_call(
-                lambda: yf.download(pair, start=start_str, end=end_str, progress=False, session=YF_SESSION),
-                timeout_sec=4.0,
-                default=pd.DataFrame()
-            )
-            if df_fx is not None and not df_fx.empty and 'Close' in df_fx.columns:
-                closes = df_fx['Close']
-                if isinstance(closes, pd.DataFrame):
-                    closes = closes.squeeze()
-                if hasattr(closes, 'dropna'):
-                    closes = closes.dropna()
-                    if isinstance(closes, pd.Series):
-                        for idx, val in closes.items():
-                            dt = pd.to_datetime(idx).date()
-                            prices_dict[dt] = float(val)
-                    elif isinstance(closes, (int, float, np.number)):
-                        prices_dict[date.today()] = float(closes)
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{pair}?range=5y&interval=1d"
+            r = YF_SESSION.get(url, timeout=3.0)
+            if r.status_code == 200:
+                data = r.json()
+                result = data.get("chart", {}).get("result", [])
+                if result:
+                    timestamps = result[0].get("timestamp", [])
+                    indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
+                    closes = indicators.get("close", [])
+                    for ts, close_val in zip(timestamps, closes):
+                        if close_val is not None and not math.isnan(close_val):
+                            dt = datetime.fromtimestamp(ts).date()
+                            if start_dt <= dt <= end_dt:
+                                prices_dict[dt] = float(close_val)
         except Exception as e:
             print(f"YFinance historical FX download failed for {pair}: {e}")
         return prices_dict

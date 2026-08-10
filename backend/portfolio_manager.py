@@ -439,15 +439,7 @@ class PortfolioManager:
                         # Save to SQLite L2 Cache only
                         save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
                     else:
-                        # Cache failed/empty tickers to prevent hammering Yahoo Finance on every request
-                        cls._historical_stock_cache[sym] = {
-                            "start_date": date(2000, 1, 1),
-                            "end_date": date.today(),
-                            "last_updated": now,
-                            "prices": {date(2000, 1, 1): 0.0, date.today(): 0.0},
-                            "dividends": {}
-                        }
-                        save_cached_historical_prices(sym, {}, {}, supabase_write=False)
+                        print(f"[WARN] No historical prices returned for {sym}")
                         continue
                         
                         # Accumulate for Supabase bulk write
