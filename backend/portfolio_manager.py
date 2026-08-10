@@ -1679,8 +1679,11 @@ class PortfolioManager:
                     fx_target_to_base = fx_rates.get(target_curr, 1.0)
                     dividend_amount = net_base / fx_target_to_base if fx_target_to_base > 0 else net_base
 
-                cash_balances.setdefault(acc, {}).setdefault(target_curr, 0.0)
-                cash_balances[acc][target_curr] += dividend_amount
+                if link_cash:
+                    fx_target_hist = fx_rates_prev.get(target_curr, 1.0)
+                    div_native_accum = net_base / fx_target_hist if fx_target_hist > 0 else net_base
+                    cash_balances.setdefault(acc, {}).setdefault(target_curr, 0.0)
+                    cash_balances[acc][target_curr] += div_native_accum
                     
         # Sum cash balances across accounts
         final_cash = {}
@@ -2144,7 +2147,9 @@ class PortfolioManager:
         stock_shares = {}
         stock_cost_base = {}
         stock_buy_lots = {}
-        cash_balances_running = {}
+        explicit_cash_balances_running = {}
+        explicit_cash_cost_base = {}
+        linked_cash_balances_running = {}
         
         realized_gains_running_base = 0.0
         dividends_running_base = 0.0
@@ -2198,8 +2203,8 @@ class PortfolioManager:
                     fx_rate_d = fx_rates_hist.get(native_curr, {}).get(d, 1.0)
                     net_div_native = net_div_base / fx_rate_d if fx_rate_d > 0 else net_div_base
                     
-                    cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
-                    cash_balances_running[acc][native_curr] += net_div_native
+                    linked_cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                    linked_cash_balances_running[acc][native_curr] += net_div_native
                                     
             # 7b. Process transactions on day d
             day_txs = txs_by_date.get(d, [])
@@ -2215,16 +2220,23 @@ class PortfolioManager:
                 fx_tx_to_base = fx_rates_hist.get(tx_curr, {}).get(d, 1.0)
                 tx_cost_base = (shares * price + fees) * fx_tx_to_base
                 
-                cash_balances_running.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
-                
                 if sym.startswith("CASH_"):
                     cash_currency = sym.split("_")[1] if "_" in sym else tx_curr
-                    cash_balances_running.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                    explicit_cash_balances_running.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                    explicit_cash_cost_base.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
                     amount = shares * price
                     if tx_type == "BUY":
-                        cash_balances_running[tx_account][cash_currency] += amount
+                        explicit_cash_balances_running[tx_account][cash_currency] += amount
+                        explicit_cash_cost_base[tx_account][cash_currency] += (amount + fees) * fx_tx_to_base
+                        if link_cash:
+                            linked_cash_balances_running.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                            linked_cash_balances_running[tx_account][cash_currency] += amount
                     elif tx_type == "SELL":
-                        cash_balances_running[tx_account][cash_currency] -= amount
+                        explicit_cash_balances_running[tx_account][cash_currency] -= amount
+                        explicit_cash_cost_base[tx_account][cash_currency] -= (amount - fees) * fx_tx_to_base
+                        if link_cash:
+                            linked_cash_balances_running.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                            linked_cash_balances_running[tx_account][cash_currency] -= amount
                 else:
                     stock_shares.setdefault(sym, {}).setdefault(tx_account, 0.0)
                     stock_cost_base.setdefault(sym, {}).setdefault(tx_account, 0.0)
@@ -2280,10 +2292,17 @@ class PortfolioManager:
                             
                     if link_cash:
                         amount = shares * price
+                        linked_cash_balances_running.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
                         if tx_type == "BUY":
-                            cash_balances_running[tx_account][tx_curr] -= (amount + fees)
+                            linked_cash_balances_running[tx_account][tx_curr] -= (amount + fees)
+                            if linked_cash_balances_running[tx_account][tx_curr] < 0.0:
+                                deficit = -linked_cash_balances_running[tx_account][tx_curr]
+                                linked_cash_balances_running[tx_account][tx_curr] = 0.0
+                                if explicit_cash_balances_running.get(tx_account, {}).get(tx_curr, 0.0) > 0:
+                                    curr_exp = explicit_cash_balances_running[tx_account][tx_curr]
+                                    explicit_cash_balances_running[tx_account][tx_curr] = max(0.0, curr_exp - deficit)
                         elif tx_type == "SELL":
-                            cash_balances_running[tx_account][tx_curr] += (amount - fees)
+                            linked_cash_balances_running[tx_account][tx_curr] += (amount - fees)
                             
             day_nav = 0.0
             day_cost = 0.0
@@ -2304,25 +2323,31 @@ class PortfolioManager:
                         day_nav += val_base
                         day_cost += stock_cost_base[sym][acc]
                         
-            # Valuate cash on day d
-            day_cash_value_base = 0.0
-            for acc in cash_balances_running.keys():
-                for curr, balance in cash_balances_running[acc].items():
-                    effective_bal = balance
-                    if effective_bal < 0.0:
-                        effective_bal = 0.0
-                        
+            # Valuate explicit cash on day d (always included regardless of link_cash)
+            day_explicit_cash_nav = 0.0
+            day_explicit_cash_cost = 0.0
+            for acc in explicit_cash_balances_running.keys():
+                for curr, balance in explicit_cash_balances_running[acc].items():
+                    if balance > 0.001:
+                        fx_rate = fx_rates_hist.get(curr, {}).get(d, 1.0)
+                        day_explicit_cash_nav += balance * fx_rate
+                        day_explicit_cash_cost += explicit_cash_cost_base.get(acc, {}).get(curr, 0.0)
+
+            # Valuate linked cash on day d (only included when link_cash is True)
+            day_linked_cash_nav = 0.0
+            for acc in linked_cash_balances_running.keys():
+                for curr, balance in linked_cash_balances_running[acc].items():
+                    effective_bal = max(0.0, balance)
                     if effective_bal > 0.001:
                         fx_rate = fx_rates_hist.get(curr, {}).get(d, 1.0)
-                        val_base = effective_bal * fx_rate
-                        day_cash_value_base += val_base
+                        day_linked_cash_nav += effective_bal * fx_rate
                         
             if link_cash:
-                day_nav += day_cash_value_base
-                day_cost += day_cash_value_base - realized_gains_running_base - dividends_running_base
+                day_nav += day_linked_cash_nav
+                day_cost += day_linked_cash_nav - realized_gains_running_base - dividends_running_base
             else:
-                day_nav += dividends_running_base
-                # day_cost is just sum of active stock cost bases
+                day_nav += day_explicit_cash_nav
+                day_cost += day_explicit_cash_cost
                 
             dates_res.append(d.strftime("%Y-%m-%d"))
             nav_res.append(round(day_nav, 2))

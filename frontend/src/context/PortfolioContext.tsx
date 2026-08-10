@@ -358,7 +358,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       
     } catch (err: any) {
-      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.') {
+      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
         console.error('Error fetching holdings:', err);
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
