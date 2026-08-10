@@ -29,16 +29,28 @@ def get_supabase_headers():
         "Content-Type": "application/json"
     }
 
+_SUPABASE_KV_RAM_CACHE = {}
+_SUPABASE_KV_LOCK = threading.Lock()
+
 def get_supabase_kv(key: str) -> dict:
     if not SUPABASE_URL or not SUPABASE_KEY:
         return None
+    now = time.time()
+    with _SUPABASE_KV_LOCK:
+        if key in _SUPABASE_KV_RAM_CACHE:
+            ts, val = _SUPABASE_KV_RAM_CACHE[key]
+            if now - ts < 300.0:  # 5-minute RAM cache for Supabase KV reads
+                return val
     try:
         url = f"{SUPABASE_URL}/rest/v1/kv_cache?key=eq.{key}"
-        r = requests.get(url, headers=get_supabase_headers(), timeout=5)
+        r = requests.get(url, headers=get_supabase_headers(), timeout=3.5)
         if r.status_code == 200:
             rows = r.json()
             if rows:
-                return rows[0]
+                result = rows[0]
+                with _SUPABASE_KV_LOCK:
+                    _SUPABASE_KV_RAM_CACHE[key] = (now, result)
+                return result
     except Exception as e:
         print(f"[Supabase Cache] Read error for {key}: {e}")
     return None
@@ -46,6 +58,14 @@ def get_supabase_kv(key: str) -> dict:
 def save_supabase_kv(key: str, value: dict):
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
+    now_str = datetime.now(timezone.utc).isoformat()
+    now_ts = time.time()
+    with _SUPABASE_KV_LOCK:
+        _SUPABASE_KV_RAM_CACHE[key] = (now_ts, {
+            "key": key,
+            "value": value,
+            "updated_at": now_str
+        })
     def _async_write():
         try:
             headers = get_supabase_headers()
@@ -53,7 +73,7 @@ def save_supabase_kv(key: str, value: dict):
             payload = {
                 "key": key,
                 "value": value,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": now_str
             }
             url = f"{SUPABASE_URL}/rest/v1/kv_cache"
             r = requests.post(url, headers=headers, json=payload, timeout=5)
@@ -68,12 +88,20 @@ def save_supabase_kv_bulk(entries: list):
     """Upserts multiple key-value pairs to Supabase in a single bulk request asynchronously."""
     if not SUPABASE_URL or not SUPABASE_KEY or not entries:
         return
+    now_str = datetime.now(timezone.utc).isoformat()
+    now_ts = time.time()
+    with _SUPABASE_KV_LOCK:
+        for k, v in entries:
+            _SUPABASE_KV_RAM_CACHE[k] = (now_ts, {
+                "key": k,
+                "value": v,
+                "updated_at": now_str
+            })
     def _async_bulk_write():
         try:
             headers = get_supabase_headers()
             headers["Prefer"] = "resolution=merge-duplicates"
             
-            now_str = datetime.now(timezone.utc).isoformat()
             payload = []
             for key, value in entries:
                 payload.append({
