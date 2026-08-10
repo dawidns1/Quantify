@@ -349,7 +349,7 @@ class PortfolioManager:
                         "timezone": tz_val,
                         "exchange": ex_val
                     }
-                    save_cached_live_price(sym, cache_payload, supabase_write=False)
+                    save_cached_live_price(sym, cache_payload, supabase_write=True)
                     
                 for pair in missing_fx:
                     rate = res["fx"].get(pair)
@@ -363,7 +363,7 @@ class PortfolioManager:
                         "company_name": pair,
                         "native_currency": "USD"
                     }
-                    save_cached_live_price(pair, cache_payload, supabase_write=False)
+                    save_cached_live_price(pair, cache_payload, supabase_write=True)
         except Exception as e:
             print(f"Error prefetching live prices: {e}")
 
