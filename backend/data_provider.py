@@ -2,7 +2,7 @@ import os
 import time
 import math
 import pandas as pd
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 import yfinance as yf
 import urllib3
 import ssl
