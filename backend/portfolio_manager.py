@@ -1496,33 +1496,10 @@ class PortfolioManager:
             first_tx = symbol_txs[symbol][0]
             tx_curr = first_tx.get("currency", "USD").upper().strip()
             if not native_currency:
-                try:
-                    real_info = provider.download_live_ticker(symbol)
-                    if real_info.get("native_currency"):
-                        native_currency = real_info["native_currency"].upper().strip()
-                        info["native_currency"] = native_currency
-                        
-                        # Also update the metadata cache to prevent out-of-sync read loops
-                        if symbol in cls._ticker_metadata_cache:
-                            cls._ticker_metadata_cache[symbol]["native_currency"] = native_currency
-                            
-                        save_cached_live_price(symbol, {
-                            "live_price": info.get("live_price", 0.0),
-                            "previous_close": info.get("previous_close", 0.0),
-                            "company_name": info.get("company_name", symbol),
-                            "native_currency": native_currency,
-                            "timezone": info.get("timezone", "UTC"),
-                            "exchange": info.get("exchange", "")
-                        })
-                except Exception as ex:
-                    print(f"Error resolving currency mismatch for {symbol}: {ex}")
-
-                # If still not resolved after download attempt, populate from transaction currency immediately
-                if not native_currency:
-                    native_currency = tx_curr
-                    info["native_currency"] = native_currency
-                    if symbol in cls._ticker_metadata_cache:
-                        cls._ticker_metadata_cache[symbol]["native_currency"] = native_currency
+                native_currency = guess_native_currency(symbol) or tx_curr
+                info["native_currency"] = native_currency
+                if symbol in cls._ticker_metadata_cache:
+                    cls._ticker_metadata_cache[symbol]["native_currency"] = native_currency
 
             # Fall back to transaction currency only if the ticker download failed (live_price == 0.0),
             # if the cached currency is USD but the stock has a non-US suffix, or if no native currency is set.

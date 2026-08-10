@@ -315,97 +315,102 @@ class YFinanceProvider(BaseDataProvider):
         if v8_quote and v8_quote.get("live_price", 0.0) > 0.0:
             return v8_quote
 
-        live_price = 0.0
-        company_name = symbol
-        native_currency = "USD"
-        quote_type = None
-        previous_close = 0.0
-        timezone = "UTC"
-        exchange = ""
-        try:
-            stock_ticker = yf.Ticker(symbol, session=YF_SESSION)
-            
-            fast = None
+        def _do_fallback():
+            live_price = 0.0
+            company_name = symbol
+            native_currency = "USD"
+            quote_type = None
+            previous_close = 0.0
+            timezone = "UTC"
+            exchange = ""
             try:
-                # Use fast_info first to avoid calling .info which can throw KeyError
-                fast = stock_ticker.fast_info
-            except Exception as fast_err:
-                print(f"Warning: Could not fetch stock_ticker.fast_info for {symbol} ({fast_err}). Using info.")
-            
-            try:
-                live_price = fast.get("lastPrice") if fast else None
-            except Exception:
-                live_price = None
+                stock_ticker = yf.Ticker(symbol, session=YF_SESSION)
                 
-            info_dict = {}
-            try:
-                # Wrap .info access in try-except to handle KeyError: 'exchangeTimezoneName'
-                info_dict = stock_ticker.info or {}
-            except Exception as info_err:
-                print(f"Warning: Could not fetch stock_ticker.info for {symbol} ({info_err}).")
-                
-            if live_price is None:
-                live_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or 0.0
-                
-            company_name = info_dict.get("longName") or info_dict.get("shortName")
-            
-            if not company_name or company_name.upper().strip() == symbol.upper().strip():
+                fast = None
                 try:
-                    import requests
-                    search_url = "https://query2.finance.yahoo.com/v1/finance/search"
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'
-                    }
-                    search_params = {'q': symbol, 'quotesCount': 1, 'newsCount': 0}
-                    res = requests.get(search_url, headers=headers, params=search_params, timeout=5, verify=False)
-                    if res.status_code == 200:
-                        s_data = res.json()
-                        quotes = s_data.get("quotes", [])
-                        if quotes:
-                            q = quotes[0]
-                            company_name = q.get("longname") or q.get("shortname") or company_name
-                except Exception as search_err:
-                    print(f"Failed search fallback name fetch for {symbol}: {search_err}")
+                    fast = stock_ticker.fast_info
+                except Exception as fast_err:
+                    pass
+                
+                try:
+                    live_price = fast.get("lastPrice") if fast else None
+                except Exception:
+                    live_price = None
                     
-            if not company_name:
+                info_dict = {}
+                try:
+                    info_dict = stock_ticker.info or {}
+                except Exception as info_err:
+                    pass
+                    
+                if live_price is None:
+                    live_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or 0.0
+                    
+                company_name = info_dict.get("longName") or info_dict.get("shortName") or symbol
+                    
+                try:
+                    native_currency = fast.get("currency") if fast else None
+                except Exception:
+                    native_currency = None
+                if not native_currency:
+                    native_currency = info_dict.get("currency") or guess_native_currency(symbol)
+                    
+                try:
+                    quote_type = fast.get("quoteType") if fast else None
+                except Exception:
+                    quote_type = None
+                if not quote_type:
+                    quote_type = info_dict.get("quoteType")
+                    
+                try:
+                    previous_close = fast.get("previousClose") if fast else None
+                except Exception:
+                    previous_close = None
+                if not previous_close:
+                    previous_close = info_dict.get("regularMarketPreviousClose") or info_dict.get("previousClose") or live_price
+                    
+                try:
+                    timezone = fast.get("timezone") if fast else None
+                except Exception:
+                    timezone = None
+                if not timezone:
+                    timezone = info_dict.get("exchangeTimezoneName") or "UTC"
+                    
+                try:
+                    exchange = fast.get("exchange") if fast else None
+                except Exception:
+                    exchange = None
+                if not exchange:
+                    exchange = info_dict.get("exchange") or ""
+            except Exception as e:
+                live_price = 0.0
                 company_name = symbol
-                
-            try:
-                native_currency = fast.get("currency") if fast else None
-            except Exception:
-                native_currency = None
-            if not native_currency:
-                native_currency = info_dict.get("currency") or guess_native_currency(symbol)
-                
-            try:
-                quote_type = fast.get("quoteType") if fast else None
-            except Exception:
+                native_currency = guess_native_currency(symbol)
                 quote_type = None
-            if not quote_type:
-                quote_type = info_dict.get("quoteType")
-                
-            try:
-                previous_close = fast.get("previousClose") if fast else None
-            except Exception:
-                previous_close = None
-            if not previous_close:
-                previous_close = info_dict.get("regularMarketPreviousClose") or info_dict.get("previousClose") or live_price
-                
-            try:
-                timezone = fast.get("timezone") if fast else None
-            except Exception:
-                timezone = None
-            if not timezone:
-                timezone = info_dict.get("exchangeTimezoneName") or "UTC"
-                
-            try:
-                exchange = fast.get("exchange") if fast else None
-            except Exception:
-                exchange = None
-            if not exchange:
-                exchange = info_dict.get("exchange") or ""
-        except Exception as e:
-            print(f"YFinance live ticker download failed for {symbol}: {e}")
+                previous_close = 0.0
+                timezone = "Unknown"
+                exchange = ""
+
+            return {
+                "live_price": float(live_price) if live_price else 0.0,
+                "company_name": company_name,
+                "native_currency": native_currency,
+                "quote_type": quote_type,
+                "previous_close": float(previous_close) if previous_close else 0.0,
+                "timezone": timezone,
+                "exchange": exchange
+            }
+
+        fallback_result = safe_network_call(_do_fallback, timeout_sec=2.0, default=None)
+        if fallback_result:
+            live_price = fallback_result["live_price"]
+            company_name = fallback_result["company_name"]
+            native_currency = fallback_result["native_currency"]
+            quote_type = fallback_result["quote_type"]
+            previous_close = fallback_result["previous_close"]
+            timezone = fallback_result["timezone"]
+            exchange = fallback_result["exchange"]
+        else:
             live_price = 0.0
             company_name = symbol
             native_currency = guess_native_currency(symbol)
