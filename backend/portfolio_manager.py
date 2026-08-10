@@ -1790,7 +1790,11 @@ class PortfolioManager:
                 current_value_base = shares_owned * live_price_native * fx_native_to_base
                 
                 # Day change calculations incorporating both stock price movement and FX rate changes
-                prev_close_native = info.get("previous_close", live_price_native)
+                hist_p_cache = cls._historical_stock_cache.get(symbol, {}).get("prices", {})
+                prev_dates = [d for d in sorted(hist_p_cache.keys()) if d < date.today()] if hist_p_cache else []
+                hist_prev_close = hist_p_cache[prev_dates[-1]] if prev_dates else 0.0
+                
+                prev_close_native = hist_prev_close if (hist_prev_close and hist_prev_close > 0.0) else info.get("previous_close", live_price_native)
                 if prev_close_native == 0.0 or prev_close_native is None:
                     prev_close_native = live_price_native
                 
