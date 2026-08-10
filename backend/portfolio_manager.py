@@ -2045,12 +2045,18 @@ class PortfolioManager:
                     else:
                         stock_prices[sym][d] = first_val
                 
-            # Overwrite today's data point with live price to eliminate NAV vs performance chart gap
+            # Overwrite today's and yesterday's data points with live quote info to eliminate NAV vs holdings gap
             if date.today() in dates_list:
                 live_info = cls.get_cached_live_ticker(sym)
-                live_p = live_info.get("live_price", 0.0) if live_info else 0.0
-                if live_p > 0.0:
-                    stock_prices[sym][date.today()] = live_p
+                if live_info:
+                    live_p = live_info.get("live_price", 0.0)
+                    if live_p > 0.0:
+                        stock_prices[sym][date.today()] = live_p
+                    live_pc = live_info.get("previous_close", 0.0)
+                    if live_pc > 0.0:
+                        prev_trading_dates = [d for d in dates_list if d < date.today()]
+                        if prev_trading_dates:
+                            stock_prices[sym][prev_trading_dates[-1]] = live_pc
                 
         # Construct symbol_txs and ticker_info_tmp
         symbol_txs = {}
@@ -2109,6 +2115,12 @@ class PortfolioManager:
                 live_fx = cls.get_cached_live_fx(pair)
                 if live_fx > 0.0:
                     fx_rates_hist[curr][date.today()] = live_fx
+                sqlite_fx = get_cached_live_price(pair, max_age_seconds=90000.0)
+                prev_fx = float(sqlite_fx.get("previous_close")) if (sqlite_fx and sqlite_fx.get("previous_close")) else 0.0
+                if prev_fx > 0.0:
+                    prev_trading_dates = [d for d in dates_list if d < date.today()]
+                    if prev_trading_dates:
+                        fx_rates_hist[curr][prev_trading_dates[-1]] = prev_fx
             
 
         # 7. Compute NAV and Cost Basis for each calendar day
