@@ -713,21 +713,8 @@ class PortfolioManager:
                 # Schedule background update
                 symbols_to_update.append((symbol, shares_owned))
 
-        # Spawn background thread to fetch yfinance data if needed
-        if symbols_to_update:
-            symbols_to_trigger = []
-            with cls._upcoming_events_updating_lock:
-                for symbol, shares in symbols_to_update:
-                    if symbol not in cls._upcoming_events_updating:
-                        cls._upcoming_events_updating.add(symbol)
-                        symbols_to_trigger.append((symbol, shares))
-                        
-            if symbols_to_trigger:
-                threading.Thread(
-                    target=cls._update_upcoming_events_bg_thread,
-                    args=(symbols_to_trigger,),
-                    daemon=True
-                ).start()
+        # Background thread spawning disabled on serverless Vercel to prevent socket freezing and network hangs
+        # Historical dividend projections are calculated instantly below from cached data.
 
         # Add historical dividend projections for any active holdings that do not have an upcoming dividend event
         for h in active_holdings:

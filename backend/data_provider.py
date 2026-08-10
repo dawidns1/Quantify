@@ -340,50 +340,39 @@ class YFinanceProvider(BaseDataProvider):
                     live_price = None
                     
                 info_dict = {}
-                try:
-                    info_dict = stock_ticker.info or {}
-                except Exception as info_err:
-                    pass
-                    
                 if live_price is None:
-                    live_price = info_dict.get("currentPrice") or info_dict.get("regularMarketPrice") or 0.0
+                    live_price = 0.0
                     
-                company_name = info_dict.get("longName") or info_dict.get("shortName") or symbol
+                company_name = symbol
                     
                 try:
                     native_currency = fast.get("currency") if fast else None
                 except Exception:
                     native_currency = None
                 if not native_currency:
-                    native_currency = info_dict.get("currency") or guess_native_currency(symbol)
+                    native_currency = guess_native_currency(symbol)
                     
                 try:
                     quote_type = fast.get("quoteType") if fast else None
                 except Exception:
                     quote_type = None
-                if not quote_type:
-                    quote_type = info_dict.get("quoteType")
                     
                 try:
                     previous_close = fast.get("previousClose") if fast else None
                 except Exception:
                     previous_close = None
                 if not previous_close:
-                    previous_close = info_dict.get("regularMarketPreviousClose") or info_dict.get("previousClose") or live_price
+                    previous_close = live_price
                     
                 try:
                     timezone = fast.get("timezone") if fast else None
                 except Exception:
-                    timezone = None
-                if not timezone:
-                    timezone = info_dict.get("exchangeTimezoneName") or "UTC"
+                    timezone = "UTC"
                     
                 try:
                     exchange = fast.get("exchange") if fast else None
                 except Exception:
-                    exchange = None
-                if not exchange:
-                    exchange = info_dict.get("exchange") or ""
+                    exchange = ""
             except Exception as e:
                 live_price = 0.0
                 company_name = symbol
@@ -454,11 +443,8 @@ class YFinanceProvider(BaseDataProvider):
             except Exception:
                 rate = None
             if rate is None:
-                try:
-                    info_dict = rate_ticker.info or {}
-                    rate = info_dict.get("previousClose") or 1.0
-                except Exception:
-                    rate = 1.0
+                base_pair = pair.replace("=X", "")
+                rate = FALLBACK_RATES.get(base_pair, 1.0)
         except Exception as e:
             print(f"YFinance live FX download failed for {pair}: {e}")
         return float(rate)
@@ -553,7 +539,7 @@ class YFinanceProvider(BaseDataProvider):
                     ticker = yf.Ticker(symbol, session=YF_SESSION)
                     curr = ticker.fast_info.get("currency")
                     if not curr:
-                        curr = (ticker.info or {}).get("currency")
+                        curr = guess_native_currency(symbol)
                     if curr:
                         is_pence = curr.upper().strip() in {"GBP", "GBX", "ZAC", "ILA"}
                     else:
