@@ -1865,6 +1865,10 @@ class PortfolioManager:
                 fx_rate = fx_rates.get(curr, 1.0)
                 val_base = balance * fx_rate
                 name = currency_names.get(curr, f"{curr} (Cash)")
+                prev_fx_rate = fx_rates_prev.get(curr, fx_rate)
+                cash_prev_val_base = balance * prev_fx_rate
+                cash_day_change_base = val_base - cash_prev_val_base
+                cash_day_change_percent = (cash_day_change_base / cash_prev_val_base * 100) if cash_prev_val_base > 0 else 0.0
                 
                 holdings_list.append({
                     "symbol": f"CASH_{curr}",
@@ -1880,8 +1884,8 @@ class PortfolioManager:
                     "gain_percent": 0.0,
                     "dividends_base": 0.0,
                     "dividends_net_base": 0.0,
-                    "day_change_percent": 0.0,
-                    "day_change_value_base": 0.0,
+                    "day_change_percent": round(cash_day_change_percent, 2),
+                    "day_change_value_base": round(cash_day_change_base, 2),
                     "is_live": False,
                     "asset_class": "Cash"
                 })
