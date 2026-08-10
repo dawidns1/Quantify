@@ -902,7 +902,7 @@ class PortfolioManager:
             time.sleep(0.5)
 
     @classmethod
-    def get_merged_dividends(cls, sorted_txs: list, symbol_txs: dict, ticker_info: dict, base_currency: str, fx_rates: dict, portfolio_settings: dict) -> list:
+    def get_merged_dividends(cls, sorted_txs: list, symbol_txs: dict, ticker_info: dict, base_currency: str, fx_rates: dict, portfolio_settings: dict, include_upcoming: bool = False) -> list:
         # Resolve tax rates per account
         account_tax_rates = portfolio_settings.get("accountTaxRates", {}) if portfolio_settings else {}
         
@@ -943,11 +943,8 @@ class PortfolioManager:
                             continue
                         try:
                             tx_date = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
-                            if tx_date < ex_date:
-                                if tx["type"] == "BUY":
-                                    shares_on_ex_date += tx["shares"]
-                                elif tx["type"] == "SELL":
-                                    shares_on_ex_date -= tx["shares"]
+                            if tx_date <= ex_date:
+                                shares_on_ex_date += tx["shares"] if tx["type"] == "BUY" else -tx["shares"]
                         except:
                             pass
                             
@@ -984,12 +981,13 @@ class PortfolioManager:
                             "is_manual": False
                         })
 
-        # 1.1 Project future/upcoming dividends for the remainder of the current calendar year
-        today = date.today()
-        for symbol, txs in symbol_txs.items():
-            dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
-            native_curr = ticker_info[symbol]["native_currency"]
-            accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
+        # 1.1 Project future/upcoming dividends for the remainder of the current calendar year (forecast only)
+        if include_upcoming:
+            today = date.today()
+            for symbol, txs in symbol_txs.items():
+                dividends_data = cls._historical_stock_cache.get(symbol, {}).get("dividends", {})
+                native_curr = ticker_info[symbol]["native_currency"]
+                accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
             
             for acc in accounts:
                 # Calculate current shares owned in this account up to today
