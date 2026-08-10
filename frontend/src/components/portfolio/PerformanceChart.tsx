@@ -114,9 +114,11 @@ export const PerformanceChart = memo(function PerformanceChart({
   const [showSearch, setShowSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch historical data with benchmarks when selections change
+  // Fetch historical data with benchmarks when benchmark selections change
   useEffect(() => {
-    fetchHistoricalPerformance(baseCurrency as any, selectedAccount, activeBenchmarks.join(','));
+    if (activeBenchmarks.length > 0) {
+      fetchHistoricalPerformance(baseCurrency as any, selectedAccount, activeBenchmarks.join(','));
+    }
   }, [activeBenchmarks, baseCurrency, selectedAccount]);
 
   // Search query debounce

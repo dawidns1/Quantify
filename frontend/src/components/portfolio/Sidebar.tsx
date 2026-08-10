@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
+import { fetchWithTimeout } from '../../services/calculationService';
 import type { Portfolio } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
@@ -209,7 +210,7 @@ export function Sidebar({
     }
     setLoadingPrices(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/watchlist/prices?symbols=${symbolsList.join(',')}`);
+      const response = await fetchWithTimeout(`${apiBaseUrl}/api/watchlist/prices?symbols=${symbolsList.join(',')}`, {}, 8000);
       if (response.ok) {
         const data = await response.json();
         const pricesMap: Record<string, { price: number | null; currency: string; change_percent: number; is_market_open: boolean }> = {};
