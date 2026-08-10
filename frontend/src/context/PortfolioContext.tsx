@@ -194,9 +194,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
     if (!activeId) return null;
     try {
-      const cached = localStorage.getItem(`cached_chart_data_${activeId}_${baseCurr}_${selAcc}`);
+      const cached = localStorage.getItem(`cached_chart_data_${activeId}_${baseCurr}_${selAcc}_${lk}`);
       return cached ? JSON.parse(cached) : null;
     } catch (e) {
       return null;
@@ -207,9 +208,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
     if (!activeId) return null;
     try {
-      const cached = localStorage.getItem(`cached_analytics_${activeId}_${baseCurr}_${selAcc}`);
+      const cached = localStorage.getItem(`cached_analytics_${activeId}_${baseCurr}_${selAcc}_${lk}`);
       return cached ? JSON.parse(cached) : null;
     } catch (e) {
       return null;
@@ -254,13 +256,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   const latestParamsRef = useRef({
     activePortfolioId,
     baseCurrency,
-    selectedAccount
+    selectedAccount,
+    linkCash
   });
   
   latestParamsRef.current = {
     activePortfolioId,
     baseCurrency,
-    selectedAccount
+    selectedAccount,
+    linkCash
   };
 
   const holdingsRequestIdRef = useRef(0);
@@ -424,7 +428,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         requestId < chartRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency ||
-        accountFilter !== latestParamsRef.current.selectedAccount
+        accountFilter !== latestParamsRef.current.selectedAccount ||
+        linkCash !== latestParamsRef.current.linkCash
       ) {
         return; // Discard stale response
       }
@@ -466,7 +471,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         requestId < analyticsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
         curr !== latestParamsRef.current.baseCurrency ||
-        accountFilter !== latestParamsRef.current.selectedAccount
+        accountFilter !== latestParamsRef.current.selectedAccount ||
+        linkCash !== latestParamsRef.current.linkCash
       ) {
         return; // Discard stale response
       }
