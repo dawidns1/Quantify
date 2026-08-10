@@ -436,8 +436,8 @@ class PortfolioManager:
                             "prices": prices_dict,
                             "dividends": dividends_dict
                         }
-                        # Save to SQLite L2 Cache only
-                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
+                        # Save to SQLite L2 Cache and Supabase KV cloud storage
+                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=True)
                     else:
                         print(f"[WARN] No historical prices returned for {sym}")
                         continue
@@ -1508,11 +1508,15 @@ class PortfolioManager:
             
         # Fetch live exchange rates (cached)
         fx_rates = {base_currency: 1.0}
+        fx_rates_prev = {base_currency: 1.0}
         for curr in unique_currencies:
             if curr == base_currency:
                 continue
             pair = f"{curr}{base_currency}=X"
             fx_rates[curr] = cls.get_cached_live_fx(pair)
+            sqlite_fx = get_cached_live_price(pair, max_age_seconds=90000.0)
+            prev_fx = sqlite_fx.get("previous_close") if sqlite_fx else None
+            fx_rates_prev[curr] = float(prev_fx) if (prev_fx and float(prev_fx) > 0.0) else fx_rates[curr]
             
         # Calculate ex-dividend payouts and cache them (max 1 year back for fast holdings response)
         earliest_date = date.today() - timedelta(days=365)
@@ -1785,14 +1789,17 @@ class PortfolioManager:
                     
                 current_value_base = shares_owned * live_price_native * fx_native_to_base
                 
-                # Day change calculations
+                # Day change calculations incorporating both stock price movement and FX rate changes
                 prev_close_native = info.get("previous_close", live_price_native)
                 if prev_close_native == 0.0 or prev_close_native is None:
                     prev_close_native = live_price_native
                 
+                prev_fx_native_to_base = fx_rates_prev.get(native_curr, fx_native_to_base)
+                previous_value_base = shares_owned * prev_close_native * prev_fx_native_to_base
+                day_change_value_base = current_value_base - previous_value_base
+                
                 day_change_native = live_price_native - prev_close_native
-                day_change_percent = (day_change_native / prev_close_native * 100) if prev_close_native > 0.0 else 0.0
-                day_change_value_base = shares_owned * day_change_native * fx_native_to_base
+                day_change_percent = (day_change_value_base / previous_value_base * 100) if previous_value_base > 0.0 else 0.0
                 
                 is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""), symbol)
                 if is_live:
