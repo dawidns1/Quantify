@@ -622,9 +622,12 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     };
   }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
 
+  const holdingsKey = holdings.map(h => `${h.symbol}_${h.shares}`).join(',');
+  const txsCount = portfolioTransactions.length;
+
   // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
   useEffect(() => {
-    if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
+    if (activePortfolioId && txsCount > 0 && holdingsKey && !loadingHoldings) {
       // Synchronously load chart data from cache first for instant rendering
       const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
       if (cachedC) {
@@ -634,16 +637,16 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       // Always fetch fresh historical performance to ensure chart updates when linkCash toggles
       fetchHistoricalPerformance(baseCurrency, selectedAccount);
-    } else if (!activePortfolioId || portfolioTransactions.length === 0) {
+    } else if (!activePortfolioId || txsCount === 0) {
       setChartData(null);
       setLoadingChart(false);
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, txsCount, linkCash, holdingsKey, loadingHoldings]);
 
   // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered 300ms after historical NAV load)
   useEffect(() => {
     let timer: any;
-    if (activePortfolioId && portfolioTransactions.length > 0 && holdings.length > 0 && !loadingHoldings) {
+    if (activePortfolioId && txsCount > 0 && holdingsKey && !loadingHoldings) {
       // Synchronously load analytics from cache first for instant rendering
       const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
       if (cachedA) {
@@ -655,14 +658,14 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       timer = setTimeout(() => {
         fetchPortfolioAnalytics(baseCurrency, selectedAccount);
       }, 300);
-    } else if (!activePortfolioId || portfolioTransactions.length === 0) {
+    } else if (!activePortfolioId || txsCount === 0) {
       setAnalytics(null);
       setLoadingAnalytics(false);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [baseCurrency, selectedAccount, activePortfolioId, portfolioTransactions, linkCash, holdings, loadingHoldings]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, txsCount, linkCash, holdingsKey, loadingHoldings]);
 
   return (
     <PortfolioContext.Provider value={{
