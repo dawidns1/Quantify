@@ -436,8 +436,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
       setChartData(data);
       localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
-    } catch (err) {
-      console.error('Error fetching historical performance:', err);
+    } catch (err: any) {
+      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
+        console.error('Error fetching historical performance:', err);
+      }
     } finally {
       if (requestId === chartRequestIdRef.current) {
         setLoadingChart(false);
@@ -479,8 +481,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
       setAnalytics(data);
       localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
-    } catch (err) {
-      console.error('Error fetching portfolio analytics:', err);
+    } catch (err: any) {
+      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
+        console.error('Error fetching portfolio analytics:', err);
+      }
     } finally {
       if (requestId === analyticsRequestIdRef.current) {
         setLoadingAnalytics(false);

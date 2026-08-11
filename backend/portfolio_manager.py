@@ -436,8 +436,8 @@ class PortfolioManager:
                             "prices": prices_dict,
                             "dividends": dividends_dict
                         }
-                        # Save to SQLite L2 Cache and Supabase KV cloud storage
-                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=True)
+                        # Save to SQLite L2 Cache (Supabase write handled in bulk below)
+                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
                     else:
                         print(f"[WARN] No historical prices returned for {sym}")
                         continue
