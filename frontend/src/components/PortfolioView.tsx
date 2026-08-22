@@ -43,6 +43,7 @@ import { DividendForecast } from './portfolio/DividendForecast';
 import { RebalancingPlanner } from './portfolio/RebalancingPlanner';
 import { StockDetailsModal } from './portfolio/StockDetailsModal';
 import { TelemetryModal } from './portfolio/TelemetryModal';
+import { ExecutiveReportModal } from './portfolio/ExecutiveReportModal';
 
 import { 
   createPortfolio,
@@ -136,6 +137,7 @@ export function PortfolioView({
   const [showBetaModal, setShowBetaModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [showTelemetryModal, setShowTelemetryModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [loadingDemo, setLoadingDemo] = useState(false);
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
@@ -730,6 +732,7 @@ export function PortfolioView({
         subTab={subTab}
         setSubTab={setSubTab}
         onShareClick={() => setShowShareModal(true)}
+        onReportClick={() => setShowReportModal(true)}
         onSettingsClick={() => setShowSettingsModal(true)}
         onFeedbackClick={() => setShowFeedbackModal(true)}
         onBetaClick={() => setShowBetaModal(true)}
@@ -1772,6 +1775,19 @@ export function PortfolioView({
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
         }}
+      />
+
+      {/* EXECUTIVE PDF REPORT DOSSIER MODAL */}
+      <ExecutiveReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        portfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio'}
+        activeAccount={selectedAccount}
+        baseCurrency={baseCurrency}
+        holdings={holdings}
+        summary={summary}
+        analytics={analytics}
+        dividends={dividendsList}
       />
 
       {/* REBALANCE DIALOG MODAL */}

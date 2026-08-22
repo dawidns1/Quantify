@@ -1956,6 +1956,32 @@ body.density-compact .portfolio-table td {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Print Styles for Executive Dossier */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #quantifi-printable-dossier, #quantifi-printable-dossier * {
+    visibility: visible;
+  }
+  #quantifi-printable-dossier {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #0b1329 !important;
+    color: #f8fafc !important;
+    border: none !important;
+    padding: 1cm !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .modal-overlay {
+    background: none !important;
+  }
+}
+
 
 
 

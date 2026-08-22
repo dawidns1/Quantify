@@ -18,7 +18,8 @@
     "portfolio_intelligence": "Portfolio Intelligence",
     "create_portfolio": "Create Portfolio",
     "assets": "Assets",
-    "all_assets": "All Assets"
+    "all_assets": "All Assets",
+    "executive_report": "Executive PDF Report"
   },
   "analytics": {
     "header": "Performance & Risk Analytics",
@@ -566,5 +567,12 @@
     "upgrade_now_price": "Upgrade Now — $9.99/mo",
     "skip_countdown": "Skip to free dashboard ({{count}}s)",
     "skip_now": "Skip for Now"
+  },
+  "report": {
+    "modal_title": "Executive Portfolio Dossier",
+    "modal_subtitle": "Print-ready snapshot & institutional risk assessment",
+    "btn_print": "Print / PDF",
+    "btn_download": "Download PDF",
+    "generating": "Generating..."
   }
 }

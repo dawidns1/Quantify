@@ -19,7 +19,8 @@ import {
   Search,
   X,
   Star,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FileText
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -46,6 +47,7 @@ interface SidebarProps {
   subTab: 'overview' | 'ledger' | 'dividends';
   setSubTab: (tab: 'overview' | 'ledger' | 'dividends') => void;
   onShareClick?: () => void;
+  onReportClick?: () => void;
   onSettingsClick?: () => void;
   onFeedbackClick?: () => void;
   onBetaClick?: () => void;
@@ -75,6 +77,7 @@ export function Sidebar({
   subTab,
   setSubTab,
   onShareClick,
+  onReportClick,
   onSettingsClick,
   onFeedbackClick,
   onBetaClick,
@@ -369,6 +372,34 @@ export function Sidebar({
               }}
             >
               <Share2 size={13} />
+            </button>
+
+            <button 
+              onClick={onReportClick}
+              style={{
+                flex: 1,
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.25)',
+                color: '#06b6d4',
+                borderRadius: '4px',
+                padding: '4px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition-smooth)'
+              }}
+              title={t('sidebar.executive_report', 'Executive PDF Report')}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'white';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#06b6d4';
+                e.currentTarget.style.background = 'rgba(6, 182, 212, 0.08)';
+              }}
+            >
+              <FileText size={13} />
             </button>
 
             <button 

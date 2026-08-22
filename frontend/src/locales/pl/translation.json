@@ -18,7 +18,8 @@
     "portfolio_intelligence": "Inteligencja Portfela",
     "create_portfolio": "Utwórz portfel",
     "assets": "Aktywa",
-    "all_assets": "Wszystkie aktywa"
+    "all_assets": "Wszystkie aktywa",
+    "executive_report": "Raport PDF Portfela"
   },
   "analytics": {
     "header": "Analiza Wyników i Ryzyka",
@@ -566,5 +567,12 @@
     "upgrade_now_price": "Kup Premium — 9,99 USD/mies.",
     "skip_countdown": "Przejdź do darmowego panelu ({{count}}s)",
     "skip_now": "Pomiń na razie"
+  },
+  "report": {
+    "modal_title": "Raport Wykonawczy Portfela",
+    "modal_subtitle": "Gotowy do druku przegląd wyceny i ocena ryzyka instytucjonalnego",
+    "btn_print": "Drukuj / PDF",
+    "btn_download": "Pobierz PDF",
+    "generating": "Generowanie..."
   }
 }

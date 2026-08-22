@@ -18,7 +18,8 @@
     "portfolio_intelligence": "Inteligencia de portafolio",
     "create_portfolio": "Crear portafolio",
     "assets": "Activos",
-    "all_assets": "Todos los activos"
+    "all_assets": "Todos los activos",
+    "executive_report": "Informe PDF Ejecutivo"
   },
   "analytics": {
     "header": "Análisis de rendimiento y riesgo",
@@ -566,5 +567,12 @@
     "upgrade_now_price": "Actualizar ahora — $9.99/mes",
     "skip_countdown": "Saltar al panel gratuito ({{count}}s)",
     "skip_now": "Saltar por ahora"
+  },
+  "report": {
+    "modal_title": "Dossier Ejecutivo del Portafolio",
+    "modal_subtitle": "Instantánea lista para imprimir y evaluación de riesgo institucional",
+    "btn_print": "Imprimir / PDF",
+    "btn_download": "Descargar PDF",
+    "generating": "Generando..."
   }
 }

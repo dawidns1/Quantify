@@ -1029,39 +1029,112 @@ def send_share_email(req: SendShareEmailRequest):
         print(f"[SHARE EMAIL ERROR] Failed: {e}")
         return {"status": "simulated", "message": str(e)}
 
+def _detect_csv_delimiter(sample_text: str) -> str:
+    lines = [l for l in sample_text.splitlines()[:5] if l.strip()]
+    if not lines:
+        return ","
+    text = "\n".join(lines)
+    counts = {
+        ",": text.count(","),
+        ";": text.count(";"),
+        "\t": text.count("\t"),
+        "|": text.count("|")
+    }
+    return max(counts, key=counts.get) if max(counts.values()) > 0 else ","
+
+def _clean_csv_number(val: any, default: float = 0.0) -> float:
+    if val is None:
+        return default
+    s = str(val).strip()
+    if not s or s.lower() in ("nan", "none", "null", "-", "--"):
+        return default
+    s = re.sub(r"[^\d,\.\-\+]", "", s)
+    if not s or s in ("-", "+", ".", ","):
+        return default
+    if "," in s and "." in s:
+        if s.rfind(",") > s.rfind("."):
+            s = s.replace(".", "").replace(",", ".")
+        else:
+            s = s.replace(",", "")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except Exception:
+        return default
+
+def _clean_csv_date(val: any) -> str:
+    if not val:
+        return datetime.today().strftime("%Y-%m-%d")
+    s = str(val).strip().replace(",", " ").split()[0]
+    fmts = [
+        "%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y",
+        "%Y/%m/%d", "%d-%m-%Y", "%Y.%m.%d", "%d-%b-%Y", "%d-%b-%y", "%d/%m/%y", "%d.%m.%y"
+    ]
+    for fmt in fmts:
+        try:
+            dt = datetime.strptime(s, fmt)
+            if dt.year < 100:
+                dt = dt.replace(year=dt.year + 2000)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    m = re.search(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", str(val))
+    if m:
+        y, m_, d = m.groups()
+        return f"{int(y):04d}-{int(m_):02d}-{int(d):02d}"
+    return datetime.today().strftime("%Y-%m-%d")
+
+def _normalize_csv_symbol(sym: str) -> str:
+    s = sym.strip().upper()
+    if s.endswith(".US"):
+        s = s[:-3]
+    elif s.endswith(".PL"):
+        s = s[:-3] + ".WA"
+    elif s.endswith(".UK") or s.endswith(".LN"):
+        s = s[:-3] + ".L"
+    elif s.endswith(".DE") or s.endswith(".GR") or s.endswith(".F"):
+        s = s.split(".")[0] + ".DE"
+    elif s.endswith(".FR") or s.endswith(".PA"):
+        s = s.split(".")[0] + ".PA"
+    elif s.endswith(".NL") or s.endswith(".AS"):
+        s = s.split(".")[0] + ".AS"
+    return s
+
 def parse_transactions_csv(csv_content: str):
-    f = io.StringIO(csv_content.strip())
-    reader = csv.reader(f)
+    clean_content = csv_content.strip()
+    if clean_content.startswith('\ufeff'):
+        clean_content = clean_content[1:]
+        
+    delimiter = _detect_csv_delimiter(clean_content)
+    f = io.StringIO(clean_content)
+    reader = csv.reader(f, delimiter=delimiter)
     try:
         headers = next(reader)
     except StopIteration:
         raise ValueError("The uploaded CSV file is empty.")
-    
-    headers_clean = [h.strip().lower() for h in headers]
+        
+    headers_clean = [h.strip().lower() for h in headers if h]
     
     broker = "generic"
-    if any("volume" in h for h in headers_clean) and any("open price" in h for h in headers_clean) and any("symbol" in h for h in headers_clean):
+    if any(x in headers_clean for x in ("open price", "cena otwarcia", "cena otwarcia (open price)")) or (any("symbol" in h for h in headers_clean) and any(x in headers_clean for x in ("volume", "wolumen"))):
         broker = "xtb"
-    elif any("price per share" in h for h in headers_clean) and any("ticker" in h for h in headers_clean):
-        broker = "revolut"
-    elif any("ib commission" in h for h in headers_clean) or (any("quantity" in h for h in headers_clean) and any("asset class" in h for h in headers_clean)):
+    elif any("ib commission" in h or "t. price" in h for h in headers_clean) or (any("quantity" in h for h in headers_clean) and any("asset class" in h or "datadiscriminator" in h for h in headers_clean)):
         broker = "ibkr"
-    elif any("isin" in h for h in headers_clean) and any("no. of shares" in h for h in headers_clean):
+    elif any("price per share" in h for h in headers_clean) and any(x in headers_clean for x in ("ticker", "product")):
+        broker = "revolut"
+    elif any("isin" in h for h in headers_clean) and any("no. of shares" in h or "price / share" in h for h in headers_clean):
         broker = "trading212"
-    elif any("aantal" in h for h in headers_clean) and any("koers" in h for h in headers_clean):
+    elif any("aantal" in h or "koers" in h or "kosten" in h for h in headers_clean):
         broker = "degiro"
-    elif any("kierunek" in h for h in headers_clean) and any("papier" in h for h in headers_clean):
+    elif any("kierunek" in h or "papier" in h for h in headers_clean):
         broker = "emakler"
-    
-    print(f"[CSV IMPORT] Detected broker: {broker} from headers: {headers_clean}")
-    
-    parsed_transactions = []
-    f.seek(0)
-    first_char = f.read(1)
-    if first_char != '\ufeff':
-        f.seek(0)
         
-    dict_reader = csv.DictReader(f)
+    print(f"[CSV IMPORT] Detected delimiter='{delimiter}', broker='{broker}' from headers: {headers_clean}")
+    
+    f.seek(0)
+    dict_reader = csv.DictReader(f, delimiter=delimiter)
+    parsed_transactions = []
     
     for row_idx, row in enumerate(dict_reader):
         try:
@@ -1074,185 +1147,131 @@ def parse_transactions_csv(csv_content: str):
             currency = "USD"
             
             if broker == "xtb":
-                raw_time = row.get("Time") or row.get("time") or ""
-                raw_type = row.get("Type") or row.get("type") or ""
+                raw_time = row.get("Time") or row.get("time") or row.get("Czas") or row.get("czas") or ""
+                raw_type = row.get("Type") or row.get("type") or row.get("Typ") or row.get("typ") or ""
                 raw_symbol = row.get("Symbol") or row.get("symbol") or ""
-                raw_vol = row.get("Volume") or row.get("volume") or "0"
-                raw_price = row.get("Open price") or row.get("open price") or "0"
-                raw_comm = row.get("Commission") or row.get("commission") or "0"
+                raw_vol = row.get("Volume") or row.get("volume") or row.get("Wolumen") or row.get("wolumen") or "0"
+                raw_price = row.get("Open price") or row.get("open price") or row.get("Cena otwarcia") or row.get("cena otwarcia") or "0"
+                raw_comm = row.get("Commission") or row.get("commission") or row.get("Prowizja") or row.get("prowizja") or "0"
                 
-                symbol = raw_symbol.strip().upper()
-                if symbol.endswith(".US"):
-                    symbol = symbol[:-3]
-                elif symbol.endswith(".PL"):
-                    symbol = symbol[:-3] + ".WA"
+                symbol = _normalize_csv_symbol(raw_symbol)
+                tx_type = "SELL" if any(x in raw_type.lower() for x in ("sell", "sprzedaż", "sprzedaj", "s")) else "BUY"
+                shares = _clean_csv_number(raw_vol)
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_comm))
+                tx_date = _clean_csv_date(raw_time)
+                currency = "PLN" if symbol.endswith(".WA") else "EUR" if symbol.endswith(".DE") else "GBP" if symbol.endswith(".L") else "USD"
                 
-                tx_type = "SELL" if "sell" in raw_type.lower() else "BUY"
-                shares = float(raw_vol)
-                price = float(raw_price)
-                fees = float(raw_comm)
-                if raw_time:
-                    tx_date = raw_time.split()[0]
-                    
-            elif broker == "revolut":
-                raw_date = row.get("Date") or row.get("date") or ""
-                raw_ticker = row.get("Ticker") or row.get("ticker") or row.get("Symbol") or row.get("symbol") or ""
-                raw_type = row.get("Type") or row.get("type") or ""
-                raw_qty = row.get("Quantity") or row.get("quantity") or "0"
-                raw_price = row.get("Price per share") or row.get("price per share") or row.get("Price") or row.get("price") or "0"
-                raw_fees = row.get("Fees") or row.get("fees") or row.get("Commission") or row.get("commission") or "0"
-                raw_curr = row.get("Currency") or row.get("currency") or "USD"
-                
-                symbol = raw_ticker.strip().upper()
-                tx_type = "SELL" if "sell" in raw_type.lower() else "BUY"
-                shares = float(raw_qty)
-                price = float(raw_price)
-                fees = float(raw_fees)
-                currency = raw_curr.strip().upper()
-                
-                if raw_date:
-                    raw_date_clean = raw_date.split()[0]
-                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y"):
-                        try:
-                            dt = datetime.strptime(raw_date_clean, fmt)
-                            tx_date = dt.strftime("%Y-%m-%d")
-                            break
-                        except ValueError:
-                            continue
-                    if not tx_date:
-                        tx_date = raw_date_clean
-                        
             elif broker == "ibkr":
                 raw_symbol = row.get("Symbol") or row.get("symbol") or ""
-                raw_datetime = row.get("Date/Time") or row.get("date/time") or row.get("time") or ""
-                raw_qty = row.get("Quantity") or row.get("quantity") or "0"
-                raw_price = row.get("Trade Price") or row.get("trade price") or row.get("price") or "0"
-                raw_comm = row.get("IB Commission") or row.get("ib commission") or row.get("commission") or "0"
+                raw_datetime = row.get("Date/Time") or row.get("date/time") or row.get("Time") or row.get("time") or row.get("Date") or ""
+                raw_qty = row.get("Quantity") or row.get("quantity") or row.get("Qty") or "0"
+                raw_price = row.get("Trade Price") or row.get("trade price") or row.get("T. Price") or row.get("Price") or "0"
+                raw_comm = row.get("IB Commission") or row.get("ib commission") or row.get("Comm/Fee") or row.get("Commission") or "0"
                 raw_curr = row.get("Currency") or row.get("currency") or "USD"
                 
-                symbol = raw_symbol.strip().upper()
-                qty_val = float(raw_qty)
+                symbol = _normalize_csv_symbol(raw_symbol)
+                qty_val = _clean_csv_number(raw_qty)
                 tx_type = "SELL" if qty_val < 0 else "BUY"
                 shares = abs(qty_val)
-                price = float(raw_price)
-                fees = abs(float(raw_comm))
-                currency = raw_curr.strip().upper()
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_comm))
+                currency = raw_curr.strip().upper() if raw_curr else "USD"
+                tx_date = _clean_csv_date(raw_datetime)
                 
-                if raw_datetime:
-                    tx_date = raw_datetime.replace(",", "").split()[0]
-                    
             elif broker == "trading212":
-                raw_ticker = row.get("Ticker") or row.get("ticker") or ""
+                raw_ticker = row.get("Ticker") or row.get("ticker") or row.get("Symbol") or ""
                 raw_action = row.get("Action") or row.get("action") or ""
                 raw_time = row.get("Time") or row.get("time") or ""
                 raw_qty = row.get("No. of shares") or row.get("no. of shares") or "0"
                 raw_price = row.get("Price / share") or row.get("price / share") or "0"
-                raw_fee = row.get("Transaction fee") or row.get("transaction fee") or row.get("Fee") or row.get("fee") or "0"
-                raw_curr = row.get("Currency (Price / share)") or row.get("currency (price / share)") or "USD"
+                raw_fee = row.get("Transaction fee") or row.get("transaction fee") or row.get("Fee") or "0"
+                raw_curr = row.get("Currency (Price / share)") or row.get("Currency") or "USD"
                 
                 if not any(x in raw_action.lower() for x in ("buy", "kupno", "sell", "sprzedaż")):
                     continue
                     
-                symbol = raw_ticker.strip().upper()
-                tx_type = "SELL" if "sell" in raw_action.lower() or "sprzedaż" in raw_action.lower() else "BUY"
-                shares = float(raw_qty)
-                price = float(raw_price)
-                fees = float(raw_fee)
-                currency = raw_curr.strip().upper()
+                symbol = _normalize_csv_symbol(raw_ticker)
+                tx_type = "SELL" if any(x in raw_action.lower() for x in ("sell", "sprzedaż")) else "BUY"
+                shares = _clean_csv_number(raw_qty)
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_fee))
+                currency = raw_curr.strip().upper() if raw_curr else "USD"
+                tx_date = _clean_csv_date(raw_time)
                 
-                if raw_time:
-                    tx_date = raw_time.split()[0]
-                    
+            elif broker == "revolut":
+                raw_date = row.get("Date") or row.get("date") or ""
+                raw_ticker = row.get("Ticker") or row.get("Symbol") or row.get("Product") or ""
+                raw_type = row.get("Type") or row.get("type") or ""
+                raw_qty = row.get("Quantity") or row.get("quantity") or "0"
+                raw_price = row.get("Price per share") or row.get("Price") or "0"
+                raw_fees = row.get("Fees") or row.get("Commission") or "0"
+                raw_curr = row.get("Currency") or "USD"
+                
+                symbol = _normalize_csv_symbol(raw_ticker)
+                tx_type = "SELL" if any(x in raw_type.lower() for x in ("sell", "sprzedaż")) else "BUY"
+                shares = _clean_csv_number(raw_qty)
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_fees))
+                currency = raw_curr.strip().upper() if raw_curr else "USD"
+                tx_date = _clean_csv_date(raw_date)
+                
             elif broker == "degiro":
                 raw_product = row.get("Product") or row.get("product") or ""
                 raw_symbol = row.get("Symbol") or row.get("symbol") or ""
-                raw_date = row.get("Datum") or row.get("datum") or row.get("Date") or row.get("date") or ""
-                raw_qty = row.get("Aantal") or row.get("aantal") or row.get("Quantity") or row.get("quantity") or "0"
-                raw_price = row.get("Koers") or row.get("koers") or row.get("Price") or row.get("price") or "0"
-                raw_fee = row.get("Kosten") or row.get("kosten") or row.get("Transaction fee") or "0"
-                raw_curr = row.get("Valuta") or row.get("valuta") or row.get("Currency") or "EUR"
+                raw_date = row.get("Datum") or row.get("Date") or row.get("date") or ""
+                raw_qty = row.get("Aantal") or row.get("Quantity") or "0"
+                raw_price = row.get("Koers") or row.get("Price") or "0"
+                raw_fee = row.get("Kosten") or row.get("Transaction fee") or "0"
+                raw_curr = row.get("Valuta") or row.get("Currency") or "EUR"
                 
-                symbol = raw_symbol.strip().upper() if raw_symbol else raw_product.strip().upper()
-                qty_val = float(raw_qty)
+                symbol = _normalize_csv_symbol(raw_symbol if raw_symbol else raw_product)
+                qty_val = _clean_csv_number(raw_qty)
                 tx_type = "SELL" if qty_val < 0 else "BUY"
                 shares = abs(qty_val)
-                price = float(raw_price)
-                fees = abs(float(raw_fee))
-                currency = raw_curr.strip().upper()
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_fee))
+                currency = raw_curr.strip().upper() if raw_curr else "EUR"
+                tx_date = _clean_csv_date(raw_date)
                 
-                if raw_date:
-                    raw_date_clean = raw_date.split()[0]
-                    for fmt in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y"):
-                        try:
-                            dt = datetime.strptime(raw_date_clean, fmt)
-                            tx_date = dt.strftime("%Y-%m-%d")
-                            break
-                        except ValueError:
-                            continue
-                            
             elif broker == "emakler":
                 raw_papier = row.get("Papier") or row.get("papier") or ""
                 raw_kierunek = row.get("Kierunek") or row.get("kierunek") or ""
-                raw_date = row.get("Data transakcji") or row.get("data transakcji") or row.get("Data") or row.get("data") or ""
-                raw_qty = row.get("Ilość") or row.get("ilość") or row.get("ilosc") or "0"
-                raw_price = row.get("Cena") or row.get("cena") or "0"
-                raw_fee = row.get("Prowizja") or row.get("prowizja") or "0"
-                raw_curr = row.get("Waluta") or row.get("waluta") or "PLN"
+                raw_date = row.get("Data transakcji") or row.get("Data") or ""
+                raw_qty = row.get("Ilość") or row.get("ilosc") or "0"
+                raw_price = row.get("Cena") or "0"
+                raw_fee = row.get("Prowizja") or "0"
+                raw_curr = row.get("Waluta") or "PLN"
                 
-                symbol = raw_papier.strip().upper().split(":")[0]
-                tx_type = "SELL" if "sprzedaż" in raw_kierunek.lower() or "sell" in raw_kierunek.lower() or raw_kierunek.lower().startswith("s") else "BUY"
-                shares = float(raw_qty)
-                price = float(raw_price)
-                fees = float(raw_fee)
-                currency = raw_curr.strip().upper()
+                symbol = _normalize_csv_symbol(raw_papier.split(":")[0])
+                tx_type = "SELL" if any(x in raw_kierunek.lower() for x in ("sprzedaż", "sell", "s")) else "BUY"
+                shares = _clean_csv_number(raw_qty)
+                price = _clean_csv_number(raw_price)
+                fees = abs(_clean_csv_number(raw_fee))
+                currency = raw_curr.strip().upper() if raw_curr else "PLN"
+                tx_date = _clean_csv_date(raw_date)
                 
-                if raw_date:
-                    raw_date_clean = raw_date.split()[0]
-                    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
-                        try:
-                            dt = datetime.strptime(raw_date_clean, fmt)
-                            tx_date = dt.strftime("%Y-%m-%d")
-                            break
-                        except ValueError:
-                            continue
-                    
             else: # generic fallback
-                date_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("date", "time", "data", "timestamp", "trans. date", "transaction date"))), None)
-                ticker_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("ticker", "symbol", "instrument", "akcja", "walor", "isin", "name", "security", "asset"))), None)
-                type_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("type", "action", "transakcja", "operacja", "direction", "kierunek"))), None)
-                shares_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("shares", "quantity", "vol", "ilość", "ilosc", "qty", "volume", "no. of shares", "amount", "aantal"))), None)
-                price_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("price", "rate", "kurs", "cena", "koers", "trade price", "price / share"))), None)
-                fees_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("fee", "comm", "prov", "prowizja", "commission", "transaction fee", "kosten"))), None)
+                date_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("date", "time", "data", "timestamp", "trans. date"))), None)
+                ticker_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("ticker", "symbol", "instrument", "akcja", "walor", "isin", "asset"))), None)
+                type_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("type", "action", "transakcja", "operacja", "kierunek"))), None)
+                shares_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("shares", "quantity", "vol", "ilość", "ilosc", "qty", "volume", "amount"))), None)
+                price_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("price", "rate", "kurs", "cena", "trade price", "price / share"))), None)
+                fees_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("fee", "comm", "prowizja", "commission", "kosten"))), None)
                 curr_key = next((k for k in row.keys() if k and any(x in k.lower() for x in ("curr", "waluta", "currency", "valuta"))), None)
                 
-                
-                symbol = row.get(ticker_key, "").strip().upper() if ticker_key else ""
+                symbol = _normalize_csv_symbol(row.get(ticker_key, "")) if ticker_key else ""
                 raw_type = row.get(type_key, "") if type_key else ""
                 tx_type = "SELL" if any(x in raw_type.lower() for x in ("sell", "sprzedaj", "s")) else "BUY"
-                shares = float(row.get(shares_key, "0")) if shares_key else 0.0
-                price = float(row.get(price_key, "0")) if price_key else 0.0
-                fees = abs(float(row.get(fees_key, "0"))) if fees_key else 0.0
+                shares = _clean_csv_number(row.get(shares_key, "0")) if shares_key else 0.0
+                price = _clean_csv_number(row.get(price_key, "0")) if price_key else 0.0
+                fees = abs(_clean_csv_number(row.get(fees_key, "0"))) if fees_key else 0.0
                 currency = row.get(curr_key, "USD").strip().upper() if curr_key else "USD"
-                
-                raw_date = row.get(date_key, "") if date_key else ""
-                if raw_date:
-                    raw_date_clean = raw_date.split()[0].replace(",", "")
-                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%Y/%m/%d"):
-                        try:
-                            dt = datetime.strptime(raw_date_clean, fmt)
-                            tx_date = dt.strftime("%Y-%m-%d")
-                            break
-                        except ValueError:
-                            continue
-                    if not tx_date:
-                        tx_date = raw_date_clean
-            
+                tx_date = _clean_csv_date(row.get(date_key, "")) if date_key else datetime.today().strftime("%Y-%m-%d")
+
             if not symbol or shares <= 0 or price <= 0:
                 continue
-                
-            if not tx_date or not re.match(r"^\d{4}-\d{2}-\d{2}$", tx_date):
-                tx_date = datetime.today().strftime("%Y-%m-%d")
-                
+
             parsed_transactions.append({
                 "symbol": symbol,
                 "type": tx_type,
@@ -1263,7 +1282,6 @@ def parse_transactions_csv(csv_content: str):
                 "currency": currency,
                 "account": "Imported Account"
             })
-            
         except Exception as row_err:
             print(f"[CSV IMPORT] Error parsing row {row_idx}: {row_err}")
             continue
