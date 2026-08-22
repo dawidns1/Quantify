@@ -281,8 +281,8 @@ class PortfolioManager:
             for pair in fx_pairs:
                 pair = pair.upper().strip()
                 cache_entry = cls._live_fx_cache.get(pair)
-                if not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
-                    sqlite_data = get_cached_live_price(pair, cls.FX_CACHE_TTL)
+                if force_live or not cache_entry or (now - cache_entry[0] > cls.FX_CACHE_TTL):
+                    sqlite_data = None if force_live else get_cached_live_price(pair, cls.FX_CACHE_TTL)
                     if sqlite_data:
                         cls._live_fx_cache[pair] = (sqlite_data["last_updated"], sqlite_data["live_price"])
                     else:

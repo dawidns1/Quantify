@@ -90,6 +90,7 @@
     "group_valuation": "Wycena",
     "group_returns": "Stopy zwrotu",
     "btn_customize_cols": "Dostosuj kolumny",
+    "btn_refresh_live": "Odśwież ceny na żywo",
     "config_columns": "Konfiguruj kolumny portfela",
     "config_columns_desc": "Ticker, bieżąca wartość, zysk/strata i akcje są zawsze widoczne",
     "class_cash": "Gotówka",

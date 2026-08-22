@@ -90,6 +90,7 @@
     "group_valuation": "Valuation",
     "group_returns": "Returns",
     "btn_customize_cols": "Customize Columns",
+    "btn_refresh_live": "Refresh Live Prices",
     "config_columns": "Configure Portfolio Columns",
     "config_columns_desc": "Ticker, Current Value, Gain/Loss & Actions are always visible",
     "class_cash": "Cash",

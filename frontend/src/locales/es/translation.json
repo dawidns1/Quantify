@@ -90,6 +90,7 @@
     "group_valuation": "Valoración",
     "group_returns": "Retornos",
     "btn_customize_cols": "Personalizar columnas",
+    "btn_refresh_live": "Actualizar precios en vivo",
     "config_columns": "Configurar columnas del portafolio",
     "config_columns_desc": "El ticker, el valor actual, la ganancia/pérdida y las acciones siempre están visibles",
     "class_cash": "Efectivo",

@@ -69,7 +69,7 @@ interface PortfolioContextType {
   
   // Handlers
   loadPortfolios: () => Promise<void>;
-  fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean) => Promise<void>;
+  fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean, forceLive?: boolean) => Promise<void>;
   fetchTransactions: () => Promise<void>;
   fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string) => Promise<void>;
   fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
@@ -313,7 +313,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
     silent = false,
-    forceLive = false
+    forceLive = !silent
   ) => {
     if (!activePortfolioId) return;
 
