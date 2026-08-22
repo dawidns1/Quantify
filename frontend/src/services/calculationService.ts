@@ -1,3 +1,4 @@
+import { supabase } from '../supabaseClient';
 import type { Holding, Summary } from '../types/portfolio';
 
 /**
@@ -42,6 +43,75 @@ export async function fetchWithTimeout(url: string, options: RequestInit = {}, t
   }
 }
 
+/**
+ * Proactively verifies and retrieves a fresh Supabase JWT token.
+ * Automatically refreshes if token is expired or within 60s of expiring.
+ */
+export async function getFreshAccessToken(passedToken?: string | null): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      // If expired or expiring within 60s, refresh session
+      if (Date.now() >= expiresAt - 60000) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession();
+        return refreshed?.access_token || session.access_token;
+      }
+      return session.access_token;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return passedToken || null;
+}
+
+/**
+ * Authenticated fetch with proactive token renewal and automatic 401 retry.
+ * Handles laptop sleep / tab hibernation seamlessly.
+ */
+export async function fetchAuthenticatedWithRetry(
+  url: string,
+  options: RequestInit = {},
+  passedToken?: string | null,
+  timeoutMs = 30000
+): Promise<Response> {
+  let token = await getFreshAccessToken(passedToken);
+
+  const buildHeaders = (tok: string | null) => {
+    const headers = new Headers(options.headers || {});
+    if (tok) {
+      headers.set('Authorization', `Bearer ${tok}`);
+    }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (supabaseUrl) headers.set('x-supabase-url', supabaseUrl);
+    if (supabaseAnonKey) headers.set('x-supabase-anon-key', supabaseAnonKey);
+    return headers;
+  };
+
+  let response = await fetchWithTimeout(url, {
+    ...options,
+    headers: buildHeaders(token)
+  }, timeoutMs);
+
+  // If 401 Unauthorized (e.g. JWT expired upon waking from sleep), refresh session and retry once
+  if (response.status === 401) {
+    try {
+      const { data: { session: freshSession } } = await supabase.auth.refreshSession();
+      if (freshSession?.access_token) {
+        response = await fetchWithTimeout(url, {
+          ...options,
+          headers: buildHeaders(freshSession.access_token)
+        }, timeoutMs);
+      }
+    } catch (refreshErr) {
+      console.warn('Session refresh on 401 retry failed:', refreshErr);
+    }
+  }
+
+  return response;
+}
+
 export async function fetchHoldings(
   apiBaseUrl: string,
   jwtToken: string | null,
@@ -52,19 +122,6 @@ export async function fetchHoldings(
   forceLive: boolean = false,
   signal?: AbortSignal
 ): Promise<{ holdings: Holding[]; summary: Summary; dividends_list?: any[]; next_check_seconds?: number }> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
@@ -72,11 +129,11 @@ export async function fetchHoldings(
     force_live: String(forceLive)
   });
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`, {
-    method: 'GET',
-    headers,
-    signal
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/holdings?${queryParams.toString()}`,
+    { method: 'GET', signal },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to calculate holdings';
@@ -110,19 +167,6 @@ export async function fetchHistoricalPerformance(
   linkCash: boolean,
   benchmarks?: string
 ): Promise<{ dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> }> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
@@ -132,10 +176,11 @@ export async function fetchHistoricalPerformance(
     queryParams.append('benchmarks', benchmarks);
   }
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`, {
-    method: 'GET',
-    headers
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/historical?${queryParams.toString()}`,
+    { method: 'GET' },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to fetch historical performance';
@@ -147,7 +192,6 @@ export async function fetchHistoricalPerformance(
   }
   return response.json();
 }
-
 
 export async function searchAssets(
   apiBaseUrl: string,
@@ -173,29 +217,17 @@ export async function fetchUpcomingEvents(
   account: string,
   linkCash: boolean
 ): Promise<any[]> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
     link_cash: String(linkCash)
   });
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/upcoming-events?${queryParams.toString()}`, {
-    method: 'GET',
-    headers
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/upcoming-events?${queryParams.toString()}`,
+    { method: 'GET' },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to fetch upcoming corporate events';
@@ -224,29 +256,17 @@ export async function fetchPortfolioAnalytics(
   beta: number;
   correlation_matrix: Record<string, Record<string, number>>;
 }> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
     link_cash: String(linkCash)
   });
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/analytics?${queryParams.toString()}`, {
-    method: 'GET',
-    headers
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/analytics?${queryParams.toString()}`,
+    { method: 'GET' },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to fetch portfolio analytics';
@@ -274,29 +294,17 @@ export async function fetchDividendForecast(
   monthly_amounts: number[];
   ticker_contributions: Record<string, number[]>;
 }> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
     link_cash: String(linkCash)
   });
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/dividend-forecast?${queryParams.toString()}`, {
-    method: 'GET',
-    headers
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/dividend-forecast?${queryParams.toString()}`,
+    { method: 'GET' },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to fetch dividend forecast';
@@ -319,19 +327,6 @@ export async function fetchAIInsights(
   lang: string,
   forceRefresh: boolean = false
 ): Promise<{ status: string; insights: string; cached: boolean }> {
-  const headers: Record<string, string> = {};
-  if (jwtToken) {
-    headers['Authorization'] = `Bearer ${jwtToken}`;
-  }
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (supabaseUrl) {
-    headers['x-supabase-url'] = supabaseUrl;
-  }
-  if (supabaseAnonKey) {
-    headers['x-supabase-anon-key'] = supabaseAnonKey;
-  }
-
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
@@ -340,10 +335,11 @@ export async function fetchAIInsights(
     force_refresh: String(forceRefresh)
   });
 
-  const response = await fetchWithTimeout(`${apiBaseUrl}/api/portfolio/${portfolioId}/ai-insights?${queryParams.toString()}`, {
-    method: 'GET',
-    headers
-  });
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/ai-insights?${queryParams.toString()}`,
+    { method: 'GET' },
+    jwtToken
+  );
 
   if (!response.ok) {
     let errMsg = 'Failed to fetch AI insights';
