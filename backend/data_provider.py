@@ -182,34 +182,35 @@ class BaseDataProvider:
 class YFinanceProvider(BaseDataProvider):
     def fetch_v8_chart_quote(self, symbol: str) -> dict:
         symbol = symbol.upper().strip()
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=2d&interval=1d"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-        try:
-            r = YF_SESSION.get(url, headers=headers, timeout=5)
-            if r.status_code == 200:
-                data = r.json()
-                results = data.get("chart", {}).get("result", [])
-                if results:
-                    meta = results[0].get("meta", {})
-                    live_price = meta.get("regularMarketPrice") or 0.0
-                    prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or live_price
-                    company_name = meta.get("longName") or meta.get("shortName") or symbol
-                    currency = meta.get("currency") or guess_native_currency(symbol)
-                    timezone = meta.get("exchangeTimezoneName") or "UTC"
-                    exchange = meta.get("exchangeName") or ""
-                    return {
-                        "symbol": symbol,
-                        "live_price": float(live_price),
-                        "previous_close": float(prev_close),
-                        "company_name": company_name,
-                        "native_currency": currency.upper().strip(),
-                        "timezone": timezone,
-                        "exchange": exchange
-                    }
-        except Exception as e:
-            print(f"[DataProvider] Error fetching v8 chart quote for {symbol}: {e}")
+        for endpoint in ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"]:
+            url = f"{endpoint}/v8/finance/chart/{symbol}?range=2d&interval=1d"
+            try:
+                r = YF_SESSION.get(url, headers=headers, timeout=4.0)
+                if r.status_code == 200:
+                    data = r.json()
+                    results = data.get("chart", {}).get("result", [])
+                    if results:
+                        meta = results[0].get("meta", {})
+                        live_price = meta.get("regularMarketPrice") or 0.0
+                        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or live_price
+                        company_name = meta.get("longName") or meta.get("shortName") or symbol
+                        currency = meta.get("currency") or guess_native_currency(symbol)
+                        timezone = meta.get("exchangeTimezoneName") or "UTC"
+                        exchange = meta.get("exchangeName") or ""
+                        return {
+                            "symbol": symbol,
+                            "live_price": float(live_price),
+                            "previous_close": float(prev_close),
+                            "company_name": company_name,
+                            "native_currency": currency.upper().strip(),
+                            "timezone": timezone,
+                            "exchange": exchange
+                        }
+            except Exception as e:
+                pass
         return None
 
     def download_bulk_live_prices(self, symbols: list, fx_pairs: list) -> dict:
@@ -449,66 +450,88 @@ class YFinanceProvider(BaseDataProvider):
             print(f"YFinance live FX download failed for {pair}: {e}")
         return float(rate)
 
-    def download_historical_stock_bulk(self, symbols: list, start_dt: date, end_dt: date) -> tuple:
-        prices_by_symbol = {}
-        dividends_by_symbol = {}
-        for sym in symbols:
-            prices_by_symbol[sym] = {}
-            dividends_by_symbol[sym] = {}
+    def _fetch_single_historical_stock(self, sym: str, start_dt: date, end_dt: date) -> tuple:
+        sym = sym.upper().strip()
+        prices = {}
+        dividends = {}
+        curr = guess_native_currency(sym)
+        is_pence = curr in {"GBP", "GBX", "ZAC", "ILA"}
+        scale = 0.01 if is_pence else 1.0
 
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+
+        # 1. Try v8 direct endpoints (query1 -> query2)
+        for endpoint in ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"]:
+            try:
+                url = f"{endpoint}/v8/finance/chart/{sym}?range=5y&interval=1d&events=div"
+                r = YF_SESSION.get(url, headers=headers, timeout=4.0)
+                if r.status_code == 200:
+                    data = r.json()
+                    result = data.get("chart", {}).get("result", [])
+                    if result:
+                        timestamps = result[0].get("timestamp", [])
+                        indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
+                        closes = indicators.get("close", [])
+                        for ts, close_val in zip(timestamps, closes):
+                            if close_val is not None and not math.isnan(close_val):
+                                dt = datetime.fromtimestamp(ts).date()
+                                if start_dt <= dt <= end_dt:
+                                    prices[dt] = float(close_val) * scale
+
+                        events = result[0].get("events", {})
+                        divs = events.get("dividends", {})
+                        for d_info in divs.values():
+                            d_ts = d_info.get("date")
+                            d_val = d_info.get("amount")
+                            if d_ts and d_val:
+                                d_dt = datetime.fromtimestamp(d_ts).date()
+                                if start_dt <= d_dt <= end_dt:
+                                    dividends[d_dt] = float(d_val) * scale
+
+                        if prices:
+                            return sym, prices, dividends
+            except Exception:
+                pass
+
+        # 2. Secondary fallback via yfinance Ticker.history if direct v8 fails
+        try:
+            t = yf.Ticker(sym, session=YF_SESSION)
+            hist = t.history(start=start_dt.strftime("%Y-%m-%d"), end=(end_dt + timedelta(days=1)).strftime("%Y-%m-%d"), timeout=4.0)
+            if hist is not None and not hist.empty:
+                for idx, row in hist.iterrows():
+                    dt = idx.date() if hasattr(idx, 'date') else datetime.strptime(str(idx)[:10], "%Y-%m-%d").date()
+                    if start_dt <= dt <= end_dt:
+                        c_val = row.get("Close")
+                        if pd.notna(c_val):
+                            prices[dt] = float(c_val) * scale
+                        d_val = row.get("Dividends")
+                        if pd.notna(d_val) and float(d_val) > 0:
+                            dividends[dt] = float(d_val) * scale
+        except Exception:
+            pass
+
+        return sym, prices, dividends
+
+    def download_historical_stock_bulk(self, symbols: list, start_dt: date, end_dt: date) -> tuple:
+        prices_by_symbol = {sym: {} for sym in symbols}
+        dividends_by_symbol = {sym: {} for sym in symbols}
         if not symbols:
             return prices_by_symbol, dividends_by_symbol
 
-        start_str = start_dt.strftime("%Y-%m-%d")
-        end_str = (end_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-
-        try:
-            # Check London-listed / other pence suffix indicators instantly without slow network calls
-            pence_symbols = set()
-            for sym in symbols:
-                symbol_upper = sym.upper().strip()
-                curr = guess_native_currency(symbol_upper)
-                if curr in {"GBP", "GBX", "ZAC", "ILA"}:
-                    pence_symbols.add(sym)
-
-            for sym in symbols:
+        from concurrent.futures import ThreadPoolExecutor
+        workers = min(10, max(1, len(symbols)))
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [executor.submit(self._fetch_single_historical_stock, sym, start_dt, end_dt) for sym in symbols]
+            for fut in futures:
                 try:
-                    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5y&interval=1d&events=div"
-                    r = YF_SESSION.get(url, timeout=3.0)
-                    if r.status_code != 200:
-                        continue
-                    data = r.json()
-                    result = data.get("chart", {}).get("result", [])
-                    if not result:
-                        continue
-                        
-                    timestamps = result[0].get("timestamp", [])
-                    indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
-                    closes = indicators.get("close", [])
-                    
-                    is_pence = sym in pence_symbols
-                    scale = 0.01 if is_pence else 1.0
-                    
-                    for ts, close_val in zip(timestamps, closes):
-                        if close_val is not None and not math.isnan(close_val):
-                            dt = datetime.fromtimestamp(ts).date()
-                            if start_dt <= dt <= end_dt:
-                                prices_by_symbol[sym][dt] = float(close_val) * scale
-                            
-                    events = result[0].get("events", {})
-                    divs = events.get("dividends", {})
-                    for d_info in divs.values():
-                        d_ts = d_info.get("date")
-                        d_val = d_info.get("amount")
-                        if d_ts and d_val:
-                            d_dt = datetime.fromtimestamp(d_ts).date()
-                            if start_dt <= d_dt <= end_dt:
-                                dividends_by_symbol[sym][d_dt] = float(d_val) * scale
+                    sym, p, d = fut.result()
+                    prices_by_symbol[sym] = p
+                    dividends_by_symbol[sym] = d
                 except Exception as e:
-                    print(f"Error fetching v8 historical chart for {sym}: {e}")
-        except Exception as e:
-            print(f"YFinance bulk historical stock download failed: {e}")
-            
+                    print(f"Error fetching historical for symbol: {e}")
+
         return prices_by_symbol, dividends_by_symbol
 
     def download_historical_stock(self, symbol: str, start_dt: date, end_dt: date) -> tuple:
@@ -517,23 +540,44 @@ class YFinanceProvider(BaseDataProvider):
 
     def download_historical_fx(self, pair: str, start_dt: date, end_dt: date) -> dict:
         prices_dict = {}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        for endpoint in ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"]:
+            try:
+                url = f"{endpoint}/v8/finance/chart/{pair}?range=5y&interval=1d"
+                r = YF_SESSION.get(url, headers=headers, timeout=4.0)
+                if r.status_code == 200:
+                    data = r.json()
+                    result = data.get("chart", {}).get("result", [])
+                    if result:
+                        timestamps = result[0].get("timestamp", [])
+                        indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
+                        closes = indicators.get("close", [])
+                        for ts, close_val in zip(timestamps, closes):
+                            if close_val is not None and not math.isnan(close_val):
+                                dt = datetime.fromtimestamp(ts).date()
+                                if start_dt <= dt <= end_dt:
+                                    prices_dict[dt] = float(close_val)
+                        if prices_dict:
+                            return prices_dict
+            except Exception:
+                pass
+
+        # Fallback via yfinance Ticker
         try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{pair}?range=5y&interval=1d"
-            r = YF_SESSION.get(url, timeout=3.0)
-            if r.status_code == 200:
-                data = r.json()
-                result = data.get("chart", {}).get("result", [])
-                if result:
-                    timestamps = result[0].get("timestamp", [])
-                    indicators = result[0].get("indicators", {}).get("quote", [{}])[0]
-                    closes = indicators.get("close", [])
-                    for ts, close_val in zip(timestamps, closes):
-                        if close_val is not None and not math.isnan(close_val):
-                            dt = datetime.fromtimestamp(ts).date()
-                            if start_dt <= dt <= end_dt:
-                                prices_dict[dt] = float(close_val)
-        except Exception as e:
-            print(f"YFinance historical FX download failed for {pair}: {e}")
+            t = yf.Ticker(pair, session=YF_SESSION)
+            hist = t.history(start=start_dt.strftime("%Y-%m-%d"), end=(end_dt + timedelta(days=1)).strftime("%Y-%m-%d"), timeout=4.0)
+            if hist is not None and not hist.empty:
+                for idx, row in hist.iterrows():
+                    dt = idx.date() if hasattr(idx, 'date') else datetime.strptime(str(idx)[:10], "%Y-%m-%d").date()
+                    if start_dt <= dt <= end_dt:
+                        c_val = row.get("Close")
+                        if pd.notna(c_val):
+                            prices_dict[dt] = float(c_val)
+        except Exception:
+            pass
+
         return prices_dict
 
 

@@ -73,6 +73,7 @@ interface PortfolioContextType {
   fetchTransactions: () => Promise<void>;
   fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string) => Promise<void>;
   fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
+  refreshPortfolioData: () => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -492,6 +493,20 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   };
 
+  const refreshPortfolioData = async () => {
+    if (!activePortfolioId) return;
+    try {
+      await Promise.allSettled([
+        fetchHoldings(baseCurrency, selectedAccount, false, true),
+        fetchTransactions(),
+        fetchHistoricalPerformance(baseCurrency, selectedAccount),
+        fetchPortfolioAnalytics(baseCurrency, selectedAccount)
+      ]);
+    } catch (e) {
+      console.error('Error refreshing portfolio:', e);
+    }
+  };
+
   const isCreatingDefaultPortfolioRef = useRef(false);
 
   const loadPortfolios = async () => {
@@ -719,7 +734,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       fetchHoldings,
       fetchTransactions,
       fetchHistoricalPerformance,
-      fetchPortfolioAnalytics
+      fetchPortfolioAnalytics,
+      refreshPortfolioData
     }}>
       {children}
     </PortfolioContext.Provider>

@@ -5,7 +5,7 @@ import time
 import threading
 import pandas as pd
 from datetime import datetime, date, timedelta
-from backend.data_provider import get_provider
+from backend.data_provider import get_provider, guess_native_currency
 from backend.cache_db import (
     get_cached_live_price,
     save_cached_live_price,

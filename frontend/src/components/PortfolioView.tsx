@@ -104,7 +104,8 @@ export function PortfolioView({
     fetchHoldings,
     fetchTransactions,
     fetchHistoricalPerformance,
-    fetchPortfolioAnalytics
+    fetchPortfolioAnalytics,
+    refreshPortfolioData
   } = usePortfolio();
 
   const tier = 'premium' as 'free' | 'premium'; // Force premium tier to bypass all free-tier limits and prompts for now
@@ -805,8 +806,7 @@ export function PortfolioView({
                     onClick={() => {
                       setPillStatus('loading');
                       setPillErrorMsg(null);
-                      fetchHoldings(baseCurrency, selectedAccount);
-                      fetchTransactions();
+                      refreshPortfolioData();
                     }}
                     style={{
                       background: 'rgba(6, 182, 212, 0.2)',

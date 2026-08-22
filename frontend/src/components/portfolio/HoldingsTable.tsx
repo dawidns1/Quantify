@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Briefcase, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { Briefcase, SlidersHorizontal } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
-import { usePortfolio } from '../../context/PortfolioContext';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -23,7 +22,6 @@ export function HoldingsTable({
   onScrollToBottomChange
 }: HoldingsTableProps) {
   const { t } = useTranslation();
-  const { fetchHoldings, loadingHoldings, baseCurrency, selectedAccount } = usePortfolio();
 
   // Column width resizing states
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -710,40 +708,6 @@ export function HoldingsTable({
           }}
         >
           <SlidersHorizontal size={13} />
-        </button>
-
-        <button
-          onClick={() => fetchHoldings(baseCurrency, selectedAccount, false, true)}
-          disabled={loadingHoldings}
-          title={t('holdings.btn_refresh_live', 'Refresh Live Prices')}
-          style={{
-            background: loadingHoldings ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-            border: loadingHoldings ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
-            color: loadingHoldings ? 'var(--color-primary)' : 'var(--text-muted)',
-            padding: '6px',
-            borderRadius: '6px',
-            cursor: loadingHoldings ? 'not-allowed' : 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            if (!loadingHoldings) {
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!loadingHoldings) {
-              e.currentTarget.style.color = 'var(--text-muted)';
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-            }
-          }}
-        >
-          <RefreshCw size={13} style={{ animation: loadingHoldings ? 'spin-spinner 1s linear infinite' : 'none' }} />
         </button>
       </div>
     </div>
