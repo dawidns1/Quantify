@@ -379,7 +379,9 @@ class PortfolioManager:
                 if cache_entry and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
                     if not cache_entry["prices"]:
                         continue
-                    if (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
+                    has_start = (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7))
+                    has_end = (end_dt - cache_entry["end_date"] <= timedelta(days=4))
+                    if has_start and has_end:
                         continue
                     
                 # Try loading from L2 SQLite Cache
@@ -388,13 +390,13 @@ class PortfolioManager:
                     min_date = min(sqlite_prices.keys())
                     max_date = max(sqlite_prices.keys())
                     has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
-                    has_end = (end_dt - max_date <= timedelta(days=3))
+                    has_end = (end_dt - max_date <= timedelta(days=4))
                     
                     # Populate memory cache with SQLite prices immediately so calculations never block
                     cls._historical_stock_cache[sym] = {
                         "start_date": min_date,
                         "end_date": max_date,
-                        "last_updated": now,
+                        "last_updated": now if (has_start and has_end) else (now - 86400),
                         "prices": sqlite_prices,
                         "dividends": sqlite_divs
                     }
@@ -438,9 +440,6 @@ class PortfolioManager:
                         }
                         # Save to SQLite L2 Cache (Supabase write handled in bulk below)
                         save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
-                    else:
-                        print(f"[WARN] No historical prices returned for {sym}")
-                        continue
                         
                         # Accumulate for Supabase bulk write
                         serialized_prices = {}
@@ -456,6 +455,9 @@ class PortfolioManager:
                             "prices": serialized_prices,
                             "dividends": serialized_divs
                         }))
+                    else:
+                        print(f"[WARN] No historical prices returned for {sym}")
+                        continue
                         
                 if bulk_entries:
                     save_supabase_kv_bulk(bulk_entries)
@@ -1203,7 +1205,8 @@ class PortfolioManager:
                     cache_entry = cls._historical_stock_cache[symbol]
         
         if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
-            if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+            has_end = (end_dt in cache_entry["prices"] or (cache_entry.get("end_date") and end_dt - cache_entry["end_date"] <= timedelta(days=4)))
+            if has_end and (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
                 sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
                 if sliced_prices:
                     return sliced_prices
@@ -1272,7 +1275,8 @@ class PortfolioManager:
         # Check if we need to download/update cache
         need_download = True
         if cache_entry and cache_entry["start_date"] <= start_dt:
-            if end_dt in cache_entry["prices"] or (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+            has_end = (end_dt in cache_entry["prices"] or (cache_entry.get("end_date") and end_dt - cache_entry["end_date"] <= timedelta(days=4)))
+            if has_end and (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
                 need_download = False
                 
         if need_download:

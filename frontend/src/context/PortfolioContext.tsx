@@ -626,7 +626,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     };
   }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
 
-  const holdingsKey = holdings.map(h => `${h.symbol}_${h.shares}`).join(',');
+  const holdingsKey = holdings.map(h => `${h.symbol}_${h.shares}_${h.current_price_local}`).join(',');
   const txsCount = portfolioTransactions.length;
 
   // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
