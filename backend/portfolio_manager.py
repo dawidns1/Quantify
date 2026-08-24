@@ -217,19 +217,26 @@ class PortfolioManager:
         diff = next_open - now_tz
         return max(0.0, diff.total_seconds())
 
-    _last_force_live_time = 0.0
-    _force_live_lock = threading.Lock()
+    @staticmethod
+    def _is_market_date_range_complete(cached_start: date, cached_end: date, target_start: date, target_end: date) -> bool:
+        if not cached_start or not cached_end:
+            return False
+        has_start = (cached_start <= target_start or (cached_start - target_start).days <= 7)
+        if not has_start:
+            return False
+        if cached_end >= target_end:
+            return True
+        today = date.today()
+        if today.weekday() == 5:
+            last_trading_day = today - timedelta(days=1)
+        elif today.weekday() == 6:
+            last_trading_day = today - timedelta(days=2)
+        else:
+            last_trading_day = today
+        return cached_end >= last_trading_day
 
     @classmethod
     def prefetch_live_prices(cls, symbols: list, fx_pairs: list, force_live: bool = False):
-        if force_live:
-            now_fl = time.time()
-            with cls._force_live_lock:
-                if now_fl - cls._last_force_live_time < 5.0:
-                    force_live = False
-                else:
-                    cls._last_force_live_time = now_fl
-
         now = time.time()
         missing_symbols = []
         missing_fx = []
@@ -368,40 +375,38 @@ class PortfolioManager:
             print(f"Error prefetching live prices: {e}")
 
     @classmethod
-    def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date):
+    def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date, force_refresh: bool = False):
         now = time.time()
         missing_symbols = []
         
         with cls._historical_prefetch_lock:
             for sym in symbols:
                 sym = sym.upper().strip()
-                cache_entry = cls._historical_stock_cache.get(sym)
-                if cache_entry and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
-                    if not cache_entry["prices"]:
-                        continue
-                    has_start = (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7))
-                    has_end = (end_dt - cache_entry["end_date"] <= timedelta(days=4))
-                    if has_start and has_end:
-                        continue
-                    
-                # Try loading from L2 SQLite Cache
-                sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
-                if sqlite_prices:
-                    min_date = min(sqlite_prices.keys())
-                    max_date = max(sqlite_prices.keys())
-                    has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
-                    has_end = (end_dt - max_date <= timedelta(days=4))
-                    
-                    # Populate memory cache with SQLite prices immediately so calculations never block
-                    cls._historical_stock_cache[sym] = {
-                        "start_date": min_date,
-                        "end_date": max_date,
-                        "last_updated": now if (has_start and has_end) else (now - 86400),
-                        "prices": sqlite_prices,
-                        "dividends": sqlite_divs
-                    }
-                    if has_start and has_end:
-                        continue
+                if not force_refresh:
+                    cache_entry = cls._historical_stock_cache.get(sym)
+                    if cache_entry and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
+                        if not cache_entry["prices"]:
+                            continue
+                        if cls._is_market_date_range_complete(cache_entry["start_date"], cache_entry["end_date"], start_dt, end_dt):
+                            continue
+                        
+                    # Try loading from L2 SQLite Cache
+                    sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
+                    if sqlite_prices:
+                        min_date = min(sqlite_prices.keys())
+                        max_date = max(sqlite_prices.keys())
+                        is_complete = cls._is_market_date_range_complete(min_date, max_date, start_dt, end_dt)
+                        
+                        # Populate memory cache with SQLite prices immediately so calculations never block
+                        cls._historical_stock_cache[sym] = {
+                            "start_date": min_date,
+                            "end_date": max_date,
+                            "last_updated": now if is_complete else (now - 86400),
+                            "prices": sqlite_prices,
+                            "dividends": sqlite_divs
+                        }
+                        if is_complete:
+                            continue
                     
                 missing_symbols.append(sym)
                 
@@ -1192,9 +1197,8 @@ class PortfolioManager:
             if sqlite_prices:
                 min_date = min(sqlite_prices.keys())
                 max_date = max(sqlite_prices.keys())
-                has_start = (min_date <= start_dt or min_date - start_dt <= timedelta(days=7))
-                has_end = (end_dt - max_date <= timedelta(days=3))
-                if has_start and has_end:
+                is_complete = cls._is_market_date_range_complete(min_date, max_date, start_dt, end_dt)
+                if is_complete:
                     cls._historical_stock_cache[symbol] = {
                         "start_date": min_date,
                         "end_date": max_date,
@@ -1204,9 +1208,8 @@ class PortfolioManager:
                     }
                     cache_entry = cls._historical_stock_cache[symbol]
         
-        if cache_entry and (cache_entry["start_date"] <= start_dt or cache_entry["start_date"] - start_dt <= timedelta(days=7)):
-            has_end = (end_dt in cache_entry["prices"] or (cache_entry.get("end_date") and end_dt - cache_entry["end_date"] <= timedelta(days=4)))
-            if has_end and (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+        if cache_entry and cls._is_market_date_range_complete(cache_entry["start_date"], cache_entry["end_date"], start_dt, end_dt):
+            if now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL:
                 sliced_prices = {d: val for d, val in cache_entry["prices"].items() if start_dt <= d <= end_dt}
                 if sliced_prices:
                     return sliced_prices
@@ -1274,9 +1277,8 @@ class PortfolioManager:
         
         # Check if we need to download/update cache
         need_download = True
-        if cache_entry and cache_entry["start_date"] <= start_dt:
-            has_end = (end_dt in cache_entry["prices"] or (cache_entry.get("end_date") and end_dt - cache_entry["end_date"] <= timedelta(days=4)))
-            if has_end and (now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL):
+        if cache_entry and cls._is_market_date_range_complete(cache_entry["start_date"], cache_entry["end_date"], start_dt, end_dt):
+            if now - cache_entry["last_updated"] < cls.HISTORICAL_CACHE_TTL:
                 need_download = False
                 
         if need_download:
@@ -1958,7 +1960,7 @@ class PortfolioManager:
         return res_dict
 
     @classmethod
-    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None) -> dict:
+    def calculate_historical_performance(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None, force_refresh: bool = False) -> dict:
         base_currency = base_currency.upper().strip()
         account_val = account or "All"
         settings_val = portfolio_settings or {}
@@ -1969,31 +1971,33 @@ class PortfolioManager:
         cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash, benchmarks_tuple)
         
         now = time.time()
-        with cls._historical_perf_cache_lock:
-            if cache_key in cls._historical_perf_cache:
-                ts, result = cls._historical_perf_cache[cache_key]
-                if now - ts < cls.CALCULATION_CACHE_TTL:
-                    return result
-                    
-        # Double checked lock
-        lock = cls.get_historical_calc_lock(cache_key)
-        with lock:
-            now = time.time()
+        if not force_refresh:
             with cls._historical_perf_cache_lock:
                 if cache_key in cls._historical_perf_cache:
                     ts, result = cls._historical_perf_cache[cache_key]
                     if now - ts < cls.CALCULATION_CACHE_TTL:
                         return result
+                    
+        # Double checked lock
+        lock = cls.get_historical_calc_lock(cache_key)
+        with lock:
+            now = time.time()
+            if not force_refresh:
+                with cls._historical_perf_cache_lock:
+                    if cache_key in cls._historical_perf_cache:
+                        ts, result = cls._historical_perf_cache[cache_key]
+                        if now - ts < cls.CALCULATION_CACHE_TTL:
+                            return result
             
             # Perform calculation
-            result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings, benchmarks)
+            result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings, benchmarks, force_refresh)
             
             with cls._historical_perf_cache_lock:
                 cls._historical_perf_cache[cache_key] = (time.time(), result)
             return result
 
     @classmethod
-    def _calculate_historical_performance_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None) -> dict:
+    def _calculate_historical_performance_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, benchmarks: list = None, force_refresh: bool = False) -> dict:
         base_currency = base_currency.upper().strip()
         
         # 1. Filter transactions by account if not "All"
@@ -2028,7 +2032,7 @@ class PortfolioManager:
         
         # Prefetch historical daily prices in bulk to speed up loading (including benchmarks if requested)
         prefetch_symbols = stock_symbols + (benchmarks if benchmarks else [])
-        cls.prefetch_historical_stock_prices(prefetch_symbols, start_dt, end_dt)
+        cls.prefetch_historical_stock_prices(prefetch_symbols, start_dt, end_dt, force_refresh=force_refresh)
 
         # 5. Fetch daily close prices for all stocks (cached)
         stock_prices = {}
@@ -2389,7 +2393,7 @@ class PortfolioManager:
         }
 
     @classmethod
-    def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False) -> dict:
         base_currency = base_currency.upper().strip()
         account_val = account or "All"
         settings_val = portfolio_settings or {}
@@ -2399,31 +2403,33 @@ class PortfolioManager:
         cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
         
         now = time.time()
-        with cls._portfolio_analytics_cache_lock:
-            if cache_key in cls._portfolio_analytics_cache:
-                ts, result = cls._portfolio_analytics_cache[cache_key]
-                if now - ts < cls.CALCULATION_CACHE_TTL:
-                    return result
-                    
-        # Double checked lock
-        lock = cls.get_historical_calc_lock(cache_key)
-        with lock:
-            now = time.time()
+        if not force_refresh:
             with cls._portfolio_analytics_cache_lock:
                 if cache_key in cls._portfolio_analytics_cache:
                     ts, result = cls._portfolio_analytics_cache[cache_key]
                     if now - ts < cls.CALCULATION_CACHE_TTL:
                         return result
+                    
+        # Double checked lock
+        lock = cls.get_historical_calc_lock(cache_key)
+        with lock:
+            now = time.time()
+            if not force_refresh:
+                with cls._portfolio_analytics_cache_lock:
+                    if cache_key in cls._portfolio_analytics_cache:
+                        ts, result = cls._portfolio_analytics_cache[cache_key]
+                        if now - ts < cls.CALCULATION_CACHE_TTL:
+                            return result
             
             # Perform calculation
-            result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings)
+            result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh)
             
             with cls._portfolio_analytics_cache_lock:
                 cls._portfolio_analytics_cache[cache_key] = (time.time(), result)
             return result
 
     @classmethod
-    def _calculate_portfolio_analytics_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def _calculate_portfolio_analytics_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False) -> dict:
         from backend.financial_engine import (
             calculate_xirr,
             calculate_twr,
@@ -2435,7 +2441,7 @@ class PortfolioManager:
         portfolio_settings = portfolio_settings or {}
         
         # 1. Get daily performance curve
-        hist_perf = cls.calculate_historical_performance(transactions, base_currency, account, link_cash, portfolio_settings)
+        hist_perf = cls.calculate_historical_performance(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh=force_refresh)
         if not hist_perf.get("dates"):
             return {
                 "mwr": 0.0,

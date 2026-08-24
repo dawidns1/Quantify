@@ -71,8 +71,8 @@ interface PortfolioContextType {
   loadPortfolios: () => Promise<void>;
   fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean, forceLive?: boolean) => Promise<void>;
   fetchTransactions: () => Promise<void>;
-  fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string) => Promise<void>;
-  fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string) => Promise<void>;
+  fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string, forceRefresh?: boolean) => Promise<void>;
+  fetchPortfolioAnalytics: (curr?: BaseCurrencyType, accountFilter?: string, forceRefresh?: boolean) => Promise<void>;
   refreshPortfolioData: () => Promise<void>;
 }
 
@@ -404,7 +404,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   const fetchHistoricalPerformance = async (
     curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
-    benchmarks?: string
+    benchmarks?: string,
+    forceRefresh = false
   ) => {
     if (!activePortfolioId) {
       setChartData(null);
@@ -421,7 +422,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         curr,
         accountFilter,
         linkCash,
-        benchmarks
+        benchmarks,
+        forceRefresh
       );
 
       // Prevent race conditions
@@ -450,7 +452,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
   const fetchPortfolioAnalytics = async (
     curr: BaseCurrencyType = baseCurrency,
-    accountFilter: string = selectedAccount
+    accountFilter: string = selectedAccount,
+    forceRefresh = false
   ) => {
     if (!activePortfolioId || portfolios.length === 0) {
       setAnalytics(null);
@@ -466,7 +469,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         activePortfolioId,
         curr,
         accountFilter,
-        linkCash
+        linkCash,
+        forceRefresh
       );
 
       // Prevent race conditions
@@ -499,8 +503,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       await Promise.allSettled([
         fetchHoldings(baseCurrency, selectedAccount, false, true),
         fetchTransactions(),
-        fetchHistoricalPerformance(baseCurrency, selectedAccount),
-        fetchPortfolioAnalytics(baseCurrency, selectedAccount)
+        fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true),
+        fetchPortfolioAnalytics(baseCurrency, selectedAccount, true)
       ]);
     } catch (e) {
       console.error('Error refreshing portfolio:', e);
@@ -596,7 +600,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         } catch (e) {}
       }
 
-      fetchHoldings(baseCurrency, selectedAccount, false);
+      fetchHoldings(baseCurrency, selectedAccount, false, true);
     } else {
       setLoadingHoldings(false);
     }
@@ -654,8 +658,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setChartData(JSON.parse(cachedC));
         } catch (e) {}
       }
-      // Always fetch fresh historical performance to ensure chart updates when linkCash toggles
-      fetchHistoricalPerformance(baseCurrency, selectedAccount);
+      // Always fetch fresh historical performance to ensure chart updates when linkCash toggles or prices update
+      fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true);
     } else if (!activePortfolioId || txsCount === 0) {
       setChartData(null);
       setLoadingChart(false);

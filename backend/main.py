@@ -698,6 +698,7 @@ def get_historical_portfolio_nav_jwt(
     account: str = "All",
     link_cash: bool = False,
     benchmarks: str = "",
+    force_refresh: bool = False,
     authorization: str = Header(None),
     x_supabase_url: str = Header(None),
     x_supabase_anon_key: str = Header(None)
@@ -715,7 +716,7 @@ def get_historical_portfolio_nav_jwt(
         benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None
         
         t_calc_start = time.time()
-        res = PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings, benchmarks_list)
+        res = PortfolioManager.calculate_historical_performance(transactions, base_currency, account, link_cash, settings, benchmarks_list, force_refresh=force_refresh)
         t_calc = (time.time() - t_calc_start) * 1000
 
         t_total = (time.time() - t_start) * 1000
@@ -732,6 +733,7 @@ def get_portfolio_analytics_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
+    force_refresh: bool = False,
     authorization: str = Header(None),
     x_supabase_url: str = Header(None),
     x_supabase_anon_key: str = Header(None)
@@ -747,7 +749,7 @@ def get_portfolio_analytics_jwt(
         t_sub = (time.time() - t_sub_start) * 1000
 
         t_calc_start = time.time()
-        res = PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings)
+        res = PortfolioManager.calculate_portfolio_analytics(transactions, base_currency, account, link_cash, settings, force_refresh=force_refresh)
         t_calc = (time.time() - t_calc_start) * 1000
 
         t_total = (time.time() - t_start) * 1000

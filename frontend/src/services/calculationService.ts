@@ -165,12 +165,14 @@ export async function fetchHistoricalPerformance(
   baseCurrency: string,
   account: string,
   linkCash: boolean,
-  benchmarks?: string
+  benchmarks?: string,
+  forceRefresh: boolean = false
 ): Promise<{ dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> }> {
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
-    link_cash: String(linkCash)
+    link_cash: String(linkCash),
+    force_refresh: String(forceRefresh)
   });
   if (benchmarks) {
     queryParams.append('benchmarks', benchmarks);
@@ -246,7 +248,8 @@ export async function fetchPortfolioAnalytics(
   portfolioId: string,
   baseCurrency: string,
   account: string,
-  linkCash: boolean
+  linkCash: boolean,
+  forceRefresh: boolean = false
 ): Promise<{
   mwr: number;
   twr: number;
@@ -259,7 +262,8 @@ export async function fetchPortfolioAnalytics(
   const queryParams = new URLSearchParams({
     base_currency: baseCurrency,
     account,
-    link_cash: String(linkCash)
+    link_cash: String(linkCash),
+    force_refresh: String(forceRefresh)
   });
 
   const response = await fetchAuthenticatedWithRetry(
