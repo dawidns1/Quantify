@@ -273,12 +273,15 @@ class YFinanceProvider(BaseDataProvider):
             tz = "UTC"
             ex = ""
             try:
-                t = yf.Ticker(sym, session=YF_SESSION)
-                fi = t.fast_info
-                live_price = fi.get("lastPrice") or fi.get("lastMarketPrice") or fi.get("previousClose") or 0.0
-                previous_close = fi.get("previousClose") or fi.get("regularMarketPreviousClose") or live_price
-                tz = fi.get("timezone") or "UTC"
-                ex = fi.get("exchange") or ""
+                # Use requests with 2.5s timeout instead of blocking fast_info
+                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=1d&interval=1d"
+                r = YF_SESSION.get(url, timeout=2.5)
+                if r.status_code == 200:
+                    d = r.json().get("chart", {}).get("result", [{}])[0].get("meta", {})
+                    live_price = float(d.get("regularMarketPrice") or 0.0)
+                    previous_close = float(d.get("chartPreviousClose") or d.get("previousClose") or live_price)
+                    tz = d.get("exchangeTimezoneName") or "UTC"
+                    ex = d.get("exchangeName") or ""
             except Exception:
                 pass
             return sym, live_price, previous_close, tz, ex
