@@ -1557,10 +1557,6 @@ class PortfolioManager:
                 return 0.0
             return 0.19
 
-        # Force fetch cache for symbols first
-        for symbol in symbol_txs.keys():
-            cls.get_cached_historical_stock(symbol, earliest_date, date.today())
-            
         merged_divs = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info, base_currency, fx_rates, portfolio_settings)
         
         dividends_by_symbol_acc = {}
