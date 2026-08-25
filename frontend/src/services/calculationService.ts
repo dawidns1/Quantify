@@ -73,7 +73,7 @@ export async function fetchAuthenticatedWithRetry(
   url: string,
   options: RequestInit = {},
   passedToken?: string | null,
-  timeoutMs = 45000
+  timeoutMs = 60000
 ): Promise<Response> {
   let token = await getFreshAccessToken(passedToken);
 

@@ -824,13 +824,14 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     };
   }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
 
-  // Keep-alive ping every 3 minutes while tab is visible so backend server stays warm and responsive
+  // Proactive server warmup on mount & keep-alive ping every 3 minutes while tab is visible
   useEffect(() => {
     const pingServer = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetch(`${apiBaseUrl}/health`).catch(() => {});
       }
     };
+    pingServer(); // Proactively wake server on initial mount
     const interval = setInterval(pingServer, 180000);
     return () => clearInterval(interval);
   }, [apiBaseUrl]);

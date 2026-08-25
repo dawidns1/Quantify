@@ -2751,6 +2751,24 @@ class PortfolioManager:
         account_val = account or "All"
         settings_val = portfolio_settings or {}
 
+        # Collect unique stock symbols and earliest date across all transactions
+        sorted_txs = sorted(transactions, key=lambda x: x.get("date", ""))
+        stock_symbols = list({tx["symbol"].upper().strip() for tx in sorted_txs if not tx["symbol"].upper().strip().startswith("CASH_")})
+        
+        start_dt = date.today() - timedelta(days=365)
+        if sorted_txs:
+            try:
+                tx_dt = datetime.strptime(sorted_txs[0]["date"], "%Y-%m-%d").date()
+                if tx_dt < start_dt:
+                    start_dt = tx_dt
+            except Exception:
+                pass
+                
+        # Bulk prefetch historical daily prices for all symbols + benchmarks ONCE upfront
+        prefetch_symbols = stock_symbols + (benchmarks if benchmarks else [])
+        if prefetch_symbols:
+            cls.prefetch_historical_stock_prices(prefetch_symbols, start_dt, date.today(), force_refresh=force_refresh)
+
         # 1. Compute Holdings (with live quotes & FX refresh if force_refresh is True)
         holdings_res = cls.calculate_holdings(
             transactions,
