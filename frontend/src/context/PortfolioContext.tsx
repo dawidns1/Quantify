@@ -519,12 +519,18 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     setSyncStatus('syncing');
     setSyncError(null);
     try {
+      // 1. Fetch holdings & transactions first (fetches live market quotes and warms backend RAM cache)
       await Promise.all([
         fetchHoldings(baseCurrency, selectedAccount, false, true),
-        fetchTransactions(),
-        fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true),
-        fetchPortfolioAnalytics(baseCurrency, selectedAccount, true)
+        fetchTransactions()
       ]);
+
+      // 2. Compute historical performance and analytics with warmed backend cache
+      await Promise.allSettled([
+        fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true),
+        fetchPortfolioAnalytics(baseCurrency, selectedAccount, false)
+      ]);
+
       setSyncStatus('synced');
     } catch (e: any) {
       console.error('Error refreshing portfolio:', e);
