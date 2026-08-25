@@ -96,8 +96,11 @@ export async function fetchAuthenticatedWithRetry(
       headers: buildHeaders(token)
     }, timeoutMs);
   } catch (err: any) {
-    // If timed out on a cold-start server, retry once with a fresh 45s window
-    if (err?.message?.includes('timed out')) {
+    if (options.signal?.aborted || err?.message === 'Request cancelled.' || err?.message === 'Tab suspended (background).') {
+      throw err;
+    }
+    // If timed out on a cold-start server, retry once with a fresh window
+    if (err?.message?.includes('timed out') || err?.message?.includes('tab switch')) {
       const endpoint = url.split('?')[0].split('/api/')[1] || url;
       console.warn(`[API Warming] ${endpoint} timed out on initial cold start, retrying...`);
       response = await fetchWithTimeout(url, {

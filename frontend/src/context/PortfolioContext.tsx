@@ -328,6 +328,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
   const holdingsRequestIdRef = useRef(0);
   const isFetchingHoldingsRef = useRef(false);
+  const bundleAbortControllerRef = useRef<AbortController | null>(null);
   const lastTabSwitchRef = useRef(0);
   const chartRequestIdRef = useRef(0);
   const analyticsRequestIdRef = useRef(0);
@@ -376,11 +377,13 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
 
-    // Deduplicate silent concurrent requests to avoid network queue flooding
-    if (silent && isFetchingHoldingsRef.current) {
-      return;
+    // Abort previous in-flight bundle request so Render doesn't queue duplicate heavy tasks
+    if (bundleAbortControllerRef.current) {
+      bundleAbortControllerRef.current.abort();
+      bundleAbortControllerRef.current = null;
     }
-    isFetchingHoldingsRef.current = true;
+    const abortController = new AbortController();
+    bundleAbortControllerRef.current = abortController;
 
     if (!silent) {
       setLoadingHoldings(true);
@@ -405,7 +408,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         accountFilter,
         linkCash,
         undefined,
-        forceRefresh
+        forceRefresh,
+        abortController.signal
       );
 
       // Prevent race conditions: ensure only the latest request updates state
@@ -455,7 +459,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (!silent) setSyncStatus('synced');
       telemetry.endTrace(traceId, 'success');
     } catch (err: any) {
-      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
+      if (err?.name === 'AbortError' || err?.message === 'Tab suspended (background).' || err?.message === 'Request cancelled.') {
+        return;
+      }
+      if (!err?.message?.includes('timed out')) {
         console.error('Error fetching portfolio bundle:', err);
       }
       if (!silent) {
@@ -464,7 +471,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
-      isFetchingHoldingsRef.current = false;
+      if (bundleAbortControllerRef.current === abortController) {
+        bundleAbortControllerRef.current = null;
+      }
       if (requestId === holdingsRequestIdRef.current) {
         setLoadingHoldings(false);
         setLoadingChart(false);
@@ -783,7 +792,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       setLoadingChart(false);
       setLoadingAnalytics(false);
     }
-  }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
+  }, [baseCurrency, selectedAccount, activePortfolioId, linkCash]);
 
   // Set up live polling & debounced tab visibility handler for real-time price updates
   useEffect(() => {
