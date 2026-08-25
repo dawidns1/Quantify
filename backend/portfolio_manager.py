@@ -248,11 +248,12 @@ class PortfolioManager:
                 if force_live or not cache_entry or (now - cache_entry[0] > cls.STOCK_CACHE_TTL):
                     sqlite_data = None if force_live else get_cached_live_price(sym, cls.STOCK_CACHE_TTL)
                     if sqlite_data:
+                        nat_curr = (sqlite_data.get("native_currency") or guess_native_currency(sym) or "USD").upper().strip()
                         cls._live_ticker_cache[sym] = (sqlite_data["last_updated"], {
                             "live_price": sqlite_data["live_price"],
                             "previous_close": sqlite_data["previous_close"],
-                            "company_name": sqlite_data["company_name"],
-                            "native_currency": sqlite_data["native_currency"]
+                            "company_name": sqlite_data.get("company_name", sym),
+                            "native_currency": nat_curr
                         })
                         tz_val = sqlite_data.get("timezone")
                         ex_val = sqlite_data.get("exchange")
@@ -276,8 +277,8 @@ class PortfolioManager:
                                 tz_val, ex_val = "America/New_York", "NMS"
 
                         cls._ticker_metadata_cache[sym] = {
-                            "company_name": sqlite_data["company_name"],
-                            "native_currency": sqlite_data["native_currency"].upper().strip(),
+                            "company_name": sqlite_data.get("company_name", sym),
+                            "native_currency": nat_curr,
                             "asset_class": "Equity",
                             "timezone": tz_val or "UTC",
                             "exchange": ex_val or ""
@@ -494,12 +495,13 @@ class PortfolioManager:
         
         if sqlite_data:
             # Populate metadata cache
+            nat_curr = (sqlite_data.get("native_currency") or guess_native_currency(symbol) or "USD").upper().strip()
             meta_data = {
-                "company_name": sqlite_data["company_name"],
-                "native_currency": sqlite_data["native_currency"].upper().strip(),
+                "company_name": sqlite_data.get("company_name", symbol),
+                "native_currency": nat_curr,
                 "asset_class": "Equity",  # default
-                "timezone": sqlite_data["timezone"],
-                "exchange": sqlite_data["exchange"]
+                "timezone": sqlite_data.get("timezone", "UTC"),
+                "exchange": sqlite_data.get("exchange", "")
             }
             cls._ticker_metadata_cache[symbol] = meta_data
             price_data = {
@@ -2469,10 +2471,12 @@ class PortfolioManager:
                 cost_native = float(tx["shares"]) * float(tx["price"])
                 fees_native = float(tx.get("fees") or 0.0)
                 
-                if tx["type"] == "BUY":
+                if tx["type"] in ["BUY", "CASH_DEPOSIT"]:
                     val = -(cost_native + fees_native) * rate
-                else:
+                elif tx["type"] in ["SELL", "CASH_WITHDRAWAL"]:
                     val = (cost_native - fees_native) * rate
+                else:
+                    continue
                     
                 cf_by_date[tx_dt] = cf_by_date.get(tx_dt, 0.0) + val
             except Exception:
