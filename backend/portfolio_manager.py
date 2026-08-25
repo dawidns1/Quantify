@@ -1435,7 +1435,7 @@ class PortfolioManager:
             with cls._calculation_cache_lock:
                 if cache_key in cls._calculation_cache:
                     ts, result = cls._calculation_cache[cache_key]
-                    if now - ts < 15.0:  # 15 seconds fast calculation cache
+                    if now - ts < cls.CALCULATION_CACHE_TTL:
                         return result
         
         if account and account.lower() != "all":

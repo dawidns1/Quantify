@@ -98,7 +98,8 @@ export async function fetchAuthenticatedWithRetry(
   } catch (err: any) {
     // If timed out on a cold-start server, retry once with a fresh 45s window
     if (err?.message?.includes('timed out')) {
-      console.warn('First request timed out (server warming up), retrying...');
+      const endpoint = url.split('?')[0].split('/api/')[1] || url;
+      console.warn(`[API Warming] ${endpoint} timed out on initial cold start, retrying...`);
       response = await fetchWithTimeout(url, {
         ...options,
         headers: buildHeaders(token)
