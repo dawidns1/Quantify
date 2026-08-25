@@ -67,6 +67,11 @@ interface PortfolioContextType {
   portfolioTransactions: Transaction[];
   transactions: Transaction[];
   
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  syncError: string | null;
+  setSyncStatus: React.Dispatch<React.SetStateAction<'idle' | 'syncing' | 'synced' | 'error'>>;
+  setSyncError: React.Dispatch<React.SetStateAction<string | null>>;
+
   // Handlers
   loadPortfolios: () => Promise<void>;
   fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean, forceLive?: boolean) => Promise<void>;
@@ -226,6 +231,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   const [loadingChart, setLoadingChart] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // --- State Mutator Overrides (for caching) ---
   const setActivePortfolioId = (id: string | null) => {
     setActivePortfolioIdState(id);
@@ -324,7 +332,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
     isFetchingHoldingsRef.current = true;
 
-    if (!silent) setLoadingHoldings(true);
+    if (!silent) {
+      setLoadingHoldings(true);
+      setSyncStatus('syncing');
+      setSyncError(null);
+    }
     const requestId = ++holdingsRequestIdRef.current;
     const traceId = telemetry.startTrace('fetch_holdings', 'performance', { portfolio_id: activePortfolioId, currency: curr, account: accountFilter });
     try {
@@ -358,9 +370,14 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
       localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       
+      if (!silent) setSyncStatus('synced');
     } catch (err: any) {
       if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
         console.error('Error fetching holdings:', err);
+      }
+      if (!silent) {
+        setSyncStatus('error');
+        setSyncError(err?.message || 'Failed to sync with live data');
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
@@ -499,15 +516,20 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
   const refreshPortfolioData = async () => {
     if (!activePortfolioId) return;
+    setSyncStatus('syncing');
+    setSyncError(null);
     try {
-      await Promise.allSettled([
+      await Promise.all([
         fetchHoldings(baseCurrency, selectedAccount, false, true),
         fetchTransactions(),
         fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true),
         fetchPortfolioAnalytics(baseCurrency, selectedAccount, true)
       ]);
-    } catch (e) {
+      setSyncStatus('synced');
+    } catch (e: any) {
       console.error('Error refreshing portfolio:', e);
+      setSyncStatus('error');
+      setSyncError(e?.message || 'Refresh failed');
     }
   };
 
@@ -690,6 +712,17 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     };
   }, [baseCurrency, selectedAccount, activePortfolioId, txsCount, linkCash, holdingsKey, loadingHoldings]);
 
+  // Keep-alive ping every 3 minutes while tab is visible so backend server stays warm and responsive
+  useEffect(() => {
+    const pingServer = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetch(`${apiBaseUrl}/health`).catch(() => {});
+      }
+    };
+    const interval = setInterval(pingServer, 180000);
+    return () => clearInterval(interval);
+  }, [apiBaseUrl]);
+
   return (
     <PortfolioContext.Provider value={{
       apiBaseUrl,
@@ -722,6 +755,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       loadingChart,
       loadingAnalytics,
       
+      syncStatus,
+      syncError,
+      setSyncStatus,
+      setSyncError,
+
       widgets,
       setWidgets,
       showWidgetManager,

@@ -128,6 +128,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "timestamp": time.time()}
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     origin = request.headers.get("origin", "https://quantifi.site")

@@ -101,6 +101,8 @@ export function PortfolioView({
     uniqueAccounts,
     portfolioTransactions,
     transactions,
+    syncStatus,
+    syncError,
     loadPortfolios,
     fetchHoldings,
     fetchTransactions,
@@ -148,29 +150,27 @@ export function PortfolioView({
   const [dividendViewMode, setDividendViewMode] = useState<'overview' | 'ledger'>('overview');
   const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar' | 'ledger'>('forecast');
 
-  const isAnyLoading = loadingHoldings || loadingPortfolios || loadingTransactions;
+  const isAnyLoading = loadingHoldings || loadingPortfolios || loadingTransactions || syncStatus === 'syncing';
   const [showLoadingPill, setShowLoadingPill] = useState(false);
   const [activeLoadingText, setActiveLoadingText] = useState('');
-  const [pillStatus, setPillStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [pillErrorMsg, setPillErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAnyLoading) {
+    if (syncStatus === 'syncing' || isAnyLoading) {
       setShowLoadingPill(true);
-      setPillStatus('loading');
-      setPillErrorMsg(null);
       if (loadingPortfolios) setActiveLoadingText(t('dashboard.syncing_portfolios', 'Syncing portfolios...'));
       else if (loadingTransactions) setActiveLoadingText(t('dashboard.syncing_transactions', 'Fetching transaction ledger...'));
-      else if (loadingHoldings) setActiveLoadingText(t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...'));
+      else if (loadingHoldings || syncStatus === 'syncing') setActiveLoadingText(t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...'));
       else setActiveLoadingText(t('dashboard.syncing_generic', 'Synchronizing data...'));
-    } else if (pillStatus === 'loading') {
-      setPillStatus('success');
+    } else if (syncStatus === 'synced') {
+      setShowLoadingPill(true);
       const timer = setTimeout(() => {
         setShowLoadingPill(false);
-      }, 1200);
+      }, 2500);
       return () => clearTimeout(timer);
+    } else if (syncStatus === 'error') {
+      setShowLoadingPill(true);
     }
-  }, [isAnyLoading, loadingPortfolios, loadingTransactions, loadingHoldings, t]);
+  }, [syncStatus, isAnyLoading, loadingPortfolios, loadingTransactions, loadingHoldings, t]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1024px)');
@@ -765,14 +765,14 @@ export function PortfolioView({
               display: 'flex',
               alignItems: 'center',
               gap: '0.55rem',
-              background: pillStatus === 'error' ? 'rgba(24, 12, 18, 0.94)' : pillStatus === 'success' ? 'rgba(10, 24, 20, 0.94)' : 'rgba(10, 15, 26, 0.92)',
+              background: syncStatus === 'error' ? 'rgba(24, 12, 18, 0.94)' : syncStatus === 'synced' ? 'rgba(10, 24, 20, 0.94)' : 'rgba(10, 15, 26, 0.92)',
               backdropFilter: 'blur(16px)',
-              border: pillStatus === 'error' ? '1px solid rgba(239, 68, 68, 0.45)' : pillStatus === 'success' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(6, 182, 212, 0.35)',
-              boxShadow: pillStatus === 'error' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.25)' : pillStatus === 'success' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(6, 182, 212, 0.2)',
+              border: syncStatus === 'error' ? '1px solid rgba(239, 68, 68, 0.45)' : syncStatus === 'synced' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(6, 182, 212, 0.35)',
+              boxShadow: syncStatus === 'error' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.25)' : syncStatus === 'synced' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(6, 182, 212, 0.2)',
               padding: '0.4rem 0.95rem',
               borderRadius: '24px'
             }}>
-              {pillStatus === 'loading' && (
+              {(syncStatus === 'syncing' || (syncStatus === 'idle' && isAnyLoading)) && (
                 <>
                   <div className="spinner-ring" style={{
                     width: '12px',
@@ -789,7 +789,7 @@ export function PortfolioView({
                 </>
               )}
 
-              {pillStatus === 'success' && (
+              {syncStatus === 'synced' && !isAnyLoading && (
                 <>
                   <Check size={14} style={{ color: 'var(--color-green)', flexShrink: 0 }} />
                   <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -798,17 +798,15 @@ export function PortfolioView({
                 </>
               )}
 
-              {pillStatus === 'error' && (
+              {syncStatus === 'error' && (
                 <>
                   <AlertTriangle size={14} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
                   <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {pillErrorMsg || t('dashboard.sync_failed', 'Sync timed out')}
+                    {syncError || t('dashboard.sync_failed', 'Sync timed out')}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      setPillStatus('loading');
-                      setPillErrorMsg(null);
                       refreshPortfolioData();
                     }}
                     style={{
@@ -1227,7 +1225,7 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
-                                        onRefresh={() => fetchHistoricalPerformance(baseCurrency, selectedAccount)}
+                                        onRefresh={() => fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true)}
                                       />
                                     );
                                   case 'events':
@@ -1264,7 +1262,7 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
-                                        onRefresh={() => fetchPortfolioAnalytics(baseCurrency, selectedAccount)}
+                                        onRefresh={() => fetchPortfolioAnalytics(baseCurrency, selectedAccount, true)}
                                       />
                                     );
 

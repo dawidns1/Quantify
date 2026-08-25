@@ -73,7 +73,7 @@ export async function fetchAuthenticatedWithRetry(
   url: string,
   options: RequestInit = {},
   passedToken?: string | null,
-  timeoutMs = 30000
+  timeoutMs = 45000
 ): Promise<Response> {
   let token = await getFreshAccessToken(passedToken);
 
@@ -89,10 +89,24 @@ export async function fetchAuthenticatedWithRetry(
     return headers;
   };
 
-  let response = await fetchWithTimeout(url, {
-    ...options,
-    headers: buildHeaders(token)
-  }, timeoutMs);
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(url, {
+      ...options,
+      headers: buildHeaders(token)
+    }, timeoutMs);
+  } catch (err: any) {
+    // If timed out on a cold-start server, retry once with a fresh 45s window
+    if (err?.message?.includes('timed out')) {
+      console.warn('First request timed out (server warming up), retrying...');
+      response = await fetchWithTimeout(url, {
+        ...options,
+        headers: buildHeaders(token)
+      }, timeoutMs);
+    } else {
+      throw err;
+    }
+  }
 
   // If 401 Unauthorized (e.g. JWT expired upon waking from sleep), refresh session and retry once
   if (response.status === 401) {

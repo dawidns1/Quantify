@@ -479,16 +479,15 @@ class PortfolioManager:
         if symbol in cls._live_ticker_cache:
             ts, price_data = cls._live_ticker_cache[symbol]
             if now - ts < cls.STOCK_CACHE_TTL:
-                if meta:
-                    return {
-                        "live_price": price_data.get("live_price", 0.0),
-                        "previous_close": price_data.get("previous_close", 0.0),
-                        "company_name": meta.get("company_name", symbol),
-                        "native_currency": meta.get("native_currency", "USD"),
-                        "asset_class": meta.get("asset_class", "Equity"),
-                        "timezone": meta.get("timezone", "Unknown"),
-                        "exchange": meta.get("exchange", "")
-                    }
+                return {
+                    "live_price": price_data.get("live_price", 0.0),
+                    "previous_close": price_data.get("previous_close", 0.0),
+                    "company_name": (meta.get("company_name") if meta else None) or price_data.get("company_name") or symbol,
+                    "native_currency": (meta.get("native_currency") if meta else None) or price_data.get("native_currency") or "USD",
+                    "asset_class": (meta.get("asset_class") if meta else None) or "Equity",
+                    "timezone": (meta.get("timezone") if meta else None) or price_data.get("timezone") or "Unknown",
+                    "exchange": (meta.get("exchange") if meta else None) or price_data.get("exchange") or ""
+                }
         
         # Check L2 SQLite Cache
         sqlite_data = get_cached_live_price(symbol, cls.STOCK_CACHE_TTL)
