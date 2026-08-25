@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { fetchDividendForecast } from '../../services/calculationService';
+import { usePortfolio } from '../../context/PortfolioContext';
 
 interface DividendForecastProps {
   apiBaseUrl: string;
@@ -38,7 +39,10 @@ export function DividendForecast({
   isExpanded: _isExpanded = false
 }: DividendForecastProps) {
   const { t, i18n } = useTranslation();
+  const { dividendForecast } = usePortfolio();
+
   const [data, setData] = useState<ForecastData | null>(() => {
+    if (dividendForecast) return dividendForecast;
     if (!activePortfolioId) return null;
     const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
     const cached = localStorage.getItem(cacheKey);
@@ -50,6 +54,14 @@ export function DividendForecast({
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const holdingsKey = JSON.stringify(holdings.map(h => ({ symbol: h.symbol, shares: h.shares })));
+
+  // Sync with context's bundled forecast whenever it updates
+  useEffect(() => {
+    if (dividendForecast) {
+      setData(dividendForecast);
+      setLoading(false);
+    }
+  }, [dividendForecast]);
 
   const loadData = () => {
     if (!activePortfolioId) return;
@@ -77,12 +89,18 @@ export function DividendForecast({
   useEffect(() => {
     if (!activePortfolioId) return;
 
+    if (dividendForecast) {
+      setData(dividendForecast);
+      return;
+    }
+
     const cacheKey = `cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${account}_${linkCash}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       setData(JSON.parse(cached));
+    } else {
+      loadData();
     }
-    loadData();
   }, [activePortfolioId, baseCurrency, account, linkCash, holdingsKey, apiBaseUrl, session?.access_token]);
 
   const formatCurrency = (val: number) => {

@@ -4,7 +4,8 @@ import { useAuth } from '../AuthContext';
 import { 
   fetchHoldings as fetchHoldingsService,
   fetchHistoricalPerformance as fetchHistoricalPerformanceService,
-  fetchPortfolioAnalytics as fetchPortfolioAnalyticsService
+  fetchPortfolioAnalytics as fetchPortfolioAnalyticsService,
+  fetchPortfolioBundle as fetchPortfolioBundleService
 } from '../services/calculationService';
 import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
 import { fetchUserPortfolios, createPortfolio } from '../services/supabaseService';
@@ -21,6 +22,25 @@ export interface AnalyticsData {
   sortino_ratio: number;
   beta: number;
   correlation_matrix: Record<string, Record<string, number>>;
+}
+
+export interface ForecastData {
+  forward_annual_income: number;
+  forward_yield: number;
+  yield_on_cost: number;
+  months: string[];
+  monthly_amounts: number[];
+  ticker_contributions: Record<string, number[]>;
+}
+
+export interface CorporateEvent {
+  date: string;
+  symbol: string;
+  type: 'Dividend' | 'Earnings' | string;
+  description: string;
+  est_payout?: number;
+  currency?: string;
+  last_dividend_value?: number;
 }
 
 interface PortfolioContextType {
@@ -43,10 +63,14 @@ interface PortfolioContextType {
   setAllTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
   dividendsList: any[];
   setDividendsList: React.Dispatch<React.SetStateAction<any[]>>;
-  chartData: { dates: string[]; nav: number[]; cost_basis: number[] } | null;
-  setChartData: React.Dispatch<React.SetStateAction<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>>;
+  chartData: { dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> } | null;
+  setChartData: React.Dispatch<React.SetStateAction<{ dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> } | null>>;
   analytics: AnalyticsData | null;
   setAnalytics: React.Dispatch<React.SetStateAction<AnalyticsData | null>>;
+  dividendForecast: ForecastData | null;
+  setDividendForecast: React.Dispatch<React.SetStateAction<ForecastData | null>>;
+  upcomingEvents: CorporateEvent[];
+  setUpcomingEvents: React.Dispatch<React.SetStateAction<CorporateEvent[]>>;
   
   loadingHoldings: boolean;
   loadingTransactions: boolean;
@@ -74,6 +98,7 @@ interface PortfolioContextType {
 
   // Handlers
   loadPortfolios: () => Promise<void>;
+  fetchPortfolioBundle: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean, forceRefresh?: boolean) => Promise<void>;
   fetchHoldings: (curr?: BaseCurrencyType, accountFilter?: string, silent?: boolean, forceLive?: boolean) => Promise<void>;
   fetchTransactions: () => Promise<void>;
   fetchHistoricalPerformance: (curr?: BaseCurrencyType, accountFilter?: string, benchmarks?: string, forceRefresh?: boolean) => Promise<void>;
@@ -224,6 +249,31 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   });
 
+  const [dividendForecast, setDividendForecast] = useState<ForecastData | null>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
+    const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
+    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
+    if (!activeId) return null;
+    try {
+      const cached = localStorage.getItem(`cached_dividend_forecast_${activeId}_${baseCurr}_${selAcc}_${lk}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [upcomingEvents, setUpcomingEvents] = useState<CorporateEvent[]>(() => {
+    const activeId = localStorage.getItem('portfolio_active_id');
+    if (!activeId) return [];
+    try {
+      const cached = localStorage.getItem(`cached_upcoming_events_${activeId}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   // --- Loading States ---
   const [loadingHoldings, setLoadingHoldings] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
@@ -318,6 +368,111 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   }, [allTransactions, activePortfolioId, selectedAccount]);
 
   // --- Fetch Actions ---
+  const fetchPortfolioBundle = async (
+    curr: BaseCurrencyType = baseCurrency,
+    accountFilter: string = selectedAccount,
+    silent = false,
+    forceRefresh = !silent
+  ) => {
+    if (!activePortfolioId) return;
+
+    // Deduplicate silent concurrent requests to avoid network queue flooding
+    if (silent && isFetchingHoldingsRef.current) {
+      return;
+    }
+    isFetchingHoldingsRef.current = true;
+
+    if (!silent) {
+      setLoadingHoldings(true);
+      setLoadingChart(true);
+      setLoadingAnalytics(true);
+      setSyncStatus('syncing');
+      setSyncError(null);
+    }
+
+    const requestId = ++holdingsRequestIdRef.current;
+    chartRequestIdRef.current = requestId;
+    analyticsRequestIdRef.current = requestId;
+    const traceId = telemetry.startTrace('fetch_portfolio_bundle', 'performance', { portfolio_id: activePortfolioId, currency: curr, account: accountFilter });
+
+    try {
+      const jwtToken = session?.access_token || null;
+      const result = await fetchPortfolioBundleService(
+        apiBaseUrl,
+        jwtToken,
+        activePortfolioId,
+        curr,
+        accountFilter,
+        linkCash,
+        undefined,
+        forceRefresh
+      );
+
+      // Prevent race conditions: ensure only the latest request updates state
+      if (requestId !== holdingsRequestIdRef.current) {
+        telemetry.endTrace(traceId, 'success', undefined, { discarded: true });
+        return; // Discard stale response
+      }
+
+      // 1. Holdings & Summary
+      if (result.holdings) {
+        setHoldings(result.holdings.holdings || []);
+        setSummary(result.holdings.summary);
+        setDividendsList(result.holdings.dividends_list || []);
+        if (typeof result.holdings.next_check_seconds === 'number') {
+          setNextCheckSeconds(result.holdings.next_check_seconds);
+        }
+        localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.holdings || []));
+        localStorage.setItem(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
+        localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.summary));
+        localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.dividends_list || []));
+      }
+
+      // 2. Historical Chart
+      if (result.historical) {
+        setChartData(result.historical);
+        localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.historical));
+      }
+
+      // 3. Analytics
+      if (result.analytics) {
+        setAnalytics(result.analytics);
+        localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.analytics));
+      }
+
+      // 4. Dividend Forecast
+      if (result.dividend_forecast) {
+        setDividendForecast(result.dividend_forecast);
+        localStorage.setItem(`cached_dividend_forecast_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.dividend_forecast));
+      }
+
+      // 5. Upcoming Corporate Events
+      if (result.upcoming_events) {
+        setUpcomingEvents(result.upcoming_events);
+        localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(result.upcoming_events));
+      }
+
+      if (!silent) setSyncStatus('synced');
+      telemetry.endTrace(traceId, 'success');
+    } catch (err: any) {
+      if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
+        console.error('Error fetching portfolio bundle:', err);
+      }
+      if (!silent) {
+        setSyncStatus('error');
+        setSyncError(err?.message || 'Failed to sync with live data');
+      }
+      telemetry.endTrace(traceId, 'error', err?.message || String(err));
+    } finally {
+      isFetchingHoldingsRef.current = false;
+      if (requestId === holdingsRequestIdRef.current) {
+        setLoadingHoldings(false);
+        setLoadingChart(false);
+        setLoadingAnalytics(false);
+      }
+    }
+  };
+
   const fetchHoldings = async (
     curr: BaseCurrencyType = baseCurrency,
     accountFilter: string = selectedAccount,
@@ -326,7 +481,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   ) => {
     if (!activePortfolioId) return;
 
-    // Deduplicate silent concurrent requests to avoid network queue flooding
     if (silent && isFetchingHoldingsRef.current) {
       return;
     }
@@ -351,10 +505,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         forceLive
       );
 
-      // Prevent race conditions: ensure only the latest request updates state
       if (requestId !== holdingsRequestIdRef.current) {
         telemetry.endTrace(traceId, 'success', undefined, { discarded: true });
-        return; // Discard stale response
+        return;
       }
 
       setHoldings(result.holdings);
@@ -364,7 +517,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         setNextCheckSeconds(result.next_check_seconds);
       }
       
-      // Cache the fresh data
       localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
       localStorage.setItem(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
       localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
@@ -401,7 +553,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       
       const cachedTxStr = localStorage.getItem('cached_all_transactions');
       if (cachedTxStr && JSON.stringify(data) !== cachedTxStr) {
-        // Invalidate chart and analytics caches if transactions list changed
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('cached_chart_data_') || key.startsWith('cached_analytics_')) {
             localStorage.removeItem(key);
@@ -443,7 +594,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         forceRefresh
       );
 
-      // Prevent race conditions
       if (
         requestId < chartRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
@@ -451,7 +601,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         accountFilter !== latestParamsRef.current.selectedAccount ||
         linkCash !== latestParamsRef.current.linkCash
       ) {
-        return; // Discard stale response
+        return;
       }
 
       setChartData(data);
@@ -490,7 +640,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         forceRefresh
       );
 
-      // Prevent race conditions
       if (
         requestId < analyticsRequestIdRef.current ||
         activePortfolioId !== latestParamsRef.current.activePortfolioId ||
@@ -498,7 +647,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         accountFilter !== latestParamsRef.current.selectedAccount ||
         linkCash !== latestParamsRef.current.linkCash
       ) {
-        return; // Discard stale response
+        return;
       }
 
       setAnalytics(data);
@@ -519,19 +668,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     setSyncStatus('syncing');
     setSyncError(null);
     try {
-      // 1. Fetch holdings & transactions first (fetches live market quotes and warms backend RAM cache)
       await Promise.all([
-        fetchHoldings(baseCurrency, selectedAccount, false, true),
-        fetchTransactions()
+        fetchTransactions(),
+        fetchPortfolioBundle(baseCurrency, selectedAccount, false, true)
       ]);
-
-      // 2. Compute historical performance and analytics with warmed backend cache
-      await Promise.allSettled([
-        fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true),
-        fetchPortfolioAnalytics(baseCurrency, selectedAccount, false)
-      ]);
-
-      setSyncStatus('synced');
     } catch (e: any) {
       console.error('Error refreshing portfolio:', e);
       setSyncStatus('error');
@@ -611,13 +751,18 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     fetchTransactions();
   }, [portfolios]);
 
-  // Recalculate holdings when active portfolio, filters, or transactions update
+  // Unified single-pass data load on portfolio, currency, account filter, or linkCash change
   useEffect(() => {
     if (activePortfolioId && portfolios.length > 0) {
-      // Synchronously load from local storage cache first to avoid flashing empty state
+      // Synchronously load from local storage cache first for instant UI paint
       const cachedH = localStorage.getItem(`cached_holdings_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedS = localStorage.getItem(`cached_summary_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
       const cachedDiv = localStorage.getItem(`cached_dividends_list_${activePortfolioId}_${baseCurrency}_${selectedAccount}`);
+      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
+      const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
+      const cachedF = localStorage.getItem(`cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
+      const cachedE = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
+
       if (cachedH && cachedS) {
         try {
           const parsedH: Holding[] = JSON.parse(cachedH);
@@ -625,12 +770,18 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setHoldings(isWeekend ? parsedH.map(h => ({ ...h, is_live: false })) : parsedH);
           setSummary(JSON.parse(cachedS));
           if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
+          if (cachedC) setChartData(JSON.parse(cachedC));
+          if (cachedA) setAnalytics(JSON.parse(cachedA));
+          if (cachedF) setDividendForecast(JSON.parse(cachedF));
+          if (cachedE) setUpcomingEvents(JSON.parse(cachedE));
         } catch (e) {}
       }
 
-      fetchHoldings(baseCurrency, selectedAccount, false, true);
+      fetchPortfolioBundle(baseCurrency, selectedAccount, false, true);
     } else {
       setLoadingHoldings(false);
+      setLoadingChart(false);
+      setLoadingAnalytics(false);
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, allTransactions, linkCash, portfolios]);
 
@@ -651,7 +802,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setLoadingAnalytics(false);
         }
 
-        fetchHoldings(baseCurrency, selectedAccount, true);
+        fetchPortfolioBundle(baseCurrency, selectedAccount, true, false);
       }
     };
     
@@ -662,7 +813,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const delay = nextCheckSeconds > 0 ? nextCheckSeconds : 300;
       timeout = setTimeout(() => {
         if (document.visibilityState === 'visible') {
-          fetchHoldings(baseCurrency, selectedAccount, true);
+          fetchPortfolioBundle(baseCurrency, selectedAccount, true, false);
         }
       }, delay * 1000);
     }
@@ -672,51 +823,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (timeout) clearTimeout(timeout);
     };
   }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
-
-  const holdingsKey = holdings.map(h => `${h.symbol}_${h.shares}_${h.current_price_local}`).join(',');
-  const txsCount = portfolioTransactions.length;
-
-  // Recalculate chart when active portfolio, filters, or transactions update (staggered after holdings load)
-  useEffect(() => {
-    if (activePortfolioId && txsCount > 0 && holdingsKey && !loadingHoldings) {
-      // Synchronously load chart data from cache first for instant rendering
-      const cachedC = localStorage.getItem(`cached_chart_data_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
-      if (cachedC) {
-        try {
-          setChartData(JSON.parse(cachedC));
-        } catch (e) {}
-      }
-      // Always fetch fresh historical performance to ensure chart updates when linkCash toggles or prices update
-      fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true);
-    } else if (!activePortfolioId || txsCount === 0) {
-      setChartData(null);
-      setLoadingChart(false);
-    }
-  }, [baseCurrency, selectedAccount, activePortfolioId, txsCount, linkCash, holdingsKey, loadingHoldings]);
-
-  // Fetch portfolio analytics when active portfolio, filters, or transactions update (staggered 300ms after historical NAV load)
-  useEffect(() => {
-    let timer: any;
-    if (activePortfolioId && txsCount > 0 && holdingsKey && !loadingHoldings) {
-      // Synchronously load analytics from cache first for instant rendering
-      const cachedA = localStorage.getItem(`cached_analytics_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
-      if (cachedA) {
-        try {
-          setAnalytics(JSON.parse(cachedA));
-        } catch (e) {}
-      }
-      // Stagger fresh analytics request by 300ms to reuse warmed KV cache from historical performance
-      timer = setTimeout(() => {
-        fetchPortfolioAnalytics(baseCurrency, selectedAccount);
-      }, 300);
-    } else if (!activePortfolioId || txsCount === 0) {
-      setAnalytics(null);
-      setLoadingAnalytics(false);
-    }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [baseCurrency, selectedAccount, activePortfolioId, txsCount, linkCash, holdingsKey, loadingHoldings]);
 
   // Keep-alive ping every 3 minutes while tab is visible so backend server stays warm and responsive
   useEffect(() => {
@@ -754,6 +860,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       setChartData,
       analytics,
       setAnalytics,
+      dividendForecast,
+      setDividendForecast,
+      upcomingEvents,
+      setUpcomingEvents,
       
       loadingHoldings,
       loadingTransactions,
@@ -779,6 +889,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       transactions,
       
       loadPortfolios,
+      fetchPortfolioBundle,
       fetchHoldings,
       fetchTransactions,
       fetchHistoricalPerformance,

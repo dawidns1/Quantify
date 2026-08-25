@@ -3,6 +3,7 @@ import { Calendar, Info, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { fetchUpcomingEvents } from '../../services/calculationService';
 import type { Holding } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
+import { usePortfolio } from '../../context/PortfolioContext';
 
 interface UpcomingEventsProps {
   apiBaseUrl: string;
@@ -17,7 +18,7 @@ interface UpcomingEventsProps {
 interface CorporateEvent {
   date: string;
   symbol: string;
-  type: 'Dividend' | 'Earnings';
+  type: 'Dividend' | 'Earnings' | string;
   description: string;
   est_payout?: number;
   currency?: string;
@@ -33,7 +34,10 @@ export function UpcomingEvents({
   onClose
 }: UpcomingEventsProps) {
   const { t, i18n } = useTranslation();
+  const { upcomingEvents } = usePortfolio();
+
   const [events, setEvents] = useState<CorporateEvent[]>(() => {
+    if (upcomingEvents && upcomingEvents.length > 0) return upcomingEvents;
     if (!activePortfolioId) return [];
     const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
     return cached ? JSON.parse(cached) : [];
@@ -42,8 +46,21 @@ export function UpcomingEvents({
 
   const symbolsKey = holdings.map(h => h.symbol.toUpperCase()).sort().join(',');
 
+  // Sync with context's bundled upcoming events whenever it updates
+  useEffect(() => {
+    if (upcomingEvents) {
+      setEvents(upcomingEvents);
+      setLoading(false);
+    }
+  }, [upcomingEvents]);
+
   useEffect(() => {
     if (!activePortfolioId) return;
+
+    if (upcomingEvents && upcomingEvents.length > 0) {
+      setEvents(upcomingEvents);
+      return;
+    }
 
     // Load from cache synchronously first
     const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
@@ -56,24 +73,26 @@ export function UpcomingEvents({
       return;
     }
 
-    setLoading(true);
-    const jwtToken = session?.access_token || null;
-    
-    // We assume default base currency is PLN, default account is All, link cash is true
-    fetchUpcomingEvents(apiBaseUrl, jwtToken, activePortfolioId, 'PLN', 'All', true)
-      .then((data) => {
-        const eventsData = data || [];
-        localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(eventsData));
-        setEvents(eventsData);
-      })
-      .catch((err) => {
-        if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
-          console.error('Error fetching upcoming events:', err);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    // Only fetch standalone if not already loaded from context/cache
+    if (!cached) {
+      setLoading(true);
+      const jwtToken = session?.access_token || null;
+      
+      fetchUpcomingEvents(apiBaseUrl, jwtToken, activePortfolioId, 'PLN', 'All', true)
+        .then((data) => {
+          const eventsData = data || [];
+          localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(eventsData));
+          setEvents(eventsData);
+        })
+        .catch((err) => {
+          if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
+            console.error('Error fetching upcoming events:', err);
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
   }, [activePortfolioId, symbolsKey, apiBaseUrl, session?.access_token]);
 
   const formatDate = (dateStr: string) => {

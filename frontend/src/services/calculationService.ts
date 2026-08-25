@@ -127,6 +127,77 @@ export async function fetchAuthenticatedWithRetry(
   return response;
 }
 
+export interface PortfolioBundleResponse {
+  holdings: {
+    holdings: Holding[];
+    summary: Summary;
+    dividends_list?: any[];
+    next_check_seconds?: number;
+  };
+  historical: {
+    dates: string[];
+    nav: number[];
+    cost_basis: number[];
+    benchmarks?: Record<string, number[]>;
+  };
+  analytics: {
+    mwr: number;
+    twr: number;
+    volatility_annual: number;
+    sharpe_ratio: number;
+    sortino_ratio: number;
+    beta: number;
+    correlation_matrix: Record<string, Record<string, number>>;
+  };
+  dividend_forecast: {
+    forward_annual_income: number;
+    forward_yield: number;
+    yield_on_cost: number;
+    months: string[];
+    monthly_amounts: number[];
+    ticker_contributions: Record<string, number[]>;
+  };
+  upcoming_events: any[];
+}
+
+export async function fetchPortfolioBundle(
+  apiBaseUrl: string,
+  jwtToken: string | null,
+  portfolioId: string,
+  baseCurrency: string,
+  account: string,
+  linkCash: boolean,
+  benchmarks?: string,
+  forceRefresh: boolean = false,
+  signal?: AbortSignal
+): Promise<PortfolioBundleResponse> {
+  const queryParams = new URLSearchParams({
+    base_currency: baseCurrency,
+    account,
+    link_cash: String(linkCash),
+    force_refresh: String(forceRefresh)
+  });
+  if (benchmarks) {
+    queryParams.append('benchmarks', benchmarks);
+  }
+
+  const response = await fetchAuthenticatedWithRetry(
+    `${apiBaseUrl}/api/portfolio/${portfolioId}/bundle?${queryParams.toString()}`,
+    { method: 'GET', signal },
+    jwtToken
+  );
+
+  if (!response.ok) {
+    let errMsg = 'Failed to calculate portfolio bundle';
+    try {
+      const errData = await response.json();
+      if (errData && errData.detail) errMsg = errData.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return response.json();
+}
+
 export async function fetchHoldings(
   apiBaseUrl: string,
   jwtToken: string | null,

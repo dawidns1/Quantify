@@ -2729,3 +2729,95 @@ class PortfolioManager:
             "monthly_amounts": monthly_amounts_rounded,
             "ticker_contributions": ticker_contributions
         }
+
+    @classmethod
+    def calculate_portfolio_bundle(
+        cls,
+        transactions: list,
+        base_currency: str = "PLN",
+        account: str = "All",
+        link_cash: bool = False,
+        portfolio_settings: dict = None,
+        benchmarks: list = None,
+        force_refresh: bool = False
+    ) -> dict:
+        """
+        Consolidates holdings, historical NAV, portfolio analytics, dividend forecast,
+        and upcoming corporate events into a single unified pass.
+        Eliminates duplicate queries, prevents CPU contention, and guarantees
+        exact 0.00 PLN NAV alignment across all dashboard widgets.
+        """
+        base_currency = base_currency.upper().strip()
+        account_val = account or "All"
+        settings_val = portfolio_settings or {}
+
+        # 1. Compute Holdings (with live quotes & FX refresh if force_refresh is True)
+        holdings_res = cls.calculate_holdings(
+            transactions,
+            base_currency,
+            account_val,
+            link_cash,
+            settings_val,
+            force_live=force_refresh
+        )
+
+        # 2. Compute Historical Performance
+        hist_perf = cls.calculate_historical_performance(
+            transactions,
+            base_currency,
+            account_val,
+            link_cash,
+            settings_val,
+            benchmarks,
+            force_refresh=force_refresh
+        )
+
+        # 3. Guarantee EXACT 0.00 PLN NAV alignment on date.today() / latest point
+        if hist_perf.get("dates") and holdings_res.get("summary"):
+            summary_val = holdings_res["summary"].get("total_value_base", 0.0)
+            summary_cost = holdings_res["summary"].get("total_cost_base", 0.0)
+            if hist_perf.get("nav") and len(hist_perf["nav"]) > 0:
+                hist_perf["nav"][-1] = round(summary_val, 2)
+            if hist_perf.get("cost_basis") and len(hist_perf["cost_basis"]) > 0:
+                hist_perf["cost_basis"][-1] = round(summary_cost, 2)
+
+        # 4. Compute Portfolio Analytics (reuses in-memory cached historical curve)
+        analytics_res = cls.calculate_portfolio_analytics(
+            transactions,
+            base_currency,
+            account_val,
+            link_cash,
+            settings_val,
+            force_refresh=force_refresh
+        )
+
+        # 5. Compute Dividend Forecast (reuses in-memory cached holdings and dividend history)
+        dividend_forecast = cls.calculate_dividend_forecast(
+            transactions,
+            base_currency,
+            account_val,
+            link_cash,
+            settings_val
+        )
+
+        # 6. Compute Upcoming Events (reuses in-memory cached active positions and dividends)
+        holdings_list = holdings_res.get("holdings", [])
+        active_holdings = []
+        for h in holdings_list:
+            symbol = h.get("symbol")
+            shares = h.get("shares", 0.0)
+            if symbol and symbol.upper() != "CASH" and not symbol.startswith("CASH_") and shares > 0.0:
+                active_holdings.append({
+                    "symbol": symbol,
+                    "shares": shares
+                })
+        upcoming_events = cls.get_upcoming_events(active_holdings)
+
+        return {
+            "holdings": holdings_res,
+            "historical": hist_perf,
+            "analytics": analytics_res,
+            "dividend_forecast": dividend_forecast,
+            "upcoming_events": upcoming_events
+        }
+

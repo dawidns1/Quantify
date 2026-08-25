@@ -661,7 +661,49 @@ def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, su
             return settings
     except Exception as e:
         print(f"[DEBUG] Error fetching portfolio settings from Supabase: {e}")
-    return {}
+@app.get("/api/portfolio/{portfolio_id}/bundle")
+def get_portfolio_bundle_jwt(
+    portfolio_id: str,
+    base_currency: str = "PLN",
+    account: str = "All",
+    link_cash: bool = False,
+    benchmarks: str = "",
+    force_refresh: bool = False,
+    authorization: str = Header(None),
+    x_supabase_url: str = Header(None),
+    x_supabase_anon_key: str = Header(None)
+):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+        
+    t_start = time.time()
+    try:
+        t_sub_start = time.time()
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        t_sub = (time.time() - t_sub_start) * 1000
+
+        benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None
+
+        t_calc_start = time.time()
+        res = PortfolioManager.calculate_portfolio_bundle(
+            transactions=transactions,
+            base_currency=base_currency,
+            account=account,
+            link_cash=link_cash,
+            portfolio_settings=settings,
+            benchmarks=benchmarks_list,
+            force_refresh=force_refresh
+        )
+        t_calc = (time.time() - t_calc_start) * 1000
+
+        t_total = (time.time() - t_start) * 1000
+        print(f"[PERF BREAKDOWN] [BUNDLE] Total: {t_total:.2f}ms | Supabase: {t_sub:.2f}ms | Calculation: {t_calc:.2f}ms")
+        return res
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating portfolio bundle: {str(e)}")
 
 @app.get("/api/portfolio/{portfolio_id}/holdings")
 def get_portfolio_holdings_jwt(
