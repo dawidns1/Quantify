@@ -130,6 +130,9 @@ app.add_middleware(
 
 @app.get("/health")
 @app.get("/api/health")
+@app.get("/api/ping")
+@app.get("/ping")
+@app.get("/api/status")
 def health_check():
     return {"status": "ok", "timestamp": time.time()}
 

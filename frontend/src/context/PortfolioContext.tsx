@@ -828,7 +828,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   useEffect(() => {
     const pingServer = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        fetch(`${apiBaseUrl}/health`).catch(() => {});
+        fetch(`${apiBaseUrl}/api/ping`).catch(() => {});
       }
     };
     pingServer(); // Proactively wake server on initial mount

@@ -2388,43 +2388,27 @@ class PortfolioManager:
         }
 
     @classmethod
-    def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False) -> dict:
+    def calculate_portfolio_analytics(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False, historical_performance_data: dict = None) -> dict:
         base_currency = base_currency.upper().strip()
-        account_val = account or "All"
-        settings_val = portfolio_settings or {}
-        
+        account = account or "All"
         tx_hash = cls._get_transactions_hash(transactions)
-        settings_hash = cls._get_settings_hash(settings_val)
-        cache_key = (base_currency, account_val.lower(), link_cash, tx_hash, settings_hash)
+        settings_hash = cls._get_settings_hash(portfolio_settings)
+        cache_key = (base_currency, account.lower(), link_cash, tx_hash, settings_hash)
         
-        now = time.time()
-        if not force_refresh:
+        if not force_refresh and not historical_performance_data:
             with cls._portfolio_analytics_cache_lock:
-                if cache_key in cls._portfolio_analytics_cache:
-                    ts, result = cls._portfolio_analytics_cache[cache_key]
-                    if now - ts < cls.CALCULATION_CACHE_TTL:
-                        return result
+                entry = cls._portfolio_analytics_cache.get(cache_key)
+                if entry and (time.time() - entry[0] < cls.CALCULATION_CACHE_TTL):
+                    return entry[1]
                     
-        # Double checked lock
-        lock = cls.get_historical_calc_lock(cache_key)
-        with lock:
-            now = time.time()
-            if not force_refresh:
-                with cls._portfolio_analytics_cache_lock:
-                    if cache_key in cls._portfolio_analytics_cache:
-                        ts, result = cls._portfolio_analytics_cache[cache_key]
-                        if now - ts < cls.CALCULATION_CACHE_TTL:
-                            return result
-            
-            # Perform calculation
-            result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh)
-            
-            with cls._portfolio_analytics_cache_lock:
-                cls._portfolio_analytics_cache[cache_key] = (time.time(), result)
-            return result
+        result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh, historical_performance_data)
+        
+        with cls._portfolio_analytics_cache_lock:
+            cls._portfolio_analytics_cache[cache_key] = (time.time(), result)
+        return result
 
     @classmethod
-    def _calculate_portfolio_analytics_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False) -> dict:
+    def _calculate_portfolio_analytics_impl(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, force_refresh: bool = False, historical_performance_data: dict = None) -> dict:
         from backend.financial_engine import (
             calculate_xirr,
             calculate_twr,
@@ -2435,8 +2419,8 @@ class PortfolioManager:
         base_currency = base_currency.upper().strip()
         portfolio_settings = portfolio_settings or {}
         
-        # 1. Get daily performance curve
-        hist_perf = cls.calculate_historical_performance(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh=force_refresh)
+        # 1. Get daily performance curve (reuse if provided)
+        hist_perf = historical_performance_data or cls.calculate_historical_performance(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh=force_refresh)
         if not hist_perf.get("dates"):
             return {
                 "mwr": 0.0,
@@ -2539,12 +2523,12 @@ class PortfolioManager:
         }
 
     @classmethod
-    def calculate_dividend_forecast(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None) -> dict:
+    def calculate_dividend_forecast(cls, transactions: list, base_currency: str = "PLN", account: str = "All", link_cash: bool = False, portfolio_settings: dict = None, holdings_data: dict = None) -> dict:
         """
         Computes a 12-month forward net dividend forecast matching the calendar payouts.
         """
-        # 1. Calculate holdings to find active positions and cost basis
-        holdings_res = cls.calculate_holdings(transactions, base_currency, account, link_cash, portfolio_settings)
+        # 1. Calculate holdings to find active positions and cost basis (reuse if provided)
+        holdings_res = holdings_data or cls.calculate_holdings(transactions, base_currency, account, link_cash, portfolio_settings)
         holdings = holdings_res.get("holdings", [])
         summary = holdings_res.get("summary", {})
         
@@ -2779,7 +2763,7 @@ class PortfolioManager:
             force_live=force_refresh
         )
 
-        # 2. Compute Historical Performance
+        # 2. Compute Historical Performance (uses fresh upfront prefetched prices)
         hist_perf = cls.calculate_historical_performance(
             transactions,
             base_currency,
@@ -2787,7 +2771,7 @@ class PortfolioManager:
             link_cash,
             settings_val,
             benchmarks,
-            force_refresh=force_refresh
+            force_refresh=False
         )
 
         # 3. Guarantee EXACT 0.00 PLN NAV alignment on date.today() / latest point
@@ -2806,7 +2790,8 @@ class PortfolioManager:
             account_val,
             link_cash,
             settings_val,
-            force_refresh=force_refresh
+            force_refresh=False,
+            historical_performance_data=hist_perf
         )
 
         # 5. Compute Dividend Forecast (reuses in-memory cached holdings and dividend history)
@@ -2815,7 +2800,8 @@ class PortfolioManager:
             base_currency,
             account_val,
             link_cash,
-            settings_val
+            settings_val,
+            holdings_data=holdings_res
         )
 
         # 6. Compute Upcoming Events (reuses in-memory cached active positions and dividends)
