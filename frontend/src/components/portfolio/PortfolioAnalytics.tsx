@@ -1,4 +1,4 @@
-import { Shield, RefreshCw, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Shield, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { AnalyticsData } from '../../context/PortfolioContext';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,6 @@ interface PortfolioAnalyticsProps {
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onClose?: () => void;
-  onRefresh?: () => void;
 }
 
 export function PortfolioAnalytics({
@@ -16,8 +15,7 @@ export function PortfolioAnalytics({
   loading,
   onMoveUp,
   onMoveDown,
-  onClose,
-  onRefresh
+  onClose
 }: PortfolioAnalyticsProps) {
   const { t } = useTranslation();
   
@@ -117,18 +115,6 @@ export function PortfolioAnalytics({
           <Shield size={18} className="gradient-text" style={{ flexShrink: 0 }} /> {t('analytics.header', 'Performance & Risk Analytics')}
         </h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          {onRefresh && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); onRefresh(); }} 
-              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', marginRight: '4px' }} 
-              title={t('analytics.btn_refresh', 'Refresh Data')}
-              className={loading ? 'spinner-ring' : ''}
-              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-primary)'} 
-              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-            >
-              <RefreshCw size={13} />
-            </button>
-          )}
           {onMoveUp && (
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 

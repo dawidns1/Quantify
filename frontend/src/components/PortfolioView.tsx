@@ -107,7 +107,6 @@ export function PortfolioView({
     fetchHoldings,
     fetchTransactions,
     fetchHistoricalPerformance,
-    fetchPortfolioAnalytics,
     refreshPortfolioData
   } = usePortfolio();
 
@@ -1225,7 +1224,6 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
-                                        onRefresh={() => fetchHistoricalPerformance(baseCurrency, selectedAccount, undefined, true)}
                                       />
                                     );
                                   case 'events':
@@ -1262,7 +1260,6 @@ export function PortfolioView({
                                         onMoveUp={onMoveUp}
                                         onMoveDown={onMoveDown}
                                         onClose={onClose}
-                                        onRefresh={() => fetchPortfolioAnalytics(baseCurrency, selectedAccount, true)}
                                       />
                                     );
 
