@@ -3,6 +3,7 @@ import math
 import json
 import time
 import threading
+import concurrent.futures
 import pandas as pd
 from datetime import datetime, date, timedelta
 from backend.data_provider import get_provider, guess_native_currency
@@ -378,93 +379,127 @@ class PortfolioManager:
     @classmethod
     def prefetch_historical_stock_prices(cls, symbols: list, start_dt: date, end_dt: date, force_refresh: bool = False):
         now = time.time()
-        missing_symbols = []
+        symbols_to_fetch = {}  # sym -> required_fetch_start_date
         
         with cls._historical_prefetch_lock:
             for sym in symbols:
                 sym = sym.upper().strip()
-                if not force_refresh:
-                    cache_entry = cls._historical_stock_cache.get(sym)
-                    if cache_entry and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
-                        if not cache_entry["prices"]:
-                            continue
-                        if cls._is_market_date_range_complete(cache_entry["start_date"], cache_entry["end_date"], start_dt, end_dt):
-                            continue
-                        
-                    # Try loading from L2 SQLite Cache
-                    sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
-                    if sqlite_prices:
-                        min_date = min(sqlite_prices.keys())
-                        max_date = max(sqlite_prices.keys())
-                        is_complete = cls._is_market_date_range_complete(min_date, max_date, start_dt, end_dt)
-                        
-                        # Populate memory cache with SQLite prices immediately so calculations never block
-                        cls._historical_stock_cache[sym] = {
-                            "start_date": min_date,
-                            "end_date": max_date,
-                            "last_updated": now if is_complete else (now - 86400),
-                            "prices": sqlite_prices,
-                            "dividends": sqlite_divs
-                        }
-                        if is_complete:
+                cache_entry = cls._historical_stock_cache.get(sym)
+                
+                # Check L1 memory cache first
+                if cache_entry and cache_entry.get("prices"):
+                    min_date = cache_entry["start_date"]
+                    max_date = cache_entry["end_date"]
+                    if not force_refresh and (now - cache_entry["last_updated"] <= cls.HISTORICAL_CACHE_TTL):
+                        if cls._is_market_date_range_complete(min_date, max_date, start_dt, end_dt):
                             continue
                     
-                missing_symbols.append(sym)
+                    if min_date <= start_dt:
+                        # Older history (2023–2025) is complete; only fetch missing recent days
+                        req_start = max(start_dt, max_date - timedelta(days=5))
+                        if req_start < end_dt:
+                            symbols_to_fetch[sym] = req_start
+                        continue
+                        
+                # Check L2 SQLite Cache
+                sqlite_prices, sqlite_divs = get_cached_historical_prices(sym, start_dt, end_dt)
+                if sqlite_prices:
+                    min_date = min(sqlite_prices.keys())
+                    max_date = max(sqlite_prices.keys())
+                    is_complete = cls._is_market_date_range_complete(min_date, max_date, start_dt, end_dt)
+                    
+                    cls._historical_stock_cache[sym] = {
+                        "start_date": min_date,
+                        "end_date": max_date,
+                        "last_updated": now if is_complete else (now - 86400),
+                        "prices": sqlite_prices,
+                        "dividends": sqlite_divs
+                    }
+                    
+                    if not force_refresh and is_complete:
+                        continue
+                        
+                    if min_date <= start_dt:
+                        req_start = max(start_dt, max_date - timedelta(days=5))
+                        if req_start < end_dt:
+                            symbols_to_fetch[sym] = req_start
+                        continue
                 
-        if not missing_symbols:
+                # Missing or incomplete historical range -> must fetch full range from start_dt
+                symbols_to_fetch[sym] = start_dt
+                
+        if not symbols_to_fetch:
             return
             
         try:
-            print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {missing_symbols} (start={start_dt})")
-            bulk_prices, bulk_divs = provider.download_historical_stock_bulk(missing_symbols, start_dt, end_dt)
+            full_fetch_syms = [s for s, req_s in symbols_to_fetch.items() if req_s <= start_dt]
+            incremental_syms = [s for s, req_s in symbols_to_fetch.items() if req_s > start_dt]
+            
+            bulk_results = {}
+            
+            def fetch_group(group_syms, fetch_start):
+                if not group_syms:
+                    return {}, {}
+                print(f"[DEBUG] Fetching historical stock prices in BULK from Yahoo Finance for {group_syms} (start={fetch_start})")
+                return provider.download_historical_stock_bulk(group_syms, fetch_start, end_dt)
+                
+            tasks = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                if full_fetch_syms:
+                    tasks.append(executor.submit(fetch_group, full_fetch_syms, start_dt))
+                if incremental_syms:
+                    min_inc_start = min(symbols_to_fetch[s] for s in incremental_syms)
+                    tasks.append(executor.submit(fetch_group, incremental_syms, min_inc_start))
+                    
+                for f in concurrent.futures.as_completed(tasks):
+                    p_dict, d_dict = f.result()
+                    for sym, pr in p_dict.items():
+                        bulk_results[sym] = (pr, d_dict.get(sym, {}))
+                        
             with cls._historical_prefetch_lock:
                 bulk_entries = []
                 
-                for sym in missing_symbols:
-                    prices_dict = bulk_prices.get(sym, {})
-                    dividends_dict = bulk_divs.get(sym, {})
-                    
-                    if prices_dict:
-                        actual_start = min(prices_dict.keys())
-                        actual_end = max(prices_dict.keys())
-                        
-                        cache_entry = cls._historical_stock_cache.get(sym)
-                        if cache_entry:
-                            merged_prices = {**cache_entry["prices"], **prices_dict}
-                            merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
-                            actual_start = min(merged_prices.keys())
-                            actual_end = max(merged_prices.keys())
-                            prices_dict = merged_prices
-                            dividends_dict = merged_dividends
-                            
-                        cls._historical_stock_cache[sym] = {
-                            "start_date": actual_start,
-                            "end_date": actual_end,
-                            "last_updated": now,
-                            "prices": prices_dict,
-                            "dividends": dividends_dict
-                        }
-                        # Save to SQLite L2 Cache (Supabase write handled in bulk below)
-                        save_cached_historical_prices(sym, prices_dict, dividends_dict, supabase_write=False)
-                        
-                        # Accumulate for Supabase bulk write
-                        serialized_prices = {}
-                        serialized_divs = {}
-                        for dt, val in prices_dict.items():
-                            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-                            serialized_prices[dt_str] = val
-                        for dt, val in dividends_dict.items():
-                            dt_str = dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)
-                            serialized_divs[dt_str] = val
-                            
-                        bulk_entries.append((f"HIST_PRICES:{sym.upper()}", {
-                            "prices": serialized_prices,
-                            "dividends": serialized_divs
-                        }))
-                    else:
-                        print(f"[WARN] No historical prices returned for {sym}")
+                for sym in symbols_to_fetch.keys():
+                    res = bulk_results.get(sym)
+                    if not res or not res[0]:
                         continue
+                    prices_dict, dividends_dict = res
+                    
+                    actual_start = min(prices_dict.keys())
+                    actual_end = max(prices_dict.keys())
+                    
+                    cache_entry = cls._historical_stock_cache.get(sym)
+                    if cache_entry and cache_entry.get("prices"):
+                        merged_prices = {**cache_entry["prices"], **prices_dict}
+                        merged_dividends = {**cache_entry.get("dividends", {}), **dividends_dict}
+                        actual_start = min(merged_prices.keys())
+                        actual_end = max(merged_prices.keys())
+                    else:
+                        merged_prices = prices_dict
+                        merged_dividends = dividends_dict
                         
+                    cls._historical_stock_cache[sym] = {
+                        "start_date": actual_start,
+                        "end_date": actual_end,
+                        "last_updated": now,
+                        "prices": merged_prices,
+                        "dividends": merged_dividends
+                    }
+                    save_cached_historical_prices(sym, merged_prices, merged_dividends, supabase_write=False)
+                    
+                    serialized_prices = {
+                        (dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)): val
+                        for dt, val in merged_prices.items()
+                    }
+                    serialized_divs = {
+                        (dt.strftime("%Y-%m-%d") if isinstance(dt, (date, datetime)) else str(dt)): val
+                        for dt, val in merged_dividends.items()
+                    }
+                    bulk_entries.append((f"HIST_PRICES:{sym.upper()}", {
+                        "prices": serialized_prices,
+                        "dividends": serialized_divs
+                    }))
+                    
                 if bulk_entries:
                     save_supabase_kv_bulk(bulk_entries)
         except Exception as e:
@@ -907,6 +942,7 @@ class PortfolioManager:
             return 0.19
 
         from datetime import datetime
+        today = date.today()
         auto_list = []
         
         # 1. Compute automatic virtual dividends
@@ -917,6 +953,8 @@ class PortfolioManager:
             
             for acc in accounts:
                 for ex_date, payout in sorted(dividends_data.items()):
+                    if ex_date > today and not include_upcoming:
+                        continue
                     ex_date_str = ex_date.strftime("%Y-%m-%d")
                     
                     # Calculate shares owned on ex_date in this account
@@ -965,7 +1003,8 @@ class PortfolioManager:
                             "currency": native_curr,
                             "native_currency": native_curr,
                             "is_override": False,
-                            "is_manual": False
+                            "is_manual": False,
+                            "is_upcoming": (ex_date > today)
                         })
 
         # 1.1 Project future/upcoming dividends for the remainder of the current calendar year (forecast only)
@@ -976,84 +1015,86 @@ class PortfolioManager:
                 native_curr = ticker_info[symbol]["native_currency"]
                 accounts = set(tx.get("account", "Default") or "Default" for tx in txs)
             
-            for acc in accounts:
-                # Calculate current shares owned in this account up to today
-                current_shares = 0.0
-                for tx in txs:
-                    tx_acc = tx.get("account", "Default") or "Default"
-                    if tx_acc != acc:
-                        continue
-                    # Parse transaction date
-                    tx_date_str = tx.get("date", "")
-                    if tx_date_str:
-                        try:
-                            tx_dt = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
-                            if tx_dt > today:
-                                continue # Skip future transactions for current balance
-                        except:
-                            pass
-                    if tx["type"] == "BUY":
-                        current_shares += tx["shares"]
-                    elif tx["type"] == "SELL":
-                        current_shares -= tx["shares"]
-                        
-                if current_shares > 0.0001:
-                    # Find payouts in the last 2 years to deduce regular payout months
-                    payouts_recent = []
-                    if dividends_data:
-                        payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=365) <= dt <= today]
-                        if not payouts_recent:
-                            payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=730) <= dt <= today]
-                    
-                    for hist_ex_date, hist_payout in payouts_recent:
-                        # Only project for future dates in the current calendar year
-                        if hist_ex_date.month > today.month or (hist_ex_date.month == today.month and hist_ex_date.day >= today.day):
+                for acc in accounts:
+                    # Calculate current shares owned in this account up to today
+                    current_shares = 0.0
+                    for tx in txs:
+                        tx_acc = tx.get("account", "Default") or "Default"
+                        if tx_acc != acc:
+                            continue
+                        # Parse transaction date
+                        tx_date_str = tx.get("date", "")
+                        if tx_date_str:
                             try:
-                                proj_date = date(today.year, hist_ex_date.month, hist_ex_date.day)
-                            except ValueError:
-                                proj_date = date(today.year, hist_ex_date.month, 28)
+                                tx_dt = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                                if tx_dt > today:
+                                    continue # Skip future transactions for current balance
+                            except:
+                                pass
+                        if tx["type"] == "BUY":
+                            current_shares += tx["shares"]
+                        elif tx["type"] == "SELL":
+                            current_shares -= tx["shares"]
                             
-                            proj_date_str = proj_date.strftime("%Y-%m-%d")
-                            
-                            # Avoid double-counting: check if this symbol, acc, month already has a dividend in auto_list
-                            already_exists = False
-                            for ad in auto_list:
-                                if ad["symbol"] == symbol and ad["account"] == acc:
-                                    try:
-                                        ad_dt = datetime.strptime(ad["date"], "%Y-%m-%d").date()
-                                        if ad_dt.year == today.year and ad_dt.month == proj_date.month:
-                                            already_exists = True
-                                            break
-                                    except:
-                                        pass
-                                        
-                            if not already_exists:
-                                tax_rate = get_tax_rate(acc)
-                                gross_payout_native = current_shares * hist_payout
-                                net_payout_native = gross_payout_native * (1.0 - tax_rate)
+                    if current_shares > 0.0001:
+                        # Find payouts in the last 2 years to deduce regular payout months
+                        payouts_recent = []
+                        if dividends_data:
+                            payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=365) <= dt <= today]
+                            if not payouts_recent:
+                                payouts_recent = [(dt, float(val)) for dt, val in dividends_data.items() if today - timedelta(days=730) <= dt <= today]
+                        
+                        for hist_ex_date, hist_payout in payouts_recent:
+                            # Only project for future dates in the current calendar year
+                            if hist_ex_date.month > today.month or (hist_ex_date.month == today.month and hist_ex_date.day >= today.day):
+                                try:
+                                    proj_date = date(today.year, hist_ex_date.month, hist_ex_date.day)
+                                except ValueError:
+                                    proj_date = date(today.year, hist_ex_date.month, 28)
                                 
-                                if native_curr == base_currency:
-                                    fx_rate_ex = 1.0
-                                else:
-                                    fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                                proj_date_str = proj_date.strftime("%Y-%m-%d")
+                                
+                                # Avoid double-counting: check if this symbol, acc, month already has a dividend in auto_list
+                                already_exists = False
+                                for ad in auto_list:
+                                    if ad["symbol"] == symbol and ad["account"] == acc:
+                                        try:
+                                            ad_dt = datetime.strptime(ad["date"], "%Y-%m-%d").date()
+                                            if ad_dt.year == today.year and ad_dt.month == proj_date.month:
+                                                already_exists = True
+                                                break
+                                        except:
+                                            pass
+                                            
+                                if not already_exists:
+                                    tax_rate = get_tax_rate(acc)
+                                    gross_payout_native = current_shares * hist_payout
+                                    net_payout_native = gross_payout_native * (1.0 - tax_rate)
                                     
-                                gross_base = gross_payout_native * fx_rate_ex
-                                net_base = net_payout_native * fx_rate_ex
-                                net_native = net_payout_native
-                                
-                                auto_list.append({
-                                    "symbol": symbol,
-                                    "date": proj_date_str,
-                                    "account": acc,
-                                    "shares": round(current_shares, 4),
-                                    "payout_per_share": float(hist_payout),
-                                    "gross_base": round(gross_base, 2),
-                                    "net_base": round(net_base, 2),
-                                    "net_native": round(net_native, 2),
-                                    "is_override": False,
-                                    "is_manual": False,
-                                    "is_upcoming": True
-                                })
+                                    if native_curr == base_currency:
+                                        fx_rate_ex = 1.0
+                                    else:
+                                        fx_rate_ex = fx_rates.get(native_curr, 1.0)
+                                        
+                                    gross_base = gross_payout_native * fx_rate_ex
+                                    net_base = net_payout_native * fx_rate_ex
+                                    net_native = net_payout_native
+                                    
+                                    auto_list.append({
+                                        "symbol": symbol,
+                                        "date": proj_date_str,
+                                        "account": acc,
+                                        "shares": round(current_shares, 4),
+                                        "payout_per_share": float(hist_payout),
+                                        "gross_base": round(gross_base, 2),
+                                        "net_base": round(net_base, 2),
+                                        "net_native": round(net_native, 2),
+                                        "currency": native_curr,
+                                        "native_currency": native_curr,
+                                        "is_override": False,
+                                        "is_manual": False,
+                                        "is_upcoming": True
+                                    })
 
         # 2. Load custom overrides & manual dividends from settings
         overrides = portfolio_settings.get("dividends", []) if portfolio_settings else []
@@ -1284,8 +1325,11 @@ class PortfolioManager:
                 
         if need_download:
             fetch_start = start_dt
-            if cache_entry and cache_entry["start_date"] < fetch_start:
-                fetch_start = cache_entry["start_date"]
+            if cache_entry and cache_entry.get("prices"):
+                min_cached = cache_entry["start_date"]
+                max_cached = cache_entry["end_date"]
+                if min_cached <= start_dt and max_cached < end_dt:
+                    fetch_start = max(start_dt, max_cached - timedelta(days=5))
                 
             prices_dict = {}
             try:
@@ -1295,7 +1339,6 @@ class PortfolioManager:
                 
             if not prices_dict and cache_entry:
                 prices_dict = cache_entry["prices"]
-                fetch_start = cache_entry["start_date"]
                 
             fallback = FALLBACK_RATES.get(pair.replace("=X", ""), 1.0)
             
@@ -1559,10 +1602,20 @@ class PortfolioManager:
                 return 0.0
             return 0.19
 
-        merged_divs = cls.get_merged_dividends(sorted_txs, symbol_txs, ticker_info, base_currency, fx_rates, portfolio_settings)
+        merged_divs = cls.get_merged_dividends(
+            sorted_txs, 
+            symbol_txs, 
+            ticker_info, 
+            base_currency, 
+            fx_rates, 
+            portfolio_settings,
+            include_upcoming=True
+        )
         
         dividends_by_symbol_acc = {}
         for d in merged_divs:
+            if d.get("is_upcoming", False):
+                continue  # Skip future projected dividends for realized historical holdings summary
             sym = d["symbol"]
             acc = d["account"]
             dividends_by_symbol_acc.setdefault((sym, acc), {"gross_base": 0.0, "net_base": 0.0, "net_native": 0.0})
@@ -1587,6 +1640,8 @@ class PortfolioManager:
             
         if link_cash and add_divs_to_cash:
             for d in merged_divs:
+                if d.get("is_upcoming", False):
+                    continue  # Skip unreceived future dividends from cash ledger balances
                 if d.get("net_native", 0.0) > 0.0:
                     ex_d_str = d.get("ex_date") or d.get("date") or ""
                     timeline_events.append({
@@ -1729,9 +1784,9 @@ class PortfolioManager:
             if cost_basis_method == "fifo":
                 buy_lots = []
                 for tx in txs:
-                    tx_shares = tx["shares"]
-                    tx_price = tx["price"]
-                    tx_fees = tx["fees"]
+                    tx_shares = float(tx.get("shares") or 0.0)
+                    tx_price = float(tx.get("price") or 0.0)
+                    tx_fees = float(tx.get("fees") or 0.0)
                     tx_curr = tx["currency"].upper().strip()
                     fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
                     
@@ -1763,9 +1818,9 @@ class PortfolioManager:
             else:
                 cost_basis_native = 0.0
                 for tx in txs:
-                    tx_shares = tx["shares"]
-                    tx_price = tx["price"]
-                    tx_fees = tx["fees"]
+                    tx_shares = float(tx.get("shares") or 0.0)
+                    tx_price = float(tx.get("price") or 0.0)
+                    tx_fees = float(tx.get("fees") or 0.0)
                     tx_curr = tx["currency"].upper().strip()
                     fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
                     
@@ -2217,10 +2272,10 @@ class PortfolioManager:
                 tx_account = tx.get("account", "Default") or "Default"
                 tx_curr = tx.get("currency", "USD").upper().strip()
                 sym = tx["symbol"].upper().strip()
-                tx_type = tx["type"]
-                shares = tx["shares"]
-                price = tx["price"]
-                fees = tx["fees"]
+                tx_type = tx.get("type", "BUY")
+                shares = float(tx.get("shares") or 0.0)
+                price = float(tx.get("price") or 0.0)
+                fees = float(tx.get("fees") or 0.0)
                 
                 fx_tx_to_base = fx_rates_hist.get(tx_curr, {}).get(d, 1.0)
                 tx_cost_base = (shares * price + fees) * fx_tx_to_base
