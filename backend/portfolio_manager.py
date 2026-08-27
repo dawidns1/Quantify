@@ -707,7 +707,8 @@ class PortfolioManager:
                         if ev.get("date") is None:
                             continue
                         new_ev = dict(ev)
-                        if new_ev["type"] == "Dividend":
+                        new_ev.setdefault("symbol", symbol)
+                        if new_ev.get("type") == "Dividend":
                             div_val = new_ev.get("last_dividend_value", 0.0)
                             new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
                         updated_events.append(new_ev)
@@ -724,7 +725,8 @@ class PortfolioManager:
                     if ev.get("date") is None:
                         continue
                     new_ev = dict(ev)
-                    if new_ev["type"] == "Dividend":
+                    new_ev.setdefault("symbol", symbol)
+                    if new_ev.get("type") == "Dividend":
                         div_val = new_ev.get("last_dividend_value", 0.0)
                         new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
                     updated_events.append(new_ev)
@@ -739,7 +741,8 @@ class PortfolioManager:
                         if ev.get("date") is None:
                             continue
                         new_ev = dict(ev)
-                        if new_ev["type"] == "Dividend":
+                        new_ev.setdefault("symbol", symbol)
+                        if new_ev.get("type") == "Dividend":
                             div_val = new_ev.get("last_dividend_value", 0.0)
                             new_ev["est_payout"] = round(shares_owned * div_val, 2) if div_val > 0 else None
                         updated_events.append(new_ev)
@@ -757,7 +760,7 @@ class PortfolioManager:
             shares = h["shares"]
             
             # Check if this symbol already has a Dividend event in compiled_events
-            has_div_event = any(ev["symbol"] == symbol and ev["type"] == "Dividend" for ev in compiled_events)
+            has_div_event = any(ev.get("symbol") == symbol and ev.get("type") == "Dividend" for ev in compiled_events)
             
             if not has_div_event:
                 # Project ex-dividend date from history
@@ -780,7 +783,7 @@ class PortfolioManager:
                         # If it falls within the next 90 days
                         if today <= proj_date <= today + timedelta(days=90):
                             # Ensure we don't duplicate
-                            exists = any(ev["symbol"] == symbol and ev["type"] == "Dividend" and ev["date"] == proj_date.isoformat() for ev in compiled_events)
+                            exists = any(ev.get("symbol") == symbol and ev.get("type") == "Dividend" and ev.get("date") == proj_date.isoformat() for ev in compiled_events)
                             if not exists:
                                 # Get currency from metadata cache or instant guess without blocking network calls
                                 cached_meta = cls._ticker_metadata_cache.get(symbol) or {}
@@ -800,12 +803,12 @@ class PortfolioManager:
         unique_events = []
         seen = set()
         for ev in compiled_events:
-            ev_key = (ev["date"], ev["symbol"], ev["type"])
+            ev_key = (ev.get("date"), ev.get("symbol"), ev.get("type"))
             if ev_key not in seen:
                 seen.add(ev_key)
                 unique_events.append(ev)
 
-        unique_events.sort(key=lambda x: x["date"])
+        unique_events.sort(key=lambda x: x.get("date") or "")
         return unique_events
 
     @classmethod
