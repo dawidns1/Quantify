@@ -1,21 +1,56 @@
 import { supabase } from '../supabaseClient';
 import type { Portfolio, Member } from '../types/portfolio';
 
-export async function fetchUserPortfolios(userId: string): Promise<Portfolio[]> {
-  const { data: membersList, error } = await supabase
-    .from('portfolio_members')
-    .select(`
-      portfolio_id,
-      role,
-      portfolios (
-        id,
-        name,
-        settings
-      )
-    `)
-    .eq('user_id', userId);
+/**
+ * Proactively verifies and refreshes the Supabase auth session if expired or expiring within 60s.
+ */
+export async function ensureFreshSession(): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      if (Date.now() >= expiresAt - 60000) {
+        await supabase.auth.refreshSession();
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+}
 
-  if (error) throw error;
+/**
+ * Wraps Supabase database calls with proactive session freshness and automatic 401 JWT retry.
+ */
+export async function withFreshSessionRetry<T = any>(
+  fn: () => PromiseLike<{ data: T | null; error: any }>
+): Promise<T> {
+  await ensureFreshSession();
+  let result = await fn();
+  if (result.error && (result.error.code === '401' || result.error.message?.includes('JWT') || result.error.message?.includes('expired') || (result.error as any).status === 401)) {
+    try {
+      await supabase.auth.refreshSession();
+      result = await fn();
+    } catch (e) {}
+  }
+  if (result.error) throw result.error;
+  return result.data as T;
+}
+
+export async function fetchUserPortfolios(userId: string): Promise<Portfolio[]> {
+  const membersList = await withFreshSessionRetry(() =>
+    supabase
+      .from('portfolio_members')
+      .select(`
+        portfolio_id,
+        role,
+        portfolios (
+          id,
+          name,
+          settings
+        )
+      `)
+      .eq('user_id', userId)
+  );
 
   if (!membersList || membersList.length === 0) {
     // Return empty list so coordinator can trigger auto-creation
@@ -31,23 +66,27 @@ export async function fetchUserPortfolios(userId: string): Promise<Portfolio[]> 
 }
 
 export async function createPortfolio(userId: string, name: string): Promise<Portfolio> {
-  const { data: newPortfolio, error: createError } = await supabase
-    .from('portfolios')
-    .insert({ name })
-    .select()
-    .single();
+  const newPortfolio = await withFreshSessionRetry<any>(() =>
+    supabase
+      .from('portfolios')
+      .insert({ name })
+      .select()
+      .single()
+  );
 
-  if (createError) throw createError;
+  if (!newPortfolio) {
+    throw new Error('Failed to create portfolio record');
+  }
 
-  const { error: memberError } = await supabase
-    .from('portfolio_members')
-    .insert({
-      portfolio_id: newPortfolio.id,
-      user_id: userId,
-      role: 'owner'
-    });
-
-  if (memberError) throw memberError;
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('portfolio_members')
+      .insert({
+        portfolio_id: newPortfolio.id,
+        user_id: userId,
+        role: 'owner'
+      })
+  );
 
   return {
     id: newPortfolio.id,
@@ -57,38 +96,38 @@ export async function createPortfolio(userId: string, name: string): Promise<Por
 }
 
 export async function renamePortfolio(portfolioId: string, newName: string): Promise<void> {
-  const { error } = await supabase
-    .from('portfolios')
-    .update({ name: newName })
-    .eq('id', portfolioId);
-
-  if (error) throw error;
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('portfolios')
+      .update({ name: newName })
+      .eq('id', portfolioId)
+  );
 }
 
 export async function deletePortfolio(portfolioId: string): Promise<void> {
-  const { error } = await supabase
-    .from('portfolios')
-    .delete()
-    .eq('id', portfolioId);
-
-  if (error) throw error;
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('portfolios')
+      .delete()
+      .eq('id', portfolioId)
+  );
 }
 
 export async function fetchPortfolioMembers(portfolioId: string): Promise<Member[]> {
-  const { data, error } = await supabase
-    .from('portfolio_members')
-    .select(`
-      user_id,
-      role,
-      profiles (
-        email
-      )
-    `)
-    .eq('portfolio_id', portfolioId);
-
-  if (error) throw error;
+  const data = await withFreshSessionRetry(() =>
+    supabase
+      .from('portfolio_members')
+      .select(`
+        user_id,
+        role,
+        profiles (
+          email
+        )
+      `)
+      .eq('portfolio_id', portfolioId)
+  );
   
-  return data.map((m: any) => ({
+  return (data || []).map((m: any) => ({
     user_id: m.user_id,
     role: m.role as 'owner' | 'editor' | 'viewer',
     email: m.profiles?.email || 'Unknown user'

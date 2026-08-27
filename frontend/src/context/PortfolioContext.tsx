@@ -750,8 +750,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   };
 
   useEffect(() => {
-    loadPortfolios();
-  }, [user?.id]);
+    if (user?.id) {
+      loadPortfolios();
+    }
+  }, [user?.id, session?.access_token]);
 
   // --- Fetch triggers ---
   

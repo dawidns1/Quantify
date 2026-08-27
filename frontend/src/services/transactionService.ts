@@ -1,26 +1,28 @@
 import { supabase } from '../supabaseClient';
 import type { Transaction } from '../types/portfolio';
+import { withFreshSessionRetry } from './supabaseService';
 
 export async function fetchTransactions(portfolioIds: string[]): Promise<Transaction[]> {
   if (portfolioIds.length === 0) return [];
   
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .in('portfolio_id', portfolioIds)
-    .order('date', { ascending: false });
+  const data = await withFreshSessionRetry(() =>
+    supabase
+      .from('transactions')
+      .select('*')
+      .in('portfolio_id', portfolioIds)
+      .order('date', { ascending: false })
+  );
 
-  if (error) throw error;
   return data || [];
 }
 
 export async function deleteTransaction(transactionId: string): Promise<void> {
-  const { error } = await supabase
-    .from('transactions')
-    .delete()
-    .eq('id', transactionId);
-
-  if (error) throw error;
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('transactions')
+      .delete()
+      .eq('id', transactionId)
+  );
 }
 
 export async function saveTransaction(
@@ -38,18 +40,18 @@ export async function saveTransaction(
   editingId?: string
 ): Promise<void> {
   if (editingId) {
-    const { error } = await supabase
-      .from('transactions')
-      .update(payload)
-      .eq('id', editingId);
-
-    if (error) throw error;
+    await withFreshSessionRetry(() =>
+      supabase
+        .from('transactions')
+        .update(payload)
+        .eq('id', editingId)
+    );
   } else {
-    const { error } = await supabase
-      .from('transactions')
-      .insert(payload);
-
-    if (error) throw error;
+    await withFreshSessionRetry(() =>
+      supabase
+        .from('transactions')
+        .insert(payload)
+    );
   }
 }
 
@@ -66,9 +68,9 @@ export async function saveTransactionsBulk(
     account: string;
   }>
 ): Promise<void> {
-  const { error } = await supabase
-    .from('transactions')
-    .insert(payloads);
-
-  if (error) throw error;
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('transactions')
+      .insert(payloads)
+  );
 }
