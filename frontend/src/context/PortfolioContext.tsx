@@ -163,9 +163,6 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
     if (!activeId) return [];
     try {
-      const tsStr = localStorage.getItem(`cached_holdings_ts_${activeId}_${baseCurr}_${selAcc}`);
-      const isExpired = !tsStr || (Date.now() - parseInt(tsStr, 10) > 300000);
-      if (isExpired) return [];
       const cached = localStorage.getItem(`cached_holdings_${activeId}_${baseCurr}_${selAcc}`);
       if (!cached) return [];
       const parsed: Holding[] = JSON.parse(cached);
@@ -386,9 +383,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     bundleAbortControllerRef.current = abortController;
 
     if (!silent) {
-      setLoadingHoldings(true);
-      setLoadingChart(true);
-      setLoadingAnalytics(true);
+      if (holdings.length === 0) {
+        setLoadingHoldings(true);
+        setLoadingChart(true);
+        setLoadingAnalytics(true);
+      }
       setSyncStatus('syncing');
       setSyncError(null);
     }

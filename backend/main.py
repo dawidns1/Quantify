@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+import concurrent.futures
 import time
 import csv
 import io
@@ -682,8 +683,11 @@ def get_portfolio_bundle_jwt(
     t_start = time.time()
     try:
         t_sub_start = time.time()
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            fut_tx = executor.submit(fetch_transactions_from_supabase, authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+            fut_st = executor.submit(fetch_portfolio_settings_from_supabase, authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+            transactions = fut_tx.result()
+            settings = fut_st.result()
         t_sub = (time.time() - t_sub_start) * 1000
 
         benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None

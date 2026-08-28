@@ -303,6 +303,7 @@ class PortfolioManager:
         try:
             res = provider.download_bulk_live_prices(missing_symbols, missing_fx)
             with cls._live_prefetch_lock:
+                bulk_kv_entries = []
                 for sym in missing_symbols:
                     stock_data = res["stocks"].get(sym)
                     if not stock_data or stock_data.get("live_price", 0.0) == 0.0:
@@ -358,7 +359,8 @@ class PortfolioManager:
                         "timezone": tz_val,
                         "exchange": ex_val
                     }
-                    save_cached_live_price(sym, cache_payload, supabase_write=True)
+                    save_cached_live_price(sym, cache_payload, supabase_write=False)
+                    bulk_kv_entries.append((f"LIVE_PRICE:{sym.upper()}", cache_payload))
                     
                 for pair in missing_fx:
                     rate = res["fx"].get(pair)
@@ -372,7 +374,11 @@ class PortfolioManager:
                         "company_name": pair,
                         "native_currency": "USD"
                     }
-                    save_cached_live_price(pair, cache_payload, supabase_write=True)
+                    save_cached_live_price(pair, cache_payload, supabase_write=False)
+                    bulk_kv_entries.append((f"LIVE_PRICE:{pair.upper()}", cache_payload))
+                
+                if bulk_kv_entries:
+                    save_supabase_kv_bulk(bulk_kv_entries)
         except Exception as e:
             print(f"Error prefetching live prices: {e}")
 
