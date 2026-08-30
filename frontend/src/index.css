@@ -1970,15 +1970,18 @@ body.density-compact .portfolio-table td {
     top: 0;
     width: 100% !important;
     max-width: 100% !important;
-    background: #0b1329 !important;
-    color: #f8fafc !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     border: none !important;
+    box-shadow: none !important;
     padding: 1cm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  .modal-overlay {
+  .modal-overlay-container, .modal-backdrop {
     background: none !important;
+    display: block !important;
+    position: static !important;
   }
 }
 
