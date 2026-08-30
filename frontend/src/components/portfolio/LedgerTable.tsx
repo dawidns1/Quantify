@@ -29,7 +29,7 @@ export function LedgerTable({
   onScrollToBottomChange,
   accountColors = {}
 }: LedgerTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest transactions first
@@ -278,7 +278,7 @@ export function LedgerTable({
   };
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 2,
@@ -529,7 +529,7 @@ export function LedgerTable({
                       {tx.type === 'BUY' ? (
                         (tx as any).isFullyClosed ? (
                           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                            Closed
+                            {t('holdings.lot_status_closed', 'Closed')}
                           </span>
                         ) : gainPct !== undefined && !isNaN(gainPct) ? (
                           <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -542,7 +542,7 @@ export function LedgerTable({
                             </span>
                             {(tx as any).openShares < tx.shares && (
                               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                {(tx as any).openShares.toFixed(2)}/{tx.shares} open
+                                {t('holdings.lot_status_open', { open: (tx as any).openShares.toFixed(2), total: tx.shares, defaultValue: `${(tx as any).openShares.toFixed(2)}/${tx.shares} open` })}
                               </span>
                             )}
                           </div>
@@ -556,7 +556,7 @@ export function LedgerTable({
                             fontWeight: 700,
                             color: gainPct >= 0 ? '#10b981' : '#ef4444'
                           }}>
-                            {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
+                            {t('holdings.lot_status_realized', { gain: `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%`, defaultValue: `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}% Realized` })}
                           </span>
                         ) : (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>

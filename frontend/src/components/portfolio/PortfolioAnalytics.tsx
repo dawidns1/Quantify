@@ -308,13 +308,13 @@ export function PortfolioAnalytics({
                     {insights.maxVal > 0.7 && (
                       <div style={{ color: 'hsl(350, 70%, 65%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <span>⚠️</span>
-                        <span><strong>{t('analytics.concentration_risk', 'Concentration risk')}:</strong> {insights.maxPair[0]} & {insights.maxPair[1]} {t('analytics.concentration_desc', 'move in lockstep')} ({insights.maxVal.toFixed(2)}).</span>
+                        <span>{t('analytics.concentration_full', { asset1: insights.maxPair[0], asset2: insights.maxPair[1], val: insights.maxVal.toFixed(2), defaultValue: `Concentration risk: ${insights.maxPair[0]} & ${insights.maxPair[1]} move in lockstep (${insights.maxVal.toFixed(2)}).` })}</span>
                       </div>
                     )}
                     {insights.minVal < 0.3 && (
                       <div style={{ color: 'hsl(142, 70%, 55%)', fontSize: '0.63rem', display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                         <span>✓</span>
-                        <span><strong>{t('analytics.diversification', 'Diversification')}:</strong> {insights.minPair[0]} & {insights.minPair[1]} {t('analytics.diversification_desc', 'are uncorrelated/hedged')} ({insights.minVal.toFixed(2)}).</span>
+                        <span>{t('analytics.diversification_full', { asset1: insights.minPair[0], asset2: insights.minPair[1], val: insights.minVal.toFixed(2), defaultValue: `Diversification: ${insights.minPair[0]} & ${insights.minPair[1]} are uncorrelated/hedged (${insights.minVal.toFixed(2)}).` })}</span>
                       </div>
                     )}
                     <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '0.2rem', marginTop: '0.1rem' }}>

@@ -21,7 +21,7 @@ export function HoldingsTable({
   onSelectPositionSymbol,
   onScrollToBottomChange
 }: HoldingsTableProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Column width resizing states
   const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -191,7 +191,7 @@ export function HoldingsTable({
   };
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 2,
@@ -933,7 +933,7 @@ export function HoldingsTable({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {h.is_live && (
                           <span 
-                            title="Market Session is Live"
+                            title={t('common.market_live_tooltip', 'Market Session is Live')}
                             style={{ 
                               display: 'inline-block',
                               width: '6px',

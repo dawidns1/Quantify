@@ -254,7 +254,7 @@ export function AICopilot({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
               <Clock size={12} />
               <span>
-                {t('ai_copilot.last_updated', 'Updated')}: {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {t('ai_copilot.last_updated', 'Updated')}: {lastRefreshed.toLocaleTimeString(i18n.language || 'en', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
           )}

@@ -46,7 +46,7 @@ export function DividendCalendar({
   };
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 2,
@@ -308,7 +308,7 @@ export function DividendCalendar({
                       })}
                       {m.payments.length > 6 && (
                         <div style={{ fontSize: isExpanded ? '0.68rem' : '0.6rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2px' }}>
-                          + {m.payments.length - 6} more
+                          {t('dividends.more_payments', { count: m.payments.length - 6, defaultValue: `+ ${m.payments.length - 6} more` })}
                         </div>
                       )}
                     </div>
@@ -324,7 +324,7 @@ export function DividendCalendar({
                             flexShrink: 0
                           }} />
                           <span>
-                            Paid: <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalPaid, baseCurrency)}</span> | Est: <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(totalUpcoming, baseCurrency)}</span>
+                            {t('dividends.paid_prefix', 'Paid:')} <span style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalPaid, baseCurrency)}</span> | {t('dividends.est_prefix', 'Est:')} <span style={{ color: 'var(--text-muted)' }}>{formatCurrency(totalUpcoming, baseCurrency)}</span>
                           </span>
                         </span>
                       ) : isAllUpcoming ? (
@@ -336,7 +336,7 @@ export function DividendCalendar({
                             background: 'rgba(6, 182, 212, 0.7)',
                             flexShrink: 0
                           }} />
-                          <span>Projected Payout</span>
+                          <span>{t('dividends.badge_projected', 'Projected Payout')}</span>
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.58rem', color: 'var(--color-green)', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -347,7 +347,7 @@ export function DividendCalendar({
                             background: 'var(--color-green)',
                             flexShrink: 0
                           }} />
-                          <span>Received</span>
+                          <span>{t('dividends.badge_received', 'Received')}</span>
                         </span>
                       )}
                       <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', display: 'flex', gap: '2px', flexWrap: 'wrap' }}>

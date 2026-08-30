@@ -18,11 +18,11 @@ export function MetricsBanner({
   onMoveDown,
   onClose
 }: MetricsBannerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isProfit = summary.total_gain_base >= 0;
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 2,

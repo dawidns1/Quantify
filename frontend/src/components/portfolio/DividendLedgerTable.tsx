@@ -25,7 +25,7 @@ export function DividendLedgerTable({
   accountColors = {}
 }: DividendLedgerTableProps) {
   const wasAtBottomRef = useRef(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest dividends first
@@ -131,7 +131,7 @@ export function DividendLedgerTable({
   };
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency || 'USD',
       minimumFractionDigits: 2,

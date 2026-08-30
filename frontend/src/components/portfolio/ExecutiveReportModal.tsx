@@ -28,13 +28,13 @@ export function ExecutiveReportModal({
   analytics,
   dividends = []
 }: ExecutiveReportModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const reportRef = useRef<HTMLDivElement>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   if (!isOpen) return null;
 
-  const todayStr = new Date().toLocaleDateString(undefined, {
+  const todayStr = new Date().toLocaleDateString(i18n.language || 'en', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -42,7 +42,7 @@ export function ExecutiveReportModal({
 
   const formatMoney = (val: number | undefined) => {
     if (val === undefined || isNaN(val)) return `0.00 ${baseCurrency}`;
-    return `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCurrency}`;
+    return `${val.toLocaleString(i18n.language || 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCurrency}`;
   };
 
   const formatPercent = (val: number | undefined) => {
@@ -256,10 +256,10 @@ export function ExecutiveReportModal({
                 onClick={handleExportXLS}
                 className="cancel-btn"
                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.3)' }}
-                title="Export all assets to Excel / CSV"
+                title={t('common.export_excel_tooltip', 'Export all assets to Excel / CSV')}
               >
                 <FileSpreadsheet size={14} />
-                Export Excel / XLS
+                {t('common.export_excel', 'Export Excel / XLS')}
               </button>
               <button
                 onClick={handlePrint}

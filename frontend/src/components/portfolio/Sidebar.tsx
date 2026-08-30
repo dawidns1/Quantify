@@ -282,7 +282,7 @@ export function Sidebar({
             </span>
             <span 
               onClick={onBetaClick}
-              title="Click for Beta Info & Release Notes"
+              title={t('sidebar.beta_tooltip', 'Click for Beta Info & Release Notes')}
               style={{
                 padding: '0.08rem 0.35rem',
                 fontSize: '0.52rem',
@@ -686,7 +686,7 @@ export function Sidebar({
                                         onReorderPortfolios(newOrder);
                                       }
                                     }}
-                                    title="Move Portfolio Up"
+                                    title={t('sidebar.move_portfolio_up', 'Move Portfolio Up')}
                                     style={{
                                       background: 'transparent',
                                       border: 'none',
@@ -712,7 +712,7 @@ export function Sidebar({
                                         onReorderPortfolios(newOrder);
                                       }
                                     }}
-                                    title="Move Portfolio Down"
+                                    title={t('sidebar.move_portfolio_down', 'Move Portfolio Down')}
                                     style={{
                                       background: 'transparent',
                                       border: 'none',
@@ -731,7 +731,7 @@ export function Sidebar({
                               {isActive && (
                                 <button
                                   onClick={() => onSettingsClick?.()}
-                                  title="Portfolio Settings"
+                                  title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
                                   style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                                 >
                                   <Settings size={12} />
@@ -742,7 +742,7 @@ export function Sidebar({
                                   e.stopPropagation();
                                   onRenamePortfolio(portfolio.id);
                                 }}
-                                title="Rename Portfolio"
+                                title={t('sidebar.rename_portfolio_tooltip', 'Rename Portfolio')}
                                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
                                 onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
@@ -754,7 +754,7 @@ export function Sidebar({
                                   e.stopPropagation();
                                   onDeletePortfolio(portfolio.id);
                                 }}
-                                title="Delete Portfolio"
+                                title={t('sidebar.delete_portfolio_tooltip', 'Delete Portfolio')}
                                 style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                                 onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
                                 onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
@@ -801,7 +801,7 @@ export function Sidebar({
                                       setActivePortfolioRole(portfolio.role);
                                       if (onSettingsClick) onSettingsClick();
                                     }}
-                                    title="Click to customize sub-account color & settings"
+                                    title={t('sidebar.account_settings_tooltip', 'Click to customize sub-account color & settings')}
                                     className="hover-scale"
                                   />
                                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1104,7 +1104,7 @@ export function Sidebar({
                       
                       <button
                         onClick={(e) => handleRemoveSymbol(symbol, e)}
-                        title="Remove from Watchlist"
+                        title={t('sidebar.remove_watchlist', 'Remove from Watchlist')}
                         style={{
                           background: 'transparent',
                           border: 'none',

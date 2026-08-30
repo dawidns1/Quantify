@@ -458,8 +458,8 @@ export function PortfolioView({
       return;
     }
     showCustomPrompt(
-      "Create Portfolio",
-      "Enter a name for your new portfolio:",
+      t('common.create_portfolio_prompt_title', 'Create Portfolio'),
+      t('common.create_portfolio_prompt_desc', 'Enter a name for your new portfolio:'),
       "",
       async (name) => {
         if (!name || !name.trim()) return;
@@ -473,7 +473,7 @@ export function PortfolioView({
           localStorage.setItem('portfolio_active_id', newPortfolio.id);
         } catch (err: any) {
           console.error('Error creating portfolio:', err);
-          alert('Failed to create portfolio: ' + err.message);
+          alert(err.message || 'Failed to create portfolio');
         }
       }
     );
@@ -486,8 +486,8 @@ export function PortfolioView({
     if (!currentPortfolio) return;
     
     showCustomPrompt(
-      "Rename Portfolio",
-      `Enter a new name for "${currentPortfolio.name}":`,
+      t('common.rename_portfolio_prompt_title', 'Rename Portfolio'),
+      t('common.rename_portfolio_prompt_desc', { name: currentPortfolio.name, defaultValue: `Enter a new name for "${currentPortfolio.name}":` }),
       currentPortfolio.name,
       async (newName) => {
         if (!newName || !newName.trim() || newName.trim() === currentPortfolio.name) return;
@@ -497,7 +497,7 @@ export function PortfolioView({
           await loadPortfolios();
         } catch (err: any) {
           console.error('Error renaming portfolio:', err);
-          alert('Failed to rename portfolio: ' + err.message);
+          alert(err.message || 'Failed to rename portfolio');
         }
       }
     );
@@ -510,8 +510,8 @@ export function PortfolioView({
     if (!currentPortfolio) return;
     
     showCustomConfirm(
-      "Delete Portfolio",
-      `Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.`,
+      t('common.delete_portfolio_confirm_title', 'Delete Portfolio'),
+      t('common.delete_portfolio_confirm_desc', { name: currentPortfolio.name, defaultValue: `Are you sure you want to permanently delete the portfolio "${currentPortfolio.name}"? This will delete all its transactions and cannot be undone.` }),
       async () => {
         try {
           await deletePortfolio(id);
@@ -520,7 +520,7 @@ export function PortfolioView({
           await loadPortfolios();
         } catch (err: any) {
           console.error('Error deleting portfolio:', err);
-          alert('Failed to delete portfolio: ' + err.message);
+          alert(err.message || 'Failed to delete portfolio');
         }
       },
       true
@@ -614,8 +614,8 @@ export function PortfolioView({
     if (activePortfolioRole === 'viewer') return;
     
     showCustomConfirm(
-      "Delete Transaction",
-      "Are you sure you want to delete this transaction from your ledger?",
+      t('common.delete_tx_confirm_title', 'Delete Transaction'),
+      t('common.delete_tx_confirm_desc', 'Are you sure you want to delete this transaction from your ledger?'),
       async () => {
         try {
           await deleteTransactionService(id);
@@ -623,7 +623,7 @@ export function PortfolioView({
           fetchTransactions();
         } catch (err: any) {
           console.error('Error deleting transaction:', err);
-          alert('Failed to delete transaction: ' + err.message);
+          alert(err.message || 'Failed to delete transaction');
         }
       },
       true
@@ -636,10 +636,10 @@ export function PortfolioView({
     if (activePortfolioRole === 'viewer') return;
     
     showCustomConfirm(
-      div.is_manual ? "Delete Dividend" : "Skip Dividend Payment",
+      div.is_manual ? t('common.delete_div_confirm_title', 'Delete Dividend') : t('common.skip_div_confirm_title', 'Skip Dividend Payment'),
       div.is_manual 
-        ? "Are you sure you want to delete this manual dividend record?" 
-        : "Are you sure you want to skip/delete this automatic dividend payment? (This filters it out of holdings and historical NAV calculation)",
+        ? t('common.delete_div_confirm_desc', 'Are you sure you want to delete this manual dividend record?')
+        : t('common.skip_div_confirm_desc', 'Are you sure you want to skip/delete this automatic dividend payment? (This filters it out of holdings and historical NAV calculation)'),
       async () => {
         try {
           const activePort = portfolios.find(p => p.id === activePortfolioId);
@@ -686,7 +686,7 @@ export function PortfolioView({
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         } catch (err: any) {
           console.error('Error deleting dividend:', err);
-          alert('Failed to delete/skip dividend: ' + err.message);
+          alert(err.message || 'Failed to delete/skip dividend');
         }
       },
       true
@@ -868,7 +868,7 @@ export function PortfolioView({
             <button 
               className="mobile-menu-toggle-btn"
               onClick={() => setSidebarOpen(true)}
-              title="Open Navigation Menu"
+              title={t('common.open_nav_menu', 'Open Navigation Menu')}
               style={{
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -1690,7 +1690,7 @@ export function PortfolioView({
           isOpen={showShareModal}
           onClose={() => setShowShareModal(false)}
           activePortfolioId={activePortfolioId}
-          activePortfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio'}
+          activePortfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || t('common.default_portfolio_name', 'My Portfolio')}
           portfolios={portfolios}
           showCustomConfirm={showCustomConfirm}
           apiBaseUrl={apiBaseUrl}
@@ -1776,7 +1776,7 @@ export function PortfolioView({
       <ExecutiveReportModal
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
-        portfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || 'My Portfolio'}
+        portfolioName={portfolios.find(p => p.id === activePortfolioId)?.name || t('common.default_portfolio_name', 'My Portfolio')}
         activeAccount={selectedAccount}
         baseCurrency={baseCurrency}
         holdings={holdings}

@@ -99,7 +99,7 @@ export const PerformanceChart = memo(function PerformanceChart({
   onMoveDown,
   onClose
 }: PerformanceChartProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { apiBaseUrl, selectedAccount, fetchHistoricalPerformance } = usePortfolio();
 
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
@@ -242,7 +242,7 @@ export const PerformanceChart = memo(function PerformanceChart({
             color: 'rgba(255, 255, 255, 0.75)', 
             font: { family: 'Outfit', size: 9 },
             callback: function(value: any) {
-              return chartMode === 'percent' ? `${value.toFixed(1)}%` : value.toLocaleString('en-US');
+              return chartMode === 'percent' ? `${value.toFixed(1)}%` : value.toLocaleString(i18n.language || 'en');
             }
           }
         }
@@ -290,7 +290,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               if (context.parsed.y !== null) {
                 label += chartMode === 'percent'
                   ? `${context.parsed.y.toFixed(2)}%`
-                  : `${context.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${baseCurrency}`;
+                  : `${context.parsed.y.toLocaleString(i18n.language || 'en', { minimumFractionDigits: 2 })} ${baseCurrency}`;
               }
               return label;
             }
@@ -431,7 +431,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               border: `1px solid ${performanceIndicator.isPositive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`,
               marginLeft: '4px'
             }}>
-              {performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changeVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changePct.toFixed(2)}%)
+              {performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changeVal.toLocaleString(i18n.language || 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({performanceIndicator.isPositive ? '+' : ''}{performanceIndicator.changePct.toFixed(2)}%)
             </span>
           )}
 
@@ -446,7 +446,7 @@ export const PerformanceChart = memo(function PerformanceChart({
               borderRadius: '4px',
               marginLeft: '4px'
             }}>
-              Portfolio: {periodPerformance.portfolio >= 0 ? '+' : ''}{periodPerformance.portfolio.toFixed(2)}%
+              {t('chart.portfolio_return_prefix', 'Portfolio: ')}{periodPerformance.portfolio >= 0 ? '+' : ''}{periodPerformance.portfolio.toFixed(2)}%
             </span>
           )}
         </div>
@@ -600,7 +600,7 @@ export const PerformanceChart = memo(function PerformanceChart({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '0.5rem', position: 'relative', zIndex: 10, marginTop: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-              Compare Benchmarks:
+              {t('chart.compare_benchmarks', 'Compare Benchmarks:')}
             </span>
             
             {/* Quick Index Toggles */}
@@ -646,7 +646,7 @@ export const PerformanceChart = memo(function PerformanceChart({
                   display: 'flex', alignItems: 'center', gap: '3px'
                 }}
               >
-                <Search size={10} /> Add Custom Ticker
+                <Search size={10} /> {t('chart.add_custom_ticker', 'Add Custom Ticker')}
               </button>
 
               {/* Autocomplete suggestions box */}
@@ -670,7 +670,7 @@ export const PerformanceChart = memo(function PerformanceChart({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search e.g. BTC-USD, AAPL"
+                    placeholder={t('chart.search_placeholder', 'Search e.g. BTC-USD, AAPL, SPY')}
                     style={{
                       width: '100%',
                       background: 'rgba(255,255,255,0.05)',

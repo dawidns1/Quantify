@@ -783,7 +783,7 @@ export function StockDetailsModal({
                 <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)', border: '1px solid rgba(6, 182, 212, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderRadius: '12px' }}>
                   <div>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.25rem' }}>
-                      {holdingDetails?.name || `${cashCurrency} Cash Reserve`}
+                      {holdingDetails?.name || t('holdings.cash_reserve_title', { currency: cashCurrency, defaultValue: `${cashCurrency} Cash Reserve` })}
                     </span>
                     <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'white', fontFamily: 'monospace' }}>
                       {formatFinancialValue(holdingDetails?.shares || (cashAuditTrail[cashAuditTrail.length - 1]?.runningBalance || 0), cashCurrency)}
@@ -791,7 +791,7 @@ export function StockDetailsModal({
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.75rem', padding: '4px 10px', borderRadius: '6px', background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4', border: '1px solid rgba(6, 182, 212, 0.25)', fontWeight: 600 }}>
-                      {cashAuditTrail.length} Cash Events Recorded
+                      {t('holdings.cash_events_recorded', { count: cashAuditTrail.length, defaultValue: `${cashAuditTrail.length} Cash Events Recorded` })}
                     </span>
                   </div>
                 </div>
@@ -799,12 +799,12 @@ export function StockDetailsModal({
                 {/* Cash Statement Audit Table */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', flex: 1 }}>
                   <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Cash Statement & Audit Ledger ({cashCurrency})
+                    {t('holdings.cash_statement_title', { currency: cashCurrency, defaultValue: `Cash Statement & Audit Ledger (${cashCurrency})` })}
                   </h4>
 
                   {cashAuditTrail.length === 0 ? (
                     <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0', margin: 0 }}>
-                      No cash transactions or dividends recorded for {cashCurrency}.
+                      {t('holdings.no_cash_events', { currency: cashCurrency, defaultValue: `No cash transactions or dividends recorded for ${cashCurrency}.` })}
                     </p>
                   ) : (
                     <div style={{ 
@@ -817,13 +817,13 @@ export function StockDetailsModal({
                       <table className="screener-table" style={{ fontSize: '0.85rem' }}>
                         <thead>
                           <tr style={{ background: 'rgba(255, 255, 255, 0.01)' }}>
-                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Date</th>
-                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Account</th>
-                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Type</th>
-                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Description</th>
-                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Amount</th>
-                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Running Cash</th>
-                            {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>Actions</th>}
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_date', 'Date')}</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_account', 'Account')}</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_type', 'Type')}</th>
+                            <th style={{ position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_description', 'Description')}</th>
+                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_amount', 'Amount')}</th>
+                            <th style={{ textAlign: 'right', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_running_cash', 'Running Cash')}</th>
+                            {activePortfolioRole !== 'viewer' && <th style={{ textAlign: 'center', position: 'sticky', top: 0, backgroundColor: '#0d1322', zIndex: 10 }}>{t('holdings.cash_col_actions', 'Actions')}</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -880,20 +880,20 @@ export function StockDetailsModal({
                                           onStartEditTransaction(ev.txRef);
                                         }}
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-                                        title="Edit Transaction"
+                                        title={t('common.edit', 'Edit')}
                                       >
                                         <Edit2 size={13} />
                                       </button>
                                       <button 
                                         onClick={() => onDeleteTransaction(ev.txRef.id)}
                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-red)' }}
-                                        title="Delete Transaction"
+                                        title={t('common.delete', 'Delete')}
                                       >
                                         <Trash2 size={13} />
                                       </button>
                                     </div>
                                   ) : (
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Auto</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t('holdings.badge_auto', 'Auto')}</span>
                                   )}
                                 </td>
                               )}
@@ -943,7 +943,7 @@ export function StockDetailsModal({
                           color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
                           fontFamily: 'monospace' 
                         }}
-                        title="Total Return (includes capital gains + net dividends)"
+                        title={t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')}
                       >
                         {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)} ({holdingDetails.gain_percent >= 0 ? '+' : ''}{holdingDetails.gain_percent.toFixed(2)}%)
                       </span>
@@ -1172,7 +1172,7 @@ export function StockDetailsModal({
                         }}
                         title={`Trade returns calculated via ${portfolioSettings?.cost_basis_method === 'AVERAGE' || portfolioSettings?.cost_basis_method === 'WAVG' ? 'Weighted Average Cost Basis' : 'FIFO (First-In, First-Out)'}`}
                       >
-                        Cost Basis: <strong style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{portfolioSettings?.cost_basis_method === 'AVERAGE' || portfolioSettings?.cost_basis_method === 'WAVG' ? 'Weighted Average' : 'FIFO'}</strong>
+                        {t('holdings.cost_basis_label', 'Cost Basis:')} <strong style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{portfolioSettings?.cost_basis_method === 'AVERAGE' || portfolioSettings?.cost_basis_method === 'WAVG' ? 'Weighted Average' : 'FIFO'}</strong>
                       </span>
                     </div>
                     {(transactions.filter(tx => tx.symbol.toUpperCase() === selectedPositionSymbol.toUpperCase()).length > 0 || modalSearchQuery) && (
@@ -1369,12 +1369,12 @@ export function StockDetailsModal({
                                 {tx.type === 'BUY' ? (
                                   (tx as any).isFullyClosed ? (
                                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                                      Closed
+                                      {t('holdings.lot_status_closed', 'Closed')}
                                     </span>
                                   ) : gainPct !== undefined && !isNaN(gainPct) ? (
                                     <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                       <span 
-                                        title="Capital Price Return (price appreciation excluding dividends)"
+                                        title={t('holdings.tooltip_price_return', 'Capital Price Return (price appreciation excluding dividends)')}
                                         style={{
                                           fontSize: '0.78rem',
                                           fontWeight: 700,
@@ -1385,7 +1385,7 @@ export function StockDetailsModal({
                                       </span>
                                       {(tx as any).openShares < tx.shares && (
                                         <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                          {(tx as any).openShares.toFixed(2)}/{tx.shares} open
+                                          {t('holdings.lot_status_open', { open: (tx as any).openShares.toFixed(2), total: tx.shares, defaultValue: `${(tx as any).openShares.toFixed(2)}/${tx.shares} open` })}
                                         </span>
                                       )}
                                     </div>
@@ -1399,7 +1399,7 @@ export function StockDetailsModal({
                                       fontWeight: 700,
                                       color: gainPct >= 0 ? '#10b981' : '#ef4444'
                                     }}>
-                                      {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}% Realized
+                                      {t('holdings.lot_status_realized', { gain: `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%`, defaultValue: `${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}% Realized` })}
                                     </span>
                                   ) : (
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>

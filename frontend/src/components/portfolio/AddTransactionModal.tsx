@@ -39,7 +39,7 @@ export function AddTransactionModal({
   tier,
   onLimitReached
 }: AddTransactionModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
   const [formType, setFormType] = useState<'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL'>('BUY');
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
@@ -257,7 +257,7 @@ export function AddTransactionModal({
   };
 
   const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(i18n.language || 'en', {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 2,
@@ -278,21 +278,21 @@ export function AddTransactionModal({
     let type = isCashAction ? (formType === 'DEPOSIT' ? 'BUY' : 'SELL') : formType;
 
     if (!symbol) {
-      setFormError('Please enter a stock ticker symbol.');
+      setFormError(t('modals.add_tx.err_symbol_required', 'Please enter a stock ticker symbol.'));
       return;
     }
 
     if (symbol.startsWith('CASH_') && priceInputMode === 'adjust') {
       const targetVal = parseFloat(formPrice);
       if (isNaN(targetVal) || targetVal < 0) {
-        setFormError('Target balance must be a valid non-negative number.');
+        setFormError(t('modals.add_tx.err_target_invalid', 'Target balance must be a valid non-negative number.'));
         return;
       }
       const currentBal = currentCashBalance;
       const diff = targetVal - currentBal;
       
       if (Math.abs(diff) < 0.001) {
-        setFormError('Target balance matches current balance. No adjustment needed.');
+        setFormError(t('modals.add_tx.err_target_matches', 'Target balance matches current balance. No adjustment needed.'));
         return;
       }
       
@@ -302,22 +302,24 @@ export function AddTransactionModal({
       type = diff > 0 ? 'BUY' : 'SELL';
     } else {
       if (isNaN(shares) || shares <= 0) {
-        setFormError(isCashAction ? 'Amount must be a positive number.' : 'Shares must be a positive number.');
+        setFormError(isCashAction 
+          ? t('modals.add_tx.err_amount_positive', 'Amount must be a positive number.') 
+          : t('modals.add_tx.err_shares_positive', 'Shares must be a positive number.'));
         return;
       }
       if (isNaN(priceInput) || priceInput < 0) {
-        setFormError('Price cannot be negative.');
+        setFormError(t('modals.add_tx.err_price_negative', 'Price cannot be negative.'));
         return;
       }
       if (isNaN(fees) || fees < 0) {
-        setFormError('Fees cannot be negative.');
+        setFormError(t('modals.add_tx.err_fees_negative', 'Fees cannot be negative.'));
         return;
       }
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
     if (!formDate) {
-      setFormError('Please select a date.');
+      setFormError(t('modals.add_tx.err_date_required', 'Please select a date.'));
       return;
     }
     if (formDate > todayStr) {
@@ -553,8 +555,8 @@ export function AddTransactionModal({
             </div>
             ) : (
               <div style={{ background: 'rgba(6, 182, 212, 0.04)', border: '1px solid rgba(6, 182, 212, 0.15)', padding: '0.85rem 1rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Asset Class</span>
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>Fiat Cash Balance ({formCurrency})</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('holdings.col_asset_class', 'Asset Class')}</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white' }}>{t('modals.add_tx.fiat_cash_balance', { currency: formCurrency, defaultValue: `Fiat Cash Balance (${formCurrency})` })}</span>
               </div>
             )}
 
@@ -710,7 +712,9 @@ export function AddTransactionModal({
             {formType === 'DEPOSIT' || formType === 'WITHDRAWAL' ? (
               <div className="form-group">
                 <label className="form-label" htmlFor="form-shares">
-                  {formType === 'DEPOSIT' ? 'Amount to Deposit' : 'Amount to Withdraw'} ({formCurrency})
+                  {formType === 'DEPOSIT' 
+                    ? t('modals.add_tx.amount_to_deposit', { currency: formCurrency, defaultValue: `Amount to Deposit (${formCurrency})` }) 
+                    : t('modals.add_tx.amount_to_withdraw', { currency: formCurrency, defaultValue: `Amount to Withdraw (${formCurrency})` })}
                 </label>
                 <input 
                   id="form-shares"
