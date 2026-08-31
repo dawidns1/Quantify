@@ -1781,6 +1781,43 @@ class PortfolioManager:
         any_live = False
         min_seconds_to_open = 86400.0 * 7
 
+        # Collect date ranges for foreign transactions to fetch historical exchange rates on transaction dates
+        tx_dates_by_curr = {}
+        for tx in sorted_txs:
+            curr = tx.get("currency", "USD").upper().strip()
+            if curr != base_currency:
+                try:
+                    d_obj = datetime.strptime(tx["date"], "%Y-%m-%d").date()
+                    tx_dates_by_curr.setdefault(curr, []).append(d_obj)
+                except Exception:
+                    pass
+                    
+        fx_rates_hist_by_curr = {}
+        for curr, d_list in tx_dates_by_curr.items():
+            if d_list:
+                min_d = min(d_list) - timedelta(days=7)
+                max_d = date.today()
+                pair = f"{curr}{base_currency}=X"
+                fx_rates_hist_by_curr[curr] = cls.get_cached_historical_fx(pair, min_d, max_d)
+
+        def get_tx_historical_fx_rate(tx_curr, tx_date_str):
+            if tx_curr == base_currency:
+                return 1.0
+            try:
+                d_obj = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                hist_dict = fx_rates_hist_by_curr.get(tx_curr, {})
+                if d_obj in hist_dict:
+                    return hist_dict[d_obj]
+                # If weekend or holiday, find closest preceding date
+                sorted_dates = [k for k in hist_dict.keys() if k <= d_obj]
+                if sorted_dates:
+                    return hist_dict[max(sorted_dates)]
+                elif hist_dict:
+                    return hist_dict[min(hist_dict.keys())]
+            except Exception:
+                pass
+            return fx_rates.get(tx_curr, 1.0)
+
         # Calculate stock holdings
         for symbol, txs in symbol_txs.items():
             shares_owned = 0.0
@@ -1797,7 +1834,7 @@ class PortfolioManager:
                     tx_price = float(tx.get("price") or 0.0)
                     tx_fees = float(tx.get("fees") or 0.0)
                     tx_curr = tx["currency"].upper().strip()
-                    fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
+                    fx_tx_to_base = get_tx_historical_fx_rate(tx_curr, tx.get("date", ""))
                     
                     tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
                     tx_cost_native = (tx_shares * tx_price + tx_fees) if tx_curr == native_curr else (tx_cost_base / fx_native_to_base if fx_native_to_base > 0.0 else 0.0)
@@ -1831,7 +1868,7 @@ class PortfolioManager:
                     tx_price = float(tx.get("price") or 0.0)
                     tx_fees = float(tx.get("fees") or 0.0)
                     tx_curr = tx["currency"].upper().strip()
-                    fx_tx_to_base = fx_rates.get(tx_curr, 1.0)
+                    fx_tx_to_base = get_tx_historical_fx_rate(tx_curr, tx.get("date", ""))
                     
                     tx_cost_base = (tx_shares * tx_price + tx_fees) * fx_tx_to_base
                     tx_cost_native = (tx_shares * tx_price + tx_fees) if tx_curr == native_curr else (tx_cost_base / fx_native_to_base if fx_native_to_base > 0.0 else 0.0)
@@ -2182,7 +2219,19 @@ class PortfolioManager:
                 continue
                 
             pair = f"{curr}{base_currency}=X"
-            fx_rates_hist[curr] = cls.get_cached_historical_fx(pair, start_dt, end_dt)
+            raw_fx = cls.get_cached_historical_fx(pair, start_dt, end_dt) or {}
+            
+            # Forward fill all dates in dates_list for smooth continuity
+            last_known_rate = FALLBACK_RATES.get(f"{curr}{base_currency}", 1.0)
+            if raw_fx:
+                first_k = min(raw_fx.keys())
+                last_known_rate = raw_fx[first_k]
+                
+            for d in dates_list:
+                if d in raw_fx and raw_fx[d] > 0.0:
+                    last_known_rate = raw_fx[d]
+                fx_rates_hist[curr][d] = last_known_rate
+                
             if date.today() in dates_list:
                 live_fx = cls.get_cached_live_fx(pair)
                 if live_fx > 0.0:
