@@ -113,9 +113,15 @@
   },
   "chart": {
     "add_custom_ticker": "Dodaj własny ticker",
+    "axis_dual": "Podwójna oś",
+    "axis_dual_tooltip": "Pokaż NAV na lewej osi i koszt na prawej osi",
+    "axis_unified": "Jednolita oś",
+    "axis_unified_tooltip": "Pokaż NAV i koszt na jednej wspólnej skali",
     "compare_benchmarks": "Porównaj z benchmarkami:",
     "portfolio_return_prefix": "Portfel: ",
-    "search_placeholder": "Szukaj np. BTC-USD, AAPL, SPY"
+    "search_placeholder": "Szukaj np. BTC-USD, AAPL, SPY",
+    "unrealized_gain": "Niezrealizowany zysk",
+    "unrealized_loss": "Niezrealizowana strata"
   },
   "common": {
     "close": "Zamknij",

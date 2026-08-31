@@ -104,6 +104,21 @@ export const PerformanceChart = memo(function PerformanceChart({
 
   const [selectedRange, setSelectedRange] = useState<'1M' | '1Q' | '1Y' | '5Y' | 'MAX'>('1M');
   const [chartMode, setChartMode] = useState<'value' | 'percent'>('value');
+  const [axisMode, setAxisMode] = useState<'dual' | 'unified'>(() => {
+    try {
+      return (localStorage.getItem('quantifi_chart_axis_mode') as 'dual' | 'unified') || 'dual';
+    } catch {
+      return 'dual';
+    }
+  });
+
+  const handleAxisModeChange = (mode: 'dual' | 'unified') => {
+    setAxisMode(mode);
+    try {
+      localStorage.setItem('quantifi_chart_axis_mode', mode);
+    } catch {}
+  };
+
   const [activeBenchmarks, setActiveBenchmarks] = useState<string[]>([]);
   
   // Custom benchmark search autocomplete
@@ -222,6 +237,8 @@ export const PerformanceChart = memo(function PerformanceChart({
 
   // Memoized Chart Options
   const chartOptions = useMemo(() => {
+    const isDual = chartMode === 'value' && axisMode === 'dual';
+
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -237,12 +254,27 @@ export const PerformanceChart = memo(function PerformanceChart({
           }
         },
         y: {
+          type: 'linear' as const,
+          position: 'left' as const,
           grid: { color: 'rgba(255, 255, 255, 0.04)' },
           ticks: { 
-            color: 'rgba(255, 255, 255, 0.75)', 
-            font: { family: 'Outfit', size: 9 },
+            color: isDual ? '#06b6d4' : 'rgba(255, 255, 255, 0.75)', 
+            font: { family: 'Outfit', size: 9, weight: isDual ? (600 as const) : (400 as const) },
             callback: function(value: any) {
               return chartMode === 'percent' ? `${value.toFixed(1)}%` : value.toLocaleString(i18n.language || 'en');
+            }
+          }
+        },
+        y1: {
+          type: 'linear' as const,
+          position: 'right' as const,
+          display: isDual,
+          grid: { display: false },
+          ticks: {
+            color: 'rgba(244, 63, 94, 0.9)',
+            font: { family: 'Outfit', size: 9, weight: 600 as const },
+            callback: function(value: any) {
+              return value.toLocaleString(i18n.language || 'en');
             }
           }
         }
@@ -293,12 +325,26 @@ export const PerformanceChart = memo(function PerformanceChart({
                   : `${context.parsed.y.toLocaleString(i18n.language || 'en', { minimumFractionDigits: 2 })} ${baseCurrency}`;
               }
               return label;
+            },
+            afterBody: function(contexts: any) {
+              if (chartMode === 'value' && contexts && contexts.length >= 2) {
+                const navVal = contexts[0]?.parsed?.y;
+                const costVal = contexts[1]?.parsed?.y;
+                if (typeof navVal === 'number' && typeof costVal === 'number' && costVal > 0) {
+                  const gainVal = navVal - costVal;
+                  const gainPct = (gainVal / costVal) * 100;
+                  const sign = gainVal >= 0 ? '+' : '';
+                  const gainLabel = t(gainVal >= 0 ? 'chart.unrealized_gain' : 'chart.unrealized_loss', gainVal >= 0 ? 'Unrealized Gain' : 'Unrealized Loss');
+                  return `\n${gainLabel}: ${sign}${gainVal.toLocaleString(i18n.language || 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCurrency} (${sign}${gainPct.toFixed(2)}%)`;
+                }
+              }
+              return '';
             }
           }
         }
       }
     };
-  }, [chartMode, baseCurrency]);
+  }, [chartMode, axisMode, baseCurrency, i18n.language, t]);
 
   // Memoized Chart Data
   const chartDataFormatted = useMemo(() => {
@@ -358,6 +404,7 @@ export const PerformanceChart = memo(function PerformanceChart({
       };
     } else {
       // Absolute Value Mode
+      const isDual = axisMode === 'dual';
       return {
         labels: filteredData.dates,
         datasets: [
@@ -365,20 +412,21 @@ export const PerformanceChart = memo(function PerformanceChart({
             label: 'NAV',
             data: filteredData.nav,
             borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.05)',
-            fill: true,
+            backgroundColor: isDual ? 'transparent' : 'rgba(6, 182, 212, 0.05)',
+            fill: !isDual,
             tension: 0.15,
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
             pointHoverBackgroundColor: '#ffffff',
             pointHoverBorderColor: '#06b6d4',
-            pointHoverBorderWidth: 2
+            pointHoverBorderWidth: 2,
+            yAxisID: 'y'
           },
           {
             label: 'Cost Basis',
             data: filteredData.cost_basis,
-            borderColor: 'rgba(239, 68, 68, 0.65)',
+            borderColor: 'rgba(244, 63, 94, 0.75)',
             borderDash: [4, 4],
             fill: false,
             tension: 0.1,
@@ -386,13 +434,14 @@ export const PerformanceChart = memo(function PerformanceChart({
             pointRadius: 0,
             pointHoverRadius: 4,
             pointHoverBackgroundColor: '#ffffff',
-            pointHoverBorderColor: 'rgba(239, 68, 68, 0.85)',
-            pointHoverBorderWidth: 2
+            pointHoverBorderColor: 'rgba(244, 63, 94, 0.95)',
+            pointHoverBorderWidth: 2,
+            yAxisID: isDual ? 'y1' : 'y'
           }
         ]
       };
     }
-  }, [filteredData, chartMode, baseCurrency]);
+  }, [filteredData, chartMode, axisMode, baseCurrency]);
 
   const toggleBenchmark = (sym: string) => {
     setActiveBenchmarks(prev => 
@@ -517,38 +566,79 @@ export const PerformanceChart = memo(function PerformanceChart({
             ))}
           </div>
 
-          {/* Mode Toggle (Value vs % Return) */}
-          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
-            <button
-              onClick={() => setChartMode('value')}
-              style={{
-                background: chartMode === 'value' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                color: chartMode === 'value' ? 'white' : 'var(--text-secondary)',
-                border: 'none',
-                padding: '0.15rem 0.45rem',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              {t('chart.mode_value', 'Value')}
-            </button>
-            <button
-              onClick={() => setChartMode('percent')}
-              style={{
-                background: chartMode === 'percent' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                color: chartMode === 'percent' ? '#22d3ee' : 'var(--text-secondary)',
-                border: 'none',
-                padding: '0.15rem 0.45rem',
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              {t('chart.mode_percent', '% Return')}
-            </button>
+          {/* Right side controls: Axis Mode (when Value) + Value/% Return Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {/* Axis Mode Toggle (Dual vs Unified) in Value Mode */}
+            {chartMode === 'value' && (
+              <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+                <button
+                  onClick={() => handleAxisModeChange('dual')}
+                  title={t('chart.axis_dual_tooltip', 'Display NAV on left axis and Cost Basis on right axis')}
+                  style={{
+                    background: axisMode === 'dual' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                    color: axisMode === 'dual' ? '#22d3ee' : 'var(--text-secondary)',
+                    border: 'none',
+                    padding: '0.15rem 0.45rem',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t('chart.axis_dual', 'Dual Axes')}
+                </button>
+                <button
+                  onClick={() => handleAxisModeChange('unified')}
+                  title={t('chart.axis_unified_tooltip', 'Display NAV and Cost Basis on a single shared scale')}
+                  style={{
+                    background: axisMode === 'unified' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                    color: axisMode === 'unified' ? 'white' : 'var(--text-secondary)',
+                    border: 'none',
+                    padding: '0.15rem 0.45rem',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t('chart.axis_unified', 'Unified')}
+                </button>
+              </div>
+            )}
+
+            {/* Mode Toggle (Value vs % Return) */}
+            <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '2px' }}>
+              <button
+                onClick={() => setChartMode('value')}
+                style={{
+                  background: chartMode === 'value' ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  color: chartMode === 'value' ? 'white' : 'var(--text-secondary)',
+                  border: 'none',
+                  padding: '0.15rem 0.45rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('chart.mode_value', 'Value')}
+              </button>
+              <button
+                onClick={() => setChartMode('percent')}
+                style={{
+                  background: chartMode === 'percent' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                  color: chartMode === 'percent' ? '#22d3ee' : 'var(--text-secondary)',
+                  border: 'none',
+                  padding: '0.15rem 0.45rem',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                {t('chart.mode_percent', '% Return')}
+              </button>
+            </div>
           </div>
         </div>
       )}
