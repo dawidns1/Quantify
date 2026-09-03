@@ -3,7 +3,7 @@ import { History, Plus, X, Edit2, Trash2, ArrowUpDown, Search } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import type { Holding, Transaction } from '../../types/portfolio';
 import { FXHedgingVisualizer } from './FXHedgingVisualizer';
-import { getAccountNeonTheme } from '../../utils/accountColors';
+import { getAccountNeonTheme, isDelayedFeedTicker } from '../../utils/accountColors';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -315,7 +315,10 @@ export function StockDetailsModal({
               const idx = items[0].dataIndex;
               const dateStr = items[0].label;
               const isLive = modalChartData?.[idx]?.is_live;
-              return isLive ? `${dateStr} (${t('holdings.badge_live', 'LIVE')})` : dateStr;
+              if (!isLive) return dateStr;
+              const isDelayed = isDelayedFeedTicker(selectedPositionSymbol || '');
+              const badgeText = isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME');
+              return `${dateStr} (${badgeText})`;
             },
             label: function(context: any) {
               const val = context.parsed.y;
@@ -326,7 +329,7 @@ export function StockDetailsModal({
         }
       }
     };
-  }, [modalChartData, holdingDetails?.currency, selectedStockDetails?.overview?.currency, t]);
+  }, [modalChartData, holdingDetails?.currency, selectedStockDetails?.overview?.currency, selectedPositionSymbol, t]);
 
   // Annual Financials chart calculations
   const financialsChartData = useMemo(() => {
@@ -808,7 +811,12 @@ export function StockDetailsModal({
         label: t('holdings.col_price', 'Market Price'),
         value: formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency),
         color: 'var(--color-primary)',
-        isLive: holdingDetails.is_live
+        isLive: holdingDetails.is_live,
+        tooltip: holdingDetails.is_live 
+          ? (isDelayedFeedTicker(holdingDetails.symbol) 
+              ? t('holdings.tooltip_live_delayed', 'Market is open · 15-minute exchange feed delay') 
+              : t('holdings.tooltip_live_realtime', 'Market is open · Real-time CBOE BZX feed'))
+          : undefined
       },
       day_change: {
         id: 'day_change',
@@ -1116,23 +1124,33 @@ export function StockDetailsModal({
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
                         {t('holdings.price_performance', 'Price Performance')} ({holdingDetails?.currency || 'USD'})
                       </span>
-                      {modalChartData && modalChartData.length > 0 && modalChartData[modalChartData.length - 1].is_live && (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          color: '#10b981',
-                          background: 'rgba(16, 185, 129, 0.12)',
-                          border: '1px solid rgba(16, 185, 129, 0.25)',
-                          padding: '1px 6px',
-                          borderRadius: '4px'
-                        }}>
-                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-                          {t('holdings.badge_live', 'LIVE')}
-                        </span>
-                      )}
+                      {modalChartData && modalChartData.length > 0 && modalChartData[modalChartData.length - 1].is_live && (() => {
+                        const isDelayed = isDelayedFeedTicker(selectedPositionSymbol || '');
+                        return (
+                          <span 
+                            title={isDelayed 
+                              ? t('holdings.tooltip_live_delayed', 'Market is open · 15-minute exchange feed delay') 
+                              : t('holdings.tooltip_live_realtime', 'Market is open · Real-time CBOE BZX feed')
+                            }
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              color: '#10b981',
+                              background: 'rgba(16, 185, 129, 0.12)',
+                              border: '1px solid rgba(16, 185, 129, 0.25)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              cursor: 'help'
+                            }}
+                          >
+                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                            {isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')}
+                          </span>
+                        );
+                      })()}
                       {!loadingDetails && selectedStockDetails && (() => {
                         if (!modalChartData || modalChartData.length < 2) return null;
                         const startPrice = modalChartData[0].price;

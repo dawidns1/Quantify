@@ -91,3 +91,22 @@ export function getAccountNeonTheme(accountName: string = 'Default', customColor
   const index = Math.abs(hash) % PALETTE_KEYS.length;
   return NEON_PALETTE[PALETTE_KEYS[index]];
 }
+
+export function isDelayedFeedTicker(symbol: string): boolean {
+  if (!symbol) return false;
+  const sym = symbol.toUpperCase().trim();
+  if (sym.startsWith('CASH_') || sym === 'CASH') return false;
+  if (sym.endsWith('=X') || sym.includes('-USD') || sym.includes('-EUR') || sym.includes('-PLN')) return false;
+
+  const dotIdx = sym.lastIndexOf('.');
+  if (dotIdx === -1) {
+    // US tickers (e.g. AAPL, MSFT, NVDA, SPY) have real-time CBOE BZX feed
+    return false;
+  }
+
+  const suffix = sym.slice(dotIdx + 1);
+  const delayedSuffixes = new Set([
+    'WA', 'DE', 'F', 'PA', 'AS', 'BR', 'MI', 'MC', 'LS', 'AT', 'VI', 'L', 'IL', 'ST', 'CO', 'HE', 'OL', 'IC', 'TO', 'V', 'AX', 'HK'
+  ]);
+  return delayedSuffixes.has(suffix);
+}

@@ -3,6 +3,7 @@ import { Briefcase, SlidersHorizontal } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
+import { isDelayedFeedTicker } from '../../utils/accountColors';
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -933,7 +934,10 @@ export function HoldingsTable({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {h.is_live && (
                           <span 
-                            title={t('common.market_live_tooltip', 'Market Session is Live')}
+                            title={isDelayedFeedTicker(h.symbol) 
+                              ? t('holdings.market_live_delayed_tooltip', 'Market Session Open (15-min delayed feed)')
+                              : t('holdings.market_live_realtime_tooltip', 'Market Session Open (Real-Time feed)')
+                            }
                             style={{ 
                               display: 'inline-block',
                               width: '6px',
