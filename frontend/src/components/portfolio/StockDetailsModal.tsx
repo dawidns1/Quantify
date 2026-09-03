@@ -188,8 +188,32 @@ export function StockDetailsModal({
   // Modal Price History Chart calculations
   const modalChartData = useMemo(() => {
     if (!selectedStockDetails || !selectedStockDetails.history || selectedStockDetails.history.length === 0) return null;
-    let hist = [...selectedStockDetails.history];
+    let hist = selectedStockDetails.history.map((pt: any) => ({ ...pt }));
     hist.sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+    // Live Intraday Price Point Stitching from live holding details or overview
+    const livePrice = holdingDetails?.current_price_local || selectedStockDetails?.overview?.current_price;
+    if (livePrice && livePrice > 0) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      if (hist.length > 0) {
+        const lastEntry = hist[hist.length - 1];
+        if (lastEntry.date === todayStr) {
+          lastEntry.price = livePrice;
+          lastEntry.is_live = true;
+        } else if (lastEntry.date < todayStr) {
+          hist.push({
+            date: todayStr,
+            price: livePrice,
+            is_live: true
+          });
+        }
+      }
+    }
 
     if (modalRange !== 'MAX') {
       const cutoffDate = new Date();
@@ -206,7 +230,7 @@ export function StockDetailsModal({
       hist = hist.filter((pt: any) => pt.date >= cutoffStr);
     }
     return hist;
-  }, [selectedStockDetails, modalRange]);
+  }, [selectedStockDetails, holdingDetails?.current_price_local, modalRange]);
 
   const modalChartFormatted = useMemo(() => {
     if (!modalChartData || modalChartData.length === 0) return null;
@@ -224,8 +248,17 @@ export function StockDetailsModal({
           backgroundColor: isUp ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
           borderColor: accentColor,
           borderWidth: 1.75,
-          pointRadius: 0,
-          pointHoverRadius: 4,
+          pointRadius: (ctx: any) => {
+            const isLast = ctx.dataIndex === ctx.dataset.data.length - 1;
+            const isLive = modalChartData[ctx.dataIndex]?.is_live;
+            return (isLast && isLive) ? 3.5 : 0;
+          },
+          pointBackgroundColor: (ctx: any) => {
+            const isLast = ctx.dataIndex === ctx.dataset.data.length - 1;
+            const isLive = modalChartData[ctx.dataIndex]?.is_live;
+            return (isLast && isLive) ? '#10b981' : accentColor;
+          },
+          pointHoverRadius: 5,
           pointHoverBackgroundColor: '#ffffff',
           pointHoverBorderColor: accentColor,
           pointHoverBorderWidth: 2,
@@ -275,11 +308,25 @@ export function StockDetailsModal({
           padding: 8,
           cornerRadius: 6,
           titleFont: { family: 'Outfit', size: 10, weight: 'bold' as const },
-          bodyFont: { family: 'Outfit', size: 10 }
+          bodyFont: { family: 'Outfit', size: 10 },
+          callbacks: {
+            title: function(items: any[]) {
+              if (!items || items.length === 0) return '';
+              const idx = items[0].dataIndex;
+              const dateStr = items[0].label;
+              const isLive = modalChartData?.[idx]?.is_live;
+              return isLive ? `${dateStr} (${t('holdings.badge_live', 'LIVE')})` : dateStr;
+            },
+            label: function(context: any) {
+              const val = context.parsed.y;
+              const curr = holdingDetails?.currency || selectedStockDetails?.overview?.currency || 'USD';
+              return `Price: ${formatFinancialValue(val, curr)}`;
+            }
+          }
         }
       }
     };
-  }, []);
+  }, [modalChartData, holdingDetails?.currency, selectedStockDetails?.overview?.currency, t]);
 
   // Annual Financials chart calculations
   const financialsChartData = useMemo(() => {
@@ -716,6 +763,134 @@ export function StockDetailsModal({
     return listWithTotals;
   }, [transactions, holdings, selectedPositionSymbol, modalSearchQuery, modalSortField, modalSortAsc]);
 
+  // Derive user's active visible columns from main holdings table configuration
+  const visibleColKeys = useMemo(() => {
+    try {
+      const cached = localStorage.getItem('portfolio_visible_columns_desktop');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return ['shares', 'avg_cost', 'price', 'current_value', 'gain_loss'];
+  }, []);
+
+  const totalPortfolioValue = useMemo(() => {
+    return holdings.reduce((sum, h) => sum + (h.current_value_base || 0), 0);
+  }, [holdings]);
+
+  const holdingCards = useMemo(() => {
+    if (!holdingDetails) return [];
+
+    const weight = totalPortfolioValue > 0 ? ((holdingDetails.current_value_base || 0) / totalPortfolioValue) * 100 : 0;
+
+    const availableCards: Record<string, {
+      id: string;
+      label: string;
+      value: string;
+      color?: string;
+      highlight?: boolean;
+      tooltip?: string;
+      isLive?: boolean;
+    }> = {
+      shares: {
+        id: 'shares',
+        label: t('holdings.col_shares', 'Shares'),
+        value: holdingDetails.shares.toFixed(4).replace(/\.?0+$/, '')
+      },
+      avg_cost: {
+        id: 'avg_cost',
+        label: t('holdings.col_avg_cost', 'Avg Cost'),
+        value: formatFinancialValue(holdingDetails.avg_cost_local, holdingDetails.currency)
+      },
+      price: {
+        id: 'price',
+        label: t('holdings.col_price', 'Market Price'),
+        value: formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency),
+        color: 'var(--color-primary)',
+        isLive: holdingDetails.is_live
+      },
+      day_change: {
+        id: 'day_change',
+        label: t('holdings.col_day_change', 'Day Change'),
+        value: `${(holdingDetails.day_change_value_base ?? 0) >= 0 ? '+' : ''}${formatFinancialValue(holdingDetails.day_change_value_base ?? 0, baseCurrency)} (${(holdingDetails.day_change_percent ?? 0) >= 0 ? '+' : ''}${(holdingDetails.day_change_percent ?? 0).toFixed(2)}%)`,
+        color: (holdingDetails.day_change_value_base ?? 0) >= 0 ? 'var(--color-green)' : 'var(--color-red)'
+      },
+      cost: {
+        id: 'cost',
+        label: t('holdings.col_cost_basis', 'Cost Basis'),
+        value: formatFinancialValue(holdingDetails.cost_basis_base, baseCurrency)
+      },
+      current_value: {
+        id: 'current_value',
+        label: t('holdings.col_current', 'Current Value'),
+        value: formatFinancialValue(holdingDetails.current_value_base, baseCurrency)
+      },
+      gain_loss: {
+        id: 'gain_loss',
+        label: t('holdings.col_gain_loss', 'Gain/Loss'),
+        value: `${holdingDetails.gain_base >= 0 ? '+' : ''}${formatFinancialValue(holdingDetails.gain_base, baseCurrency)} (${holdingDetails.gain_percent >= 0 ? '+' : ''}${holdingDetails.gain_percent.toFixed(2)}%)`,
+        color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)',
+        tooltip: t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')
+      },
+      dividends: {
+        id: 'dividends',
+        label: t('holdings.col_dividends_net', 'Net Dividends'),
+        value: formatFinancialValue(holdingDetails.dividends_net_base ?? 0, baseCurrency),
+        color: (holdingDetails.dividends_net_base ?? 0) > 0 ? 'var(--color-green)' : 'var(--text-primary)'
+      },
+      allocation: {
+        id: 'allocation',
+        label: t('holdings.col_allocation', 'Allocation'),
+        value: `${weight.toFixed(2)}%`
+      },
+      fx_rate: {
+        id: 'fx_rate',
+        label: t('holdings.col_fx_rate', 'FX Rate'),
+        value: holdingDetails.fx_rate ? holdingDetails.fx_rate.toFixed(4) : '—'
+      }
+    };
+
+    const cardIdMap: Record<string, string> = {
+      shares: 'shares',
+      avg_price: 'avg_cost',
+      avg_cost: 'avg_cost',
+      price: 'price',
+      day_change: 'day_change',
+      cost: 'cost',
+      cost_basis: 'cost',
+      current_value: 'current_value',
+      gain_loss: 'gain_loss',
+      dividends: 'dividends',
+      dividends_total: 'dividends',
+      dividends_net: 'dividends',
+      allocation: 'allocation',
+      weight: 'allocation',
+      fx_rate: 'fx_rate'
+    };
+
+    const selectedCards: Array<typeof availableCards[string]> = [];
+    const seen = new Set<string>();
+
+    for (const col of visibleColKeys) {
+      const mappedId = cardIdMap[col];
+      if (mappedId && availableCards[mappedId] && !seen.has(mappedId)) {
+        selectedCards.push(availableCards[mappedId]);
+        seen.add(mappedId);
+      }
+    }
+
+    const fallbackDefaults = ['shares', 'avg_cost', 'price', 'current_value', 'gain_loss'];
+    for (const defKey of fallbackDefaults) {
+      if (selectedCards.length < 5 && availableCards[defKey] && !seen.has(defKey)) {
+        selectedCards.push(availableCards[defKey]);
+        seen.add(defKey);
+      }
+    }
+
+    return selectedCards;
+  }, [holdingDetails, visibleColKeys, totalPortfolioValue, baseCurrency, t]);
+
   if (!selectedPositionSymbol) return null;
 
   return (
@@ -907,47 +1082,30 @@ export function StockDetailsModal({
               </>
             ) : (
               <>
-                {/* Quick Summary Dashboard */}
-                {holdingDetails && (
+                {/* Adaptive Summary Dashboard Cards */}
+                {holdingDetails && holdingCards.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', flexShrink: 0 }}>
-                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_shares', 'Shares')}</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        {holdingDetails.shares.toFixed(4).replace(/\.?0+$/, '')}
-                      </span>
-                    </div>
-                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_avg_cost', 'Avg Cost')}</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        {formatFinancialValue(holdingDetails.avg_cost_local, holdingDetails.currency)}
-                      </span>
-                    </div>
-                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_price', 'Market Price')}</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', fontFamily: 'monospace' }}>
-                        {formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)}
-                      </span>
-                    </div>
-                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_current', 'Current Value')}</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                        {formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}
-                      </span>
-                    </div>
-                    <div className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{t('holdings.col_gain_loss', 'Gain/Loss')}</span>
-                      <span 
-                        style={{ 
-                          fontSize: '1rem', 
-                          fontWeight: 700, 
-                          color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)', 
-                          fontFamily: 'monospace' 
-                        }}
-                        title={t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')}
-                      >
-                        {holdingDetails.gain_base >= 0 ? '+' : ''}{formatFinancialValue(holdingDetails.gain_base, baseCurrency)} ({holdingDetails.gain_percent >= 0 ? '+' : ''}{holdingDetails.gain_percent.toFixed(2)}%)
-                      </span>
-                    </div>
+                    {holdingCards.map((card) => (
+                      <div key={card.id} className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{card.label}</span>
+                          {card.isLive && (
+                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} title={t('holdings.badge_live', 'LIVE')} />
+                          )}
+                        </div>
+                        <span 
+                          style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: 700, 
+                            color: card.color || 'var(--text-primary)', 
+                            fontFamily: 'monospace' 
+                          }}
+                          title={card.tooltip}
+                        >
+                          {card.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -958,6 +1116,23 @@ export function StockDetailsModal({
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
                         {t('holdings.price_performance', 'Price Performance')} ({holdingDetails?.currency || 'USD'})
                       </span>
+                      {modalChartData && modalChartData.length > 0 && modalChartData[modalChartData.length - 1].is_live && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          color: '#10b981',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          padding: '1px 6px',
+                          borderRadius: '4px'
+                        }}>
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                          {t('holdings.badge_live', 'LIVE')}
+                        </span>
+                      )}
                       {!loadingDetails && selectedStockDetails && (() => {
                         if (!modalChartData || modalChartData.length < 2) return null;
                         const startPrice = modalChartData[0].price;
