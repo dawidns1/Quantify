@@ -769,13 +769,24 @@
   "broker_deals": {
     "title": "Promocje i bonusy maklerskie",
     "subtitle": "Wyselekcjonowane konta bez prowizji, rachunki emerytalne IKE/IKZE oraz sprawdzone bonusy dla społeczności.",
+    "select_country": "Wybierz region",
     "empty_title": "Ekskluzywne oferty partnerskie już wkrótce",
+    "empty_title_country": "Ekskluzywne oferty dla regionu {{country}} już wkrótce",
     "empty_desc": "Negocjujemy obecnie specjalne zniżki prowizyjne, bonusy powitalne oraz bezprowizyjne rachunki dla społeczności QuantiFi. Sprawdzone oferty pojawią się tutaj wkrótce!",
     "benefit_1": "0% prowizji na prawdziwe akcje i ETF-y",
     "benefit_2": "Konta emerytalne IKE i IKZE bez podatku Belki",
     "benefit_3": "Sprawdzeni i regulowani brokerzy europejscy",
     "open_account": "Otwórz konto",
-    "affiliate_disclaimer": "Transparentność: QuantiFi współpracuje wyłącznie z renomowanymi, regulowanymi instytucjami finansowymi. Korzystanie z linków partnerskich wspiera rozwój platformy bez żadnych dodatkowych kosztów dla Ciebie."
+    "affiliate_disclaimer": "Transparentność: QuantiFi współpracuje wyłącznie z renomowanymi, regulowanymi instytucjami finansowymi. Korzystanie z linków partnerskich wspiera rozwój platformy bez żadnych dodatkowych kosztów dla Ciebie.",
+    "countries": {
+      "pl": "Polska",
+      "us": "Stany Zjednoczone",
+      "gb": "Wielka Brytania",
+      "de": "Niemcy / DACH",
+      "es": "Hiszpania",
+      "eu": "Unia Europejska",
+      "global": "Globalne / Inne"
+    }
   },
   "telemetry": {
     "clear_logs": "Wyczyść logi",

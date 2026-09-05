@@ -769,13 +769,24 @@
   "broker_deals": {
     "title": "Ofertas de brokers y ventajas de la comunidad",
     "subtitle": "Brokers sin comisiones seleccionados, cuentas IKE/IKZE con ventajas fiscales y beneficios verificados.",
+    "select_country": "Seleccionar región",
     "empty_title": "Ofertas exclusivas de socios próximamente",
+    "empty_title_country": "Ofertas exclusivas para {{country}} próximamente",
     "empty_desc": "Actualmente estamos negociando descuentos exclusivos en comisiones, ventajas de bienvenida y bonificaciones para la comunidad de QuantiFi. ¡Los enlaces de socios aparecerán aquí pronto!",
     "benefit_1": "0% de comisión en acciones reales y ETFs",
     "benefit_2": "Cuentas IKE e IKZE con ventajas fiscales",
     "benefit_3": "Brokers europeos regulados y de confianza",
     "open_account": "Abrir cuenta",
-    "affiliate_disclaimer": "Transparencia: QuantiFi solo colabora con instituciones financieras reguladas y de confianza. El uso de enlaces de socios apoya el desarrollo de la plataforma sin ningún coste adicional para ti."
+    "affiliate_disclaimer": "Transparencia: QuantiFi solo colabora con instituciones financieras reguladas y de confianza. El uso de enlaces de socios apoya el desarrollo de la plataforma sin ningún coste adicional para ti.",
+    "countries": {
+      "pl": "Polonia",
+      "us": "Estados Unidos",
+      "gb": "Reino Unido",
+      "de": "Alemania / DACH",
+      "es": "España",
+      "eu": "Unión Europea",
+      "global": "Global / Otro"
+    }
   },
   "telemetry": {
     "clear_logs": "Limpiar registros",

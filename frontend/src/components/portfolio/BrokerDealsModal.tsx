@@ -1,6 +1,8 @@
-import { X, Gift, Sparkles, ShieldCheck, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, Gift, Sparkles, ShieldCheck, ExternalLink, ChevronDown, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { BROKER_DEALS } from '../../utils/affiliates';
+import { BROKER_DEALS, SUPPORTED_COUNTRIES, detectUserCountry, type CountryCode } from '../../utils/affiliates';
+import { usePortfolio } from '../../context/PortfolioContext';
 
 interface BrokerDealsModalProps {
   isOpen: boolean;
@@ -8,9 +10,45 @@ interface BrokerDealsModalProps {
 }
 
 export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { baseCurrency } = usePortfolio();
+  
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
+    const cached = localStorage.getItem('quantifi_selected_deal_country') as CountryCode;
+    if (cached && SUPPORTED_COUNTRIES.some(c => c.code === cached)) return cached;
+    return detectUserCountry(i18n.language, baseCurrency);
+  });
+
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close country dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setCountryDropdownOpen(false);
+      }
+    }
+    if (countryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [countryDropdownOpen]);
 
   if (!isOpen) return null;
+
+  const handleSelectCountry = (code: CountryCode) => {
+    setSelectedCountry(code);
+    localStorage.setItem('quantifi_selected_deal_country', code);
+    setCountryDropdownOpen(false);
+  };
+
+  const activeCountry = SUPPORTED_COUNTRIES.find(c => c.code === selectedCountry) || SUPPORTED_COUNTRIES[0];
+
+  // Filter deals matching user's selected country or global
+  const visibleDeals = BROKER_DEALS.filter(
+    (deal) => deal.countries.includes(selectedCountry) || deal.countries.includes('GLOBAL')
+  );
 
   return (
     <>
@@ -23,8 +61,8 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
         <div 
           className="modal-content glass-panel" 
           style={{ 
-            maxWidth: '480px', 
-            width: '92%',
+            maxWidth: '500px', 
+            width: '94%',
             padding: '1.75rem', 
             position: 'relative',
             borderRadius: '16px',
@@ -58,13 +96,13 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
           </button>
 
           {/* Header Icon */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
             <div style={{ 
               background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(16, 185, 129, 0.15))',
               border: '1px solid rgba(6, 182, 212, 0.3)',
               borderRadius: '50%',
-              width: '54px',
-              height: '54px',
+              width: '52px',
+              height: '52px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
@@ -76,19 +114,112 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
           </div>
 
           {/* Title & Subtitle */}
-          <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
               {t('broker_deals.title', 'Broker Deals & Community Perks')}
             </h3>
-            <p style={{ margin: '0.45rem 0 0 0', fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+            <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
               {t('broker_deals.subtitle', 'Curated zero-commission partners, IKE/IKZE tax wrappers, and verified community perks.')}
             </p>
           </div>
 
+          {/* Country Selector Dropdown Bar */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '20px',
+                  padding: '0.35rem 0.85rem',
+                  fontSize: '0.78rem',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)')}
+              >
+                <span style={{ fontSize: '1rem', lineHeight: 1 }}>{activeCountry.flag}</span>
+                <span style={{ fontWeight: 600 }}>{t(activeCountry.labelKey)}</span>
+                <ChevronDown size={12} style={{ color: 'var(--text-muted)', transform: countryDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {countryDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    marginTop: '6px',
+                    background: 'rgba(18, 24, 38, 0.98)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '10px',
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)',
+                    zIndex: 2000,
+                    minWidth: '190px',
+                    padding: '4px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  <div style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                    {t('broker_deals.select_country', 'Select Region')}
+                  </div>
+                  {SUPPORTED_COUNTRIES.map((c) => {
+                    const isSelected = c.code === selectedCountry;
+                    return (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => handleSelectCountry(c.code)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '0.4rem 0.65rem',
+                          background: isSelected ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.78rem',
+                          textAlign: 'left',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '1rem' }}>{c.flag}</span>
+                          <span style={{ fontWeight: isSelected ? 700 : 500 }}>{t(c.labelKey)}</span>
+                        </div>
+                        {isSelected && <Check size={13} style={{ color: 'var(--color-primary)' }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Body: Deals List or Empty State */}
-          {BROKER_DEALS.length > 0 ? (
+          {visibleDeals.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {BROKER_DEALS.map((deal) => (
+              {visibleDeals.map((deal) => (
                 <div 
                   key={deal.id}
                   className="glass-panel"
@@ -152,7 +283,7 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
               ))}
             </div>
           ) : (
-            /* Elegant Empty State */
+            /* Regional Empty State */
             <div style={{
               background: 'rgba(255, 255, 255, 0.02)',
               border: '1px solid rgba(255, 255, 255, 0.05)',
@@ -167,7 +298,9 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
                   <Sparkles size={16} />
                   <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>
-                    {t('broker_deals.empty_title', 'Exclusive Deals Coming Soon')}
+                    {t('broker_deals.empty_title_country', 'Exclusive Deals for {{country}} Coming Soon', {
+                      country: `${activeCountry.flag} ${t(activeCountry.labelKey)}`
+                    })}
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -175,7 +308,7 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                 </p>
               </div>
 
-              {/* Preview Value Badges */}
+              {/* Value Badges */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <ShieldCheck size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />

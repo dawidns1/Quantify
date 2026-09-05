@@ -769,13 +769,24 @@
   "broker_deals": {
     "title": "Broker Deals & Community Perks",
     "subtitle": "Curated zero-commission partners, IKE/IKZE tax wrappers, and verified community perks.",
+    "select_country": "Select Region",
     "empty_title": "Exclusive Partner Deals Coming Soon",
+    "empty_title_country": "Exclusive Deals for {{country}} Coming Soon",
     "empty_desc": "We are currently negotiating exclusive commission discounts, sign-up perks, and free deposit bonuses for the QuantiFi community. Verified partner links will appear here soon!",
     "benefit_1": "0% Commission on Real Stocks & ETFs",
     "benefit_2": "Tax-Advantaged IKE & IKZE Accounts",
     "benefit_3": "Verified & Regulated European Brokers",
     "open_account": "Open Account",
-    "affiliate_disclaimer": "Transparency: QuantiFi will only partner with reputable, regulated financial institutions. Using partner links supports platform development at zero extra cost to you."
+    "affiliate_disclaimer": "Transparency: QuantiFi will only partner with reputable, regulated financial institutions. Using partner links supports platform development at zero extra cost to you.",
+    "countries": {
+      "pl": "Poland",
+      "us": "United States",
+      "gb": "United Kingdom",
+      "de": "Germany / DACH",
+      "es": "Spain",
+      "eu": "European Union",
+      "global": "Global / Other"
+    }
   },
   "telemetry": {
     "clear_logs": "Clear Logs",
