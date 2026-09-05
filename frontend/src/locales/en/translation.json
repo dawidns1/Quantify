@@ -742,6 +742,8 @@
     "assets": "Assets",
     "base_currency": "Base Currency",
     "beta_tooltip": "Click for Beta Info & Release Notes",
+    "broker_perks": "Broker Deals & Perks",
+    "broker_perks_tooltip": "View verified broker deals & community perks",
     "create_portfolio": "Create Portfolio",
     "delete_portfolio": "Delete Portfolio",
     "delete_portfolio_tooltip": "Delete Portfolio",
@@ -754,6 +756,7 @@
     "move_portfolio_down": "Move Portfolio Down",
     "move_portfolio_up": "Move Portfolio Up",
     "overview": "Overview",
+    "perks_badge": "SOON",
     "portfolio_intelligence": "Portfolio Intelligence",
     "portfolio_settings": "Portfolio Settings",
     "rebalance": "Rebalance",
@@ -762,6 +765,17 @@
     "rename_portfolio_tooltip": "Rename Portfolio",
     "sign_out": "Sign Out",
     "view_mode": "View Mode"
+  },
+  "broker_deals": {
+    "title": "Broker Deals & Community Perks",
+    "subtitle": "Curated zero-commission partners, IKE/IKZE tax wrappers, and verified community perks.",
+    "empty_title": "Exclusive Partner Deals Coming Soon",
+    "empty_desc": "We are currently negotiating exclusive commission discounts, sign-up perks, and free deposit bonuses for the QuantiFi community. Verified partner links will appear here soon!",
+    "benefit_1": "0% Commission on Real Stocks & ETFs",
+    "benefit_2": "Tax-Advantaged IKE & IKZE Accounts",
+    "benefit_3": "Verified & Regulated European Brokers",
+    "open_account": "Open Account",
+    "affiliate_disclaimer": "Transparency: QuantiFi will only partner with reputable, regulated financial institutions. Using partner links supports platform development at zero extra cost to you."
   },
   "telemetry": {
     "clear_logs": "Clear Logs",

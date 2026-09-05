@@ -20,7 +20,8 @@ import {
   X,
   Star,
   SlidersHorizontal,
-  FileText
+  FileText,
+  Gift
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -28,6 +29,7 @@ import { fetchWithTimeout } from '../../services/calculationService';
 import type { Portfolio } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { AnimateOnChange } from './AnimateOnChange';
+import { BrokerDealsModal } from './BrokerDealsModal';
 
 interface SidebarProps {
   signOut: () => Promise<void>;
@@ -106,6 +108,7 @@ export function Sidebar({
   const [loadingPrices, setLoadingPrices] = useState(false);
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showBrokerDealsModal, setShowBrokerDealsModal] = useState(false);
 
   // Global search state
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -1128,6 +1131,42 @@ export function Sidebar({
             )}
           </div>
         </div>
+
+        {/* Broker Deals & Perks */}
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.45rem 0.75rem', borderTop: '1px solid rgba(255, 255, 255, 0.04)' }}>
+          <div 
+            className="tree-node"
+            onClick={() => {
+              setShowBrokerDealsModal(true);
+              if (onCloseSidebar) onCloseSidebar();
+            }}
+            style={{ 
+              padding: '0.45rem 0.6rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            title={t('sidebar.broker_perks_tooltip', 'View verified broker deals & community perks')}
+          >
+            <Gift size={14} style={{ flexShrink: 0, color: 'var(--color-primary)' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {t('sidebar.broker_perks', 'Broker Deals & Perks')}
+            </span>
+            <span style={{ 
+              marginLeft: 'auto', 
+              fontSize: '0.6rem', 
+              fontWeight: 700, 
+              color: 'var(--color-primary)', 
+              background: 'rgba(6, 182, 212, 0.1)', 
+              border: '1px solid rgba(6, 182, 212, 0.25)', 
+              padding: '1px 5px', 
+              borderRadius: '4px',
+              letterSpacing: '0.02em'
+            }}>
+              {t('sidebar.perks_badge', 'SOON')}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Footer Settings Area (Disclaimer only) */}
@@ -1225,6 +1264,11 @@ export function Sidebar({
           </div>
         </>
       )}
+
+      <BrokerDealsModal 
+        isOpen={showBrokerDealsModal} 
+        onClose={() => setShowBrokerDealsModal(false)} 
+      />
     </aside>
   );
 }

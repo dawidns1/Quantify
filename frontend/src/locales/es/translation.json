@@ -742,6 +742,8 @@
     "assets": "Activos",
     "base_currency": "Moneda base",
     "beta_tooltip": "Haz clic para ver información de la versión Beta",
+    "broker_perks": "Ofertas de brokers y ventajas",
+    "broker_perks_tooltip": "Ver ofertas de brokers verificadas y ventajas de la comunidad",
     "create_portfolio": "Crear portafolio",
     "delete_portfolio": "Eliminar portafolio",
     "delete_portfolio_tooltip": "Eliminar portafolio",
@@ -754,6 +756,7 @@
     "move_portfolio_down": "Mover portafolio abajo",
     "move_portfolio_up": "Mover portafolio arriba",
     "overview": "Resumen",
+    "perks_badge": "PRONTO",
     "portfolio_intelligence": "Inteligencia de portafolio",
     "portfolio_settings": "Configuración del portafolio",
     "rebalance": "Rebalancear",
@@ -762,6 +765,17 @@
     "rename_portfolio_tooltip": "Renombrar portafolio",
     "sign_out": "Cerrar sesión",
     "view_mode": "Modo de vista"
+  },
+  "broker_deals": {
+    "title": "Ofertas de brokers y ventajas de la comunidad",
+    "subtitle": "Brokers sin comisiones seleccionados, cuentas IKE/IKZE con ventajas fiscales y beneficios verificados.",
+    "empty_title": "Ofertas exclusivas de socios próximamente",
+    "empty_desc": "Actualmente estamos negociando descuentos exclusivos en comisiones, ventajas de bienvenida y bonificaciones para la comunidad de QuantiFi. ¡Los enlaces de socios aparecerán aquí pronto!",
+    "benefit_1": "0% de comisión en acciones reales y ETFs",
+    "benefit_2": "Cuentas IKE e IKZE con ventajas fiscales",
+    "benefit_3": "Brokers europeos regulados y de confianza",
+    "open_account": "Abrir cuenta",
+    "affiliate_disclaimer": "Transparencia: QuantiFi solo colabora con instituciones financieras reguladas y de confianza. El uso de enlaces de socios apoya el desarrollo de la plataforma sin ningún coste adicional para ti."
   },
   "telemetry": {
     "clear_logs": "Limpiar registros",
