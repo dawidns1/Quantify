@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Gift, Sparkles, ShieldCheck, ExternalLink, ChevronDown, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { track } from '@vercel/analytics';
 import { BROKER_DEALS, SUPPORTED_COUNTRIES, detectUserCountry, type CountryCode } from '../../utils/affiliates';
 import { usePortfolio } from '../../context/PortfolioContext';
 
@@ -34,6 +35,14 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [countryDropdownOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        track('broker_deals_modal_opened', { country: selectedCountry });
+      } catch (e) {}
+    }
+  }, [isOpen, selectedCountry]);
 
   if (!isOpen) return null;
 
@@ -262,6 +271,11 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                     href={deal.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                      try {
+                        track('broker_deal_clicked', { broker: deal.name, country: selectedCountry, url: deal.url });
+                      } catch (e) {}
+                    }}
                     className="glow-btn"
                     style={{
                       marginTop: '0.5rem',

@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "chart.js": "^4.5.1",
     "chartjs-plugin-zoom": "^2.2.0",
     "html2canvas": "^1.4.1",
