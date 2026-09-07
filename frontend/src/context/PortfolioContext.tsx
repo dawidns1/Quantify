@@ -8,7 +8,7 @@ import {
   fetchPortfolioBundle as fetchPortfolioBundleService
 } from '../services/calculationService';
 import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
-import { fetchUserPortfolios, createPortfolio } from '../services/supabaseService';
+import { fetchUserPortfolios, createPortfolio, updatePortfolioSettings } from '../services/supabaseService';
 import { fetchTransactions as fetchTransactionsService } from '../services/transactionService';
 import { telemetry } from '../utils/telemetry';
 
@@ -138,7 +138,16 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   });
 
   const [linkCash, setLinkCashState] = useState<boolean>(() => {
-    return localStorage.getItem('portfolio_link_cash') !== 'false';
+    const activeId = localStorage.getItem('portfolio_active_id');
+    try {
+      const cachedPorts = localStorage.getItem('cached_portfolios');
+      if (cachedPorts && activeId) {
+        const parsed = JSON.parse(cachedPorts);
+        const p = Array.isArray(parsed) ? parsed.find((item: any) => item.id === activeId) : null;
+        if (p) return Boolean(p.settings?.link_cash ?? p.settings?.linkCash ?? false);
+      }
+    } catch (e) {}
+    return false;
   });
 
   const [widgets, setWidgets] = useState<string[]>(() => {
@@ -222,7 +231,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
+    let lk = false;
+    try {
+      const cachedPorts = localStorage.getItem('cached_portfolios');
+      if (cachedPorts && activeId) {
+        const parsed = JSON.parse(cachedPorts);
+        const p = Array.isArray(parsed) ? parsed.find((item: any) => item.id === activeId) : null;
+        if (p) lk = Boolean(p.settings?.link_cash ?? p.settings?.linkCash ?? false);
+      }
+    } catch (e) {}
     if (!activeId) return null;
     try {
       const cached = localStorage.getItem(`cached_chart_data_${activeId}_${baseCurr}_${selAcc}_${lk}`);
@@ -236,7 +253,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
+    let lk = false;
+    try {
+      const cachedPorts = localStorage.getItem('cached_portfolios');
+      if (cachedPorts && activeId) {
+        const parsed = JSON.parse(cachedPorts);
+        const p = Array.isArray(parsed) ? parsed.find((item: any) => item.id === activeId) : null;
+        if (p) lk = Boolean(p.settings?.link_cash ?? p.settings?.linkCash ?? false);
+      }
+    } catch (e) {}
     if (!activeId) return null;
     try {
       const cached = localStorage.getItem(`cached_analytics_${activeId}_${baseCurr}_${selAcc}_${lk}`);
@@ -250,7 +275,15 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
-    const lk = localStorage.getItem('portfolio_link_cash') !== 'false';
+    let lk = false;
+    try {
+      const cachedPorts = localStorage.getItem('cached_portfolios');
+      if (cachedPorts && activeId) {
+        const parsed = JSON.parse(cachedPorts);
+        const p = Array.isArray(parsed) ? parsed.find((item: any) => item.id === activeId) : null;
+        if (p) lk = Boolean(p.settings?.link_cash ?? p.settings?.linkCash ?? false);
+      }
+    } catch (e) {}
     if (!activeId) return null;
     try {
       const cached = localStorage.getItem(`cached_dividend_forecast_${activeId}_${baseCurr}_${selAcc}_${lk}`);
@@ -303,10 +336,36 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     localStorage.setItem('portfolio_selected_account', account);
   };
 
-  const setLinkCash = (val: boolean) => {
+  const setLinkCash = async (val: boolean) => {
     setLinkCashState(val);
-    localStorage.setItem('portfolio_link_cash', String(val));
+    if (!activePortfolioId || activePortfolioId === 'all') return;
+    const targetPort = portfolios.find(p => p.id === activePortfolioId);
+    if (!targetPort || targetPort.role === 'viewer') return;
+    const updatedSettings = {
+      ...targetPort.settings,
+      link_cash: val,
+      linkCash: val
+    };
+    try {
+      await updatePortfolioSettings(activePortfolioId, updatedSettings);
+      setPortfolios(prev => prev.map(p => p.id === activePortfolioId ? { ...p, settings: updatedSettings } : p));
+    } catch (err) {
+      console.error('Failed to update portfolio link_cash setting in cloud:', err);
+    }
   };
+
+  // Keep linkCash state in sync with the active portfolio's cloud settings
+  useEffect(() => {
+    if (activePortfolioId && activePortfolioId !== 'all') {
+      const p = portfolios.find(item => item.id === activePortfolioId);
+      if (p) {
+        const val = Boolean(p.settings?.link_cash ?? p.settings?.linkCash ?? false);
+        setLinkCashState(val);
+      }
+    } else {
+      setLinkCashState(false);
+    }
+  }, [activePortfolioId, portfolios]);
 
   // --- Race Condition Protection Ref ---
   const latestParamsRef = useRef({

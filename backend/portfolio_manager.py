@@ -1635,8 +1635,78 @@ class PortfolioManager:
             dividends_by_symbol_acc[(sym, acc)]["net_base"] += d["net_base"]
             dividends_by_symbol_acc[(sym, acc)]["net_native"] += d["net_native"]
                 
-        # Calculate cash balances per account and currency chronologically
+        # Collect date ranges for foreign transactions to fetch historical exchange rates on transaction dates
+        tx_dates_by_curr = {}
+        for tx in sorted_txs:
+            curr = tx.get("currency", "USD").upper().strip()
+            if curr != base_currency:
+                try:
+                    d_obj = datetime.strptime(tx["date"], "%Y-%m-%d").date()
+                    tx_dates_by_curr.setdefault(curr, []).append(d_obj)
+                except Exception:
+                    pass
+                    
+        fx_rates_hist_by_curr = {}
+        for curr, d_list in tx_dates_by_curr.items():
+            if d_list:
+                min_d = min(d_list) - timedelta(days=7)
+                max_d = date.today()
+                pair = f"{curr}{base_currency}=X"
+                fx_rates_hist_by_curr[curr] = cls.get_cached_historical_fx(pair, min_d, max_d)
+
+        def get_tx_historical_fx_rate(tx_curr, tx_date_str):
+            if tx_curr == base_currency:
+                return 1.0
+            try:
+                d_obj = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
+                hist_dict = fx_rates_hist_by_curr.get(tx_curr, {})
+                if d_obj in hist_dict:
+                    return hist_dict[d_obj]
+                # If weekend or holiday, find closest preceding date
+                sorted_dates = [k for k in hist_dict.keys() if k <= d_obj]
+                if sorted_dates:
+                    return hist_dict[max(sorted_dates)]
+                elif hist_dict:
+                    return hist_dict[min(hist_dict.keys())]
+            except Exception:
+                pass
+            return fx_rates.get(tx_curr, 1.0)
+
+        # Check if link_cash is specified in portfolio_settings
+        if portfolio_settings and isinstance(portfolio_settings, dict):
+            if "link_cash" in portfolio_settings:
+                link_cash = bool(portfolio_settings["link_cash"])
+            elif "linkCash" in portfolio_settings:
+                link_cash = bool(portfolio_settings["linkCash"])
+
+        cash_baseline = portfolio_settings.get("cash_baseline", portfolio_settings.get("cashBaseline", {})) if portfolio_settings else {}
+        baseline_date_str = ""
+        baseline_balances = {}
+        if isinstance(cash_baseline, dict):
+            baseline_date_str = cash_baseline.get("effective_date", "")
+            baseline_balances = cash_baseline.get("balances", {})
+
+        # Calculate cash balances and cost bases per account and currency chronologically
         cash_balances = {}
+        cash_cost_bases = {}
+
+        if link_cash and baseline_balances:
+            for acc, curr_dict in baseline_balances.items():
+                if isinstance(curr_dict, dict):
+                    for curr_k, amt_v in curr_dict.items():
+                        c_upper = curr_k.upper().strip()
+                        try:
+                            amt_f = float(amt_v or 0.0)
+                        except (ValueError, TypeError):
+                            amt_f = 0.0
+                        if amt_f > 0.001:
+                            cash_balances.setdefault(acc, {})[c_upper] = amt_f
+                            if c_upper == base_currency:
+                                cash_cost_bases.setdefault(acc, {})[c_upper] = amt_f
+                            else:
+                                hist_fx = get_tx_historical_fx_rate(c_upper, baseline_date_str) if baseline_date_str else fx_rates.get(c_upper, 1.0)
+                                cash_cost_bases.setdefault(acc, {})[c_upper] = amt_f * hist_fx
+
         add_divs_to_cash = True
         if portfolio_settings and isinstance(portfolio_settings, dict):
             add_divs_to_cash = portfolio_settings.get("add_dividends_to_cash", portfolio_settings.get("addDividendsToCash", True))
@@ -1699,6 +1769,12 @@ class PortfolioManager:
             return stock_native_curr
 
         for event in timeline_events:
+            ev_date = event.get("date", "")
+            # If a cash baseline is configured, events prior to baseline date do not adjust linked cash
+            is_post_baseline = True
+            if baseline_date_str and ev_date and ev_date < baseline_date_str:
+                is_post_baseline = False
+
             if event["type"] == "TX":
                 tx = event["data"]
                 tx_account = tx.get("account", "Default") or "Default"
@@ -1709,57 +1785,75 @@ class PortfolioManager:
                 price = tx.get("price", 0.0)
                 fees = tx.get("fees", 0.0)
                 amount = shares * price
+                tx_fx = get_tx_historical_fx_rate(tx_curr, tx.get("date", ""))
 
                 cash_balances.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
+                cash_cost_bases.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
 
                 if symbol.startswith("CASH_"):
                     cash_currency = symbol.split("_")[1] if "_" in symbol else tx_curr
                     cash_balances.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                    cash_cost_bases.setdefault(tx_account, {}).setdefault(cash_currency, 0.0)
+                    cash_fx = get_tx_historical_fx_rate(cash_currency, tx.get("date", ""))
                     if tx_type == "BUY":
                         cash_balances[tx_account][cash_currency] += amount
+                        cash_cost_bases[tx_account][cash_currency] += (amount + fees) * (1.0 if cash_currency == base_currency else cash_fx)
                     elif tx_type == "SELL":
-                        cash_balances[tx_account][cash_currency] -= amount
-                        if cash_balances[tx_account][cash_currency] < 0.0:
-                            cash_balances[tx_account][cash_currency] = 0.0
+                        prev_bal = cash_balances[tx_account][cash_currency]
+                        cash_balances[tx_account][cash_currency] = max(0.0, prev_bal - amount)
+                        if cash_balances[tx_account][cash_currency] <= 0.0:
+                            cash_cost_bases[tx_account][cash_currency] = 0.0
+                        elif prev_bal > 0.0:
+                            ratio = cash_balances[tx_account][cash_currency] / prev_bal
+                            cash_cost_bases[tx_account][cash_currency] *= ratio
                 else:
-                    if link_cash:
+                    if link_cash and is_post_baseline:
                         if tx_type == "BUY":
-                            cash_balances[tx_account][tx_curr] -= (amount + fees)
-                            # Non-negative floor on stock BUY: assume unlogged external cash deposit funded the deficit
-                            if cash_balances[tx_account][tx_curr] < 0.0:
+                            prev_bal = cash_balances[tx_account][tx_curr]
+                            new_bal = prev_bal - (amount + fees)
+                            if new_bal <= 0.0:
                                 cash_balances[tx_account][tx_curr] = 0.0
+                                cash_cost_bases[tx_account][tx_curr] = 0.0
+                            else:
+                                cash_balances[tx_account][tx_curr] = new_bal
+                                if prev_bal > 0.0:
+                                    cash_cost_bases[tx_account][tx_curr] *= (new_bal / prev_bal)
                         elif tx_type == "SELL":
                             cash_balances[tx_account][tx_curr] += (amount - fees)
+                            cash_cost_bases[tx_account][tx_curr] += (amount - fees) * (1.0 if tx_curr == base_currency else tx_fx)
 
             elif event["type"] == "DIVIDEND":
-                d = event["data"]
-                sym = d["symbol"]
-                acc = d["account"]
-                native_curr = ticker_info.get(sym, {}).get("native_currency", "USD").upper().strip()
-                target_curr = get_account_target_currency(acc, native_curr)
+                if link_cash and is_post_baseline:
+                    d = event["data"]
+                    sym = d["symbol"]
+                    acc = d["account"]
+                    native_curr = ticker_info.get(sym, {}).get("native_currency", "USD").upper().strip()
+                    target_curr = get_account_target_currency(acc, native_curr)
+                    target_fx = get_tx_historical_fx_rate(target_curr, event.get("date", ""))
 
-                net_native = d.get("net_native", 0.0)
-                net_base = d.get("net_base", 0.0)
+                    net_native = d.get("net_native", 0.0)
+                    net_base = d.get("net_base", 0.0)
 
-                if target_curr == native_curr:
-                    dividend_amount = net_native
-                elif target_curr == base_currency:
-                    dividend_amount = net_base
-                else:
-                    fx_target_to_base = fx_rates.get(target_curr, 1.0)
-                    dividend_amount = net_base / fx_target_to_base if fx_target_to_base > 0 else net_base
+                    if target_curr == native_curr:
+                        dividend_amount = net_native
+                    elif target_curr == base_currency:
+                        dividend_amount = net_base
+                    else:
+                        fx_target_to_base = fx_rates.get(target_curr, 1.0)
+                        dividend_amount = net_base / fx_target_to_base if fx_target_to_base > 0 else net_base
 
-                if link_cash:
-                    fx_target_hist = fx_rates_prev.get(target_curr, 1.0)
-                    div_native_accum = net_base / fx_target_hist if fx_target_hist > 0 else net_base
                     cash_balances.setdefault(acc, {}).setdefault(target_curr, 0.0)
-                    cash_balances[acc][target_curr] += div_native_accum
+                    cash_cost_bases.setdefault(acc, {}).setdefault(target_curr, 0.0)
+                    cash_balances[acc][target_curr] += dividend_amount
+                    cash_cost_bases[acc][target_curr] += dividend_amount * (1.0 if target_curr == base_currency else target_fx)
                     
-        # Sum cash balances across accounts
+        # Sum cash balances and cost bases across accounts
         final_cash = {}
+        final_cash_cost = {}
         for acc in cash_balances:
             for curr in cash_balances[acc]:
                 final_cash[curr] = final_cash.get(curr, 0.0) + cash_balances[acc][curr]
+                final_cash_cost[curr] = final_cash_cost.get(curr, 0.0) + cash_cost_bases.get(acc, {}).get(curr, 0.0)
                 
         for curr in final_cash.keys():
             unique_currencies.add(curr)
@@ -1783,43 +1877,6 @@ class PortfolioManager:
 
         any_live = False
         min_seconds_to_open = 86400.0 * 7
-
-        # Collect date ranges for foreign transactions to fetch historical exchange rates on transaction dates
-        tx_dates_by_curr = {}
-        for tx in sorted_txs:
-            curr = tx.get("currency", "USD").upper().strip()
-            if curr != base_currency:
-                try:
-                    d_obj = datetime.strptime(tx["date"], "%Y-%m-%d").date()
-                    tx_dates_by_curr.setdefault(curr, []).append(d_obj)
-                except Exception:
-                    pass
-                    
-        fx_rates_hist_by_curr = {}
-        for curr, d_list in tx_dates_by_curr.items():
-            if d_list:
-                min_d = min(d_list) - timedelta(days=7)
-                max_d = date.today()
-                pair = f"{curr}{base_currency}=X"
-                fx_rates_hist_by_curr[curr] = cls.get_cached_historical_fx(pair, min_d, max_d)
-
-        def get_tx_historical_fx_rate(tx_curr, tx_date_str):
-            if tx_curr == base_currency:
-                return 1.0
-            try:
-                d_obj = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
-                hist_dict = fx_rates_hist_by_curr.get(tx_curr, {})
-                if d_obj in hist_dict:
-                    return hist_dict[d_obj]
-                # If weekend or holiday, find closest preceding date
-                sorted_dates = [k for k in hist_dict.keys() if k <= d_obj]
-                if sorted_dates:
-                    return hist_dict[max(sorted_dates)]
-                elif hist_dict:
-                    return hist_dict[min(hist_dict.keys())]
-            except Exception:
-                pass
-            return fx_rates.get(tx_curr, 1.0)
 
         # Calculate stock holdings
         for symbol, txs in symbol_txs.items():
@@ -1983,6 +2040,15 @@ class PortfolioManager:
                 cash_day_change_base = val_base - cash_prev_val_base
                 cash_day_change_percent = (cash_day_change_base / cash_prev_val_base * 100) if cash_prev_val_base > 0 else 0.0
                 
+                # Static historical cost basis for cash
+                if curr == base_currency:
+                    cost_base = balance
+                else:
+                    cost_base = final_cash_cost.get(curr, val_base)
+                    
+                gain_base = val_base - cost_base
+                gain_percent = (gain_base / cost_base * 100) if cost_base > 0 else 0.0
+                
                 holdings_list.append({
                     "symbol": f"CASH_{curr}",
                     "name": name,
@@ -1991,10 +2057,10 @@ class PortfolioManager:
                     "current_price_local": 1.0,
                     "currency": curr,
                     "fx_rate": fx_rate,
-                    "cost_basis_base": round(val_base, 2),
+                    "cost_basis_base": round(cost_base, 2),
                     "current_value_base": round(val_base, 2),
-                    "gain_base": 0.0,
-                    "gain_percent": 0.0,
+                    "gain_base": round(gain_base, 2),
+                    "gain_percent": round(gain_percent, 2),
                     "dividends_base": 0.0,
                     "dividends_net_base": 0.0,
                     "day_change_percent": round(cash_day_change_percent, 2),
@@ -2003,7 +2069,7 @@ class PortfolioManager:
                     "asset_class": "Cash"
                 })
                 
-                total_cost_base += val_base
+                total_cost_base += cost_base
                 total_value_base += val_base
                 
         if not holdings_list:
@@ -2264,6 +2330,20 @@ class PortfolioManager:
         cost_basis_method = "average_cost"
         if portfolio_settings and isinstance(portfolio_settings, dict):
             cost_basis_method = portfolio_settings.get("cost_basis_method") or portfolio_settings.get("costBasisMethod") or "average_cost"
+            if "link_cash" in portfolio_settings:
+                link_cash = bool(portfolio_settings["link_cash"])
+            elif "linkCash" in portfolio_settings:
+                link_cash = bool(portfolio_settings["linkCash"])
+
+        cash_baseline = portfolio_settings.get("cash_baseline", portfolio_settings.get("cashBaseline", {})) if portfolio_settings else {}
+        baseline_d = None
+        baseline_balances = {}
+        if isinstance(cash_baseline, dict) and cash_baseline.get("effective_date"):
+            try:
+                baseline_d = datetime.strptime(cash_baseline["effective_date"], "%Y-%m-%d").date()
+                baseline_balances = cash_baseline.get("balances", {})
+            except Exception:
+                pass
 
         stock_shares = {}
         stock_cost_base = {}
@@ -2271,6 +2351,7 @@ class PortfolioManager:
         explicit_cash_balances_running = {}
         explicit_cash_cost_base = {}
         linked_cash_balances_running = {}
+        linked_cash_cost_base_running = {}
         
         realized_gains_running_base = 0.0
         dividends_running_base = 0.0
@@ -2310,6 +2391,24 @@ class PortfolioManager:
                 pass
         
         for d in dates_list:
+            if baseline_d and d == baseline_d:
+                for acc, curr_dict in baseline_balances.items():
+                    if isinstance(curr_dict, dict):
+                        for curr_k, amt_v in curr_dict.items():
+                            c_upper = curr_k.upper().strip()
+                            try:
+                                amt_f = float(amt_v or 0.0)
+                            except (ValueError, TypeError):
+                                amt_f = 0.0
+                            if amt_f > 0.001:
+                                linked_cash_balances_running.setdefault(acc, {})[c_upper] = amt_f
+                                fx_base = fx_rates_hist.get(c_upper, {}).get(d, 1.0) if c_upper != base_currency else 1.0
+                                linked_cash_cost_base_running.setdefault(acc, {})[c_upper] = amt_f * fx_base
+
+            is_post_baseline = True
+            if baseline_d and d < baseline_d:
+                is_post_baseline = False
+
             # 7a. Process Dividends on day d
             day_divs = divs_by_date.get(d, [])
             for div in day_divs:
@@ -2319,13 +2418,15 @@ class PortfolioManager:
                 
                 dividends_running_base += net_div_base
                 
-                if link_cash:
+                if link_cash and is_post_baseline:
                     native_curr = symbol_currencies.get(sym, "USD")
                     fx_rate_d = fx_rates_hist.get(native_curr, {}).get(d, 1.0)
                     net_div_native = net_div_base / fx_rate_d if fx_rate_d > 0 else net_div_base
                     
                     linked_cash_balances_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
+                    linked_cash_cost_base_running.setdefault(acc, {}).setdefault(native_curr, 0.0)
                     linked_cash_balances_running[acc][native_curr] += net_div_native
+                    linked_cash_cost_base_running[acc][native_curr] += net_div_base
                                     
             # 7b. Process transactions on day d
             day_txs = txs_by_date.get(d, [])
@@ -2411,19 +2512,23 @@ class PortfolioManager:
                             if stock_shares[sym][tx_account] == 0.0:
                                 stock_cost_base[sym][tx_account] = 0.0
                             
-                    if link_cash:
+                    if link_cash and is_post_baseline:
                         amount = shares * price
                         linked_cash_balances_running.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
+                        linked_cash_cost_base_running.setdefault(tx_account, {}).setdefault(tx_curr, 0.0)
                         if tx_type == "BUY":
-                            linked_cash_balances_running[tx_account][tx_curr] -= (amount + fees)
-                            if linked_cash_balances_running[tx_account][tx_curr] < 0.0:
-                                deficit = -linked_cash_balances_running[tx_account][tx_curr]
+                            prev_bal = linked_cash_balances_running[tx_account][tx_curr]
+                            new_bal = prev_bal - (amount + fees)
+                            if new_bal <= 0.0:
                                 linked_cash_balances_running[tx_account][tx_curr] = 0.0
-                                if explicit_cash_balances_running.get(tx_account, {}).get(tx_curr, 0.0) > 0:
-                                    curr_exp = explicit_cash_balances_running[tx_account][tx_curr]
-                                    explicit_cash_balances_running[tx_account][tx_curr] = max(0.0, curr_exp - deficit)
+                                linked_cash_cost_base_running[tx_account][tx_curr] = 0.0
+                            else:
+                                linked_cash_balances_running[tx_account][tx_curr] = new_bal
+                                if prev_bal > 0.0:
+                                    linked_cash_cost_base_running[tx_account][tx_curr] *= (new_bal / prev_bal)
                         elif tx_type == "SELL":
                             linked_cash_balances_running[tx_account][tx_curr] += (amount - fees)
+                            linked_cash_cost_base_running[tx_account][tx_curr] += (amount - fees) * fx_tx_to_base
                             
             day_nav = 0.0
             day_cost = 0.0
@@ -2456,16 +2561,18 @@ class PortfolioManager:
 
             # Valuate linked cash on day d (only included when link_cash is True)
             day_linked_cash_nav = 0.0
+            day_linked_cash_cost = 0.0
             for acc in linked_cash_balances_running.keys():
                 for curr, balance in linked_cash_balances_running[acc].items():
                     effective_bal = max(0.0, balance)
                     if effective_bal > 0.001:
                         fx_rate = fx_rates_hist.get(curr, {}).get(d, 1.0)
                         day_linked_cash_nav += effective_bal * fx_rate
+                        day_linked_cash_cost += linked_cash_cost_base_running.get(acc, {}).get(curr, 0.0)
                         
-            if link_cash:
+            if link_cash and is_post_baseline:
                 day_nav += day_linked_cash_nav
-                day_cost += day_linked_cash_nav - realized_gains_running_base - dividends_running_base
+                day_cost += day_linked_cash_cost
             else:
                 day_nav += day_explicit_cash_nav
                 day_cost += day_explicit_cash_cost

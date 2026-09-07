@@ -28,6 +28,9 @@ export function SettingsModal({
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
   const [costBasisMethod, setCostBasisMethod] = useState<'average_cost' | 'fifo'>('average_cost');
   const [addDividendsToCash, setAddDividendsToCash] = useState<boolean>(true);
+  const [linkCash, setLinkCash] = useState<boolean>(false);
+  const [cashBaselineDate, setCashBaselineDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [cashBaselineBalances, setCashBaselineBalances] = useState<Record<string, Record<string, number>>>({});
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<boolean>(false);
@@ -56,6 +59,10 @@ export function SettingsModal({
       setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
       setCostBasisMethod(portfolio.settings?.cost_basis_method || 'average_cost');
       setAddDividendsToCash(portfolio.settings?.add_dividends_to_cash !== false);
+      setLinkCash(Boolean(portfolio.settings?.link_cash ?? portfolio.settings?.linkCash ?? false));
+      const savedBaseline = portfolio.settings?.cash_baseline || portfolio.settings?.cashBaseline || {};
+      setCashBaselineDate(savedBaseline.effective_date || new Date().toISOString().split('T')[0]);
+      setCashBaselineBalances(savedBaseline.balances || {});
 
       // Initialize ordered accounts
       const savedOrder: string[] = portfolio.settings?.account_order || portfolio.settings?.accountOrder || [];
@@ -120,7 +127,17 @@ export function SettingsModal({
         risk_free_rate: riskFreeRate,
         beta_benchmark: betaBenchmark,
         cost_basis_method: costBasisMethod,
-        add_dividends_to_cash: addDividendsToCash
+        add_dividends_to_cash: addDividendsToCash,
+        link_cash: linkCash,
+        linkCash: linkCash,
+        cash_baseline: {
+          effective_date: cashBaselineDate,
+          balances: cashBaselineBalances
+        },
+        cashBaseline: {
+          effective_date: cashBaselineDate,
+          balances: cashBaselineBalances
+        }
       };
       await updatePortfolioSettings(portfolio.id, updatedSettings);
       setSuccessMsg(true);
@@ -427,6 +444,118 @@ export function SettingsModal({
                   </select>
                 </div>
               </div>
+            </div>
+
+            {/* Cash Balance & Liquidity Tracking */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.85rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem' }}>
+                {t('modals.settings.cash_tracking_title', 'Cash Balance & Liquidity Tracking')}
+              </span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                {t('modals.settings.cash_tracking_desc', 'Enable uninvested cash balance tracking. When active, stock buys deduct cash, sales add proceeds, and dividends accumulate into broker liquidity.')}
+              </span>
+
+              {/* Link Cash Checkbox */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: isViewer ? 'default' : 'pointer', userSelect: 'none', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                <input 
+                  type="checkbox"
+                  disabled={isViewer}
+                  checked={linkCash}
+                  onChange={(e) => setLinkCash(e.target.checked)}
+                  style={{ accentColor: 'var(--color-primary)', width: '16px', height: '16px', cursor: isViewer ? 'default' : 'pointer' }}
+                />
+                {t('modals.settings.link_cash_label', 'Track Uninvested Cash Balances')}
+              </label>
+
+              {/* Cash Baseline Inputs (visible when linkCash is enabled) */}
+              {linkCash && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '8px', padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {t('modals.settings.cash_baseline_title', 'Current Cash Balances (Starting Baseline)')}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {t('modals.settings.cash_baseline_desc', 'Set your current uninvested cash per sub-account and currency as of today. Future transactions will adjust this balance.')}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        {t('modals.settings.cash_effective_date', 'Baseline Date')}:
+                      </label>
+                      <input 
+                        type="date"
+                        disabled={isViewer}
+                        value={cashBaselineDate}
+                        onChange={(e) => setCashBaselineDate(e.target.value)}
+                        style={{
+                          padding: '0.25rem 0.45rem',
+                          fontSize: '0.75rem',
+                          background: 'rgba(15, 23, 42, 0.9)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Account Cash Inputs */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    {orderedAccounts.map(accName => {
+                      const accTheme = getAccountNeonTheme(accName, accountColors);
+                      const accBalances = cashBaselineBalances[accName] || {};
+                      const currencies = ['PLN', 'USD', 'EUR'];
+
+                      return (
+                        <div key={accName} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)', padding: '0.45rem 0.65rem', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.04)', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: '120px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: accTheme.hex, boxShadow: accTheme.glow }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{accName}</span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {currencies.map(curr => (
+                              <div key={curr} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{curr}:</span>
+                                <input 
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  disabled={isViewer}
+                                  value={accBalances[curr] !== undefined ? accBalances[curr] : ''}
+                                  placeholder="0.00"
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0.0;
+                                    setCashBaselineBalances(prev => ({
+                                      ...prev,
+                                      [accName]: {
+                                        ...(prev[accName] || {}),
+                                        [curr]: val
+                                      }
+                                    }));
+                                  }}
+                                  style={{
+                                    width: '72px',
+                                    padding: '0.25rem 0.35rem',
+                                    fontSize: '0.75rem',
+                                    background: 'rgba(15, 23, 42, 0.9)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '4px',
+                                    color: 'var(--text-primary)',
+                                    textAlign: 'right'
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

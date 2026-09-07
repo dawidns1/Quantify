@@ -148,7 +148,8 @@
     "rename_portfolio_prompt_title": "Rename Portfolio",
     "retry": "Retry",
     "skip_div_confirm_desc": "Are you sure you want to skip/delete this automatic dividend payment? (This filters it out of holdings and historical NAV calculation)",
-    "skip_div_confirm_title": "Skip Dividend Payment"
+    "skip_div_confirm_title": "Skip Dividend Payment",
+    "read_only": "Read-Only"
   },
   "dashboard": {
     "account_filter_all": "All Accounts",
@@ -195,7 +196,8 @@
     "syncing_transactions": "Fetching transaction ledger...",
     "toggle_cards": "Toggle Dashboard Cards",
     "viewer_empty_warning": "This portfolio is empty and you have read-only access.",
-    "viewer_readonly_warning": "You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled."
+    "viewer_readonly_warning": "You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.",
+    "viewer_readonly_tooltip": "Read-Only (Viewer) access to this portfolio"
   },
   "detail": {
     "alignedText": "Aligned with peer median ({{median}}{{suffix}})",
@@ -471,7 +473,8 @@
       "symbol_placeholder": "e.g. AAPL, MSFT, CDR.WA",
       "title_edit": "Edit Manual Dividend",
       "title_override": "Override Automatic Dividend",
-      "title_record": "Record Manual Dividend"
+      "title_record": "Record Manual Dividend",
+      "link_cash_active": "Cash balance integration active: payout will be credited to cash automatically."
     },
     "add_tx": {
       "action_type": "Action Type",
@@ -522,7 +525,8 @@
       "type_deposit": "Deposit",
       "type_sell": "Sell",
       "type_withdrawal": "Withdrawal",
-      "updating": "Updating..."
+      "updating": "Updating...",
+      "link_cash_active": "Cash balance integration active: broker cash will be adjusted automatically."
     },
     "beta": {
       "build_release": "Build Release",
@@ -615,7 +619,13 @@
       "tax_mapping_title": "Brokerage Account Tax Mapping",
       "tax_suffix": "% Tax",
       "theme_tooltip": "Current Sub-Account Neon Theme",
-      "title": "Portfolio Settings"
+      "title": "Portfolio Settings",
+      "cash_tracking_title": "Cash Balance & Liquidity Tracking",
+      "cash_tracking_desc": "Enable uninvested cash balance tracking. When active, stock buys deduct cash, sales add proceeds, and dividends accumulate into broker liquidity.",
+      "link_cash_label": "Track Uninvested Cash Balances",
+      "cash_baseline_title": "Current Cash Balances (Starting Baseline)",
+      "cash_baseline_desc": "Set your current uninvested cash per sub-account and currency as of today. Future transactions will adjust this balance.",
+      "cash_effective_date": "Baseline Date"
     },
     "share": {
       "action_revoke": "Revoke",

@@ -96,7 +96,6 @@ export function PortfolioView({
     showWidgetManager,
     setShowWidgetManager,
     linkCash,
-    setLinkCash,
     portfolioAccountsMap,
     uniqueAccounts,
     portfolioTransactions,
@@ -864,6 +863,27 @@ export function PortfolioView({
               <span style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '0.01em', color: '#ffffff' }}>
                 Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
               </span>
+              {activePortfolioRole === 'viewer' && activePortfolioId !== 'all' && (
+                <span 
+                  style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    color: '#f59e0b',
+                    border: '1px solid rgba(245, 158, 11, 0.28)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    marginLeft: '0.35rem'
+                  }}
+                  title={t('dashboard.viewer_readonly_tooltip', 'Read-Only (Viewer) access to this portfolio')}
+                >
+                  <Lock size={10} />
+                  <span>{t('common.read_only', 'Read-Only')}</span>
+                </span>
+              )}
             </div>
             <button 
               className="mobile-menu-toggle-btn"
@@ -1046,14 +1066,6 @@ export function PortfolioView({
             </div>
           ) : (
             <>
-              {/* Viewer Lock Warning Banner */}
-              {activePortfolioRole === 'viewer' && activePortfolioId !== 'all' && (
-                <div className="form-error-banner" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid #f59e0b', color: '#f59e0b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                  <Lock size={16} style={{ flexShrink: 0 }} />
-                  <span>{t('dashboard.viewer_readonly_warning', 'You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.')}</span>
-                </div>
-              )}
-
               {/* OVERVIEW TAB CONTENT */}
               <div style={{ 
                 display: subTab === 'overview' ? 'flex' : 'none',
@@ -1672,7 +1684,6 @@ export function PortfolioView({
         uniqueAccounts={uniqueAccounts}
         transactions={allTransactions}
         linkCash={linkCash}
-        setLinkCash={setLinkCash}
         onSaveSuccess={() => {
           fetchHoldings(baseCurrency, selectedAccount);
           fetchTransactions();
@@ -1729,8 +1740,6 @@ export function PortfolioView({
         onClose={() => setShowPreferencesModal(false)}
         baseCurrency={baseCurrency}
         setBaseCurrency={setBaseCurrency}
-        linkCash={linkCash}
-        setLinkCash={setLinkCash}
         onOpenTelemetry={() => setShowTelemetryModal(true)}
       />
 
@@ -1756,7 +1765,6 @@ export function PortfolioView({
         holdingSymbols={holdings.map(h => h.symbol)}
         apiBaseUrl={apiBaseUrl}
         linkCash={linkCash}
-        setLinkCash={setLinkCash}
       />
 
       {/* CSV IMPORT DIALOG MODAL */}

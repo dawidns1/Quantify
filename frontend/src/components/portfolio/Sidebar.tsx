@@ -21,7 +21,8 @@ import {
   Star,
   SlidersHorizontal,
   FileText,
-  Gift
+  Gift,
+  Lock
 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../AuthContext';
@@ -684,10 +685,24 @@ export function Sidebar({
                             whiteSpace: 'nowrap', 
                             paddingRight: portfolio.role === 'owner' 
                               ? (isActive ? '5.8rem' : '3.8rem') 
-                              : (portfolios.length > 1 && onReorderPortfolios ? '2rem' : '0.5rem'),
-                            fontSize: '0.82rem'
+                              : (portfolios.length > 1 && onReorderPortfolios ? '2.5rem' : '0.5rem'),
+                            fontSize: '0.82rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem'
                           }}>
-                            {portfolio.name}
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{portfolio.name}</span>
+                            {portfolio.role === 'viewer' && (
+                              <span 
+                                title={t('dashboard.viewer_readonly_tooltip', 'Read-Only (Viewer) access to this portfolio')}
+                                style={{ display: 'inline-flex', alignItems: 'center' }}
+                              >
+                                <Lock 
+                                  size={11} 
+                                  style={{ color: '#f59e0b', flexShrink: 0 }} 
+                                />
+                              </span>
+                            )}
                           </span>
                           
                           {/* Up / Down Reordering chevrons (always visible when multiple portfolios) */}

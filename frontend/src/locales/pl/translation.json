@@ -148,7 +148,8 @@
     "rename_portfolio_prompt_title": "Zmień nazwę portfela",
     "retry": "Ponów",
     "skip_div_confirm_desc": "Czy na pewno chcesz pominąć/usunąć tę automatyczną wypłatę dywidendy? (Zostanie wykluczona z pozycji i wyceny historycznej)",
-    "skip_div_confirm_title": "Pomiń wypłatę dywidendy"
+    "skip_div_confirm_title": "Pomiń wypłatę dywidendy",
+    "read_only": "Tylko do odczytu"
   },
   "dashboard": {
     "account_filter_all": "Wszystkie konta",
@@ -195,7 +196,8 @@
     "syncing_transactions": "Pobieranie historii transakcji...",
     "toggle_cards": "Włącz/wyłącz karty pulpitu",
     "viewer_empty_warning": "Ten portfel jest pusty i masz do niego dostęp tylko do odczytu.",
-    "viewer_readonly_warning": "Masz uprawnienia tylko do podglądu (Obserwator) tego portfela. Dodawanie, edycja i usuwanie transakcji jest zablokowane."
+    "viewer_readonly_warning": "Masz uprawnienia tylko do podglądu (Obserwator) tego portfela. Dodawanie, edycja i usuwanie transakcji jest zablokowane.",
+    "viewer_readonly_tooltip": "Dostęp tylko do odczytu (Obserwator) do tego portfela"
   },
   "detail": {
     "alignedText": "Zbieżny z medianą sektora ({{median}}{{suffix}})",
@@ -471,7 +473,8 @@
       "symbol_placeholder": "np. AAPL, MSFT, CDR.WA",
       "title_edit": "Edytuj dywidendę ręczną",
       "title_override": "Nadpisz automatyczną dywidendę",
-      "title_record": "Zapisz dywidendę ręczną"
+      "title_record": "Zapisz dywidendę ręczną",
+      "link_cash_active": "Integracja salda gotówki aktywna: wypłata powiększy saldo gotówki automatycznie."
     },
     "add_tx": {
       "action_type": "Typ operacji",
@@ -522,7 +525,8 @@
       "type_deposit": "Wpłata",
       "type_sell": "Sprzedaż",
       "type_withdrawal": "Wypłata",
-      "updating": "Aktualizowanie..."
+      "updating": "Aktualizowanie...",
+      "link_cash_active": "Integracja salda gotówki aktywna: wolne środki zostaną skorygowane automatycznie."
     },
     "beta": {
       "build_release": "Wydanie kompilacji",
@@ -615,7 +619,13 @@
       "tax_mapping_title": "Mapowanie podatków kont maklerskich",
       "tax_suffix": "% podatku",
       "theme_tooltip": "Aktualny neonowy motyw subkonta",
-      "title": "Ustawienia Portfela"
+      "title": "Ustawienia Portfela",
+      "cash_tracking_title": "Śledzenie Salda Gotówki i Płynności",
+      "cash_tracking_desc": "Włącz śledzenie wolnych środków gotówkowych. Gdy aktywne, zakupy akcji pomniejszają gotówkę, sprzedaże ją powiększają, a dywidendy trafiają do salda.",
+      "link_cash_label": "Śledź Salda Gotówki w Portfelu",
+      "cash_baseline_title": "Bieżące Saldo Gotówki (Punkt Startowy)",
+      "cash_baseline_desc": "Ustaw swoje aktualne wolne środki gotówkowe na subkontach na dzień dzisiejszy. Przyszłe transakcje będą na bieżąco korygować to saldo.",
+      "cash_effective_date": "Data Salda Startowego"
     },
     "share": {
       "action_revoke": "Cofnij dostęp",

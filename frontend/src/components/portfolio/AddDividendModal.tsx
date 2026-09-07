@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Save, AlertCircle } from 'lucide-react';
+import { X, Check, Save, AlertCircle, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updatePortfolioSettings } from '../../services/supabaseService';
 import { searchAssets } from '../../services/calculationService';
@@ -15,7 +15,6 @@ interface AddDividendModalProps {
   holdingSymbols?: string[];
   apiBaseUrl?: string;
   linkCash: boolean;
-  setLinkCash: (val: boolean) => void;
 }
 
 export function AddDividendModal({
@@ -28,8 +27,7 @@ export function AddDividendModal({
   onSaveSuccess,
   holdingSymbols = [],
   apiBaseUrl = 'http://localhost:8000',
-  linkCash,
-  setLinkCash
+  linkCash
 }: AddDividendModalProps) {
   const { t } = useTranslation();
   const [formSymbol, setFormSymbol] = useState('');
@@ -394,19 +392,25 @@ export function AddDividendModal({
               </div>
             </div>
 
-             {/* Link Cash Balance checkbox inside the dividend modal */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.5rem', marginBottom: '0.5rem', padding: '0 0.25rem' }}>
-              <input 
-                id="form-link-cash-div"
-                type="checkbox" 
-                checked={linkCash}
-                onChange={(e) => setLinkCash(e.target.checked)}
-                style={{ cursor: 'pointer', width: '14px', height: '14px' }}
-              />
-              <label htmlFor="form-link-cash-div" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
-                {t('modals.add_div.link_cash_desc', 'Link cash balance (auto-adjust cash position for dividend payouts)')}
-              </label>
-            </div>
+            {/* Link Cash Balance info indicator */}
+            {linkCash && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginTop: '0.5rem',
+                marginBottom: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.2)'
+              }}>
+                <Wallet size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                  {t('modals.add_div.link_cash_active', 'Cash Balance Integration active: dividend payout will automatically credit your linked cash balance.')}
+                </span>
+              </div>
+            )}
 
             {isOverrideMode && (
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>

@@ -148,7 +148,8 @@
     "rename_portfolio_prompt_title": "Renombrar portafolio",
     "retry": "Reintentar",
     "skip_div_confirm_desc": "¿Estás seguro de que deseas omitir/eliminar este pago automático de dividendos? (Se excluirá de las posiciones y del cálculo histórico del NAV)",
-    "skip_div_confirm_title": "Omitir pago de dividendo"
+    "skip_div_confirm_title": "Omitir pago de dividendo",
+    "read_only": "Solo lectura"
   },
   "dashboard": {
     "account_filter_all": "Todas las cuentas",
@@ -195,7 +196,8 @@
     "syncing_transactions": "Obteniendo historial de transacciones...",
     "toggle_cards": "Alternar tarjetas del panel",
     "viewer_empty_warning": "Este portafolio está vacío y tiene acceso de solo lectura.",
-    "viewer_readonly_warning": "Tiene acceso de solo lectura (observador) a este portafolio. Las funciones de añadir, editar o eliminar transacciones están deshabilitadas."
+    "viewer_readonly_warning": "Tiene acceso de solo lectura (observador) a este portafolio. Las funciones de añadir, editar o eliminar transacciones están deshabilitadas.",
+    "viewer_readonly_tooltip": "Acceso de solo lectura (observador) a este portafolio"
   },
   "detail": {
     "alignedText": "Alineado con la mediana del sector ({{median}}{{suffix}})",
@@ -471,7 +473,8 @@
       "symbol_placeholder": "ej. AAPL, MSFT, CDR.WA",
       "title_edit": "Editar dividendo manual",
       "title_override": "Anular dividendo automático",
-      "title_record": "Registrar dividendo manual"
+      "title_record": "Registrar dividendo manual",
+      "link_cash_active": "Integración de saldo de efectivo activa: el dividendo se abonará al efectivo automáticamente."
     },
     "add_tx": {
       "action_type": "Tipo de acción",
@@ -522,7 +525,8 @@
       "type_deposit": "Depósito",
       "type_sell": "Vender",
       "type_withdrawal": "Retiro",
-      "updating": "Actualizando..."
+      "updating": "Actualizando...",
+      "link_cash_active": "Integración de saldo de efectivo activa: el efectivo se ajustará automáticamente."
     },
     "beta": {
       "build_release": "Lanzamiento de compilación",
@@ -615,7 +619,13 @@
       "tax_mapping_title": "Mapeo de impuestos de cuenta de corretaje",
       "tax_suffix": "% Impuesto",
       "theme_tooltip": "Tema neón actual de la subcuenta",
-      "title": "Configuración del portafolio"
+      "title": "Configuración del portafolio",
+      "cash_tracking_title": "Seguimiento de Saldo de Efectivo y Liquidez",
+      "cash_tracking_desc": "Habilite el seguimiento del efectivo no invertido. Las compras descuentan efectivo, las ventas añaden fondos y los dividendos se acumulan en la liquidez.",
+      "link_cash_label": "Vincular Saldos de Efectivo del Portafolio",
+      "cash_baseline_title": "Saldos Actuales de Efectivo (Línea Base Inicial)",
+      "cash_baseline_desc": "Establezca su efectivo no invertido actual por subcuenta y divisa a fecha de hoy. Las transacciones futuras ajustarán este saldo.",
+      "cash_effective_date": "Fecha de Línea Base"
     },
     "share": {
       "action_revoke": "Revocar",

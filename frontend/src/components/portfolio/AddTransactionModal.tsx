@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, X, AlertCircle, Info } from 'lucide-react';
+import { Plus, Edit2, X, AlertCircle, Info, Wallet } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { searchAssets } from '../../services/calculationService';
 import { saveTransaction } from '../../services/transactionService';
@@ -17,7 +17,6 @@ interface AddTransactionModalProps {
   uniqueAccounts: string[];
   transactions: Transaction[];
   linkCash: boolean;
-  setLinkCash: (val: boolean) => void;
   onSaveSuccess: () => void;
   tier: 'free' | 'premium';
   onLimitReached: (reason: 'portfolio' | 'account') => void;
@@ -34,7 +33,6 @@ export function AddTransactionModal({
   uniqueAccounts,
   transactions,
   linkCash,
-  setLinkCash,
   onSaveSuccess,
   tier,
   onLimitReached
@@ -855,19 +853,22 @@ export function AddTransactionModal({
               </div>
             )}
 
-            {/* Link Cash Balance checkbox inside the transaction form (only for non-cash transactions) */}
-            {!formSymbol.toUpperCase().startsWith('CASH_') && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.75rem', padding: '0 0.25rem' }}>
-                <input 
-                  id="form-link-cash"
-                  type="checkbox" 
-                  checked={linkCash}
-                  onChange={(e) => setLinkCash(e.target.checked)}
-                  style={{ cursor: 'pointer', width: '14px', height: '14px' }}
-                />
-                <label htmlFor="form-link-cash" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: 500 }}>
-                  {t('modals.add_tx.link_cash_desc', 'Link cash balance (auto-adjust cash position for stock transactions)')}
-                </label>
+            {/* Link Cash Balance info indicator (active when portfolio has link_cash enabled) */}
+            {!formSymbol.toUpperCase().startsWith('CASH_') && linkCash && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginTop: '0.75rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                background: 'rgba(6, 182, 212, 0.08)',
+                border: '1px solid rgba(6, 182, 212, 0.2)'
+              }}>
+                <Wallet size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                  {t('modals.add_tx.link_cash_active', 'Cash Balance Integration active: this transaction will automatically adjust your linked cash balance.')}
+                </span>
               </div>
             )}
 
