@@ -128,7 +128,7 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
               {t('broker_deals.title', 'Broker Deals & Community Perks')}
             </h3>
             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-              {t('broker_deals.subtitle', 'Curated zero-commission partners, IKE/IKZE tax wrappers, and verified community perks.')}
+              {t('broker_deals.subtitle', 'Curated partner brokers, affiliate links, and community promotions.')}
             </p>
           </div>
 
@@ -312,13 +312,13 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-primary)', marginBottom: '0.35rem' }}>
                   <Sparkles size={16} />
                   <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>
-                    {t('broker_deals.empty_title_country', 'Exclusive Deals for {{country}} Coming Soon', {
+                    {t('broker_deals.empty_title_country', 'Partner Deals & Promos for {{country}} Coming Soon', {
                       country: `${activeCountry.flag} ${t(activeCountry.labelKey)}`
                     })}
                   </span>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  {t('broker_deals.empty_desc', 'We are currently negotiating exclusive commission discounts, sign-up perks, and free deposit bonuses for the QuantiFi community. Verified partner links will appear here soon!')}
+                  {t('broker_deals.empty_desc', 'Affiliate links and promotions for verified brokerage partners will appear here soon.')}
                 </p>
               </div>
 
@@ -326,15 +326,15 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <ShieldCheck size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>{t('broker_deals.benefit_1', '0% Commission on Real Stocks & ETFs')}</span>
+                  <span>{t('broker_deals.benefit_1', 'Regulated Brokerages & Investment Platforms')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <ShieldCheck size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>{t('broker_deals.benefit_2', 'Tax-Advantaged IKE & IKZE Accounts')}</span>
+                  <span>{t('broker_deals.benefit_2', 'Curated Affiliate Links & Welcome Promos')}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <ShieldCheck size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                  <span>{t('broker_deals.benefit_3', 'Verified & Regulated European Brokers')}</span>
+                  <span>{t('broker_deals.benefit_3', 'Support QuantiFi Development at Zero Extra Cost')}</span>
                 </div>
               </div>
             </div>
@@ -352,7 +352,11 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                 fontWeight: 600,
                 borderRadius: '8px',
                 cursor: 'pointer',
-                border: 'none'
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center'
               }}
             >
               {t('common.close', 'Got it')}
