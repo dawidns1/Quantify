@@ -606,6 +606,8 @@
       "label_name": "Portfolio Name",
       "label_risk_free": "Annual Risk-Free Rate (%)",
       "label_tax_rate": "Default Dividend Tax Rate (%)",
+      "move_account_down": "Move account down",
+      "move_account_up": "Move account up",
       "neon_themes_title": "Sub-Account Settings & Neon Themes",
       "no_accounts": "No accounts found in your ledger. Add stock transactions to configure.",
       "tax_exempt": "Tax-Exempt",
@@ -774,6 +776,7 @@
     "remove_watchlist": "Remove from Watchlist",
     "rename_portfolio": "Rename Portfolio",
     "rename_portfolio_tooltip": "Rename Portfolio",
+    "reorder_portfolios": "Reorder Portfolios",
     "sign_out": "Sign Out",
     "view_mode": "View Mode"
   },

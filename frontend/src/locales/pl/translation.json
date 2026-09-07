@@ -606,6 +606,8 @@
       "label_name": "Nazwa portfela",
       "label_risk_free": "Stopa wolna od ryzyka (%)",
       "label_tax_rate": "Domyślna stawka podatku od dywidend (%)",
+      "move_account_down": "Przesuń konto w dół",
+      "move_account_up": "Przesuń konto w górę",
       "neon_themes_title": "Ustawienia subkont i motywy neonowe",
       "no_accounts": "Brak kont w księdze. Dodaj transakcje giełdowe, aby skonfigurować.",
       "tax_exempt": "Zwolnione z podatku",
@@ -774,6 +776,7 @@
     "remove_watchlist": "Usuń z listy obserwowanych",
     "rename_portfolio": "Zmień nazwę portfela",
     "rename_portfolio_tooltip": "Zmień nazwę portfela",
+    "reorder_portfolios": "Zmień kolejność portfeli",
     "sign_out": "Wyloguj się",
     "view_mode": "Tryb widoku"
   },

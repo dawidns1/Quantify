@@ -96,8 +96,35 @@ export function Sidebar({
   // (We'll also add pIndex to portfolios.map((portfolio, pIndex) => ...))
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>({});
-  const [allAssetsExpanded, setAllAssetsExpanded] = useState(true);
+  const [expandedPortfolios, setExpandedPortfolios] = useState<Record<string, boolean>>(() => {
+    try {
+      const cached = localStorage.getItem('quantifi_expanded_portfolios');
+      const parsed = cached ? JSON.parse(cached) : {};
+      const activeId = localStorage.getItem('portfolio_active_id');
+      if (activeId && activeId !== 'all') {
+        parsed[activeId] = true;
+      }
+      return parsed;
+    } catch (e) {
+      return {};
+    }
+  });
+  const [allAssetsExpanded, setAllAssetsExpanded] = useState<boolean>(() => {
+    return localStorage.getItem('quantifi_all_assets_expanded') !== 'false';
+  });
+
+  // Automatically expand active portfolio in the tree whenever active portfolio or account changes
+  useEffect(() => {
+    if (activePortfolioId && activePortfolioId !== 'all') {
+      setExpandedPortfolios(prev => {
+        if (prev[activePortfolioId]) return prev;
+        const next = { ...prev, [activePortfolioId]: true };
+        localStorage.setItem('quantifi_expanded_portfolios', JSON.stringify(next));
+        return next;
+      });
+      setAllAssetsExpanded(true);
+    }
+  }, [activePortfolioId, selectedAccount]);
 
   // Watchlist State & Logic
   const [watchlist, setWatchlist] = useState<string[]>(() => {
@@ -258,10 +285,14 @@ export function Sidebar({
 
   const togglePortfolioExpand = (portfolioId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedPortfolios(prev => ({
-      ...prev,
-      [portfolioId]: !prev[portfolioId]
-    }));
+    setExpandedPortfolios(prev => {
+      const next = {
+        ...prev,
+        [portfolioId]: !prev[portfolioId]
+      };
+      localStorage.setItem('quantifi_expanded_portfolios', JSON.stringify(next));
+      return next;
+    });
   };
 
   return (
@@ -659,8 +690,82 @@ export function Sidebar({
                             {portfolio.name}
                           </span>
                           
-                          {/* Portfolio Actions */}
-                          {(portfolio.role === 'owner' || (portfolios.length > 1 && onReorderPortfolios)) && (
+                          {/* Up / Down Reordering chevrons (always visible when multiple portfolios) */}
+                          {portfolios.length > 1 && onReorderPortfolios && (
+                            <div 
+                              style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: '1px', 
+                                opacity: isActive ? 0.9 : 0.45,
+                                transition: 'opacity 0.15s ease',
+                                position: 'absolute',
+                                right: portfolio.role === 'owner' ? (isActive ? '4.5rem' : '1.8rem') : '0.5rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                zIndex: 10
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = isActive ? '0.9' : '0.45')}
+                            >
+                              <button
+                                disabled={pIndex === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (pIndex > 0) {
+                                    const newOrder = [...portfolios];
+                                    const temp = newOrder[pIndex];
+                                    newOrder[pIndex] = newOrder[pIndex - 1];
+                                    newOrder[pIndex - 1] = temp;
+                                    onReorderPortfolios(newOrder);
+                                  }
+                                }}
+                                title={t('sidebar.move_portfolio_up', 'Move Portfolio Up')}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: pIndex === 0 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                  cursor: pIndex === 0 ? 'default' : 'pointer',
+                                  padding: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  lineHeight: 1
+                                }}
+                              >
+                                <ChevronUp size={12} />
+                              </button>
+                              <button
+                                disabled={pIndex === portfolios.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (pIndex < portfolios.length - 1) {
+                                    const newOrder = [...portfolios];
+                                    const temp = newOrder[pIndex];
+                                    newOrder[pIndex] = newOrder[pIndex + 1];
+                                    newOrder[pIndex + 1] = temp;
+                                    onReorderPortfolios(newOrder);
+                                  }
+                                }}
+                                title={t('sidebar.move_portfolio_down', 'Move Portfolio Down')}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                  cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
+                                  padding: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  lineHeight: 1
+                                }}
+                              >
+                                <ChevronDown size={12} />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Portfolio Management Actions */}
+                          {portfolio.role === 'owner' && (
                             <div 
                               className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
                               style={{ 
@@ -668,81 +773,22 @@ export function Sidebar({
                                 right: '0.5rem',
                                 top: '50%',
                                 transform: 'translateY(-50%)',
-                                zIndex: 10,
+                                zIndex: 11,
                                 display: isActive ? 'flex' : undefined,
                                 gap: '0.25rem',
                                 alignItems: 'center'
                               }} 
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {/* Up / Down Reordering chevrons */}
-                              {portfolios.length > 1 && onReorderPortfolios && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', opacity: 0.85 }}>
-                                  <button
-                                    disabled={pIndex === 0}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (pIndex > 0) {
-                                        const newOrder = [...portfolios];
-                                        const temp = newOrder[pIndex];
-                                        newOrder[pIndex] = newOrder[pIndex - 1];
-                                        newOrder[pIndex - 1] = temp;
-                                        onReorderPortfolios(newOrder);
-                                      }
-                                    }}
-                                    title={t('sidebar.move_portfolio_up', 'Move Portfolio Up')}
-                                    style={{
-                                      background: 'transparent',
-                                      border: 'none',
-                                      color: pIndex === 0 ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
-                                      cursor: pIndex === 0 ? 'default' : 'pointer',
-                                      padding: 0,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      lineHeight: 1
-                                    }}
-                                  >
-                                    <ChevronUp size={11} />
-                                  </button>
-                                  <button
-                                    disabled={pIndex === portfolios.length - 1}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (pIndex < portfolios.length - 1) {
-                                        const newOrder = [...portfolios];
-                                        const temp = newOrder[pIndex];
-                                        newOrder[pIndex] = newOrder[pIndex + 1];
-                                        newOrder[pIndex + 1] = temp;
-                                        onReorderPortfolios(newOrder);
-                                      }
-                                    }}
-                                    title={t('sidebar.move_portfolio_down', 'Move Portfolio Down')}
-                                    style={{
-                                      background: 'transparent',
-                                      border: 'none',
-                                      color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
-                                      cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
-                                      padding: 0,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      lineHeight: 1
-                                    }}
-                                  >
-                                    <ChevronDown size={11} />
-                                  </button>
-                                </div>
+                              {isActive && (
+                                <button
+                                  onClick={() => onSettingsClick?.()}
+                                  title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                >
+                                  <Settings size={12} />
+                                </button>
                               )}
-                              {portfolio.role === 'owner' && (
-                                <>
-                                  {isActive && (
-                                    <button
-                                      onClick={() => onSettingsClick?.()}
-                                      title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
-                                      style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                    >
-                                      <Settings size={12} />
-                                    </button>
-                                  )}
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -767,8 +813,6 @@ export function Sidebar({
                                   >
                                     <Trash2 size={11} />
                                   </button>
-                                </>
-                              )}
                             </div>
                           )}
                         </div>

@@ -339,8 +339,26 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (!map[pId]) map[pId] = [];
       if (!map[pId].includes(acc)) map[pId].push(acc);
     });
+
+    // Sort accounts according to each portfolio's account_order setting
+    portfolios.forEach(p => {
+      if (map[p.id]) {
+        const order: string[] = p.settings?.account_order || p.settings?.accountOrder || [];
+        if (order.length > 0) {
+          map[p.id].sort((a, b) => {
+            const idxA = order.indexOf(a);
+            const idxB = order.indexOf(b);
+            if (idxA === -1 && idxB === -1) return 0;
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+          });
+        }
+      }
+    });
+
     return map;
-  }, [allTransactions]);
+  }, [allTransactions, portfolios]);
 
   const uniqueAccounts = useMemo(() => {
     if (!activePortfolioId) return [];
@@ -736,12 +754,26 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setActivePortfolioId(found.id);
           setActivePortfolioRole(found.role);
         } else {
+          // If cached ID was deleted or missing, open single portfolio if only 1, otherwise 'all'
+          if (formatted.length === 1) {
+            setActivePortfolioId(formatted[0].id);
+            setActivePortfolioRole(formatted[0].role);
+            localStorage.setItem('portfolio_active_id', formatted[0].id);
+          } else {
+            setActivePortfolioId('all');
+            setActivePortfolioRole('viewer');
+          }
+        }
+      } else {
+        // First time open: if user only has 1 portfolio (new registration), focus it directly!
+        if (formatted.length === 1) {
+          setActivePortfolioId(formatted[0].id);
+          setActivePortfolioRole(formatted[0].role);
+          localStorage.setItem('portfolio_active_id', formatted[0].id);
+        } else {
           setActivePortfolioId('all');
           setActivePortfolioRole('viewer');
         }
-      } else {
-        setActivePortfolioId('all');
-        setActivePortfolioRole('viewer');
       }
     } catch (err) {
       console.error('Error loading portfolios:', err);

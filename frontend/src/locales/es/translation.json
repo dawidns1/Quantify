@@ -606,6 +606,8 @@
       "label_name": "Nombre del portafolio",
       "label_risk_free": "Tasa libre de riesgo anual (%)",
       "label_tax_rate": "Tasa de impuestos sobre dividendos predeterminada (%)",
+      "move_account_down": "Mover cuenta hacia abajo",
+      "move_account_up": "Mover cuenta hacia arriba",
       "neon_themes_title": "Configuración de subcuentas y temas neón",
       "no_accounts": "No se encontraron cuentas en su libro. Añada transacciones de acciones para configurar.",
       "tax_exempt": "Exento de impuestos",
@@ -774,6 +776,7 @@
     "remove_watchlist": "Eliminar de la lista de seguimiento",
     "rename_portfolio": "Renombrar portafolio",
     "rename_portfolio_tooltip": "Renombrar portafolio",
+    "reorder_portfolios": "Reordenar portafolios",
     "sign_out": "Cerrar sesión",
     "view_mode": "Modo de vista"
   },

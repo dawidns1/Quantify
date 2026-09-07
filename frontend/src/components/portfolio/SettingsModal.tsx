@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Settings, Check, HelpCircle, Save, Palette } from 'lucide-react';
+import { X, Settings, Check, HelpCircle, Save, Palette, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Portfolio } from '../../types/portfolio';
 import { updatePortfolioSettings } from '../../services/supabaseService';
@@ -23,6 +23,7 @@ export function SettingsModal({
   const { t } = useTranslation();
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
   const [accountColors, setAccountColors] = useState<Record<string, string>>({});
+  const [orderedAccounts, setOrderedAccounts] = useState<string[]>([]);
   const [riskFreeRate, setRiskFreeRate] = useState<number>(2.0);
   const [betaBenchmark, setBetaBenchmark] = useState<string>('SPY');
   const [costBasisMethod, setCostBasisMethod] = useState<'average_cost' | 'fifo'>('average_cost');
@@ -55,6 +56,19 @@ export function SettingsModal({
       setBetaBenchmark(portfolio.settings?.beta_benchmark || 'SPY');
       setCostBasisMethod(portfolio.settings?.cost_basis_method || 'average_cost');
       setAddDividendsToCash(portfolio.settings?.add_dividends_to_cash !== false);
+
+      // Initialize ordered accounts
+      const savedOrder: string[] = portfolio.settings?.account_order || portfolio.settings?.accountOrder || [];
+      const initialAccounts = [...portfolioAccounts].sort((a, b) => {
+        const idxA = savedOrder.indexOf(a);
+        const idxB = savedOrder.indexOf(b);
+        if (idxA === -1 && idxB === -1) return 0;
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
+      setOrderedAccounts(initialAccounts);
+
       setErrorMsg(null);
       setSuccessMsg(false);
     }
@@ -63,6 +77,17 @@ export function SettingsModal({
   if (!isOpen || !portfolio) return null;
 
   const isViewer = portfolio.role === 'viewer';
+
+  const moveAccount = (index: number, direction: 'up' | 'down') => {
+    if (isViewer) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedAccounts.length) return;
+    const next = [...orderedAccounts];
+    const temp = next[index];
+    next[index] = next[targetIndex];
+    next[targetIndex] = temp;
+    setOrderedAccounts(next);
+  };
 
   const handleTaxExemptChange = (account: string, isExempt: boolean) => {
     setAccountTaxRates(prev => ({
@@ -87,6 +112,8 @@ export function SettingsModal({
     try {
       const updatedSettings = {
         ...portfolio.settings,
+        account_order: orderedAccounts,
+        accountOrder: orderedAccounts,
         accountTaxRates,
         accountColors,
         account_colors: accountColors,
@@ -150,12 +177,12 @@ export function SettingsModal({
                 Sub-Account Settings & Neon Themes
               </span>
 
-              {portfolioAccounts.length === 0 ? (
+              {orderedAccounts.length === 0 ? (
                 <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   {t('modals.settings.no_accounts')}
                 </div>
               ) : (
-                portfolioAccounts.map(accName => {
+                orderedAccounts.map((accName, accIndex) => {
                   const rate = accountTaxRates[accName] !== undefined ? accountTaxRates[accName] : 0.19;
                   const isExempt = rate === 0;
                   const percentDisplay = (rate * 100).toFixed(0);
@@ -176,8 +203,48 @@ export function SettingsModal({
                         flexWrap: 'wrap'
                       }}
                     >
-                      {/* Left: Glowing Neon Dot + Account Name */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: '120px' }}>
+                      {/* Left: Reorder Buttons + Glowing Neon Dot + Account Name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '120px' }}>
+                        {orderedAccounts.length > 1 && !isViewer && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <button
+                              type="button"
+                              disabled={accIndex === 0}
+                              onClick={() => moveAccount(accIndex, 'up')}
+                              title={t('modals.settings.move_account_up', 'Move account up')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: accIndex === 0 ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-muted)',
+                                cursor: accIndex === 0 ? 'default' : 'pointer',
+                                padding: '1px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                lineHeight: 1
+                              }}
+                            >
+                              <ChevronUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={accIndex === orderedAccounts.length - 1}
+                              onClick={() => moveAccount(accIndex, 'down')}
+                              title={t('modals.settings.move_account_down', 'Move account down')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: accIndex === orderedAccounts.length - 1 ? 'rgba(255, 255, 255, 0.15)' : 'var(--text-muted)',
+                                cursor: accIndex === orderedAccounts.length - 1 ? 'default' : 'pointer',
+                                padding: '1px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                lineHeight: 1
+                              }}
+                            >
+                              <ChevronDown size={13} />
+                            </button>
+                          </div>
+                        )}
                         <div 
                           style={{ 
                             width: '10px', 
