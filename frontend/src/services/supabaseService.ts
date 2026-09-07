@@ -145,7 +145,7 @@ export async function inviteMemberByEmail(
     .from('profiles')
     .select('id')
     .eq('email', email)
-    .single();
+    .maybeSingle();
 
   if (profileError || !profile) {
     throw new Error("No user found with this email. They must log in to QuantiFi at least once first.");

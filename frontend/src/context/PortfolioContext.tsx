@@ -122,7 +122,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   });
 
   const [activePortfolioId, setActivePortfolioIdState] = useState<string | null>(() => {
-    return localStorage.getItem('portfolio_active_id');
+    return localStorage.getItem('portfolio_active_id') || 'all';
   });
 
   const [activePortfolioRole, setActivePortfolioRoleState] = useState<'owner' | 'editor' | 'viewer'>(() => {
@@ -730,15 +730,18 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (cachedId === 'all') {
         setActivePortfolioId('all');
         setActivePortfolioRole('viewer');
-      } else {
+      } else if (cachedId) {
         const found = formatted.find(p => p.id === cachedId);
         if (found) {
           setActivePortfolioId(found.id);
           setActivePortfolioRole(found.role);
         } else {
-          setActivePortfolioId(formatted[0].id);
-          setActivePortfolioRole(formatted[0].role);
+          setActivePortfolioId('all');
+          setActivePortfolioRole('viewer');
         }
+      } else {
+        setActivePortfolioId('all');
+        setActivePortfolioRole('viewer');
       }
     } catch (err) {
       console.error('Error loading portfolios:', err);
@@ -773,12 +776,13 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       const cachedF = localStorage.getItem(`cached_dividend_forecast_${activePortfolioId}_${baseCurrency}_${selectedAccount}_${linkCash}`);
       const cachedE = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
 
-      if (cachedH && cachedS) {
+      const hasCached = !!(cachedH && cachedS);
+      if (hasCached) {
         try {
-          const parsedH: Holding[] = JSON.parse(cachedH);
+          const parsedH: Holding[] = JSON.parse(cachedH!);
           const isWeekend = new Date().getDay() === 0 || new Date().getDay() === 6;
           setHoldings(isWeekend ? parsedH.map(h => ({ ...h, is_live: false })) : parsedH);
-          setSummary(JSON.parse(cachedS));
+          setSummary(JSON.parse(cachedS!));
           if (cachedDiv) setDividendsList(JSON.parse(cachedDiv));
           if (cachedC) setChartData(JSON.parse(cachedC));
           if (cachedA) setAnalytics(JSON.parse(cachedA));
@@ -787,7 +791,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         } catch (e) {}
       }
 
-      fetchPortfolioBundle(baseCurrency, selectedAccount, false, true);
+      // If cached data is present, fetch silently in background without forcing live quotes
+      // If no cache, fetch with non-silent bottom pill, but still forceRefresh=false to use server cache
+      fetchPortfolioBundle(baseCurrency, selectedAccount, hasCached, false);
     } else {
       setLoadingHoldings(false);
       setLoadingChart(false);

@@ -109,6 +109,7 @@ export function Sidebar({
 
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [showBrokerDealsModal, setShowBrokerDealsModal] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   // Global search state
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -462,7 +463,7 @@ export function Sidebar({
             </button>
 
             <button 
-              onClick={signOut}
+              onClick={() => setShowSignOutModal(true)}
               style={{
                 flex: 1,
                 background: 'rgba(239, 68, 68, 0.08)',
@@ -652,14 +653,14 @@ export function Sidebar({
                             whiteSpace: 'nowrap', 
                             paddingRight: portfolio.role === 'owner' 
                               ? (isActive ? '5.8rem' : '3.8rem') 
-                              : '0.5rem',
+                              : (portfolios.length > 1 && onReorderPortfolios ? '2rem' : '0.5rem'),
                             fontSize: '0.82rem'
                           }}>
                             {portfolio.name}
                           </span>
                           
                           {/* Portfolio Actions */}
-                          {portfolio.role === 'owner' && (
+                          {(portfolio.role === 'owner' || (portfolios.length > 1 && onReorderPortfolios)) && (
                             <div 
                               className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
                               style={{ 
@@ -676,7 +677,7 @@ export function Sidebar({
                             >
                               {/* Up / Down Reordering chevrons */}
                               {portfolios.length > 1 && onReorderPortfolios && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', opacity: 0.8 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', opacity: 0.85 }}>
                                   <button
                                     disabled={pIndex === 0}
                                     onClick={(e) => {
@@ -693,7 +694,7 @@ export function Sidebar({
                                     style={{
                                       background: 'transparent',
                                       border: 'none',
-                                      color: pIndex === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)',
+                                      color: pIndex === 0 ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
                                       cursor: pIndex === 0 ? 'default' : 'pointer',
                                       padding: 0,
                                       display: 'flex',
@@ -701,7 +702,7 @@ export function Sidebar({
                                       lineHeight: 1
                                     }}
                                   >
-                                    <ChevronUp size={10} />
+                                    <ChevronUp size={11} />
                                   </button>
                                   <button
                                     disabled={pIndex === portfolios.length - 1}
@@ -719,7 +720,7 @@ export function Sidebar({
                                     style={{
                                       background: 'transparent',
                                       border: 'none',
-                                      color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-muted)',
+                                      color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
                                       cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
                                       padding: 0,
                                       display: 'flex',
@@ -727,43 +728,47 @@ export function Sidebar({
                                       lineHeight: 1
                                     }}
                                   >
-                                    <ChevronDown size={10} />
+                                    <ChevronDown size={11} />
                                   </button>
                                 </div>
                               )}
-                              {isActive && (
-                                <button
-                                  onClick={() => onSettingsClick?.()}
-                                  title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                >
-                                  <Settings size={12} />
-                                </button>
+                              {portfolio.role === 'owner' && (
+                                <>
+                                  {isActive && (
+                                    <button
+                                      onClick={() => onSettingsClick?.()}
+                                      title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
+                                      style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    >
+                                      <Settings size={12} />
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onRenamePortfolio(portfolio.id);
+                                    }}
+                                    title={t('sidebar.rename_portfolio_tooltip', 'Rename Portfolio')}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                                  >
+                                    <Edit2 size={11} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeletePortfolio(portfolio.id);
+                                    }}
+                                    title={t('sidebar.delete_portfolio_tooltip', 'Delete Portfolio')}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </>
                               )}
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRenamePortfolio(portfolio.id);
-                                }}
-                                title={t('sidebar.rename_portfolio_tooltip', 'Rename Portfolio')}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                              >
-                                <Edit2 size={11} />
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeletePortfolio(portfolio.id);
-                                }}
-                                title={t('sidebar.delete_portfolio_tooltip', 'Delete Portfolio')}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-                              >
-                                <Trash2 size={11} />
-                              </button>
                             </div>
                           )}
                         </div>
@@ -1269,6 +1274,100 @@ export function Sidebar({
         isOpen={showBrokerDealsModal} 
         onClose={() => setShowBrokerDealsModal(false)} 
       />
+
+      {/* Sign Out Confirmation Modal */}
+      {showSignOutModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '1rem'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '380px',
+            width: '100%',
+            background: 'var(--panel-bg, #0b111e)',
+            border: '1px solid var(--panel-border, rgba(255,255,255,0.1))',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-red)'
+              }}>
+                <LogOut size={18} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'white' }}>
+                {t('auth.sign_out_confirm_title', 'Sign Out')}
+              </h3>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {t('auth.sign_out_confirm_msg', 'Are you sure you want to sign out of QuantiFi?')}
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowSignOutModal(false)}
+                className="input-field"
+                style={{
+                  padding: '0.45rem 1rem',
+                  background: 'transparent',
+                  borderColor: 'var(--panel-border)',
+                  color: 'var(--text-secondary)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  height: 'auto',
+                  width: 'auto',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowSignOutModal(false);
+                  await signOut();
+                }}
+                className="glow-btn"
+                style={{
+                  padding: '0.45rem 1rem',
+                  background: 'var(--color-red)',
+                  borderColor: 'var(--color-red)',
+                  color: 'white',
+                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  height: 'auto',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {t('auth.sign_out_btn', 'Sign Out')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }

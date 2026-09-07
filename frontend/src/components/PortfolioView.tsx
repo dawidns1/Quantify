@@ -886,8 +886,8 @@ export function PortfolioView({
             </button>
           </div>
 
-          {/* Shimmer / Skeleton Loading placeholder for initial data fetch */}
-          {((loadingPortfolios && portfolios.length === 0) || (loadingHoldings && holdings.length === 0) || (loadingTransactions && allTransactions.length === 0)) ? (
+          {/* Shimmer / Skeleton Loading placeholder for initial bootstrap only (brand new user / unhydrated) */}
+          {(loadingPortfolios && portfolios.length === 0 && allTransactions.length === 0) ? (
             <div style={{ position: 'relative', width: '100%', minHeight: '520px' }}>
               {/* Blur/Faded Skeletons Backdrop */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', filter: 'blur(4px)', opacity: 0.3, pointerEvents: 'none', userSelect: 'none' }}>

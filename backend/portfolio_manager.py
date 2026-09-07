@@ -228,12 +228,15 @@ class PortfolioManager:
         if cached_end >= target_end:
             return True
         today = date.today()
+        # The latest closed daily candle is Friday if today is Sat/Sun/Mon, or yesterday for Tue-Fri
         if today.weekday() == 5:
             last_trading_day = today - timedelta(days=1)
         elif today.weekday() == 6:
             last_trading_day = today - timedelta(days=2)
+        elif today.weekday() == 0:
+            last_trading_day = today - timedelta(days=3)
         else:
-            last_trading_day = today
+            last_trading_day = today - timedelta(days=1)
         return cached_end >= last_trading_day
 
     @classmethod
@@ -417,7 +420,7 @@ class PortfolioManager:
                     cls._historical_stock_cache[sym] = {
                         "start_date": min_date,
                         "end_date": max_date,
-                        "last_updated": now if is_complete else (now - 86400),
+                        "last_updated": now,
                         "prices": sqlite_prices,
                         "dividends": sqlite_divs
                     }
