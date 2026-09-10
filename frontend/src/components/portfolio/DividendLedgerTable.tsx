@@ -252,7 +252,7 @@ export function DividendLedgerTable({
                         {div.symbol}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
                       {(() => {
                         const theme = getAccountNeonTheme(div.account, accountColors);
                         return (
@@ -265,7 +265,9 @@ export function DividendLedgerTable({
                             border: theme.border,
                             boxShadow: theme.glow,
                             fontWeight: 700,
-                            letterSpacing: '0.3px'
+                            letterSpacing: '0.3px',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block'
                           }}>
                             {div.account || 'Default'}
                           </span>

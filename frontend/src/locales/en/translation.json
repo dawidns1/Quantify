@@ -262,7 +262,10 @@
     "total_net": "Total Net",
     "view_ledger_tooltip": "View Settled Dividend Ledger",
     "view_projections_tooltip": "View 12-Month Projections",
-    "yield_on_cost": "Yield on Cost"
+    "yield_on_cost": "Yield on Cost",
+    "tab_forecast": "Forecast",
+    "tab_calendar": "Calendar",
+    "tab_ledger": "Payouts"
   },
   "events": {
     "earnings_release": "Earnings Release",
@@ -820,5 +823,11 @@
     "no_logs_desc": "Interact with the app or refresh to generate real-time metrics.",
     "refresh_logs": "Refresh Logs",
     "title": "System Telemetry & Performance Inspector"
+  },
+  "nav": {
+    "assets": "Assets",
+    "analytics": "Analytics",
+    "income": "Income",
+    "activity": "Activity"
   }
 }

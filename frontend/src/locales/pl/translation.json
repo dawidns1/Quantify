@@ -262,7 +262,10 @@
     "total_net": "Suma netto",
     "view_ledger_tooltip": "Zobacz rejestr rozliczonych dywidend",
     "view_projections_tooltip": "Zobacz 12-miesięczne prognozy",
-    "yield_on_cost": "Wskaźnik Yield on Cost (YoC)"
+    "yield_on_cost": "Wskaźnik Yield on Cost (YoC)",
+    "tab_forecast": "Prognoza",
+    "tab_calendar": "Kalendarz",
+    "tab_ledger": "Wypłaty"
   },
   "events": {
     "earnings_release": "Publikacja wyników",
@@ -820,5 +823,11 @@
     "no_logs_desc": "Wykonaj akcje w aplikacji lub odśwież stronę, aby wygenerować metryki.",
     "refresh_logs": "Odśwież logi",
     "title": "Telemetria Systemowa i Inspekcja Wydajności"
+  },
+  "nav": {
+    "assets": "Aktywa",
+    "analytics": "Analityka",
+    "income": "Dywidendy",
+    "activity": "Transakcje"
   }
 }

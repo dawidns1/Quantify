@@ -841,7 +841,12 @@ export function HoldingsTable({
           <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>{t('holdings.empty_state_desc', 'Click "Add Transaction" below to register purchases.')}</p>
         </div>
       ) : (
-        <div className="table-wrapper" onScroll={handleScroll} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div className="table-wrapper" onScroll={handleScroll} style={{ 
+          flex: 1, 
+          minHeight: 0, 
+          overflowY: 'auto',
+          paddingBottom: isMobile ? 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' : undefined 
+        }}>
           <table 
             className="screener-table" 
             style={{ 

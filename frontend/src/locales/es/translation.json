@@ -262,7 +262,10 @@
     "total_net": "Total neto",
     "view_ledger_tooltip": "Ver libro de dividendos liquidados",
     "view_projections_tooltip": "Ver proyecciones a 12 meses",
-    "yield_on_cost": "Rendimiento sobre el costo"
+    "yield_on_cost": "Rendimiento sobre el costo",
+    "tab_forecast": "Pronóstico",
+    "tab_calendar": "Calendario",
+    "tab_ledger": "Pagos"
   },
   "events": {
     "earnings_release": "Presentación de resultados",
@@ -820,5 +823,11 @@
     "no_logs_desc": "Interactúa con la aplicación o actualiza para generar métricas.",
     "refresh_logs": "Actualizar registros",
     "title": "Telemetría del Sistema e Inspección de Rendimiento"
+  },
+  "nav": {
+    "assets": "Activos",
+    "analytics": "Analítica",
+    "income": "Ingresos",
+    "activity": "Actividad"
   }
 }

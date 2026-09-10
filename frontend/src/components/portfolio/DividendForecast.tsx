@@ -379,10 +379,11 @@ export function DividendForecast({
               justifyContent: 'space-between',
               alignItems: 'stretch',
               flex: 1,
+              height: '220px',
               minHeight: '200px',
-              padding: '0 0.5rem',
+              padding: '0 0.25rem',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
-              gap: '3%',
+              gap: '2%',
               position: 'relative'
             }}>
               {data.monthly_amounts.map((amount, idx) => {
@@ -420,6 +421,7 @@ export function DividendForecast({
                     {/* Dedicated Bar Area Container */}
                     <div style={{
                       flex: 1,
+                      height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'flex-end',

@@ -11,7 +11,11 @@ import {
   TrendingUp,
   Check,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Briefcase,
+  LineChart,
+  Coins,
+  History
 } from 'lucide-react';
 
 
@@ -127,8 +131,6 @@ export function PortfolioView({
   const [showAddDividendModal, setShowAddDividendModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingDividend, setEditingDividend] = useState<any | null>(null);
-  const [isHoldingsAtBottom, setIsHoldingsAtBottom] = useState(false);
-  const [isLedgerAtBottom, setIsLedgerAtBottom] = useState(false);
   const [quickActionData, setQuickActionData] = useState<{ symbol: string; type: 'BUY' | 'SELL' } | null>(null);
   const [customModal, setCustomModal] = useState<any | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -847,14 +849,33 @@ export function PortfolioView({
           )}
           
           {/* Top navigation Header Switcher Bar (Mobile only) */}
-          <div className="portfolio-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="portfolio-header-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                className="mobile-menu-toggle-btn"
+                onClick={() => setSidebarOpen(true)}
+                title={t('common.open_nav_menu', 'Open Navigation Menu')}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '6px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Menu size={16} />
+              </button>
               <img 
                 src="/favicon.png" 
                 alt="QuantiFi Logo" 
                 style={{
-                  width: '30px',
-                  height: '30px',
+                  width: '28px',
+                  height: '28px',
                   borderRadius: '6px',
                   boxShadow: '0 0 10px rgba(6, 182, 212, 0.35)',
                   objectFit: 'contain'
@@ -863,6 +884,8 @@ export function PortfolioView({
               <span style={{ fontWeight: 800, fontSize: '1.15rem', letterSpacing: '0.01em', color: '#ffffff' }}>
                 Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
               </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               {activePortfolioRole === 'viewer' && activePortfolioId !== 'all' && (
                 <span 
                   style={{
@@ -875,8 +898,7 @@ export function PortfolioView({
                     border: '1px solid rgba(245, 158, 11, 0.28)',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    marginLeft: '0.35rem'
+                    gap: '4px'
                   }}
                   title={t('dashboard.viewer_readonly_tooltip', 'Read-Only (Viewer) access to this portfolio')}
                 >
@@ -884,26 +906,22 @@ export function PortfolioView({
                   <span>{t('common.read_only', 'Read-Only')}</span>
                 </span>
               )}
-            </div>
-            <button 
-              className="mobile-menu-toggle-btn"
-              onClick={() => setSidebarOpen(true)}
-              title={t('common.open_nav_menu', 'Open Navigation Menu')}
-              style={{
+              <span style={{ 
+                fontSize: '0.74rem', 
+                color: 'var(--text-secondary)', 
+                fontWeight: 600, 
+                maxWidth: '120px', 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap',
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '2px 8px',
                 borderRadius: '6px',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-muted)',
-                cursor: 'pointer'
-              }}
-            >
-              <Menu size={16} />
-            </button>
+                border: '1px solid rgba(255, 255, 255, 0.06)'
+              }}>
+                {activePortfolio?.name || (activePortfolioId === 'all' ? t('sidebar.all_assets', 'All Assets') : '')}
+              </span>
+            </div>
           </div>
 
           {/* Shimmer / Skeleton Loading placeholder for initial bootstrap only (brand new user / unhydrated) */}
@@ -1149,7 +1167,6 @@ export function PortfolioView({
                                 activePortfolioRole={activePortfolioRole}
                                 onQuickAction={handleQuickAction}
                                 onSelectPositionSymbol={setSelectedPositionSymbol}
-                                onScrollToBottomChange={setIsHoldingsAtBottom}
                               />
                             </div>
                           )}
@@ -1363,50 +1380,6 @@ export function PortfolioView({
                           )}
                         </div>
 
-                        {/* Mobile Page Indicator Dots */}
-                        {isMobile && holdings.length > 0 && (
-                          <div className="mobile-page-indicator" style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            gap: '0.6rem',
-                            padding: '0.5rem 0 0.5rem 0',
-                            alignItems: 'center',
-                            marginTop: '0.25rem'
-                          }}>
-                            <button
-                              type="button"
-                              onClick={() => setMobileOverviewTab('holdings')}
-                              style={{
-                                width: '9px',
-                                height: '9px',
-                                borderRadius: '50%',
-                                border: 'none',
-                                background: mobileOverviewTab === 'holdings' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
-                                padding: 0,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                boxShadow: mobileOverviewTab === 'holdings' ? '0 0 8px var(--color-primary)' : 'none'
-                              }}
-                              aria-label="Holdings Page"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setMobileOverviewTab('analytics')}
-                              style={{
-                                width: '9px',
-                                height: '9px',
-                                borderRadius: '50%',
-                                border: 'none',
-                                background: mobileOverviewTab === 'analytics' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
-                                padding: 0,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                boxShadow: mobileOverviewTab === 'analytics' ? '0 0 8px var(--color-primary)' : 'none'
-                              }}
-                              aria-label="Analytics Page"
-                            />
-                          </div>
-                        )}
 
                         {/* Floating Expand Sidebar Button when collapsed */}
                         {!isMobile && !isRightColumnOpen && (
@@ -1466,7 +1439,6 @@ export function PortfolioView({
                   onImportCSVClick={() => setShowImportModal(true)}
                   onExportCSVClick={handleExportCSV}
                   style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-                  onScrollToBottomChange={setIsLedgerAtBottom}
                   accountColors={activeAccountColors}
                 />
               </div>
@@ -1552,8 +1524,84 @@ export function PortfolioView({
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={() => handleTouchEnd('dividends')}
-                    style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '2px' }}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      flex: 1, 
+                      overflowY: 'auto', 
+                      paddingRight: '2px',
+                      paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))'
+                    }}
                   >
+                    {/* Mobile Dividends Segmented Switcher */}
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      padding: '3px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                      marginBottom: '0.45rem',
+                      gap: '2px'
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('forecast')}
+                        style={{
+                          flex: 1,
+                          padding: '6px 0',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: mobileDividendsTab === 'forecast' ? 'rgba(6, 182, 212, 0.18)' : 'transparent',
+                          color: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'var(--text-muted)',
+                          fontWeight: mobileDividendsTab === 'forecast' ? 700 : 500,
+                          fontSize: '0.74rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'forecast' ? '0 0 10px rgba(6, 182, 212, 0.2)' : 'none'
+                        }}
+                      >
+                        {t('dividends.tab_forecast', 'Forecast')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('calendar')}
+                        style={{
+                          flex: 1,
+                          padding: '6px 0',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: mobileDividendsTab === 'calendar' ? 'rgba(6, 182, 212, 0.18)' : 'transparent',
+                          color: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'var(--text-muted)',
+                          fontWeight: mobileDividendsTab === 'calendar' ? 700 : 500,
+                          fontSize: '0.74rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'calendar' ? '0 0 10px rgba(6, 182, 212, 0.2)' : 'none'
+                        }}
+                      >
+                        {t('dividends.tab_calendar', 'Calendar')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMobileDividendsTab('ledger')}
+                        style={{
+                          flex: 1,
+                          padding: '6px 0',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: mobileDividendsTab === 'ledger' ? 'rgba(6, 182, 212, 0.18)' : 'transparent',
+                          color: mobileDividendsTab === 'ledger' ? 'var(--color-primary)' : 'var(--text-muted)',
+                          fontWeight: mobileDividendsTab === 'ledger' ? 700 : 500,
+                          fontSize: '0.74rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: mobileDividendsTab === 'ledger' ? '0 0 10px rgba(6, 182, 212, 0.2)' : 'none'
+                        }}
+                      >
+                        {t('dividends.tab_ledger', 'Payouts')}
+                      </button>
+                    </div>
+
                     {mobileDividendsTab === 'forecast' && (
                       <div style={{ minWidth: 0, height: 'auto' }}>
                         <DividendForecast 
@@ -1596,65 +1644,6 @@ export function PortfolioView({
                         style={{ flex: 'none', minHeight: 'auto', height: 'auto', marginTop: '0px' }}
                       />
                     )}
-
-                    {/* Mobile Page Indicator Dots */}
-                    <div className="mobile-page-indicator" style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      gap: '0.6rem',
-                      padding: '0.5rem 0 0.5rem 0',
-                      alignItems: 'center',
-                      marginTop: '0.25rem'
-                    }}>
-                      <button
-                        type="button"
-                        onClick={() => setMobileDividendsTab('forecast')}
-                        style={{
-                          width: '9px',
-                          height: '9px',
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: mobileDividendsTab === 'forecast' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
-                          padding: 0,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: mobileDividendsTab === 'forecast' ? '0 0 8px var(--color-primary)' : 'none'
-                        }}
-                        aria-label="Forecast Page"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMobileDividendsTab('calendar')}
-                        style={{
-                          width: '9px',
-                          height: '9px',
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: mobileDividendsTab === 'calendar' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
-                          padding: 0,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: mobileDividendsTab === 'calendar' ? '0 0 8px var(--color-primary)' : 'none'
-                        }}
-                        aria-label="Calendar Page"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setMobileDividendsTab('ledger')}
-                        style={{
-                          width: '9px',
-                          height: '9px',
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: mobileDividendsTab === 'ledger' ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.45)',
-                          padding: 0,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: mobileDividendsTab === 'ledger' ? '0 0 8px var(--color-primary)' : 'none'
-                        }}
-                        aria-label="Ledger Page"
-                      />
-                    </div>
                   </div>
                 )}
               </div>
@@ -1956,105 +1945,145 @@ export function PortfolioView({
       />
 
       {/* Floating Action Buttons Area (Bottom-Right Corner) */}
-      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (() => {
-        const hideFAB = isMobile && (
-          (subTab === 'overview' && mobileOverviewTab === 'holdings' && isHoldingsAtBottom) ||
-          (subTab === 'ledger' && isLedgerAtBottom)
-        );
-        return (
-          <>
-            {/* View Switcher FAB (ONLY in Desktop Dividends subTab, rendered side-by-side to the left at right: 6.2rem) */}
-            {!isMobile && subTab === 'dividends' && (
-              <button
-                type="button"
-                onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
-                title={dividendViewMode === 'overview' ? t('dividends.view_ledger_tooltip', 'View Payout Ledger') : t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
-                style={{
-                  position: 'fixed',
-                  bottom: '2rem',
-                  right: '6.2rem',
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))',
-                  border: '1px solid rgba(6, 182, 212, 0.5)',
-                  boxShadow: '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  zIndex: 99,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  outline: 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'scale(1.15)';
-                  e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.7), 0 6px 16px rgba(0, 0, 0, 0.4)';
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
-                  e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)';
-                }}
-              >
-                {dividendViewMode === 'overview' ? <FileText size={22} /> : <TrendingUp size={22} />}
-              </button>
-            )}
-
-            {/* Global + FAB Button (ALWAYS present at right: 2rem across ALL tabs!) */}
+      {activePortfolioId !== 'all' && activePortfolioRole !== 'viewer' && (
+        <>
+          {/* View Switcher FAB (ONLY in Desktop Dividends subTab, rendered side-by-side to the left at right: 6.2rem) */}
+          {!isMobile && subTab === 'dividends' && (
             <button
               type="button"
-              onClick={() => {
-                if (!triggerRandomUpsell()) {
-                  if (subTab === 'dividends') {
-                    setEditingDividend(null);
-                    setShowAddDividendModal(true);
-                  } else {
-                    setShowAddModal(true);
-                  }
-                }
-              }}
-              title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
+              onClick={() => setDividendViewMode(prev => prev === 'overview' ? 'ledger' : 'overview')}
+              title={dividendViewMode === 'overview' ? t('dividends.view_ledger_tooltip', 'View Payout Ledger') : t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
               style={{
                 position: 'fixed',
                 bottom: '2rem',
-                right: '2rem',
+                right: '6.2rem',
                 width: '56px',
                 height: '56px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95))',
+                border: '1px solid rgba(6, 182, 212, 0.5)',
+                boxShadow: '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)',
                 color: 'white',
-                border: 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
                 zIndex: 99,
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                outline: 'none',
-                opacity: hideFAB ? 0 : 1,
-                pointerEvents: hideFAB ? 'none' : 'auto',
-                transform: hideFAB ? 'translateY(100px) scale(0.8)' : 'scale(1)'
+                outline: 'none'
               }}
               onMouseEnter={(e) => {
-                if (hideFAB) return;
-                e.currentTarget.style.transform = 'scale(1.15) rotate(90deg)';
-                e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
+                e.currentTarget.style.transform = 'scale(1.15)';
+                e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.7), 0 6px 16px rgba(0, 0, 0, 0.4)';
+                e.currentTarget.style.borderColor = 'var(--color-primary)';
               }}
               onMouseLeave={(e) => {
-                if (hideFAB) return;
-                e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
-                e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)';
+                e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.5)';
               }}
             >
-              <Plus size={24} style={{ strokeWidth: 2.5 }} />
+              {dividendViewMode === 'overview' ? <FileText size={22} /> : <TrendingUp size={22} />}
             </button>
-          </>
-        );
-      })()}
+          )}
+
+          {/* Global + FAB Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!triggerRandomUpsell()) {
+                if (subTab === 'dividends') {
+                  setEditingDividend(null);
+                  setShowAddDividendModal(true);
+                } else {
+                  setShowAddModal(true);
+                }
+              }
+            }}
+            title={subTab === 'dividends' ? t('calendar.btn_add_div', 'Record Dividend') : t('dashboard.add_tx_shortcut', 'Add Transaction')}
+            style={{
+              position: 'fixed',
+              bottom: isMobile ? 'calc(68px + env(safe-area-inset-bottom, 0px))' : '2rem',
+              right: isMobile ? '1.25rem' : '2rem',
+              width: isMobile ? '48px' : '56px',
+              height: isMobile ? '48px' : '56px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+              color: 'white',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
+              zIndex: 99,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.12) rotate(90deg)';
+              e.currentTarget.style.boxShadow = '0 0 24px rgba(6, 182, 212, 0.8), 0 6px 16px rgba(0, 0, 0, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+              e.currentTarget.style.boxShadow = '0 0 16px rgba(6, 182, 212, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)';
+            }}
+          >
+            <Plus size={isMobile ? 22 : 24} style={{ strokeWidth: 2.5 }} />
+          </button>
+        </>
+      )}
+
+      {/* Mobile Persistent Bottom Navigation Bar (Thumb Zone) */}
+      {isMobile && (
+        <nav className="mobile-bottom-nav">
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${(subTab === 'overview' && mobileOverviewTab === 'holdings') ? 'active' : ''}`}
+            onClick={() => {
+              setSubTab('overview');
+              setMobileOverviewTab('holdings');
+            }}
+          >
+            <Briefcase size={20} />
+            <span className="mobile-bottom-nav-label">{t('nav.assets', 'Assets')}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${(subTab === 'overview' && mobileOverviewTab === 'analytics') ? 'active' : ''}`}
+            onClick={() => {
+              setSubTab('overview');
+              setMobileOverviewTab('analytics');
+            }}
+          >
+            <LineChart size={20} />
+            <span className="mobile-bottom-nav-label">{t('nav.analytics', 'Analytics')}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${subTab === 'dividends' ? 'active' : ''}`}
+            onClick={() => {
+              setSubTab('dividends');
+            }}
+          >
+            <Coins size={20} />
+            <span className="mobile-bottom-nav-label">{t('nav.income', 'Income')}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${subTab === 'ledger' ? 'active' : ''}`}
+            onClick={() => {
+              setSubTab('ledger');
+            }}
+          >
+            <History size={20} />
+            <span className="mobile-bottom-nav-label">{t('nav.activity', 'Activity')}</span>
+          </button>
+        </nav>
+      )}
 
     </div>
   );
