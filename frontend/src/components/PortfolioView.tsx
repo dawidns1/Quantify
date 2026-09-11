@@ -1165,7 +1165,7 @@ export function PortfolioView({
                           onTouchEnd={() => handleTouchEnd('overview')}
                           style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: isMobile ? '1fr' : (isRightColumnOpen ? '2fr 12px 1fr' : '1fr'), 
+                            gridTemplateColumns: isMobile ? '1fr' : (isRightColumnOpen ? 'minmax(0, 2fr) 12px minmax(300px, 1fr)' : '1fr'), 
                             gridTemplateRows: '1fr',
                             gap: '0px', 
                             marginTop: '0.25rem',

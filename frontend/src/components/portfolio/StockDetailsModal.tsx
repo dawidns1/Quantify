@@ -928,7 +928,7 @@ export function StockDetailsModal({
       <div className="modal-backdrop" onClick={() => setSelectedPositionSymbol(null)} style={{ cursor: 'pointer' }} />
       <div className="modal-overlay-container">
         <div className="modal-content" style={{ maxWidth: '850px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-          <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 1.75rem 0.75rem 1.75rem', flexWrap: 'wrap', gap: '0.75rem', background: 'rgba(18, 24, 38, 0.2)' }}>
+          <div className="modal-header stock-details-modal-header">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontSize: '1.35rem' }}>
               <History size={22} className="gradient-text" /> 
               <span style={{ fontWeight: 700 }}>{selectedPositionSymbol}</span>
@@ -973,15 +973,7 @@ export function StockDetailsModal({
             </div>
           </div>
 
-          <div className="custom-scrollbar" style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '1.25rem 1.75rem 1.75rem 1.75rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.25rem',
-            willChange: 'scroll-position'
-          }}>
+          <div className="custom-scrollbar stock-details-modal-body">
             {isCashTicker ? (
               <>
                 {/* Cash Reserve Dashboard Card */}
@@ -1218,7 +1210,7 @@ export function StockDetailsModal({
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.65rem' }}>
+                    <div className="stock-details-metrics-grid">
                       {holdingCards.map((card: any) => (
                         <div 
                           key={card.id} 
@@ -1408,7 +1400,7 @@ export function StockDetailsModal({
                       {t('holdings.ticker_metadata_unavailable', 'Corporate metrics and financials are currently unavailable for this ticker.')}
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
                       
                       {/* Left sub-column: Key metrics table */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

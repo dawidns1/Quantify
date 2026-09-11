@@ -328,31 +328,31 @@ export function DividendForecast({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1, minHeight: 0 }}>
           {/* Key Metrics row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.35rem' }}>
+          <div className="dividend-forecast-metrics-row">
             {/* Metric 1 */}
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+              <span className="forecast-metric-lbl" style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.forward_annual_income', 'Forward Annual Income')}
               </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace', textShadow: '0 0 10px rgba(16, 185, 129, 0.1)' }}>
+              <span className="forecast-metric-val" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-green)', fontFamily: 'monospace', textShadow: '0 0 10px rgba(16, 185, 129, 0.1)' }}>
                 {formatCurrency(data.forward_annual_income)}
               </span>
             </div>
             {/* Metric 2 */}
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+              <span className="forecast-metric-lbl" style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.forward_portfolio_yield', 'Forward Yield')}
               </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              <span className="forecast-metric-val" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {formatPercent(data.forward_yield)}
               </span>
             </div>
             {/* Metric 3 */}
             <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
+              <span className="forecast-metric-lbl" style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>
                 {t('dividends.yield_on_cost', 'Yield on Cost')}
               </span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+              <span className="forecast-metric-val" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                 {formatPercent(data.yield_on_cost)}
               </span>
             </div>
@@ -431,18 +431,13 @@ export function DividendForecast({
                     }}>
                       {/* Amount Label above the bar */}
                       {amount > 0 && (
-                        <span style={{
-                          position: 'absolute',
-                          bottom: `calc(${heightPercent} + 4px)`,
-                          fontSize: '0.65rem',
-                          fontWeight: 700,
-                          color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)',
-                          fontFamily: 'monospace',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          zIndex: 2,
-                          transition: 'bottom 0.2s ease-in-out, color 0.2s ease-in-out'
-                        }}>
+                        <span 
+                          className={`dividend-forecast-bar-amount ${isHovered ? 'is-hovered' : ''}`}
+                          style={{
+                            bottom: `calc(${heightPercent} + 4px)`,
+                            color: isHovered ? 'var(--color-green)' : 'var(--text-secondary)'
+                          }}
+                        >
                           {formatBarAmount(amount)}
                         </span>
                       )}
