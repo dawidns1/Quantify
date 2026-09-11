@@ -1658,6 +1658,15 @@ select option {
     display: flex !important;
   }
 
+  .mobile-sidebar-close-btn {
+    display: flex !important;
+  }
+
+  .tree-node-actions {
+    display: flex !important;
+    opacity: 0.7;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;

@@ -392,7 +392,11 @@
     "transaction_ledger": "Rejestr transakcji",
     "trend_days": "Trend (15d)",
     "view_pershare": "Na akcję",
-    "view_total": "Wartość całkowita"
+    "view_total": "Wartość całkowita",
+    "view_daily": "Dzienny",
+    "view_overall": "Całkowity",
+    "daily_change": "Zmiana dzienna",
+    "total_return": "Zwrot całkowity"
   },
   "import": {
     "btn_back": "Wstecz",
@@ -791,7 +795,10 @@
     "rename_portfolio_tooltip": "Zmień nazwę portfela",
     "reorder_portfolios": "Zmień kolejność portfeli",
     "sign_out": "Wyloguj się",
-    "view_mode": "Tryb widoku"
+    "view_mode": "Tryb widoku",
+    "move_account_up": "Przesuń konto w górę",
+    "move_account_down": "Przesuń konto w dół",
+    "close_nav_menu": "Zamknij menu nawigacji"
   },
   "broker_deals": {
     "title": "Promocje i bonusy maklerskie",

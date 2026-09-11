@@ -392,7 +392,11 @@
     "transaction_ledger": "Transaction Ledger",
     "trend_days": "Trend (15d)",
     "view_pershare": "Per Share",
-    "view_total": "Total Value"
+    "view_total": "Total Value",
+    "view_daily": "Daily",
+    "view_overall": "Overall",
+    "daily_change": "Daily Change",
+    "total_return": "Total Return"
   },
   "import": {
     "btn_back": "Back",
@@ -791,7 +795,10 @@
     "rename_portfolio_tooltip": "Rename Portfolio",
     "reorder_portfolios": "Reorder Portfolios",
     "sign_out": "Sign Out",
-    "view_mode": "View Mode"
+    "view_mode": "View Mode",
+    "move_account_up": "Move account up",
+    "move_account_down": "Move account down",
+    "close_nav_menu": "Close Navigation Menu"
   },
   "broker_deals": {
     "title": "Broker Deals & Community Perks",

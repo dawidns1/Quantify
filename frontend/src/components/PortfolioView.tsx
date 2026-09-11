@@ -727,6 +727,21 @@ export function PortfolioView({
           setPortfolios(newPortfolios);
           localStorage.setItem('cached_portfolio_order', JSON.stringify(newPortfolios.map(p => p.id)));
         }}
+        onReorderAccounts={async (portfolioId, newAccountOrder) => {
+          const targetPortfolio = portfolios.find(p => p.id === portfolioId);
+          if (!targetPortfolio) return;
+          const updatedSettings = {
+            ...targetPortfolio.settings,
+            account_order: newAccountOrder,
+            accountOrder: newAccountOrder
+          };
+          setPortfolios(prev => prev.map(p => p.id === portfolioId ? { ...p, settings: updatedSettings } : p));
+          try {
+            await updatePortfolioSettings(portfolioId, updatedSettings);
+          } catch (err) {
+            console.error('Failed to update account order:', err);
+          }
+        }}
         sidebarOpen={sidebarOpen}
         onCloseSidebar={() => setSidebarOpen(false)}
         subTab={subTab}

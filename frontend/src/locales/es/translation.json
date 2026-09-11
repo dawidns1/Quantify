@@ -392,7 +392,11 @@
     "transaction_ledger": "Libro de transacciones",
     "trend_days": "Tendencia (15d)",
     "view_pershare": "Por acción",
-    "view_total": "Valor total"
+    "view_total": "Valor total",
+    "view_daily": "Diario",
+    "view_overall": "Total",
+    "daily_change": "Cambio diario",
+    "total_return": "Retorno total"
   },
   "import": {
     "btn_back": "Atrás",
@@ -791,7 +795,10 @@
     "rename_portfolio_tooltip": "Renombrar portafolio",
     "reorder_portfolios": "Reordenar portafolios",
     "sign_out": "Cerrar sesión",
-    "view_mode": "Modo de vista"
+    "view_mode": "Modo de vista",
+    "move_account_up": "Mover cuenta hacia arriba",
+    "move_account_down": "Mover cuenta hacia abajo",
+    "close_nav_menu": "Cerrar menú de navegación"
   },
   "broker_deals": {
     "title": "Ofertas de brokers y ventajas de la comunidad",

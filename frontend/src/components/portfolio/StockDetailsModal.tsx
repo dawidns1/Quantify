@@ -154,6 +154,16 @@ export function StockDetailsModal({
     localStorage.setItem('holdings_gain_loss_mode', mode);
   };
 
+  // Daily vs Overall performance return mode
+  const [returnMode, setReturnMode] = useState<'daily' | 'overall'>(() => {
+    return (localStorage.getItem('details_return_mode') as 'daily' | 'overall') || 'overall';
+  });
+
+  const handleToggleReturnMode = (mode: 'daily' | 'overall') => {
+    setReturnMode(mode);
+    localStorage.setItem('details_return_mode', mode);
+  };
+
   // Fetch stock details on symbol change
   useEffect(() => {
     if (!selectedPositionSymbol) {
@@ -785,17 +795,6 @@ export function StockDetailsModal({
     return listWithTotals;
   }, [transactions, holdings, selectedPositionSymbol, modalSearchQuery, modalSortField, modalSortAsc]);
 
-  // Derive user's active visible columns from main holdings table configuration
-  const visibleColKeys = useMemo(() => {
-    try {
-      const cached = localStorage.getItem('portfolio_visible_columns_desktop');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return ['shares', 'avg_cost', 'price', 'current_value', 'gain_loss'];
-  }, []);
 
   const totalPortfolioValue = useMemo(() => {
     return holdings.reduce((sum, h) => sum + (h.current_value_base || 0), 0);
@@ -816,117 +815,111 @@ export function StockDetailsModal({
       ? (shares > 0 ? holdingDetails.gain_base / shares : 0)
       : holdingDetails.gain_base;
 
-    const availableCards: Record<string, {
-      id: string;
-      label: string;
-      value: string;
-      color?: string;
-      highlight?: boolean;
-      tooltip?: string;
-      isLive?: boolean;
-    }> = {
-      shares: {
-        id: 'shares',
-        label: t('holdings.col_shares', 'Shares'),
-        value: holdingDetails.shares.toFixed(4).replace(/\.?0+$/, '')
-      },
-      avg_cost: {
-        id: 'avg_cost',
-        label: isPerShare ? t('holdings.col_avg_cost', 'Avg Cost') : t('holdings.col_total_cost', 'Cost (Local)'),
-        value: formatFinancialValue(isPerShare ? holdingDetails.avg_cost_local : holdingDetails.shares * holdingDetails.avg_cost_local, holdingDetails.currency)
-      },
-      price: {
-        id: 'price',
-        label: isPerShare ? t('holdings.col_price', 'Market Price') : t('holdings.col_current_val_local', 'Current Value (Local)'),
-        value: formatFinancialValue(isPerShare ? holdingDetails.current_price_local : holdingDetails.shares * holdingDetails.current_price_local, holdingDetails.currency),
-        color: 'var(--color-primary)',
-        isLive: holdingDetails.is_live,
-        tooltip: holdingDetails.is_live 
-          ? (isDelayedFeedTicker(holdingDetails.symbol) 
-              ? t('holdings.tooltip_live_delayed', 'Market is open · 15-minute exchange feed delay') 
-              : t('holdings.tooltip_live_realtime', 'Market is open · Real-time CBOE BZX feed'))
-          : undefined
-      },
-      day_change: {
-        id: 'day_change',
-        label: isPerShare ? t('holdings.col_day_change_per_share', 'Day Change / Share') : t('holdings.col_day_change', 'Day Change'),
-        value: `${(dayChangeVal >= 0 ? '+' : '')}${formatFinancialValue(dayChangeVal, baseCurrency)} (${(holdingDetails.day_change_percent ?? 0) >= 0 ? '+' : ''}${(holdingDetails.day_change_percent ?? 0).toFixed(2)}%)`,
-        color: (holdingDetails.day_change_value_base ?? 0) >= 0 ? 'var(--color-green)' : 'var(--color-red)'
-      },
-      cost: {
-        id: 'cost',
-        label: isPerShare ? t('holdings.col_cost_per_share', 'Cost Basis / Share') : t('holdings.col_cost_basis', 'Cost Basis'),
-        value: formatFinancialValue(isPerShare && shares > 0 ? holdingDetails.cost_basis_base / shares : holdingDetails.cost_basis_base, baseCurrency)
-      },
-      current_value: {
-        id: 'current_value',
-        label: isPerShare ? t('holdings.col_current_val_per_share', 'Current Value / Share') : t('holdings.col_current', 'Current Value'),
-        value: formatFinancialValue(isPerShare && shares > 0 ? holdingDetails.current_value_base / shares : holdingDetails.current_value_base, baseCurrency)
-      },
-      gain_loss: {
-        id: 'gain_loss',
-        label: isPerShare ? t('holdings.col_gain_loss_per_share', 'Gain/Loss / Share') : t('holdings.col_gain_loss', 'Gain/Loss'),
-        value: `${gainVal >= 0 ? '+' : ''}${formatFinancialValue(gainVal, baseCurrency)} (${holdingDetails.gain_percent >= 0 ? '+' : ''}${holdingDetails.gain_percent.toFixed(2)}%)`,
-        color: holdingDetails.gain_base >= 0 ? 'var(--color-green)' : 'var(--color-red)',
-        tooltip: t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')
-      },
-      dividends: {
+    const isDelayed = isDelayedFeedTicker(holdingDetails.symbol);
+    const liveTooltip = holdingDetails.is_live 
+      ? (isDelayed 
+          ? t('holdings.tooltip_live_delayed', 'Market is open · 15-minute exchange feed delay') 
+          : t('holdings.tooltip_live_realtime', 'Market is open · Real-time CBOE BZX feed'))
+      : undefined;
+
+    // 1. Market Price Card
+    const priceCard = {
+      id: 'price',
+      label: isPerShare ? t('holdings.col_price', 'Market Price') : t('holdings.col_current_val_local', 'Price (Local)'),
+      value: formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency),
+      subValue: holdingDetails.is_live 
+        ? (isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')) 
+        : holdingDetails.currency,
+      subColor: holdingDetails.is_live ? '#10b981' : 'var(--text-muted)',
+      color: 'var(--color-primary)',
+      isLive: holdingDetails.is_live,
+      tooltip: liveTooltip
+    };
+
+    // 2. Current Value Card
+    const currentValueCard = {
+      id: 'current_value',
+      label: isPerShare ? t('holdings.col_current_val_per_share', 'Value / Share') : t('holdings.col_current', 'Current Value'),
+      value: formatFinancialValue(isPerShare && shares > 0 ? holdingDetails.current_value_base / shares : holdingDetails.current_value_base, baseCurrency),
+      subValue: weight > 0 ? `${weight.toFixed(2)}% ${t('holdings.col_allocation', 'Allocation')}` : undefined,
+      subColor: 'var(--text-secondary)'
+    };
+
+    // 3. Performance Card (Daily vs Overall)
+    const isDaily = returnMode === 'daily';
+    const perfIsPositive = isDaily ? (holdingDetails.day_change_value_base ?? 0) >= 0 : holdingDetails.gain_base >= 0;
+    const perfValue = isDaily ? dayChangeVal : gainVal;
+    const perfPct = isDaily ? (holdingDetails.day_change_percent ?? 0) : holdingDetails.gain_percent;
+    const perfLabel = isDaily
+      ? (isPerShare ? t('holdings.col_day_change_per_share', 'Day Change / Share') : t('holdings.daily_change', 'Daily Change'))
+      : (isPerShare ? t('holdings.col_gain_loss_per_share', 'Gain/Loss / Share') : t('holdings.total_return', 'Total Return'));
+
+    const performanceCard = {
+      id: 'performance',
+      label: perfLabel,
+      value: `${perfValue >= 0 ? '+' : ''}${formatFinancialValue(perfValue, baseCurrency)}`,
+      subValue: `${perfPct >= 0 ? '+' : ''}${perfPct.toFixed(2)}% ${isDaily ? t('holdings.view_daily', 'Daily') : t('holdings.view_overall', 'Overall')}`,
+      color: perfIsPositive ? 'var(--color-green)' : 'var(--color-red)',
+      subColor: perfIsPositive ? '#10b981' : '#ef4444',
+      bg: perfIsPositive 
+        ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%)' 
+        : 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)',
+      border: perfIsPositive 
+        ? '1px solid rgba(16, 185, 129, 0.28)' 
+        : '1px solid rgba(239, 68, 68, 0.28)',
+      shadow: perfIsPositive 
+        ? '0 2px 12px rgba(16, 185, 129, 0.08)' 
+        : '0 2px 12px rgba(239, 68, 68, 0.08)',
+      tooltip: isDaily 
+        ? t('holdings.col_day_change', 'Daily price movement & gain/loss') 
+        : t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')
+    };
+
+    // 4. Shares & Cost Basis Card
+    const costCard = {
+      id: 'cost',
+      label: isPerShare ? t('holdings.col_cost_per_share', 'Cost Basis / Share') : t('holdings.col_cost_basis', 'Cost Basis'),
+      value: formatFinancialValue(isPerShare && shares > 0 ? holdingDetails.cost_basis_base / shares : holdingDetails.cost_basis_base, baseCurrency),
+      subValue: `${shares.toFixed(4).replace(/\.?0+$/, '')} ${t('holdings.col_shares', 'shares')} · ${t('holdings.col_avg_cost', 'Avg')}: ${formatFinancialValue(holdingDetails.avg_cost_local, holdingDetails.currency)}`,
+      subColor: 'var(--text-secondary)'
+    };
+
+    // 5. Dividends or FX Rate Card
+    const hasDividends = (holdingDetails.dividends_net_base ?? 0) > 0;
+    const isForeign = holdingDetails.currency && holdingDetails.currency.toUpperCase() !== baseCurrency.toUpperCase();
+    
+    let secondaryCard;
+    if (hasDividends) {
+      secondaryCard = {
         id: 'dividends',
         label: isPerShare ? t('holdings.col_dividends_net_per_share', 'Net Dividends / Share') : t('holdings.col_dividends_net', 'Net Dividends'),
         value: formatFinancialValue(isPerShare && shares > 0 ? (holdingDetails.dividends_net_base ?? 0) / shares : (holdingDetails.dividends_net_base ?? 0), baseCurrency),
-        color: (holdingDetails.dividends_net_base ?? 0) > 0 ? 'var(--color-green)' : 'var(--text-primary)'
-      },
-      allocation: {
-        id: 'allocation',
-        label: t('holdings.col_allocation', 'Allocation'),
-        value: `${weight.toFixed(2)}%`
-      },
-      fx_rate: {
+        subValue: shares > 0 && holdingDetails.cost_basis_base > 0 
+          ? `${(((holdingDetails.dividends_net_base ?? 0) / holdingDetails.cost_basis_base) * 100).toFixed(2)}% ${t('metrics.yield', 'Yield')}` 
+          : t('dividends.received', 'Net Income'),
+        color: 'var(--color-green)',
+        subColor: '#10b981'
+      };
+    } else if (isForeign && holdingDetails.fx_rate) {
+      secondaryCard = {
         id: 'fx_rate',
         label: t('holdings.col_fx_rate', 'FX Rate'),
-        value: holdingDetails.fx_rate ? holdingDetails.fx_rate.toFixed(4) : '—'
-      }
-    };
-
-    const cardIdMap: Record<string, string> = {
-      shares: 'shares',
-      avg_price: 'avg_cost',
-      avg_cost: 'avg_cost',
-      price: 'price',
-      day_change: 'day_change',
-      cost: 'cost',
-      cost_basis: 'cost',
-      current_value: 'current_value',
-      gain_loss: 'gain_loss',
-      dividends: 'dividends',
-      dividends_total: 'dividends',
-      dividends_net: 'dividends',
-      allocation: 'allocation',
-      weight: 'allocation',
-      fx_rate: 'fx_rate'
-    };
-
-    const selectedCards: Array<typeof availableCards[string]> = [];
-    const seen = new Set<string>();
-
-    for (const col of visibleColKeys) {
-      const mappedId = cardIdMap[col];
-      if (mappedId && availableCards[mappedId] && !seen.has(mappedId)) {
-        selectedCards.push(availableCards[mappedId]);
-        seen.add(mappedId);
-      }
+        value: `1 ${holdingDetails.currency} = ${holdingDetails.fx_rate.toFixed(4)} ${baseCurrency}`,
+        subValue: t('holdings.exchange_rate', 'Exchange Rate'),
+        subColor: 'var(--text-muted)'
+      };
+    } else {
+      secondaryCard = {
+        id: 'allocation',
+        label: t('holdings.col_allocation', 'Allocation'),
+        value: `${weight.toFixed(2)}%`,
+        subValue: t('holdings.portfolio_weight', 'Portfolio Weight'),
+        subColor: 'var(--text-muted)'
+      };
     }
 
-    const fallbackDefaults = ['shares', 'avg_cost', 'price', 'current_value', 'gain_loss'];
-    for (const defKey of fallbackDefaults) {
-      if (selectedCards.length < 5 && availableCards[defKey] && !seen.has(defKey)) {
-        selectedCards.push(availableCards[defKey]);
-        seen.add(defKey);
-      }
-    }
-
-    return selectedCards;
-  }, [holdingDetails, visibleColKeys, totalPortfolioValue, baseCurrency, modalViewMode, t]);
+    return [priceCard, currentValueCard, performanceCard, costCard, secondaryCard];
+  }, [holdingDetails, totalPortfolioValue, baseCurrency, modalViewMode, returnMode, t]);
 
   if (!selectedPositionSymbol) return null;
 
@@ -1121,78 +1114,164 @@ export function StockDetailsModal({
               <>
                 {/* Adaptive Summary Dashboard Cards */}
                 {holdingDetails && holdingCards.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)' }}>
                         {t('holdings.position_summary', 'Position Summary')}
                       </span>
-                      <div style={{
-                        display: 'flex',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        borderRadius: '20px',
-                        padding: '2px',
-                        position: 'relative'
-                      }}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleModalViewMode('total')}
-                          style={{
-                            background: (modalViewMode === 'total') ? 'var(--color-primary)' : 'transparent',
-                            border: 'none',
-                            color: (modalViewMode === 'total') ? 'white' : 'var(--text-muted)',
-                            fontSize: '0.68rem',
-                            fontWeight: 600,
-                            padding: '3px 9px',
-                            borderRadius: '18px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            boxShadow: (modalViewMode === 'total') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
-                          }}
-                        >
-                          {t('holdings.view_total', 'Position Total')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleModalViewMode('pershare')}
-                          style={{
-                            background: (modalViewMode === 'pershare') ? 'var(--color-primary)' : 'transparent',
-                            border: 'none',
-                            color: (modalViewMode === 'pershare') ? 'white' : 'var(--text-muted)',
-                            fontSize: '0.68rem',
-                            fontWeight: 600,
-                            padding: '3px 9px',
-                            borderRadius: '18px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            boxShadow: (modalViewMode === 'pershare') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
-                          }}
-                        >
-                          {t('holdings.view_pershare', 'Per Share')}
-                        </button>
+                      
+                      {/* Dual Controls: [ Daily | Overall ] and [ Position Total | Per Share ] */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        {/* Daily vs Overall Switcher */}
+                        <div style={{
+                          display: 'flex',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '20px',
+                          padding: '2px',
+                          position: 'relative'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleReturnMode('daily')}
+                            style={{
+                              background: (returnMode === 'daily') ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%)' : 'transparent',
+                              border: 'none',
+                              color: (returnMode === 'daily') ? 'white' : 'var(--text-muted)',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              padding: '3px 9px',
+                              borderRadius: '18px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: (returnMode === 'daily') ? '0 2px 6px rgba(6, 182, 212, 0.3)' : 'none'
+                            }}
+                          >
+                            {t('holdings.view_daily', 'Daily')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleReturnMode('overall')}
+                            style={{
+                              background: (returnMode === 'overall') ? 'linear-gradient(135deg, rgba(6, 182, 212, 0.9) 0%, rgba(59, 130, 246, 0.9) 100%)' : 'transparent',
+                              border: 'none',
+                              color: (returnMode === 'overall') ? 'white' : 'var(--text-muted)',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              padding: '3px 9px',
+                              borderRadius: '18px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: (returnMode === 'overall') ? '0 2px 6px rgba(6, 182, 212, 0.3)' : 'none'
+                            }}
+                          >
+                            {t('holdings.view_overall', 'Overall')}
+                          </button>
+                        </div>
+
+                        {/* Position Total vs Per Share Switcher */}
+                        <div style={{
+                          display: 'flex',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '20px',
+                          padding: '2px',
+                          position: 'relative'
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModalViewMode('total')}
+                            style={{
+                              background: (modalViewMode === 'total') ? 'var(--color-primary)' : 'transparent',
+                              border: 'none',
+                              color: (modalViewMode === 'total') ? 'white' : 'var(--text-muted)',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              padding: '3px 9px',
+                              borderRadius: '18px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: (modalViewMode === 'total') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+                            }}
+                          >
+                            {t('holdings.view_total', 'Position Total')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleModalViewMode('pershare')}
+                            style={{
+                              background: (modalViewMode === 'pershare') ? 'var(--color-primary)' : 'transparent',
+                              border: 'none',
+                              color: (modalViewMode === 'pershare') ? 'white' : 'var(--text-muted)',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              padding: '3px 9px',
+                              borderRadius: '18px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: (modalViewMode === 'pershare') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+                            }}
+                          >
+                            {t('holdings.view_pershare', 'Per Share')}
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-                      {holdingCards.map((card) => (
-                        <div key={card.id} className="glass-panel" style={{ padding: '0.6rem 0.85rem', background: 'rgba(255, 255, 255, 0.01)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
-                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>{card.label}</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.65rem' }}>
+                      {holdingCards.map((card: any) => (
+                        <div 
+                          key={card.id} 
+                          className="glass-panel" 
+                          style={{ 
+                            padding: '0.75rem 0.95rem', 
+                            background: card.bg || 'linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                            border: card.border || '1px solid rgba(255, 255, 255, 0.07)',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: '0.35rem',
+                            boxShadow: card.shadow || '0 2px 10px rgba(0, 0, 0, 0.15)',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.1rem' }}>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block' }}>
+                              {card.label}
+                            </span>
                             {card.isLive && (
-                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} title={t('holdings.badge_live', 'LIVE')} />
+                              <span style={{ display: 'inline-flex', alignItems: 'center' }} title={card.tooltip}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px rgba(16, 185, 129, 0.8)', display: 'inline-block' }} />
+                              </span>
                             )}
                           </div>
                           <span 
                             style={{ 
-                              fontSize: '1rem', 
+                              fontSize: '1.12rem', 
                               fontWeight: 700, 
                               color: card.color || 'var(--text-primary)', 
-                              fontFamily: 'monospace' 
+                              fontFamily: 'monospace',
+                              letterSpacing: '-0.2px',
+                              lineHeight: 1.2
                             }}
                             title={card.tooltip}
                           >
                             {card.value}
                           </span>
+                          {card.subValue && (
+                            <span style={{ 
+                              fontSize: '0.7rem', 
+                              color: card.subColor || 'var(--text-secondary)',
+                              fontWeight: 500,
+                              display: 'block',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {card.subValue}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -45,6 +45,7 @@ interface SidebarProps {
   onRenamePortfolio: (id: string) => void;
   onDeletePortfolio: (id: string) => void;
   onReorderPortfolios?: (newPortfolios: Portfolio[]) => void;
+  onReorderAccounts?: (portfolioId: string, newAccountOrder: string[]) => void;
   sidebarOpen?: boolean;
   onCloseSidebar?: () => void;
   subTab: 'overview' | 'ledger' | 'dividends';
@@ -75,6 +76,7 @@ export function Sidebar({
   onRenamePortfolio,
   onDeletePortfolio,
   onReorderPortfolios,
+  onReorderAccounts,
   sidebarOpen = false,
   onCloseSidebar,
   subTab,
@@ -298,47 +300,72 @@ export function Sidebar({
 
   return (
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      {/* Branding */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
-        <img 
-          src="/favicon.png" 
-          alt="QuantiFi Logo" 
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            boxShadow: '0 0 12px rgba(6, 182, 212, 0.4)',
-            objectFit: 'contain'
-          }}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.01em', color: '#ffffff' }}>
-              Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
+      {/* Branding & Mobile Close */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 0.75rem', marginBottom: '0.5rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <img 
+            src="/favicon.png" 
+            alt="QuantiFi Logo" 
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              boxShadow: '0 0 12px rgba(6, 182, 212, 0.4)',
+              objectFit: 'contain'
+            }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.01em', color: '#ffffff' }}>
+                Quanti<span style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Fi</span>
+              </span>
+              <span 
+                onClick={onBetaClick}
+                title={t('sidebar.beta_tooltip', 'Click for Beta Info & Release Notes')}
+                style={{
+                  padding: '0.08rem 0.35rem',
+                  fontSize: '0.52rem',
+                  fontWeight: 700,
+                  borderRadius: '4px',
+                  background: 'rgba(6, 182, 212, 0.15)',
+                  color: '#06b6d4',
+                  border: '1px solid rgba(6, 182, 212, 0.3)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  lineHeight: 1,
+                  cursor: onBetaClick ? 'pointer' : 'default',
+                  transition: 'all 0.15s ease'
+                }}
+              >Beta</span>
+            </div>
+            <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {t('sidebar.portfolio_intelligence', 'Portfolio Intelligence')}
             </span>
-            <span 
-              onClick={onBetaClick}
-              title={t('sidebar.beta_tooltip', 'Click for Beta Info & Release Notes')}
-              style={{
-                padding: '0.08rem 0.35rem',
-                fontSize: '0.52rem',
-                fontWeight: 700,
-                borderRadius: '4px',
-                background: 'rgba(6, 182, 212, 0.15)',
-                color: '#06b6d4',
-                border: '1px solid rgba(6, 182, 212, 0.3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                lineHeight: 1,
-                cursor: onBetaClick ? 'pointer' : 'default',
-                transition: 'all 0.15s ease'
-              }}
-            >Beta</span>
           </div>
-          <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('sidebar.portfolio_intelligence', 'Portfolio Intelligence')}
-          </span>
         </div>
+
+        {/* Mobile Close Button */}
+        {onCloseSidebar && (
+          <button 
+            onClick={onCloseSidebar}
+            className="mobile-sidebar-close-btn"
+            title={t('sidebar.close_nav_menu', 'Close Navigation Menu')}
+            style={{
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '6px',
+              width: '28px',
+              height: '28px',
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* User Context */}
@@ -683,9 +710,6 @@ export function Sidebar({
                             overflow: 'hidden', 
                             textOverflow: 'ellipsis', 
                             whiteSpace: 'nowrap', 
-                            paddingRight: portfolio.role === 'owner' 
-                              ? (isActive ? '5.8rem' : '3.8rem') 
-                              : (portfolios.length > 1 && onReorderPortfolios ? '2.5rem' : '0.5rem'),
                             fontSize: '0.82rem',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -705,137 +729,123 @@ export function Sidebar({
                             )}
                           </span>
                           
-                          {/* Up / Down Reordering chevrons (always visible when multiple portfolios) */}
-                          {portfolios.length > 1 && onReorderPortfolios && (
-                            <div 
-                              style={{ 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                gap: '1px', 
-                                opacity: isActive ? 0.9 : 0.45,
-                                transition: 'opacity 0.15s ease',
-                                position: 'absolute',
-                                right: portfolio.role === 'owner' ? (isActive ? '4.5rem' : '1.8rem') : '0.5rem',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                zIndex: 10
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                              onMouseLeave={(e) => (e.currentTarget.style.opacity = isActive ? '0.9' : '0.45')}
-                            >
-                              <button
-                                disabled={pIndex === 0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (pIndex > 0) {
-                                    const newOrder = [...portfolios];
-                                    const temp = newOrder[pIndex];
-                                    newOrder[pIndex] = newOrder[pIndex - 1];
-                                    newOrder[pIndex - 1] = temp;
-                                    onReorderPortfolios(newOrder);
-                                  }
-                                }}
-                                title={t('sidebar.move_portfolio_up', 'Move Portfolio Up')}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: pIndex === 0 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
-                                  cursor: pIndex === 0 ? 'default' : 'pointer',
-                                  padding: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  lineHeight: 1
-                                }}
-                              >
-                                <ChevronUp size={12} />
-                              </button>
-                              <button
-                                disabled={pIndex === portfolios.length - 1}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (pIndex < portfolios.length - 1) {
-                                    const newOrder = [...portfolios];
-                                    const temp = newOrder[pIndex];
-                                    newOrder[pIndex] = newOrder[pIndex + 1];
-                                    newOrder[pIndex + 1] = temp;
-                                    onReorderPortfolios(newOrder);
-                                  }
-                                }}
-                                title={t('sidebar.move_portfolio_down', 'Move Portfolio Down')}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
-                                  cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
-                                  padding: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  lineHeight: 1
-                                }}
-                              >
-                                <ChevronDown size={12} />
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Portfolio Management Actions */}
-                          {portfolio.role === 'owner' && (
-                            <div 
-                              className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
-                              style={{ 
-                                position: 'absolute',
-                                right: '0.5rem',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                zIndex: 11,
-                                display: isActive ? 'flex' : undefined,
-                                gap: '0.25rem',
-                                alignItems: 'center'
-                              }} 
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {isActive && (
+                          {/* Right-aligned reorder & management actions */}
+                          <div 
+                            className={isActive ? "portfolio-actions-active" : "tree-node-actions"}
+                            style={{ 
+                              marginLeft: 'auto',
+                              display: isActive ? 'flex' : undefined,
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              flexShrink: 0
+                            }} 
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Up / Down Reordering chevrons (always visible when multiple portfolios) */}
+                            {portfolios.length > 1 && onReorderPortfolios && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
                                 <button
-                                  onClick={() => onSettingsClick?.()}
-                                  title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  type="button"
+                                  disabled={pIndex === 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (pIndex > 0) {
+                                      const newOrder = [...portfolios];
+                                      const temp = newOrder[pIndex];
+                                      newOrder[pIndex] = newOrder[pIndex - 1];
+                                      newOrder[pIndex - 1] = temp;
+                                      onReorderPortfolios(newOrder);
+                                    }
+                                  }}
+                                  title={t('sidebar.move_portfolio_up', 'Move Portfolio Up')}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: pIndex === 0 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                    cursor: pIndex === 0 ? 'default' : 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    lineHeight: 1
+                                  }}
                                 >
-                                  <Settings size={12} />
+                                  <ChevronUp size={12} />
                                 </button>
-                              )}
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onRenamePortfolio(portfolio.id);
-                                    }}
-                                    title={t('sidebar.rename_portfolio_tooltip', 'Rename Portfolio')}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                                <button
+                                  type="button"
+                                  disabled={pIndex === portfolios.length - 1}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (pIndex < portfolios.length - 1) {
+                                      const newOrder = [...portfolios];
+                                      const temp = newOrder[pIndex];
+                                      newOrder[pIndex] = newOrder[pIndex + 1];
+                                      newOrder[pIndex + 1] = temp;
+                                      onReorderPortfolios(newOrder);
+                                    }
+                                  }}
+                                  title={t('sidebar.move_portfolio_down', 'Move Portfolio Down')}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: pIndex === portfolios.length - 1 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                    cursor: pIndex === portfolios.length - 1 ? 'default' : 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    lineHeight: 1
+                                  }}
+                                >
+                                  <ChevronDown size={12} />
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Portfolio Management Actions */}
+                            {portfolio.role === 'owner' && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                {isActive && (
+                                  <button
+                                    onClick={() => onSettingsClick?.()}
+                                    title={t('sidebar.portfolio_settings', 'Portfolio Settings')}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
                                   >
-                                    <Edit2 size={11} />
+                                    <Settings size={12} />
                                   </button>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onDeletePortfolio(portfolio.id);
-                                    }}
-                                    title={t('sidebar.delete_portfolio_tooltip', 'Delete Portfolio')}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                            </div>
-                          )}
+                                )}
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRenamePortfolio(portfolio.id);
+                                  }}
+                                  title={t('sidebar.rename_portfolio_tooltip', 'Rename Portfolio')}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                                >
+                                  <Edit2 size={11} />
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeletePortfolio(portfolio.id);
+                                  }}
+                                  title={t('sidebar.delete_portfolio_tooltip', 'Delete Portfolio')}
+                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-red)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Nested Accounts Sub-list */}
                         {isExpanded && accounts.length > 0 && (
                           <div className="tree-sub-list">
-                            {accounts.map((accName) => {
+                            {accounts.map((accName, accIndex) => {
                               const isAccActive = isActive && selectedAccount === accName;
                               const accTheme = getAccountNeonTheme(accName, accountColors);
                               return (
@@ -871,9 +881,79 @@ export function Sidebar({
                                     title={t('sidebar.account_settings_tooltip', 'Click to customize sub-account color & settings')}
                                     className="hover-scale"
                                   />
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
                                     {accName}
                                   </span>
+
+                                  {/* Account Reordering Arrows */}
+                                  {accounts.length > 1 && portfolio.role === 'owner' && onReorderAccounts && (
+                                    <div 
+                                      className={isAccActive ? "portfolio-actions-active" : "tree-node-actions"}
+                                      style={{ 
+                                        marginLeft: 'auto',
+                                        display: isAccActive ? 'flex' : undefined,
+                                        alignItems: 'center',
+                                        gap: '1px',
+                                        flexShrink: 0
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        type="button"
+                                        disabled={accIndex === 0}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (accIndex > 0) {
+                                            const newAccounts = [...accounts];
+                                            const temp = newAccounts[accIndex];
+                                            newAccounts[accIndex] = newAccounts[accIndex - 1];
+                                            newAccounts[accIndex - 1] = temp;
+                                            onReorderAccounts(portfolio.id, newAccounts);
+                                          }
+                                        }}
+                                        title={t('sidebar.move_account_up', 'Move account up')}
+                                        style={{
+                                          background: 'transparent',
+                                          border: 'none',
+                                          color: accIndex === 0 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                          cursor: accIndex === 0 ? 'default' : 'pointer',
+                                          padding: '2px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          lineHeight: 1
+                                        }}
+                                      >
+                                        <ChevronUp size={11} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={accIndex === accounts.length - 1}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (accIndex < accounts.length - 1) {
+                                            const newAccounts = [...accounts];
+                                            const temp = newAccounts[accIndex];
+                                            newAccounts[accIndex] = newAccounts[accIndex + 1];
+                                            newAccounts[accIndex + 1] = temp;
+                                            onReorderAccounts(portfolio.id, newAccounts);
+                                          }
+                                        }}
+                                        title={t('sidebar.move_account_down', 'Move account down')}
+                                        style={{
+                                          background: 'transparent',
+                                          border: 'none',
+                                          color: accIndex === accounts.length - 1 ? 'rgba(255,255,255,0.12)' : 'var(--text-muted)',
+                                          cursor: accIndex === accounts.length - 1 ? 'default' : 'pointer',
+                                          padding: '2px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          lineHeight: 1
+                                        }}
+                                      >
+                                        <ChevronDown size={11} />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
