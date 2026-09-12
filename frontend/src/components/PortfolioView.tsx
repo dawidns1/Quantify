@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, 
   X, 
@@ -153,26 +153,50 @@ export function PortfolioView({
   const [mobileDividendsTab, setMobileDividendsTab] = useState<'forecast' | 'calendar' | 'ledger'>('forecast');
 
   const isAnyLoading = loadingHoldings || loadingPortfolios || loadingTransactions || syncStatus === 'syncing';
-  const [showLoadingPill, setShowLoadingPill] = useState(false);
-  const [activeLoadingText, setActiveLoadingText] = useState('');
+  const [showSyncedPill, setShowSyncedPill] = useState(false);
+  const [errorDismissed, setErrorDismissed] = useState(false);
 
+  // Synchronously derived loading message (guaranteed non-empty string with fallbacks)
+  const currentLoadingText = useMemo(() => {
+    if (loadingPortfolios) return t('dashboard.syncing_portfolios', 'Syncing portfolios...');
+    if (loadingTransactions) return t('dashboard.syncing_transactions', 'Fetching transaction ledger...');
+    if (loadingHoldings || syncStatus === 'syncing') return t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...');
+    return t('dashboard.syncing_generic', 'Synchronizing data...');
+  }, [loadingPortfolios, loadingTransactions, loadingHoldings, syncStatus, t]);
+
+  // Flash synced confirmation for 2.5 seconds when sync finishes cleanly
   useEffect(() => {
-    if (syncStatus === 'syncing' || isAnyLoading) {
-      setShowLoadingPill(true);
-      if (loadingPortfolios) setActiveLoadingText(t('dashboard.syncing_portfolios', 'Syncing portfolios...'));
-      else if (loadingTransactions) setActiveLoadingText(t('dashboard.syncing_transactions', 'Fetching transaction ledger...'));
-      else if (loadingHoldings || syncStatus === 'syncing') setActiveLoadingText(t('dashboard.syncing_holdings', 'Recalculating live holdings & prices...'));
-      else setActiveLoadingText(t('dashboard.syncing_generic', 'Synchronizing data...'));
-    } else if (syncStatus === 'synced') {
-      setShowLoadingPill(true);
+    if (syncStatus === 'synced' && !isAnyLoading) {
+      setShowSyncedPill(true);
       const timer = setTimeout(() => {
-        setShowLoadingPill(false);
+        setShowSyncedPill(false);
       }, 2500);
       return () => clearTimeout(timer);
-    } else if (syncStatus === 'error') {
-      setShowLoadingPill(true);
+    } else {
+      setShowSyncedPill(false);
     }
-  }, [syncStatus, isAnyLoading, loadingPortfolios, loadingTransactions, loadingHoldings, t]);
+  }, [syncStatus, isAnyLoading]);
+
+  // Reset error dismissal flag whenever a new sync cycle is initiated
+  useEffect(() => {
+    if (isAnyLoading) {
+      setErrorDismissed(false);
+    }
+  }, [isAnyLoading]);
+
+  // Strictly typed active pill mode - guaranteed to be only 'syncing', 'synced', 'error', or null
+  const activePillType = useMemo<'syncing' | 'synced' | 'error' | null>(() => {
+    if (isAnyLoading) {
+      return 'syncing';
+    }
+    if (showSyncedPill && syncStatus === 'synced' && !isAnyLoading) {
+      return 'synced';
+    }
+    if (syncStatus === 'error' && !errorDismissed && !isAnyLoading) {
+      return 'error';
+    }
+    return null;
+  }, [isAnyLoading, syncStatus, showSyncedPill, errorDismissed]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 1024px)');
@@ -779,27 +803,27 @@ export function PortfolioView({
         <div className="portfolio-container" style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.25rem' : '0.75rem', position: 'relative', height: '100%', minHeight: 0 }}>
           
           {/* Floating Bottom-Center Smart Status & Retry Glassmorphism Pill */}
-          {showLoadingPill && (
+          {activePillType && (
             <div style={{
               position: 'fixed',
               bottom: isMobile ? '70px' : '24px',
               left: '50%',
-              transform: showLoadingPill ? 'translate(-50%, 0)' : 'translate(-50%, 12px)',
-              opacity: showLoadingPill ? 1 : 0,
+              transform: 'translate(-50%, 0)',
+              opacity: 1,
               transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
               zIndex: 9999,
               pointerEvents: 'auto',
               display: 'flex',
               alignItems: 'center',
               gap: '0.55rem',
-              background: syncStatus === 'error' ? 'rgba(24, 12, 18, 0.94)' : syncStatus === 'synced' ? 'rgba(10, 24, 20, 0.94)' : 'rgba(10, 15, 26, 0.92)',
+              background: activePillType === 'error' ? 'rgba(24, 12, 18, 0.94)' : activePillType === 'synced' ? 'rgba(10, 24, 20, 0.94)' : 'rgba(10, 15, 26, 0.92)',
               backdropFilter: 'blur(16px)',
-              border: syncStatus === 'error' ? '1px solid rgba(239, 68, 68, 0.45)' : syncStatus === 'synced' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(6, 182, 212, 0.35)',
-              boxShadow: syncStatus === 'error' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.25)' : syncStatus === 'synced' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(6, 182, 212, 0.2)',
+              border: activePillType === 'error' ? '1px solid rgba(239, 68, 68, 0.45)' : activePillType === 'synced' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(6, 182, 212, 0.35)',
+              boxShadow: activePillType === 'error' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.25)' : activePillType === 'synced' ? '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 185, 129, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(6, 182, 212, 0.2)',
               padding: '0.4rem 0.95rem',
               borderRadius: '24px'
             }}>
-              {(syncStatus === 'syncing' || (syncStatus === 'idle' && isAnyLoading)) && (
+              {activePillType === 'syncing' && (
                 <>
                   <div className="spinner-ring" style={{
                     width: '12px',
@@ -811,12 +835,12 @@ export function PortfolioView({
                     flexShrink: 0
                   }} />
                   <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 500, letterSpacing: '0.2px', whiteSpace: 'nowrap' }}>
-                    {activeLoadingText}
+                    {currentLoadingText}
                   </span>
                 </>
               )}
 
-              {syncStatus === 'synced' && !isAnyLoading && (
+              {activePillType === 'synced' && (
                 <>
                   <Check size={14} style={{ color: 'var(--color-green)', flexShrink: 0 }} />
                   <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -825,7 +849,7 @@ export function PortfolioView({
                 </>
               )}
 
-              {syncStatus === 'error' && (
+              {activePillType === 'error' && (
                 <>
                   <AlertTriangle size={14} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
                   <span style={{ fontSize: '0.74rem', color: 'white', fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -834,6 +858,7 @@ export function PortfolioView({
                   <button
                     type="button"
                     onClick={() => {
+                      setErrorDismissed(false);
                       refreshPortfolioData();
                     }}
                     style={{
@@ -856,7 +881,7 @@ export function PortfolioView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowLoadingPill(false)}
+                    onClick={() => setErrorDismissed(true)}
                     style={{
                       background: 'transparent',
                       border: 'none',
