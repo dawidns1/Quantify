@@ -1014,6 +1014,13 @@ export function HoldingsTable({
                   </tr>
                 );
               })}
+
+              {/* Bottom Clearance Spacer for Floating Action Buttons (FABs) */}
+              {holdings.length > 0 && (
+                <tr className="table-fab-clearance-row" aria-hidden="true">
+                  <td colSpan={100} />
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

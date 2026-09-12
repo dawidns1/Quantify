@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { History, Edit2, Trash2, Search, Upload, Download } from 'lucide-react';
+import { History, Edit2, Trash2, Search, Upload, Download, Plus } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
 import { getAccountNeonTheme } from '../../utils/accountColors';
@@ -10,6 +10,7 @@ interface LedgerTableProps {
   activePortfolioRole: string;
   onEditTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onAddTransactionClick?: () => void;
   onImportCSVClick?: () => void;
   onExportCSVClick?: () => void;
   style?: React.CSSProperties;
@@ -23,6 +24,7 @@ export function LedgerTable({
   activePortfolioRole,
   onEditTransaction,
   onDeleteTransaction,
+  onAddTransactionClick,
   onImportCSVClick,
   onExportCSVClick,
   style,
@@ -375,25 +377,51 @@ export function LedgerTable({
               </div>
             </div>
           )}
-          {activePortfolioRole !== 'viewer' && onImportCSVClick && (
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <button
-                onClick={onImportCSVClick}
-                className="glow-btn"
-                style={{
-                  padding: '0.45rem 1rem',
-                  fontSize: '0.78rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  height: '32px'
-                }}
-              >
-                <Upload size={14} />
-                <span>{t('ledger.btn_import_csv', 'Import')}</span>
-              </button>
+          {activePortfolioRole !== 'viewer' && (
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              {onAddTransactionClick && (
+                <button
+                  type="button"
+                  onClick={onAddTransactionClick}
+                  className="glow-btn"
+                  style={{
+                    padding: '0.45rem 0.95rem',
+                    fontSize: '0.78rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    height: '32px',
+                    background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 600
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>{t('dashboard.btn_add_tx', 'Add Transaction')}</span>
+                </button>
+              )}
+              {onImportCSVClick && (
+                <button
+                  onClick={onImportCSVClick}
+                  className="glow-btn"
+                  style={{
+                    padding: '0.45rem 1rem',
+                    fontSize: '0.78rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    height: '32px'
+                  }}
+                >
+                  <Upload size={14} />
+                  <span>{t('ledger.btn_import_csv', 'Import')}</span>
+                </button>
+              )}
               {onExportCSVClick && (
                 <button
                   onClick={onExportCSVClick}
@@ -590,6 +618,12 @@ export function LedgerTable({
                   </tr>
                 );
               })}
+              {/* Bottom Clearance Spacer for Floating Action Buttons (FABs) */}
+              {filteredTransactions.length > 0 && (
+                <tr className="table-fab-clearance-row" aria-hidden="true">
+                  <td colSpan={100} />
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

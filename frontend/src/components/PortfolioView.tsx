@@ -1488,6 +1488,7 @@ export function PortfolioView({
                   activePortfolioRole={activePortfolioRole}
                   onEditTransaction={handleStartEditTransaction}
                   onDeleteTransaction={handleDeleteTransaction}
+                  onAddTransactionClick={() => setShowAddModal(true)}
                   onImportCSVClick={() => setShowImportModal(true)}
                   onExportCSVClick={handleExportCSV}
                   style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
@@ -1563,6 +1564,11 @@ export function PortfolioView({
                             setShowAddDividendModal(true);
                           }}
                           onDeleteDividendClick={handleDeleteDividend}
+                          onAddDividendClick={() => {
+                            setEditingDividend(null);
+                            setShowAddDividendModal(true);
+                          }}
+                          onToggleViewMode={() => setDividendViewMode('overview')}
                           style={{ flex: 1, height: '100%', minHeight: 0 }}
                         />
                       </div>

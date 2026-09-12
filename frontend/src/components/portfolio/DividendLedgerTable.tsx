@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Edit2, Trash2, Sparkles } from 'lucide-react';
+import { Search, Edit2, Trash2, Sparkles, Plus, TrendingUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getAccountNeonTheme } from '../../utils/accountColors';
 
@@ -9,6 +9,8 @@ interface DividendLedgerTableProps {
   baseCurrency: string;
   onEditDividendClick: (div: any) => void;
   onDeleteDividendClick: (div: any) => void;
+  onAddDividendClick?: () => void;
+  onToggleViewMode?: () => void;
   style?: React.CSSProperties;
   onScrollToBottomChange?: (isAtBottom: boolean) => void;
   accountColors?: Record<string, string>;
@@ -20,6 +22,8 @@ export function DividendLedgerTable({
   baseCurrency,
   onEditDividendClick,
   onDeleteDividendClick,
+  onAddDividendClick,
+  onToggleViewMode,
   style,
   onScrollToBottomChange,
   accountColors = {}
@@ -156,7 +160,7 @@ export function DividendLedgerTable({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {/* Search Input */}
-          <div className="search-container" style={{ position: 'relative', minWidth: '220px' }}>
+          <div className="search-container" style={{ position: 'relative', minWidth: '200px' }}>
             <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -178,6 +182,56 @@ export function DividendLedgerTable({
               onBlur={(e) => e.target.style.borderColor = 'var(--panel-border)'}
             />
           </div>
+
+          {/* Action buttons */}
+          {activePortfolioRole !== 'viewer' && onAddDividendClick && (
+            <button
+              type="button"
+              onClick={onAddDividendClick}
+              className="glow-btn"
+              style={{
+                padding: '0.45rem 0.95rem',
+                fontSize: '0.78rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                height: '32px',
+                background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
+                color: 'white',
+                border: 'none',
+                fontWeight: 600
+              }}
+            >
+              <Plus size={14} />
+              <span>{t('calendar.record_dividend', 'Record Dividend')}</span>
+            </button>
+          )}
+          {onToggleViewMode && (
+            <button
+              type="button"
+              onClick={onToggleViewMode}
+              className="glow-btn"
+              style={{
+                padding: '0.45rem 0.95rem',
+                fontSize: '0.78rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                height: '32px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--panel-border)',
+                color: 'var(--text-secondary)'
+              }}
+              title={t('dividends.view_projections_tooltip', 'Back to Forecast & Calendar')}
+            >
+              <TrendingUp size={14} />
+              <span>{t('dividends.view_projections', 'Forecast & Calendar')}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -362,6 +416,12 @@ export function DividendLedgerTable({
                   </tr>
                 );
               })
+            )}
+            {/* Bottom Clearance Spacer for Floating Action Buttons (FABs) */}
+            {sortedDividends.length > 0 && (
+              <tr className="table-fab-clearance-row" aria-hidden="true">
+                <td colSpan={100} />
+              </tr>
             )}
           </tbody>
         </table>

@@ -98,6 +98,7 @@
   },
   "calendar": {
     "btn_add_div": "Dodaj dywidendę wirtualną",
+    "record_dividend": "Zarejestruj dywidendę",
     "col_date": "Dzień ustalenia (Ex-Date)",
     "col_estimated": "Szac. wypłata (Brutto)",
     "col_net": "Wypłata netto",
@@ -261,6 +262,7 @@
     "total": "Razem",
     "total_net": "Suma netto",
     "view_ledger_tooltip": "Zobacz rejestr rozliczonych dywidend",
+    "view_projections": "Prognoza i kalendarz",
     "view_projections_tooltip": "Zobacz 12-miesięczne prognozy",
     "yield_on_cost": "Wskaźnik Yield on Cost (YoC)",
     "tab_forecast": "Prognoza",

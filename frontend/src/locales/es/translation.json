@@ -98,6 +98,7 @@
   },
   "calendar": {
     "btn_add_div": "Añadir dividendo virtual",
+    "record_dividend": "Registrar dividendo",
     "col_date": "Fecha ex-dividendo",
     "col_estimated": "Pago est. (Bruto)",
     "col_net": "Pago neto",
@@ -261,6 +262,7 @@
     "total": "Total",
     "total_net": "Total neto",
     "view_ledger_tooltip": "Ver libro de dividendos liquidados",
+    "view_projections": "Pronóstico y calendario",
     "view_projections_tooltip": "Ver proyecciones a 12 meses",
     "yield_on_cost": "Rendimiento sobre el costo",
     "tab_forecast": "Pronóstico",

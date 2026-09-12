@@ -497,6 +497,31 @@ svg.gradient-text,
   border-left: 3px solid var(--color-primary);
 }
 
+/* Bottom Clearance Spacer for Tables to clear fixed Floating Action Buttons (FABs) */
+.table-fab-clearance-row,
+.table-fab-clearance-row:hover,
+tr.table-fab-clearance-row,
+tr.table-fab-clearance-row:hover {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.table-fab-clearance-row td,
+.table-fab-clearance-row:hover td,
+tr.table-fab-clearance-row td,
+tr.table-fab-clearance-row:hover td {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  height: 5.5rem !important;
+  min-height: 5.5rem !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
 .ticker-cell {
   font-weight: 700;
   color: var(--color-primary);

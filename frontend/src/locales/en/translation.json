@@ -98,6 +98,7 @@
   },
   "calendar": {
     "btn_add_div": "Add Virtual Dividend",
+    "record_dividend": "Record Dividend",
     "col_date": "Ex-Dividend Date",
     "col_estimated": "Est. Payout (Gross)",
     "col_net": "Net Payout",
@@ -261,6 +262,7 @@
     "total": "Total",
     "total_net": "Total Net",
     "view_ledger_tooltip": "View Settled Dividend Ledger",
+    "view_projections": "Forecast & Calendar",
     "view_projections_tooltip": "View 12-Month Projections",
     "yield_on_cost": "Yield on Cost",
     "tab_forecast": "Forecast",
