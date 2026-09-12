@@ -1,7 +1,32 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Edit2, Trash2, Sparkles, Plus, TrendingUp } from 'lucide-react';
+import { Search, Edit2, Trash2, Sparkles, Plus, TrendingUp, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getAccountNeonTheme } from '../../utils/accountColors';
+import { useTableColumnResize } from '../../hooks/useTableColumnResize';
+
+const DEFAULT_DIVIDEND_LEDGER_COL_WIDTHS: Record<string, number> = {
+  date: 115,
+  symbol: 95,
+  account: 110,
+  shares: 95,
+  payout: 105,
+  gross: 120,
+  net: 120,
+  type: 85,
+  actions: 80
+};
+
+const DEFAULT_DIVIDEND_LEDGER_VISIBLE_COLS = [
+  'date',
+  'symbol',
+  'account',
+  'shares',
+  'payout',
+  'gross',
+  'net',
+  'type',
+  'actions'
+];
 
 interface DividendLedgerTableProps {
   dividends: any[];
@@ -33,6 +58,70 @@ export function DividendLedgerTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false); // default: newest dividends first
+
+  const {
+    colWidths,
+    handleMouseDown,
+    activeDragCol,
+    isResizingRef,
+    resetColWidths
+  } = useTableColumnResize('portfolio_dividend_ledger_col_widths', DEFAULT_DIVIDEND_LEDGER_COL_WIDTHS);
+
+  const [visibleCols, setVisibleCols] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('portfolio_dividend_ledger_visible_cols');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_DIVIDEND_LEDGER_VISIBLE_COLS;
+  });
+
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const columnPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showColumnPicker) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(e.target as Node)) {
+        setShowColumnPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showColumnPicker]);
+
+  const toggleColumn = (colId: string) => {
+    if (colId === 'date' || colId === 'symbol') return;
+    setVisibleCols(prev => {
+      const next = prev.includes(colId) ? prev.filter(c => c !== colId) : [...prev, colId];
+      try {
+        localStorage.setItem('portfolio_dividend_ledger_visible_cols', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const resetColumns = () => {
+    setVisibleCols(DEFAULT_DIVIDEND_LEDGER_VISIBLE_COLS);
+    resetColWidths();
+    try {
+      localStorage.removeItem('portfolio_dividend_ledger_visible_cols');
+    } catch {}
+  };
+
+  const dividendColumnsConfig = [
+    { id: 'date', label: t('calendar.col_date', 'Payment Date'), locked: true },
+    { id: 'symbol', label: t('holdings.col_ticker', 'Ticker'), locked: true },
+    { id: 'account', label: t('ledger.col_account', 'Account') },
+    { id: 'shares', label: t('ledger.col_shares', 'Shares') },
+    { id: 'payout', label: t('calendar.col_payout_share', 'Payout/Share') },
+    { id: 'gross', label: `${t('metrics.gross', 'Gross')} (${baseCurrency})` },
+    { id: 'net', label: `${t('calendar.col_net', 'Net')} (${baseCurrency})` },
+    { id: 'type', label: t('ledger.col_type', 'Type') },
+    ...(activePortfolioRole !== 'viewer' ? [{ id: 'actions', label: t('ledger.col_actions', 'Actions') }] : [])
+  ];
 
   useEffect(() => {
     wasAtBottomRef.current = false;
@@ -115,6 +204,7 @@ export function DividendLedgerTable({
   }, [filteredDividends, sortField, sortAsc]);
 
   const handleSort = (field: string) => {
+    if (isResizingRef.current) return;
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
@@ -183,6 +273,113 @@ export function DividendLedgerTable({
             />
           </div>
 
+          {/* Columns Toggle Popover Button */}
+          <div style={{ position: 'relative' }} ref={columnPickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowColumnPicker(prev => !prev)}
+              title={t('common.toggle_columns', 'Toggle visible columns')}
+              className="glow-btn"
+              style={{
+                padding: '0.45rem 0.75rem',
+                fontSize: '0.78rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                height: '32px',
+                background: showColumnPicker ? 'rgba(6, 182, 212, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                border: showColumnPicker ? '1px solid var(--color-primary)' : '1px solid rgba(255, 255, 255, 0.08)',
+                color: showColumnPicker ? 'var(--color-primary)' : 'var(--text-secondary)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <SlidersHorizontal size={13} />
+              <span>{t('common.columns', 'Columns')}</span>
+            </button>
+
+            {showColumnPicker && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  zIndex: 100,
+                  minWidth: '220px',
+                  background: 'rgba(15, 20, 34, 0.96)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '8px',
+                  padding: '0.75rem',
+                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.6rem'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {t('common.columns', 'Columns')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={resetColumns}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-primary)',
+                      fontSize: '0.72rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      padding: '2px 4px',
+                      borderRadius: '4px'
+                    }}
+                    title={t('common.reset', 'Reset')}
+                  >
+                    <RotateCcw size={11} />
+                    <span>{t('common.reset', 'Reset')}</span>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '280px', overflowY: 'auto' }}>
+                  {dividendColumnsConfig.map((col) => {
+                    const isChecked = visibleCols.includes(col.id);
+                    return (
+                      <label
+                        key={col.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          fontSize: '0.78rem',
+                          color: col.locked ? 'var(--text-muted)' : isChecked ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          cursor: col.locked ? 'not-allowed' : 'pointer',
+                          userSelect: 'none',
+                          padding: '3px 4px',
+                          borderRadius: '4px',
+                          transition: 'background 0.1s ease'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={col.locked}
+                          onChange={() => toggleColumn(col.id)}
+                          style={{ accentColor: 'var(--color-primary)', cursor: col.locked ? 'not-allowed' : 'pointer' }}
+                        />
+                        <span>{col.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Action buttons */}
           {activePortfolioRole !== 'viewer' && onAddDividendClick && (
             <button
@@ -244,37 +441,215 @@ export function DividendLedgerTable({
         <table className="portfolio-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr>
-              <th onClick={() => handleSort('date')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <th
+                onClick={() => {
+                  if (isResizingRef.current) return;
+                  handleSort('date');
+                }}
+                style={{
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  position: 'sticky',
+                  width: colWidths['date'] ? `${colWidths['date']}px` : undefined,
+                  minWidth: colWidths['date'] ? `${colWidths['date']}px` : undefined
+                }}
+              >
                 {t('calendar.col_date', 'Payment Date')} {renderSortArrow('date')}
+                <div
+                  className={`col-resizer ${activeDragCol === 'date' ? 'resizing' : ''}`}
+                  onMouseDown={(e) => handleMouseDown(e, 'date')}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </th>
-              <th onClick={() => handleSort('symbol')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+
+              <th
+                onClick={() => {
+                  if (isResizingRef.current) return;
+                  handleSort('symbol');
+                }}
+                style={{
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  position: 'sticky',
+                  width: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined,
+                  minWidth: colWidths['symbol'] ? `${colWidths['symbol']}px` : undefined
+                }}
+              >
                 {t('holdings.col_ticker', 'Ticker')} {renderSortArrow('symbol')}
+                <div
+                  className={`col-resizer ${activeDragCol === 'symbol' ? 'resizing' : ''}`}
+                  onMouseDown={(e) => handleMouseDown(e, 'symbol')}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </th>
-              <th onClick={() => handleSort('account')} style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {t('ledger.col_account', 'Account')} {renderSortArrow('account')}
-              </th>
-              <th onClick={() => handleSort('shares')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                {t('ledger.col_shares', 'Shares')} {renderSortArrow('shares')}
-              </th>
-              <th onClick={() => handleSort('payout')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                {t('calendar.col_payout_share', 'Payout/Share')} {renderSortArrow('payout')}
-              </th>
-              <th onClick={() => handleSort('gross')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                {t('metrics.gross', 'Gross')} ({baseCurrency}) {renderSortArrow('gross')}
-              </th>
-              <th onClick={() => handleSort('net')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                {t('calendar.col_net', 'Net')} ({baseCurrency}) {renderSortArrow('net')}
-              </th>
-              <th onClick={() => handleSort('type')} style={{ cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                {t('ledger.col_type', 'Type')} {renderSortArrow('type')}
-              </th>
-              {!isViewer && <th style={{ textAlign: 'right', paddingRight: '1rem' }}>{t('ledger.col_actions', 'Actions')}</th>}
+
+              {visibleCols.includes('account') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('account');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    position: 'sticky',
+                    width: colWidths['account'] ? `${colWidths['account']}px` : undefined,
+                    minWidth: colWidths['account'] ? `${colWidths['account']}px` : undefined
+                  }}
+                >
+                  {t('ledger.col_account', 'Account')} {renderSortArrow('account')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'account' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'account')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {visibleCols.includes('shares') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('shares');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    position: 'sticky',
+                    width: colWidths['shares'] ? `${colWidths['shares']}px` : undefined,
+                    minWidth: colWidths['shares'] ? `${colWidths['shares']}px` : undefined
+                  }}
+                >
+                  {t('ledger.col_shares', 'Shares')} {renderSortArrow('shares')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'shares' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'shares')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {visibleCols.includes('payout') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('payout');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    position: 'sticky',
+                    width: colWidths['payout'] ? `${colWidths['payout']}px` : undefined,
+                    minWidth: colWidths['payout'] ? `${colWidths['payout']}px` : undefined
+                  }}
+                >
+                  {t('calendar.col_payout_share', 'Payout/Share')} {renderSortArrow('payout')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'payout' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'payout')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {visibleCols.includes('gross') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('gross');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    position: 'sticky',
+                    width: colWidths['gross'] ? `${colWidths['gross']}px` : undefined,
+                    minWidth: colWidths['gross'] ? `${colWidths['gross']}px` : undefined
+                  }}
+                >
+                  {t('metrics.gross', 'Gross')} ({baseCurrency}) {renderSortArrow('gross')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'gross' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'gross')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {visibleCols.includes('net') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('net');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    position: 'sticky',
+                    width: colWidths['net'] ? `${colWidths['net']}px` : undefined,
+                    minWidth: colWidths['net'] ? `${colWidths['net']}px` : undefined
+                  }}
+                >
+                  {t('calendar.col_net', 'Net')} ({baseCurrency}) {renderSortArrow('net')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'net' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'net')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {visibleCols.includes('type') && (
+                <th
+                  onClick={() => {
+                    if (isResizingRef.current) return;
+                    handleSort('type');
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'center',
+                    position: 'sticky',
+                    width: colWidths['type'] ? `${colWidths['type']}px` : undefined,
+                    minWidth: colWidths['type'] ? `${colWidths['type']}px` : undefined
+                  }}
+                >
+                  {t('ledger.col_type', 'Type')} {renderSortArrow('type')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'type' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'type')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
+
+              {!isViewer && visibleCols.includes('actions') && (
+                <th
+                  style={{
+                    textAlign: 'right',
+                    paddingRight: '1rem',
+                    position: 'sticky',
+                    width: colWidths['actions'] ? `${colWidths['actions']}px` : undefined,
+                    minWidth: colWidths['actions'] ? `${colWidths['actions']}px` : undefined
+                  }}
+                >
+                  {t('ledger.col_actions', 'Actions')}
+                  <div
+                    className={`col-resizer ${activeDragCol === 'actions' ? 'resizing' : ''}`}
+                    onMouseDown={(e) => handleMouseDown(e, 'actions')}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {sortedDividends.length === 0 ? (
               <tr>
-                <td colSpan={isViewer ? 8 : 9} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                <td colSpan={100} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                   {t('calendar.empty_ledger_state', 'No dividend payments found in this view.')}
                 </td>
               </tr>
@@ -306,56 +681,68 @@ export function DividendLedgerTable({
                         {div.symbol}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      {(() => {
-                        const theme = getAccountNeonTheme(div.account, accountColors);
-                        return (
-                          <span style={{ 
-                            fontSize: '0.75rem', 
-                            padding: '2px 7px', 
-                            borderRadius: '4px', 
-                            background: theme.bg, 
-                            color: theme.hex, 
-                            border: theme.border,
-                            boxShadow: theme.glow,
-                            fontWeight: 700,
-                            letterSpacing: '0.3px',
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block'
-                          }}>
-                            {div.account || 'Default'}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 500, fontSize: '0.8rem' }}>
-                      {div.shares}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 500, fontSize: '0.8rem' }}>
-                      {div.payout_per_share}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                      {formatCurrency(div.gross_base, baseCurrency)}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-green)' }}>
-                      {formatCurrency(div.net_base, baseCurrency)}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        fontSize: '0.62rem',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: '4px',
-                        background: tagColor,
-                        color: tagTextColor
-                      }}>
-                        {tagText}
-                      </span>
-                    </td>
-                    {!isViewer && (
+                    {visibleCols.includes('account') && (
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {(() => {
+                          const theme = getAccountNeonTheme(div.account, accountColors);
+                          return (
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              padding: '2px 7px', 
+                              borderRadius: '4px', 
+                              background: theme.bg, 
+                              color: theme.hex, 
+                              border: theme.border,
+                              boxShadow: theme.glow,
+                              fontWeight: 700,
+                              letterSpacing: '0.3px',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-block'
+                            }}>
+                              {div.account || 'Default'}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    )}
+                    {visibleCols.includes('shares') && (
+                      <td style={{ textAlign: 'right', fontWeight: 500, fontSize: '0.8rem' }}>
+                        {div.shares}
+                      </td>
+                    )}
+                    {visibleCols.includes('payout') && (
+                      <td style={{ textAlign: 'right', fontWeight: 500, fontSize: '0.8rem' }}>
+                        {div.payout_per_share}
+                      </td>
+                    )}
+                    {visibleCols.includes('gross') && (
+                      <td style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                        {formatCurrency(div.gross_base, baseCurrency)}
+                      </td>
+                    )}
+                    {visibleCols.includes('net') && (
+                      <td style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.8rem', color: 'var(--color-green)' }}>
+                        {formatCurrency(div.net_base, baseCurrency)}
+                      </td>
+                    )}
+                    {visibleCols.includes('type') && (
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          background: tagColor,
+                          color: tagTextColor
+                        }}>
+                          {tagText}
+                        </span>
+                      </td>
+                    )}
+                    {!isViewer && visibleCols.includes('actions') && (
                       <td style={{ textAlign: 'right', paddingRight: '0.5rem', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                           <button

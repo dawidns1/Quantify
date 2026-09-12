@@ -150,7 +150,10 @@
     "retry": "Retry",
     "skip_div_confirm_desc": "Are you sure you want to skip/delete this automatic dividend payment? (This filters it out of holdings and historical NAV calculation)",
     "skip_div_confirm_title": "Skip Dividend Payment",
-    "read_only": "Read-Only"
+    "read_only": "Read-Only",
+    "columns": "Columns",
+    "toggle_columns": "Customize Columns",
+    "reset": "Reset"
   },
   "dashboard": {
     "account_filter_all": "All Accounts",

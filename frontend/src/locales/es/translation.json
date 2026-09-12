@@ -150,7 +150,10 @@
     "retry": "Reintentar",
     "skip_div_confirm_desc": "¿Estás seguro de que deseas omitir/eliminar este pago automático de dividendos? (Se excluirá de las posiciones y del cálculo histórico del NAV)",
     "skip_div_confirm_title": "Omitir pago de dividendo",
-    "read_only": "Solo lectura"
+    "read_only": "Solo lectura",
+    "columns": "Columnas",
+    "toggle_columns": "Personalizar columnas",
+    "reset": "Restablecer"
   },
   "dashboard": {
     "account_filter_all": "Todas las cuentas",

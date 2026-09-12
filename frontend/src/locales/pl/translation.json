@@ -150,7 +150,10 @@
     "retry": "Ponów",
     "skip_div_confirm_desc": "Czy na pewno chcesz pominąć/usunąć tę automatyczną wypłatę dywidendy? (Zostanie wykluczona z pozycji i wyceny historycznej)",
     "skip_div_confirm_title": "Pomiń wypłatę dywidendy",
-    "read_only": "Tylko do odczytu"
+    "read_only": "Tylko do odczytu",
+    "columns": "Kolumny",
+    "toggle_columns": "Dostosuj kolumny",
+    "reset": "Resetuj"
   },
   "dashboard": {
     "account_filter_all": "Wszystkie konta",
