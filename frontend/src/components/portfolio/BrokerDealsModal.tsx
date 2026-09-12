@@ -133,8 +133,8 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
           </div>
 
           {/* Country Selector Dropdown Bar */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
-            <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem', position: 'relative', zIndex: 100 }}>
+            <div ref={dropdownRef} style={{ position: 'relative', zIndex: 100 }}>
               <button
                 type="button"
                 onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
@@ -142,18 +142,18 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.45rem',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
                   borderRadius: '20px',
                   padding: '0.35rem 0.85rem',
                   fontSize: '0.78rem',
                   color: 'white',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)'
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.4)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
               >
                 <span style={{ fontSize: '1rem', lineHeight: 1 }}>{activeCountry.flag}</span>
                 <span style={{ fontWeight: 600 }}>{t(activeCountry.labelKey)}</span>
@@ -169,19 +169,20 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                     left: '50%',
                     transform: 'translateX(-50%)',
                     marginTop: '6px',
-                    background: 'rgba(18, 24, 38, 0.98)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    backgroundColor: '#0c101d',
+                    background: 'linear-gradient(180deg, #141b2d 0%, #0c101d 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
                     borderRadius: '10px',
-                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.6)',
-                    zIndex: 2000,
-                    minWidth: '190px',
-                    padding: '4px',
+                    boxShadow: '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06)',
+                    zIndex: 2500,
+                    minWidth: '200px',
+                    padding: '6px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '2px'
                   }}
                 >
-                  <div style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                  <div style={{ padding: '0.35rem 0.65rem', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
                     {t('broker_deals.select_country', 'Select Region')}
                   </div>
                   {SUPPORTED_COUNTRIES.map((c) => {
@@ -195,21 +196,27 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          padding: '0.4rem 0.65rem',
-                          background: isSelected ? 'rgba(6, 182, 212, 0.12)' : 'transparent',
+                          padding: '0.45rem 0.65rem',
+                          background: isSelected ? 'rgba(6, 182, 212, 0.16)' : 'transparent',
                           color: isSelected ? 'var(--color-primary)' : 'var(--text-secondary)',
-                          border: 'none',
+                          border: isSelected ? '1px solid rgba(6, 182, 212, 0.3)' : '1px solid transparent',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           fontSize: '0.78rem',
                           textAlign: 'left',
-                          transition: 'background 0.15s'
+                          transition: 'all 0.15s ease'
                         }}
                         onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                            e.currentTarget.style.color = '#ffffff';
+                          }
                         }}
                         onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.background = 'transparent';
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
