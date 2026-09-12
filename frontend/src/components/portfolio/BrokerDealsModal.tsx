@@ -44,6 +44,18 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
     }
   }, [isOpen, selectedCountry]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSelectCountry = (code: CountryCode) => {
@@ -63,7 +75,11 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
     <>
       <div 
         className="modal-backdrop" 
-        onClick={onClose} 
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+        }} 
         style={{ zIndex: 1100, cursor: 'pointer' }} 
       />
       <div className="modal-overlay-container" style={{ zIndex: 1101 }}>
@@ -81,24 +97,37 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
         >
           {/* Close Button */}
           <button 
-            onClick={onClose}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             className="modal-close-btn"
             style={{ 
               position: 'absolute', 
-              top: '1.25rem', 
-              right: '1.25rem',
-              background: 'transparent',
-              border: 'none',
+              top: '1rem', 
+              right: '1rem',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '4px',
+              padding: '6px',
               display: 'flex',
               alignItems: 'center',
-              borderRadius: '6px',
-              transition: 'all 0.2s'
+              justifyContent: 'center',
+              borderRadius: '8px',
+              transition: 'all 0.2s',
+              zIndex: 100
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'white')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'white';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+            }}
             title={t('common.close', 'Close')}
           >
             <X size={18} />
@@ -348,9 +377,14 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
           )}
 
           {/* Action Footer */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.25rem', position: 'relative', zIndex: 10 }}>
             <button
-              onClick={onClose}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
               className="glow-btn"
               style={{
                 width: '100%',

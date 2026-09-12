@@ -37,6 +37,7 @@ import { PreferencesModal } from './portfolio/PreferencesModal';
 import { PremiumUpsellModal } from './portfolio/PremiumUpsellModal';
 import { FeedbackModal } from './portfolio/FeedbackModal';
 import { BetaInfoModal } from './portfolio/BetaInfoModal';
+import { BrokerDealsModal } from './portfolio/BrokerDealsModal';
 import { DividendLedgerTable } from './portfolio/DividendLedgerTable';
 import { AddDividendModal } from './portfolio/AddDividendModal';
 import { ImportCSVModal } from './portfolio/ImportCSVModal';
@@ -138,6 +139,7 @@ export function PortfolioView({
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showBetaModal, setShowBetaModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+  const [showBrokerDealsModal, setShowBrokerDealsModal] = useState(false);
   const [showTelemetryModal, setShowTelemetryModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -761,6 +763,7 @@ export function PortfolioView({
         onFeedbackClick={() => setShowFeedbackModal(true)}
         onBetaClick={() => setShowBetaModal(true)}
         onPreferencesClick={() => setShowPreferencesModal(true)}
+        onBrokerDealsClick={() => setShowBrokerDealsModal(true)}
         apiBaseUrl={apiBaseUrl}
         onSelectStockSymbol={setSelectedPositionSymbol}
         onAddTransactionClick={(symbol) => {
@@ -1806,6 +1809,12 @@ export function PortfolioView({
         summary={summary}
         analytics={analytics}
         dividends={dividendsList}
+      />
+
+      {/* BROKER DEALS & COMMUNITY PERKS MODAL */}
+      <BrokerDealsModal 
+        isOpen={showBrokerDealsModal} 
+        onClose={() => setShowBrokerDealsModal(false)} 
       />
 
       {/* REBALANCE DIALOG MODAL */}

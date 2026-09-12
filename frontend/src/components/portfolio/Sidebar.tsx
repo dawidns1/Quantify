@@ -52,6 +52,7 @@ interface SidebarProps {
   onFeedbackClick?: () => void;
   onBetaClick?: () => void;
   onPreferencesClick?: () => void;
+  onBrokerDealsClick?: () => void;
   apiBaseUrl: string;
   onSelectStockSymbol: (symbol: string) => void;
   onAddTransactionClick?: (symbol: string) => void;
@@ -81,6 +82,7 @@ export function Sidebar({
   onFeedbackClick,
   onBetaClick,
   onPreferencesClick,
+  onBrokerDealsClick,
   apiBaseUrl,
   onSelectStockSymbol,
   onAddTransactionClick,
@@ -1249,7 +1251,11 @@ export function Sidebar({
           <div 
             className="tree-node"
             onClick={() => {
-              setShowBrokerDealsModal(true);
+              if (onBrokerDealsClick) {
+                onBrokerDealsClick();
+              } else {
+                setShowBrokerDealsModal(true);
+              }
               if (onCloseSidebar) onCloseSidebar();
             }}
             style={{ 
@@ -1377,10 +1383,12 @@ export function Sidebar({
         </>
       )}
 
-      <BrokerDealsModal 
-        isOpen={showBrokerDealsModal} 
-        onClose={() => setShowBrokerDealsModal(false)} 
-      />
+      {!onBrokerDealsClick && (
+        <BrokerDealsModal 
+          isOpen={showBrokerDealsModal} 
+          onClose={() => setShowBrokerDealsModal(false)} 
+        />
+      )}
 
       {/* Sign Out Confirmation Modal */}
       {showSignOutModal && (
