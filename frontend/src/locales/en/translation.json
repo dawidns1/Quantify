@@ -611,6 +611,8 @@
       "confirm_delete": "Are you absolutely sure you want to delete this portfolio? This cannot be undone.",
       "cost_basis_method": "Cost Basis Calculation Method",
       "cost_basis_title": "Cost Basis Configuration",
+      "danger_desc": "Permanently delete this portfolio, its transactions, and all associated data.",
+      "danger_zone": "Danger Zone",
       "err_save": "Failed to save settings.",
       "fifo": "FIFO (First-In, First-Out)",
       "label_beta_bench": "Beta Benchmark Index Symbol",

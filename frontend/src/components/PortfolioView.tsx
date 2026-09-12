@@ -481,10 +481,21 @@ export function PortfolioView({
   };
 
   // Rename Portfolio
-  const handleRenamePortfolio = (id: string = activePortfolioId || '') => {
+  const handleRenamePortfolio = async (id: string = activePortfolioId || '', directNewName?: string) => {
     if (!id) return;
     const currentPortfolio = portfolios.find(p => p.id === id);
     if (!currentPortfolio) return;
+
+    if (directNewName && directNewName.trim() && directNewName.trim() !== currentPortfolio.name) {
+      try {
+        await renamePortfolio(id, directNewName.trim());
+        await loadPortfolios();
+      } catch (err: any) {
+        console.error('Error renaming portfolio:', err);
+        alert(err.message || 'Failed to rename portfolio');
+      }
+      return;
+    }
     
     showCustomPrompt(
       t('common.rename_portfolio_prompt_title', 'Rename Portfolio'),
@@ -721,8 +732,6 @@ export function PortfolioView({
         setSelectedAccount={setSelectedAccount}
         portfolioAccountsMap={portfolioAccountsMap}
         onCreatePortfolio={handleCreatePortfolio}
-        onRenamePortfolio={handleRenamePortfolio}
-        onDeletePortfolio={handleDeletePortfolio}
         onReorderPortfolios={(newPortfolios) => {
           setPortfolios(newPortfolios);
           localStorage.setItem('cached_portfolio_order', JSON.stringify(newPortfolios.map(p => p.id)));
@@ -1723,6 +1732,8 @@ export function PortfolioView({
           fetchHoldings(baseCurrency, selectedAccount);
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         }}
+        onRenamePortfolio={handleRenamePortfolio}
+        onDeletePortfolio={handleDeletePortfolio}
       />
 
       {/* FEEDBACK & BUG REPORT MODAL */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Settings, Check, HelpCircle, Save, Palette, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Settings, Check, HelpCircle, Save, Palette, ChevronUp, ChevronDown, Folder, AlertTriangle, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Portfolio } from '../../types/portfolio';
 import { updatePortfolioSettings } from '../../services/supabaseService';
@@ -11,6 +11,8 @@ interface SettingsModalProps {
   portfolio: Portfolio | null;
   portfolioAccounts: string[];
   onSaveSuccess: (updatedSettings: any) => void;
+  onRenamePortfolio?: (id: string, newName?: string) => Promise<void> | void;
+  onDeletePortfolio?: (id: string) => void;
 }
 
 export function SettingsModal({
@@ -18,9 +20,12 @@ export function SettingsModal({
   onClose,
   portfolio,
   portfolioAccounts,
-  onSaveSuccess
+  onSaveSuccess,
+  onRenamePortfolio,
+  onDeletePortfolio
 }: SettingsModalProps) {
   const { t } = useTranslation();
+  const [portfolioName, setPortfolioName] = useState<string>('');
   const [accountTaxRates, setAccountTaxRates] = useState<Record<string, number>>({});
   const [accountColors, setAccountColors] = useState<Record<string, string>>({});
   const [orderedAccounts, setOrderedAccounts] = useState<string[]>([]);
@@ -37,6 +42,7 @@ export function SettingsModal({
 
   useEffect(() => {
     if (isOpen && portfolio) {
+      setPortfolioName(portfolio.name);
       const existingRates = portfolio.settings?.accountTaxRates || {};
       const initialRates: Record<string, number> = {};
       
@@ -139,6 +145,9 @@ export function SettingsModal({
           balances: cashBaselineBalances
         }
       };
+      if (portfolioName.trim() && portfolioName.trim() !== portfolio.name && onRenamePortfolio) {
+        await onRenamePortfolio(portfolio.id, portfolioName.trim());
+      }
       await updatePortfolioSettings(portfolio.id, updatedSettings);
       setSuccessMsg(true);
       setTimeout(() => {
@@ -188,10 +197,38 @@ export function SettingsModal({
               </div>
             )}
 
+            {/* Portfolio Name Section */}
+            {!isViewer && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', padding: '0.75rem 0.85rem', borderRadius: '8px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Folder size={14} style={{ color: 'var(--color-primary)' }} />
+                  {t('modals.settings.label_name', 'Portfolio Name')}
+                </label>
+                <input 
+                  type="text"
+                  value={portfolioName}
+                  onChange={(e) => setPortfolioName(e.target.value)}
+                  placeholder={t('modals.settings.label_name', 'Portfolio Name')}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    padding: '0.45rem 0.75rem',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)')}
+                />
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', borderBottom: '1px solid var(--panel-border)', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Palette size={14} style={{ color: 'var(--color-primary)' }} />
-                Sub-Account Settings & Neon Themes
+                {t('modals.settings.neon_themes_title', 'Sub-Account Settings & Neon Themes')}
               </span>
 
               {orderedAccounts.length === 0 ? (
@@ -558,6 +595,63 @@ export function SettingsModal({
               )}
             </div>
 
+            {/* Danger Zone: Delete Portfolio */}
+            {!isViewer && onDeletePortfolio && portfolio && portfolio.role === 'owner' && (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.6rem', 
+                background: 'rgba(239, 68, 68, 0.03)', 
+                border: '1px solid rgba(239, 68, 68, 0.2)', 
+                padding: '0.85rem 1rem', 
+                borderRadius: '8px',
+                marginTop: '0.5rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-red)', display: 'flex', alignItems: 'center', gap: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <AlertTriangle size={14} />
+                      {t('modals.settings.danger_zone', 'Danger Zone')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.15rem' }}>
+                      {t('modals.settings.danger_desc', 'Permanently delete this portfolio, its transactions, and all associated data.')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onDeletePortfolio(portfolio.id);
+                    }}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      color: 'var(--color-red)',
+                      borderRadius: '6px',
+                      padding: '0.45rem 0.85rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+                      e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+                      e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    {t('modals.settings.btn_delete', 'Delete Portfolio Permanently')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Buttons (Fixed Sticky Bottom) */}

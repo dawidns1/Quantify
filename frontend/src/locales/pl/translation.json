@@ -611,6 +611,8 @@
       "confirm_delete": "Czy na pewno chcesz usunąć ten portfel? Tej operacji nie można cofnąć.",
       "cost_basis_method": "Metoda wyceny kosztów (Cost Basis)",
       "cost_basis_title": "Konfiguracja kalkulacji kosztów",
+      "danger_desc": "Trwale usuń ten portfel, jego transakcje oraz wszystkie powiązane dane.",
+      "danger_zone": "Strefa niebezpieczna",
       "err_save": "Nie udało się zapisać ustawień.",
       "fifo": "FIFO (Pierwsze weszło, pierwsze wyszło)",
       "label_beta_bench": "Symbol indeksu odniesienia (Beta)",

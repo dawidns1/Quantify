@@ -611,6 +611,8 @@
       "confirm_delete": "¿Está absolutamente seguro de que desea eliminar este portafolio? Esta acción no se puede deshacer.",
       "cost_basis_method": "Método de cálculo de base de costo",
       "cost_basis_title": "Configuración de la base de costo",
+      "danger_desc": "Elimina permanentemente este portafolio, sus transacciones y todos los datos asociados.",
+      "danger_zone": "Zona de peligro",
       "err_save": "No se pudo guardar la configuración.",
       "fifo": "FIFO (Primero en entrar, primero en salir)",
       "label_beta_bench": "Símbolo del índice de referencia beta",
