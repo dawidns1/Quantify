@@ -396,7 +396,8 @@
     "view_daily": "Daily",
     "view_overall": "Overall",
     "daily_change": "Daily Change",
-    "total_return": "Total Return"
+    "total_return": "Total Return",
+    "click_to_toggle_return": "Click to toggle Daily vs Total return"
   },
   "import": {
     "btn_back": "Back",

@@ -396,7 +396,8 @@
     "view_daily": "Dzienny",
     "view_overall": "Całkowity",
     "daily_change": "Zmiana dzienna",
-    "total_return": "Zwrot całkowity"
+    "total_return": "Zwrot całkowity",
+    "click_to_toggle_return": "Kliknij, aby przełączyć widok dzienny / całkowity"
   },
   "import": {
     "btn_back": "Wstecz",

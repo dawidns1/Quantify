@@ -396,7 +396,8 @@
     "view_daily": "Diario",
     "view_overall": "Total",
     "daily_change": "Cambio diario",
-    "total_return": "Retorno total"
+    "total_return": "Retorno total",
+    "click_to_toggle_return": "Haz clic para alternar rendimiento diario y total"
   },
   "import": {
     "btn_back": "Atrás",
