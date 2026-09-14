@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Save, AlertCircle, Wallet } from 'lucide-react';
+import { X, Check, Save, AlertCircle, Wallet, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updatePortfolioSettings } from '../../services/supabaseService';
 import { searchAssets } from '../../services/calculationService';
+import { CustomDatePicker } from '../common/CustomDatePicker';
 
 interface AddDividendModalProps {
   isOpen: boolean;
@@ -321,14 +322,11 @@ export function AddDividendModal({
               {/* Date */}
               <div className="form-group">
                 <label className="form-label">{t('modals.add_div.label_date')}</label>
-                <input
-                  type="date"
-                  max={new Date().toISOString().split('T')[0]}
-                  className="input-field"
-                  disabled={isOverrideMode}
+                <CustomDatePicker
                   value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  style={{ width: '100%', cursor: isOverrideMode ? 'not-allowed' : 'text' }}
+                  onChange={(newDate) => setFormDate(newDate)}
+                  maxDate={new Date().toISOString().split('T')[0]}
+                  disabled={isOverrideMode || submitting}
                 />
               </div>
             </div>
@@ -436,10 +434,16 @@ export function AddDividendModal({
                 type="submit"
                 disabled={submitting}
                 className="glow-btn"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                style={{
+                  minWidth: '150px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem'
+                }}
               >
-                <Save size={14} />
-                {submitting ? t('modals.add_div.btn_saving') : t('modals.add_div.btn_save')}
+                {submitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                <span>{submitting ? t('modals.add_div.btn_saving') : t('modals.add_div.btn_save')}</span>
               </button>
             </div>
           </form>

@@ -153,7 +153,9 @@
     "read_only": "Tylko do odczytu",
     "columns": "Kolumny",
     "toggle_columns": "Dostosuj kolumny",
-    "reset": "Resetuj"
+    "reset": "Resetuj",
+    "today": "Dzisiaj",
+    "yesterday": "Wczoraj"
   },
   "dashboard": {
     "account_filter_all": "Wszystkie konta",

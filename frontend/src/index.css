@@ -1965,7 +1965,8 @@ select option {
   100% { transform: rotate(360deg); }
 }
 
-.spinner-ring {
+.spinner-ring,
+.animate-spin {
   animation: spin-spinner 0.8s infinite linear;
 }
 

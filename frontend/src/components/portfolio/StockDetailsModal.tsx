@@ -83,10 +83,8 @@ const formatFinancialValue = (val: number | null, currencyStr = 'USD') => {
     return formatWithSymbol(`${(absVal / 1.0e9).toFixed(2)}B`);
   } else if (absVal >= 1.0e6) {
     return formatWithSymbol(`${(absVal / 1.0e6).toFixed(2)}M`);
-  } else if (absVal >= 1.0e3) {
-    return formatWithSymbol(`${(absVal / 1.0e3).toFixed(1)}K`);
   }
-  return formatWithSymbol(absVal.toFixed(2));
+  return formatWithSymbol(absVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 };
 
 interface StockDetailsModalProps {
@@ -123,6 +121,20 @@ export function StockDetailsModal({
   onDeleteTransaction
 }: StockDetailsModalProps) {
   const { t, i18n } = useTranslation();
+
+  const formatTxCurrency = (val: number | null | undefined, curr = 'USD') => {
+    if (val === null || val === undefined || isNaN(val)) return '—';
+    try {
+      return new Intl.NumberFormat(i18n.language || 'en', {
+        style: 'currency',
+        currency: curr || 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(val);
+    } catch {
+      return `${val.toFixed(2)} ${curr}`;
+    }
+  };
 
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [selectedStockDetails, setSelectedStockDetails] = useState<any | null>(null);
@@ -1091,10 +1103,10 @@ export function StockDetailsModal({
                               </td>
                               <td style={{ color: 'var(--text-primary)', fontSize: '0.82rem' }}>{ev.description}</td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: ev.amount >= 0 ? '#10b981' : '#ef4444' }}>
-                                {ev.amount >= 0 ? '+' : ''}{formatFinancialValue(ev.amount, cashCurrency)}
+                                {ev.amount >= 0 ? '+' : ''}{formatTxCurrency(ev.amount, cashCurrency)}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                {formatFinancialValue(ev.runningBalance, cashCurrency)}
+                                {formatTxCurrency(ev.runningBalance, cashCurrency)}
                               </td>
                               {activePortfolioRole !== 'viewer' && (
                                 <td style={{ textAlign: 'center' }}>
@@ -1711,13 +1723,13 @@ export function StockDetailsModal({
                                 {tx.shares.toFixed(4).replace(/\.?0+$/, '')}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                                {formatFinancialValue(tx.price, tx.currency)}
+                                {formatTxCurrency(tx.price, tx.currency)}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                                {tx.fees > 0 ? formatFinancialValue(tx.fees, tx.currency) : '—'}
+                                {tx.fees > 0 ? formatTxCurrency(tx.fees, tx.currency) : '—'}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600 }}>
-                                {formatFinancialValue(totalLocal, tx.currency)}
+                                {formatTxCurrency(totalLocal, tx.currency)}
                               </td>
                               <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                 {tx.type === 'BUY' ? (

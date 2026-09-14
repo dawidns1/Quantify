@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Edit2, X, AlertCircle, Info, Wallet } from 'lucide-react';
+import { Plus, Edit2, X, AlertCircle, Info, Wallet, Loader2 } from 'lucide-react';
 import type { Transaction } from '../../types/portfolio';
 import { searchAssets } from '../../services/calculationService';
 import { saveTransaction } from '../../services/transactionService';
 import { useTranslation } from 'react-i18next';
 import type { BaseCurrencyType } from '../../context/PortfolioContext';
+import { CustomDatePicker } from '../common/CustomDatePicker';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -562,15 +563,12 @@ export function AddTransactionModal({
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label" htmlFor="form-date">{t('modals.add_tx.label_date', 'Transaction Date')}</label>
-                <input 
+                <CustomDatePicker
                   id="form-date"
-                  type="date" 
-                  max={new Date().toISOString().split('T')[0]}
-                  className="input-field"
-                  style={{ width: '100%' }}
                   value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  required
+                  onChange={(newDate) => setFormDate(newDate)}
+                  maxDate={new Date().toISOString().split('T')[0]}
+                  disabled={submitting}
                 />
               </div>
               
@@ -886,10 +884,20 @@ export function AddTransactionModal({
                 type="submit"
                 className="glow-btn"
                 disabled={submitting}
+                style={{
+                  minWidth: '160px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.4rem'
+                }}
               >
-                {submitting 
-                  ? (editingTransaction ? t('modals.add_tx.updating', 'Updating...') : t('modals.add_tx.adding', 'Adding...')) 
-                  : (editingTransaction ? t('modals.add_tx.btn_save', 'Save Transaction') : t('modals.add_tx.btn_submit', 'Add Transaction'))}
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                <span>
+                  {submitting 
+                    ? (editingTransaction ? t('modals.add_tx.updating', 'Updating...') : t('modals.add_tx.adding', 'Adding...')) 
+                    : (editingTransaction ? t('modals.add_tx.btn_save', 'Save Transaction') : t('modals.add_tx.btn_submit', 'Add Transaction'))}
+                </span>
               </button>
             </div>
           </form>
