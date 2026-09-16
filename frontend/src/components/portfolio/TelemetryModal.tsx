@@ -82,7 +82,8 @@ export function TelemetryModal({ isOpen, onClose }: TelemetryModalProps) {
           </div>
           <button 
             onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+            className="modal-close-btn"
+            title={t('common.close', 'Close')}
           >
             <X size={18} />
           </button>

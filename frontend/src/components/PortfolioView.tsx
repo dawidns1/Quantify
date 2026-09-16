@@ -1858,7 +1858,8 @@ export function PortfolioView({
             {/* Close Button */}
             <button 
               onClick={() => setShowRebalanceModal(false)}
-              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              className="modal-close-btn"
+              style={{ position: 'absolute', top: '1rem', right: '1rem' }}
               title={t('common.close', 'Close')}
             >
               <X size={18} />
@@ -1930,8 +1931,9 @@ export function PortfolioView({
                 <button 
                   onClick={() => setCustomModal(null)}
                   className="modal-close-btn"
+                  title={t('common.close', 'Close')}
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 

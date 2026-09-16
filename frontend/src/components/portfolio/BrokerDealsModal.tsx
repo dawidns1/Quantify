@@ -108,25 +108,7 @@ export function BrokerDealsModal({ isOpen, onClose }: BrokerDealsModalProps) {
               position: 'absolute', 
               top: '1rem', 
               right: '1rem',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
               zIndex: 100
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'white';
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-muted)';
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
             }}
             title={t('common.close', 'Close')}
           >

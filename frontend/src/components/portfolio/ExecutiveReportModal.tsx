@@ -280,10 +280,11 @@ export function ExecutiveReportModal({
               </button>
               <button 
                 onClick={onClose}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: '0.3rem' }}
+                className="modal-close-btn"
+                style={{ marginLeft: '0.3rem' }}
                 title={t('common.close', 'Close')}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
           </div>

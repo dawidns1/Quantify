@@ -104,6 +104,68 @@ interface StockDetailsModalProps {
   onDeleteTransaction: (id: string) => void;
 }
 
+export function isMarketOpenForSymbol(symbol: string): boolean {
+  if (!symbol) return false;
+  const sym = symbol.toUpperCase().trim();
+  
+  let timeZone = 'America/New_York';
+  let openHour = 9.5;  // 09:30
+  let closeHour = 16.0; // 16:00
+
+  if (sym.endsWith('.WA')) {
+    timeZone = 'Europe/Warsaw';
+    openHour = 9.0;
+    closeHour = 17.0;
+  } else if (sym.endsWith('.DE')) {
+    timeZone = 'Europe/Berlin';
+    openHour = 9.0;
+    closeHour = 17.5;
+  } else if (sym.endsWith('.L')) {
+    timeZone = 'Europe/London';
+    openHour = 8.0;
+    closeHour = 16.5;
+  } else if (sym.endsWith('.AS') || sym.endsWith('.PA') || sym.endsWith('.MI') || sym.endsWith('.MC')) {
+    timeZone = 'Europe/Paris';
+    openHour = 9.0;
+    closeHour = 17.5;
+  } else if (sym.endsWith('=X')) {
+    // FX 24/5
+    timeZone = 'America/New_York';
+    openHour = 0.0;
+    closeHour = 24.0;
+  }
+
+  try {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+
+    let weekday = '';
+    let hour = 0;
+    let minute = 0;
+
+    for (const p of parts) {
+      if (p.type === 'weekday') weekday = p.value;
+      if (p.type === 'hour') hour = parseInt(p.value, 10);
+      if (p.type === 'minute') minute = parseInt(p.value, 10);
+    }
+
+    if (weekday === 'Sat' || weekday === 'Sun') {
+      return false;
+    }
+
+    const timeFloat = hour + minute / 60.0;
+    return timeFloat >= openHour && timeFloat < closeHour;
+  } catch {
+    return false;
+  }
+}
+
 export function StockDetailsModal({
   selectedPositionSymbol,
   setSelectedPositionSymbol,
@@ -226,6 +288,8 @@ export function StockDetailsModal({
     }
   }, [selectedPositionSymbol, apiBaseUrl]);
 
+  const isMarketLive = holdingDetails !== undefined ? Boolean(holdingDetails.is_live) : isMarketOpenForSymbol(selectedPositionSymbol || '');
+
   // Modal Price History Chart calculations
   const modalChartData = useMemo(() => {
     if (!selectedStockDetails || !selectedStockDetails.history || selectedStockDetails.history.length === 0) return null;
@@ -245,12 +309,12 @@ export function StockDetailsModal({
         const lastEntry = hist[hist.length - 1];
         if (lastEntry.date === todayStr) {
           lastEntry.price = livePrice;
-          lastEntry.is_live = true;
+          lastEntry.is_live = isMarketLive;
         } else if (lastEntry.date < todayStr) {
           hist.push({
             date: todayStr,
             price: livePrice,
-            is_live: true
+            is_live: isMarketLive
           });
         }
       }
@@ -271,7 +335,7 @@ export function StockDetailsModal({
       hist = hist.filter((pt: any) => pt.date >= cutoffStr);
     }
     return hist;
-  }, [selectedStockDetails, holdingDetails?.current_price_local, modalRange]);
+  }, [selectedStockDetails, holdingDetails?.current_price_local, modalRange, isMarketLive]);
 
   const modalChartFormatted = useMemo(() => {
     if (!modalChartData || modalChartData.length === 0) return null;
@@ -831,7 +895,7 @@ export function StockDetailsModal({
     const gainPct = holdingDetails.gain_percent;
 
     const isDelayed = isDelayedFeedTicker(holdingDetails.symbol);
-    const liveTooltip = holdingDetails.is_live 
+    const liveTooltip = isMarketLive 
       ? (isDelayed 
           ? t('holdings.tooltip_live_delayed', 'Market is open · 15-minute exchange feed delay') 
           : t('holdings.tooltip_live_realtime', 'Market is open · Real-time CBOE BZX feed'))
@@ -858,12 +922,12 @@ export function StockDetailsModal({
       id: 'price',
       label: isPerShare ? t('holdings.col_price', 'Market Price') : t('holdings.col_current_val_local', 'Price (Local)'),
       value: formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency),
-      subValue: holdingDetails.is_live 
+      subValue: isMarketLive 
         ? (isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')) 
         : holdingDetails.currency,
-      subColor: holdingDetails.is_live ? '#10b981' : 'var(--text-muted)',
+      subColor: isMarketLive ? '#10b981' : 'var(--text-muted)',
       color: 'var(--color-primary)',
-      isLive: holdingDetails.is_live,
+      isLive: isMarketLive,
       tooltip: liveTooltip
     };
 
@@ -1008,8 +1072,9 @@ export function StockDetailsModal({
               <button 
                 onClick={() => setSelectedPositionSymbol(null)}
                 className="modal-close-btn"
+                title={t('common.close', 'Close')}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
           </div>

@@ -66,8 +66,9 @@ export function PremiumUpsellModal({ isOpen, onClose, reason }: PremiumUpsellMod
               onClick={onClose}
               className="modal-close-btn"
               style={{ position: 'absolute', top: '1.25rem', right: '1.25rem' }}
+              title={t('common.close', 'Close')}
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           )}
 

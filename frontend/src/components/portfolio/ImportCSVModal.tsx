@@ -212,7 +212,8 @@ export function ImportCSVModal({
         {/* Close Button */}
         <button 
           onClick={onClose}
-          style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+          className="modal-close-btn"
+          style={{ position: 'absolute', top: '1rem', right: '1rem' }}
           title={t('common.close', 'Close')}
         >
           <X size={18} />
