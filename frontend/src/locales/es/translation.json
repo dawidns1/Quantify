@@ -845,6 +845,8 @@
     "assets": "Activos",
     "analytics": "Analítica",
     "income": "Ingresos",
-    "activity": "Actividad"
+    "activity": "Actividad",
+    "dividends": "Dividendos",
+    "ledger": "Libro"
   }
 }

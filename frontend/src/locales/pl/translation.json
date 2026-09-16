@@ -845,6 +845,8 @@
     "assets": "Aktywa",
     "analytics": "Analityka",
     "income": "Dywidendy",
-    "activity": "Transakcje"
+    "activity": "Transakcje",
+    "dividends": "Dywidendy",
+    "ledger": "Księga"
   }
 }

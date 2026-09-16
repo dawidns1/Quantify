@@ -241,6 +241,20 @@ export function DividendCalendar({
               key={m.index} 
               onMouseEnter={() => setHoveredMonthIndex(m.index)}
               onMouseLeave={() => setHoveredMonthIndex(null)}
+              onClick={(e) => {
+                if (m.payments.length === 0) return;
+                const gridRect = e.currentTarget.parentElement?.getBoundingClientRect();
+                const cardRect = e.currentTarget.getBoundingClientRect();
+                if (gridRect) {
+                  const x = cardRect.left - gridRect.left + cardRect.width / 2;
+                  setIsTooltipRightHalf(x > gridRect.width * 0.55);
+                  setTooltipPos({
+                    x,
+                    y: Math.max(cardRect.top - gridRect.top, 20)
+                  });
+                }
+                setHoveredMonthIndex(hoveredMonthIndex === m.index ? null : m.index);
+              }}
               style={{
                 background: hasPayments ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.005)',
                 border: '1px solid rgba(255, 255, 255, 0.04)',
@@ -251,13 +265,15 @@ export function DividendCalendar({
                 gap: '0.2rem',
                 position: 'relative',
                 overflow: 'hidden',
-                transition: 'var(--transition-smooth)'
+                transition: 'var(--transition-smooth)',
+                cursor: hasPayments ? 'pointer' : 'default'
               }}
               className="calendar-month-card"
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1 }}>
                 <span style={{ fontSize: isExpanded ? '0.88rem' : '0.75rem', fontWeight: 700, color: hasPayments ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                  {m.name}
+                  <span className="calendar-month-name-full">{m.name}</span>
+                  <span className="calendar-month-name-short">{m.shortName}</span>
                 </span>
                 {hasPayments && (
                   <span style={{ fontSize: isExpanded ? '0.68rem' : '0.6rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '1px 4px', borderRadius: '3px' }}>
@@ -390,6 +406,7 @@ export function DividendCalendar({
               zIndex: 100,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
               minWidth: '180px',
+              maxWidth: 'min(240px, 85vw)',
               display: 'flex',
               flexDirection: 'column',
               gap: '0.4rem',

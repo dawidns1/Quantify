@@ -1586,9 +1586,12 @@ export function PortfolioView({
                       display: 'flex', 
                       flexDirection: 'column', 
                       flex: 1, 
-                      overflowY: 'auto', 
+                      minHeight: 0,
+                      overflowY: mobileDividendsTab === 'ledger' ? 'auto' : 'hidden', 
                       paddingRight: '2px',
-                      paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))'
+                      paddingBottom: mobileDividendsTab === 'ledger' 
+                        ? 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' 
+                        : 'calc(4.4rem + env(safe-area-inset-bottom, 0px))'
                     }}
                   >
                     {/* Mobile Dividends Segmented Switcher */}
@@ -1661,7 +1664,7 @@ export function PortfolioView({
                     </div>
 
                     {mobileDividendsTab === 'forecast' && (
-                      <div style={{ minWidth: 0, height: 'auto' }}>
+                      <div style={{ minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         <DividendForecast 
                           apiBaseUrl={apiBaseUrl}
                           activePortfolioId={activePortfolioId}
@@ -1670,20 +1673,20 @@ export function PortfolioView({
                           account={selectedAccount}
                           linkCash={linkCash}
                           holdings={holdings}
-                          style={{ height: 'auto' }}
+                          style={{ height: '100%', flex: 1, minHeight: 0 }}
                         />
                       </div>
                     )}
 
                     {mobileDividendsTab === 'calendar' && (
-                      <div style={{ minWidth: 0, height: 'auto' }}>
+                      <div style={{ minWidth: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         <DividendCalendar 
                           dividends={dividendsList}
                           baseCurrency={summary.base_currency}
                           apiBaseUrl={apiBaseUrl}
                           activePortfolioId={activePortfolioId}
                           jwtToken={session?.access_token || null}
-                          style={{ height: 'auto' }}
+                          style={{ height: '100%', flex: 1, minHeight: 0 }}
                         />
                       </div>
                     )}
@@ -2135,7 +2138,7 @@ export function PortfolioView({
             }}
           >
             <Coins size={20} />
-            <span className="mobile-bottom-nav-label">{t('nav.income', 'Income')}</span>
+            <span className="mobile-bottom-nav-label">{t('nav.dividends', 'Dividends')}</span>
           </button>
 
           <button
@@ -2146,7 +2149,7 @@ export function PortfolioView({
             }}
           >
             <History size={20} />
-            <span className="mobile-bottom-nav-label">{t('nav.activity', 'Activity')}</span>
+            <span className="mobile-bottom-nav-label">{t('nav.ledger', 'Ledger')}</span>
           </button>
         </nav>
       )}

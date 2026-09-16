@@ -1745,7 +1745,6 @@ select option {
   }
 
   .table-wrapper,
-  .dividend-calendar-grid,
   .mobile-scroll-container {
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
   }
@@ -1951,11 +1950,30 @@ select option {
 @media (max-width: 600px) {
   .dividend-calendar-grid.full-width,
   .dividend-calendar-grid.side-by-side {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(6, 1fr);
-    gap: 0.45rem;
-    height: auto;
-    min-height: auto;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 0.35rem;
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+.calendar-month-name-full {
+  display: inline;
+}
+.calendar-month-name-short {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .calendar-month-name-full {
+    display: none !important;
+  }
+  .calendar-month-name-short {
+    display: inline !important;
+  }
+  .calendar-month-card {
+    padding: 0.25rem 0.35rem !important;
   }
 }
 

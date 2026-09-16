@@ -404,6 +404,17 @@ export function DividendForecast({
                     }}
                     onMouseEnter={() => setHoveredMonthIndex(idx)}
                     onMouseLeave={() => setHoveredMonthIndex(null)}
+                    onClick={(e) => {
+                      const chartRect = e.currentTarget.closest('.glass-panel')?.getBoundingClientRect();
+                      const colRect = e.currentTarget.getBoundingClientRect();
+                      if (chartRect) {
+                        setTooltipPos({
+                          x: colRect.left - chartRect.left + colRect.width / 2,
+                          y: Math.max(colRect.top - chartRect.top + colRect.height * 0.4, 60)
+                        });
+                      }
+                      setHoveredMonthIndex(hoveredMonthIndex === idx ? null : idx);
+                    }}
                   >
                     {/* Hover glow background */}
                     {isHovered && (
@@ -421,7 +432,7 @@ export function DividendForecast({
                     {/* Dedicated Bar Area Container */}
                     <div style={{
                       flex: 1,
-                      height: '100%',
+                      width: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'flex-end',
@@ -445,8 +456,12 @@ export function DividendForecast({
                       {/* Bar */}
                       {amount > 0 ? (
                         <div style={{
-                          width: '100%',
+                          position: 'absolute',
+                          bottom: 0,
+                          left: '10%',
+                          right: '10%',
                           height: heightPercent,
+                          minHeight: '4px',
                           background: isHovered 
                             ? 'linear-gradient(to top, rgba(6, 182, 212, 0.8), rgba(16, 185, 129, 0.8))'
                             : 'linear-gradient(to top, rgba(6, 182, 212, 0.35), rgba(16, 185, 129, 0.45))',
@@ -458,11 +473,18 @@ export function DividendForecast({
                             : '1px solid rgba(16, 185, 129, 0.15)',
                           borderRadius: '4px 4px 0 0',
                           transition: 'all 0.2s ease-in-out',
-                          zIndex: 1,
-                          position: 'relative'
+                          zIndex: 1
                         }} />
                       ) : (
-                        <div style={{ height: '0%', width: '100%' }} />
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: '25%',
+                          right: '25%',
+                          height: '2px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          borderRadius: '1px'
+                        }} />
                       )}
                     </div>
 
@@ -503,8 +525,8 @@ export function DividendForecast({
                   left: `${tooltipPos.x}px`,
                   top: `${tooltipPos.y}px`,
                   transform: hoveredMonthIndex > 6
-                    ? 'translate(-105%, -105%)' 
-                    : 'translate(15px, -105%)',
+                    ? 'translate(-100%, -105%)' 
+                    : 'translate(10px, -105%)',
                   background: 'rgba(11, 15, 28, 0.95)',
                   backdropFilter: 'blur(8px)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -513,6 +535,7 @@ export function DividendForecast({
                   zIndex: 10,
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
                   minWidth: '160px',
+                  maxWidth: 'min(240px, 85vw)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '0.4rem',

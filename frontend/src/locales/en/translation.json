@@ -845,6 +845,8 @@
     "assets": "Assets",
     "analytics": "Analytics",
     "income": "Income",
-    "activity": "Activity"
+    "activity": "Activity",
+    "dividends": "Dividends",
+    "ledger": "Ledger"
   }
 }
