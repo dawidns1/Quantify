@@ -2171,7 +2171,7 @@ body.density-compact .portfolio-table td {
 /* Stock Details Metrics Grid: balanced across desktop and responsive screen widths */
 .stock-details-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.65rem;
 }
 
@@ -2179,17 +2179,11 @@ body.density-compact .portfolio-table td {
   .stock-details-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .stock-details-metrics-grid > div:last-child:nth-child(odd) {
-    grid-column: span 2;
-  }
 }
 
 @media (max-width: 380px) {
   .stock-details-metrics-grid {
     grid-template-columns: 1fr;
-  }
-  .stock-details-metrics-grid > div:last-child:nth-child(odd) {
-    grid-column: auto;
   }
 }
 

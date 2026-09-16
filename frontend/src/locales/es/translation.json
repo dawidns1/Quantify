@@ -404,7 +404,9 @@
     "view_overall": "Total",
     "daily_change": "Cambio diario",
     "total_return": "Retorno total",
-    "click_to_toggle_return": "Haz clic para alternar rendimiento diario y total"
+    "click_to_toggle_return": "Haz clic para alternar rendimiento diario y total",
+    "exchange_rate": "Tipo de cambio",
+    "portfolio_weight": "Participación en cartera"
   },
   "import": {
     "btn_back": "Atrás",

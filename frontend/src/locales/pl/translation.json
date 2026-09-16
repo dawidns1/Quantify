@@ -404,7 +404,9 @@
     "view_overall": "Całkowity",
     "daily_change": "Zmiana dzienna",
     "total_return": "Zwrot całkowity",
-    "click_to_toggle_return": "Kliknij, aby przełączyć widok dzienny / całkowity"
+    "click_to_toggle_return": "Kliknij, aby przełączyć widok dzienny / całkowity",
+    "exchange_rate": "Kurs walutowy",
+    "portfolio_weight": "Udział w portfelu"
   },
   "import": {
     "btn_back": "Wstecz",

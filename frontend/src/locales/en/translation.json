@@ -404,7 +404,9 @@
     "view_overall": "Overall",
     "daily_change": "Daily Change",
     "total_return": "Total Return",
-    "click_to_toggle_return": "Click to toggle Daily vs Total return"
+    "click_to_toggle_return": "Click to toggle Daily vs Total return",
+    "exchange_rate": "Exchange Rate",
+    "portfolio_weight": "Portfolio Share"
   },
   "import": {
     "btn_back": "Back",

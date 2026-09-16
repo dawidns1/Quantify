@@ -61,16 +61,16 @@ const modalChartPlugins = [verticalLinePlugin];
 // File-level cache to persist stock details across modal opens
 const stockDetailsCache: Record<string, any> = {};
 
-const formatFinancialValue = (val: number | null, currencyStr = 'USD') => {
+const formatFinancialValue = (val: number | null | undefined, currencyStr = 'USD') => {
   if (val === null || val === undefined || isNaN(val)) return '—';
   const absVal = Math.abs(val);
   const sign = val < 0 ? '-' : '';
   
   const symbolMap: Record<string, string> = {
-    'USD': '$', 'EUR': '€', 'GBP': '£', 'PLN': ' zł', 'JPY': '¥', 'CAD': 'C$', 'AUD': 'A$'
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'PLN': '\u00A0zł', 'JPY': '¥', 'CAD': 'C$', 'AUD': 'A$'
   };
   
-  const currencySymbol = symbolMap[currencyStr.toUpperCase()] || ` ${currencyStr}`;
+  const currencySymbol = symbolMap[currencyStr.toUpperCase()] || `\u00A0${currencyStr}`;
   const isPostfixed = currencyStr.toUpperCase() === 'PLN' || !symbolMap[currencyStr.toUpperCase()];
 
   const formatWithSymbol = (numStr: string) => {
@@ -917,30 +917,26 @@ export function StockDetailsModal({
       onClick?: () => void;
     }
 
-    // 1. Market Price Card
-    const priceCard: MetricCardItem = {
-      id: 'price',
-      label: isPerShare ? t('holdings.col_price', 'Market Price') : t('holdings.col_current_val_local', 'Price (Local)'),
-      value: formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency),
-      subValue: isMarketLive 
-        ? (isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')) 
-        : holdingDetails.currency,
-      subColor: isMarketLive ? '#10b981' : 'var(--text-muted)',
+    // 1. Unified Position Valuation Card (Current Value & Market Price)
+    const valuationCard: MetricCardItem = {
+      id: 'valuation',
+      label: isPerShare ? t('holdings.col_price', 'Market Price') : t('holdings.col_current', 'Current Value'),
+      value: isPerShare 
+        ? formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)
+        : formatFinancialValue(holdingDetails.current_value_base, baseCurrency),
+      subValue: isPerShare
+        ? `${t('holdings.view_total', 'Total')}: ${formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}${weight > 0 ? ` · ${weight.toFixed(1)}%` : ''}`
+        : `${formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)}${weight > 0 ? ` · ${weight.toFixed(1)}%` : ''}`,
+      subColor: 'var(--text-secondary)',
       color: 'var(--color-primary)',
       isLive: isMarketLive,
-      tooltip: liveTooltip
+      badge: isMarketLive 
+        ? (isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')) 
+        : undefined,
+      tooltip: `${t('holdings.col_price', 'Market Price')}: ${formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)} · ${t('holdings.col_current', 'Current Value')}: ${formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}${weight > 0 ? ` · ${weight.toFixed(2)}% ${t('holdings.col_allocation', 'Allocation')}` : ''}${liveTooltip ? ` · ${liveTooltip}` : ''}`
     };
 
-    // 2. Current Value Card
-    const currentValueCard: MetricCardItem = {
-      id: 'current_value',
-      label: isPerShare ? t('holdings.col_current_val_per_share', 'Value / Share') : t('holdings.col_current', 'Current Value'),
-      value: formatFinancialValue(isPerShare && shares > 0 ? holdingDetails.current_value_base / shares : holdingDetails.current_value_base, baseCurrency),
-      subValue: weight > 0 ? `${weight.toFixed(2)}% ${t('holdings.col_allocation', 'Allocation')}` : undefined,
-      subColor: 'var(--text-secondary)'
-    };
-
-    // 3. Performance Card (Squeezed Daily + Total Return, interactive click to toggle)
+    // 2. Performance Card (Squeezed Daily + Total Return, interactive click to toggle)
     const isDaily = returnMode === 'daily';
     const perfIsPositive = isDaily ? (dayChangeVal >= 0) : (gainVal >= 0);
     const primaryVal = isDaily ? dayChangeVal : gainVal;
@@ -970,7 +966,7 @@ export function StockDetailsModal({
       tooltip: `${t('holdings.total_return', 'Total Return')}: ${gainVal >= 0 ? '+' : ''}${formatFinancialValue(gainVal, baseCurrency)} (${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%) · ${t('holdings.daily_change', 'Daily Change')}: ${dayChangeVal >= 0 ? '+' : ''}${formatFinancialValue(dayChangeVal, baseCurrency)} (${dayChangePct >= 0 ? '+' : ''}${dayChangePct.toFixed(2)}%) · ${t('holdings.click_to_toggle_return', 'Click to toggle Daily vs Total return')}`
     };
 
-    // 4. Compact Shares & Cost Basis Card (Eliminating needless width from bloated text and long fractions)
+    // 3. Compact Shares & Cost Basis Card (Eliminating needless width from bloated text and long fractions)
     const formatCleanShares = (num: number): string => {
       if (num % 1 === 0) return num.toLocaleString(i18n.language || 'en');
       const rounded = parseFloat(num.toFixed(3));
@@ -989,19 +985,19 @@ export function StockDetailsModal({
       label: isPerShare ? t('holdings.col_cost_per_share', 'Avg Cost') : t('holdings.col_cost_basis', 'Cost Basis'),
       value: isPerShare ? avgCostFormatted : costBasisFormatted,
       subValue: isPerShare 
-        ? `${formattedShares} ${t('holdings.col_shares', 'shares')}`
+        ? `${formattedShares} ${t('holdings.col_shares', 'shares')} · Total: ${formatFinancialValue(holdingDetails.cost_basis_base, baseCurrency)}`
         : `${formattedShares} @ ${avgCostFormatted}`,
       subColor: 'var(--text-secondary)',
       tooltip: `${shares} ${t('holdings.col_shares', 'shares')} · ${t('holdings.col_cost_per_share', 'Avg Cost')}: ${avgCostFormatted} · ${t('holdings.col_cost_basis', 'Cost Basis')}: ${formatFinancialValue(holdingDetails.cost_basis_base, baseCurrency)}`
     };
 
-    // 5. Dividends or FX Rate Card (only when present and meaningful)
+    // 4. Fourth Card: Income (Dividends), FX Rate, or Portfolio Allocation
     const hasDividends = (holdingDetails.dividends_net_base ?? 0) > 0;
     const isForeign = holdingDetails.currency && holdingDetails.currency.toUpperCase() !== baseCurrency.toUpperCase();
     
-    let secondaryCard: MetricCardItem | null = null;
+    let fourthCard: MetricCardItem;
     if (hasDividends) {
-      secondaryCard = {
+      fourthCard = {
         id: 'dividends',
         label: isPerShare ? t('holdings.col_dividends_net_per_share', 'Net Dividends / Share') : t('holdings.col_dividends_net', 'Net Dividends'),
         value: formatFinancialValue(isPerShare && shares > 0 ? (holdingDetails.dividends_net_base ?? 0) / shares : (holdingDetails.dividends_net_base ?? 0), baseCurrency),
@@ -1009,21 +1005,30 @@ export function StockDetailsModal({
           ? `${(((holdingDetails.dividends_net_base ?? 0) / holdingDetails.cost_basis_base) * 100).toFixed(2)}% ${t('metrics.yield', 'Yield')}` 
           : t('dividends.received', 'Net Income'),
         color: 'var(--color-green)',
-        subColor: '#10b981'
+        subColor: '#10b981',
+        tooltip: `${t('holdings.col_dividends_net', 'Net Dividends')}: ${formatFinancialValue(holdingDetails.dividends_net_base ?? 0, baseCurrency)}`
       };
     } else if (isForeign && holdingDetails.fx_rate) {
-      secondaryCard = {
+      fourthCard = {
         id: 'fx_rate',
         label: t('holdings.col_fx_rate', 'FX Rate'),
-        value: `1 ${holdingDetails.currency} = ${holdingDetails.fx_rate.toFixed(4)} ${baseCurrency}`,
-        subValue: t('holdings.exchange_rate', 'Exchange Rate'),
-        subColor: 'var(--text-muted)'
+        value: `1\u00A0${holdingDetails.currency} = ${holdingDetails.fx_rate.toFixed(4)}\u00A0${baseCurrency}`,
+        subValue: `${holdingDetails.currency}/${baseCurrency} · ${t('holdings.exchange_rate', 'Exchange Rate')}`,
+        subColor: 'var(--text-muted)',
+        tooltip: `1 ${holdingDetails.currency} = ${holdingDetails.fx_rate.toFixed(4)} ${baseCurrency}`
+      };
+    } else {
+      fourthCard = {
+        id: 'allocation',
+        label: t('holdings.col_allocation', 'Allocation'),
+        value: `${weight.toFixed(2)}%`,
+        subValue: `${formatFinancialValue(holdingDetails.current_value_base, baseCurrency)} · ${t('holdings.portfolio_weight', 'Portfolio Share')}`,
+        subColor: 'var(--text-secondary)',
+        tooltip: `${weight.toFixed(2)}% · ${formatFinancialValue(holdingDetails.current_value_base, baseCurrency)} / ${formatFinancialValue(totalPortfolioValue, baseCurrency)}`
       };
     }
 
-    const cards: MetricCardItem[] = [priceCard, currentValueCard, performanceCard, costCard];
-    if (secondaryCard) cards.push(secondaryCard);
-    return cards;
+    return [valuationCard, performanceCard, costCard, fourthCard];
   }, [holdingDetails, totalPortfolioValue, baseCurrency, modalViewMode, returnMode, t, i18n.language]);
 
   if (!selectedPositionSymbol) return null;
@@ -1322,14 +1327,19 @@ export function StockDetailsModal({
                           </div>
                           <span 
                             style={{ 
-                              fontSize: '1.12rem', 
+                              fontSize: 'clamp(0.95rem, 1.2vw, 1.15rem)', 
                               fontWeight: 700, 
                               color: card.color || 'var(--text-primary)', 
                               fontFamily: 'monospace',
-                              letterSpacing: '-0.2px',
-                              lineHeight: 1.2
+                              fontVariantNumeric: 'tabular-nums',
+                              letterSpacing: '-0.25px',
+                              lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'block'
                             }}
-                            title={card.tooltip}
+                            title={card.tooltip || (typeof card.value === 'string' ? card.value : undefined)}
                           >
                             {card.value}
                           </span>
