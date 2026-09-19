@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { History, Plus, X, Edit2, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import type { Holding, Transaction } from '../../types/portfolio';
 import { FXHedgingVisualizer } from './FXHedgingVisualizer';
 import { getAccountNeonTheme, isDelayedFeedTicker } from '../../utils/accountColors';
@@ -61,7 +62,7 @@ const modalChartPlugins = [verticalLinePlugin];
 // File-level cache to persist stock details across modal opens
 const stockDetailsCache: Record<string, any> = {};
 
-const formatFinancialValue = (val: number | null | undefined, currencyStr = 'USD') => {
+const formatFinancialValue = (val: number | null | undefined, currencyStr = 'USD', customLocale?: string) => {
   if (val === null || val === undefined || isNaN(val)) return '—';
   const absVal = Math.abs(val);
   const sign = val < 0 ? '-' : '';
@@ -77,6 +78,8 @@ const formatFinancialValue = (val: number | null | undefined, currencyStr = 'USD
     return isPostfixed ? `${sign}${numStr}${currencySymbol}` : `${sign}${currencySymbol}${numStr}`;
   };
 
+  const activeLocale = customLocale || i18n.language || 'en';
+
   if (absVal >= 1.0e12) {
     return formatWithSymbol(`${(absVal / 1.0e12).toFixed(2)}T`);
   } else if (absVal >= 1.0e9) {
@@ -84,7 +87,7 @@ const formatFinancialValue = (val: number | null | undefined, currencyStr = 'USD
   } else if (absVal >= 1.0e6) {
     return formatWithSymbol(`${(absVal / 1.0e6).toFixed(2)}M`);
   }
-  return formatWithSymbol(absVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  return formatWithSymbol(absVal.toLocaleString(activeLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 };
 
 interface StockDetailsModalProps {

@@ -308,7 +308,7 @@ export function SettingsModal({
                             boxShadow: currentTheme.glow,
                             flexShrink: 0
                           }} 
-                          title="Current Sub-Account Neon Theme"
+                          title={t('settings.neon_theme_title', 'Current Sub-Account Neon Theme')}
                         />
                         <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {accName}

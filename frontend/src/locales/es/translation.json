@@ -94,7 +94,8 @@
     "subtitleForgot": "Introduzca su correo electrónico para recibir un enlace de restablecimiento de contraseña",
     "subtitleRecovery": "Establezca su nueva contraseña segura a continuación",
     "subtitleSignIn": "Inicie sesión para acceder a sus portafolios en varios dispositivos",
-    "subtitleSignUp": "Cree una cuenta segura para realizar el seguimiento de portafolios"
+    "subtitleSignUp": "Cree una cuenta segura para realizar el seguimiento de portafolios",
+    "placeholder_email": "tu@ejemplo.com"
   },
   "calendar": {
     "btn_add_div": "Añadir dividendo virtual",
@@ -155,7 +156,9 @@
     "toggle_columns": "Personalizar columnas",
     "reset": "Restablecer",
     "today": "Hoy",
-    "yesterday": "Ayer"
+    "yesterday": "Ayer",
+    "default": "Predeterminado",
+    "all": "Todos"
   },
   "dashboard": {
     "account_filter_all": "Todas las cuentas",
@@ -272,7 +275,9 @@
     "yield_on_cost": "Rendimiento sobre el costo",
     "tab_forecast": "Pronóstico",
     "tab_calendar": "Calendario",
-    "tab_ledger": "Pagos"
+    "tab_ledger": "Pagos",
+    "est_short": "est.",
+    "placeholder_ticker": "ej. AAPL"
   },
   "events": {
     "earnings_release": "Presentación de resultados",
@@ -429,7 +434,8 @@
     "new_account_option": "Crear nueva cuenta...",
     "placeholder_account": "Introduzca el nombre de la cuenta (ej. Cuenta XTB)",
     "selected_count": "Seleccionado:",
-    "supported_title": "Formatos detectados automáticamente"
+    "supported_title": "Formatos detectados automáticamente",
+    "generic_tip_columns": "¿Utiliza otro broker? Asegúrese de que los encabezados incluyan columnas estándar: Date, Ticker, Type (Compra/Venta), Shares, Price."
   },
   "ledger": {
     "action_delete": "Eliminar",
@@ -688,7 +694,11 @@
       "tab_invite_friends": "Invitar amigos",
       "tab_share_portfolio": "Compartir portafolio",
       "title": "Compartir acceso al portafolio",
-      "you": "(Tú)"
+      "you": "(Tú)",
+      "invite_join_success_name": "Te has unido exitosamente a la cartera: {{name}}",
+      "invite_join_failed_err": "Error al unirse a la cartera desde el enlace: {{error}}",
+      "err_failed_remove_named": "Error al eliminar al miembro: {{error}}",
+      "err_failed_update_named": "Error al actualizar el rol: {{error}}"
     }
   },
   "premium": {
@@ -733,14 +743,44 @@
     "sum_ok": "Pesos totales: 100%",
     "title": "Planificador de asignación objetivo",
     "trade_shares": "Acciones",
-    "trades_header": "Lista de operaciones para ejecutar"
+    "trades_header": "Lista de operaciones para ejecutar",
+    "distribute_weights_equally": "Distribuir pesos equitativamente"
   },
   "report": {
     "btn_download": "Descargar PDF",
     "btn_print": "Imprimir / PDF",
     "generating": "Generando...",
     "modal_subtitle": "Instantánea lista para imprimir y evaluación de riesgo institucional",
-    "modal_title": "Dossier Ejecutivo del Portafolio"
+    "modal_title": "Dossier Ejecutivo del Portafolio",
+    "executive_report": "Informe Ejecutivo",
+    "master_portfolio": "Cartera Principal",
+    "account_label": "Cuenta",
+    "base_currency_label": "Moneda base",
+    "report_generated": "Informe generado",
+    "verified_audit": "Auditoría verificada",
+    "sec_valuation_metrics": "Valoración y métricas clave",
+    "net_asset_value": "Valor liquidativo (NAV)",
+    "total_portfolio_value": "Valor total de la cartera",
+    "total_unrealized_gain": "Ganancia no realizada total",
+    "money_weighted_return": "Retorno ponderado por dinero (MWR)",
+    "annualized_xirr": "TIR anualizada (XIRR)",
+    "sharpe_ratio": "Ratio de Sharpe",
+    "risk_adjusted_return": "Retorno ajustado al riesgo",
+    "sec_risk_exposure": "Riesgo y exposición al benchmark",
+    "portfolio_beta": "Beta de la cartera (vs S&P 500)",
+    "max_historical_drawdown": "Máxima caída histórica (Drawdown)",
+    "annualized_volatility": "Volatilidad anualizada",
+    "sortino_ratio": "Ratio de Sortino",
+    "sec_currency_exposure": "Exposición por divisa",
+    "top_holdings_composition": "Composición de principales activos ({{count}} activos)",
+    "sec_projected_income": "Ingresos pasivos proyectados (12 meses)",
+    "forward_yield": "Rendimiento proyectado",
+    "annual_forecast": "Previsión anual",
+    "average_monthly": "Promedio mensual",
+    "ex_div_events_tracked": "Eventos ex-div registrados",
+    "payouts_count": "{{count}} pagos",
+    "footer_confidential": "Motor Cuantitativo QuantiFi © {{year}} • Confidencial",
+    "footer_disclaimer": "Generado para seguimiento personal de cartera • Fin del informe"
   },
   "screener": {
     "btnClear": "Limpiar",
@@ -850,5 +890,21 @@
     "activity": "Actividad",
     "dividends": "Dividendos",
     "ledger": "Libro"
+  },
+  "beta_modal": {
+    "build_release": "Versión de compilación",
+    "environment": "Entorno",
+    "live_beta": "Beta Activa"
+  },
+  "settings": {
+    "neon_theme_title": "Tema neón actual de la subcuenta"
+  },
+  "portfolio": {
+    "err_create": "Error al crear la cartera",
+    "err_rename": "Error al renombrar la cartera",
+    "err_delete": "Error al eliminar la cartera",
+    "err_load_demo": "Error al cargar transacciones de demostración: {{error}}",
+    "err_delete_tx": "Error al eliminar la transacción",
+    "err_delete_div": "Error al eliminar/omitir dividendo"
   }
 }

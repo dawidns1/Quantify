@@ -301,8 +301,7 @@ export function ImportCSVModal({
 
             {/* Help / Guide */}
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.45 }}>
-              {t('import.generic_tip', 'Using another broker? Make sure headers contain standard columns: ')}
-              <code style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>Date</code>, <code style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>Ticker</code>, <code style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>Type</code> (Buy/Sell), <code style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>Shares</code>, <code style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>Price</code>.
+              {t('import.generic_tip_columns', 'Using another broker? Make sure headers contain standard columns: Date, Ticker, Type (Buy/Sell), Shares, Price.')}
             </p>
 
             {/* Actions */}

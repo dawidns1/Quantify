@@ -182,7 +182,7 @@ export function DividendCalendar({
             <button 
               onClick={(e) => { e.stopPropagation(); onClose(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Hide Card"
+              title={t('common.hide_card', 'Hide Card')}
               onMouseEnter={(e) => e.currentTarget.style.color = 'white'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -291,7 +291,7 @@ export function DividendCalendar({
                   opacity: isAllUpcoming ? 0.85 : 1
                 }}>
                   {m.totalNet > 0 ? formatCurrency(m.totalNet, baseCurrency) : '—'}
-                  {isAllUpcoming && <span style={{ fontSize: isExpanded ? '0.68rem' : '0.62rem', color: 'var(--text-muted)', marginLeft: '3px', fontWeight: 500 }}>est.</span>}
+                  {isAllUpcoming && <span style={{ fontSize: isExpanded ? '0.68rem' : '0.62rem', color: 'var(--text-muted)', marginLeft: '3px', fontWeight: 500 }}>{t('dividends.est_short', 'est.')}</span>}
                 </span>
                 
                 {hasPayments && (

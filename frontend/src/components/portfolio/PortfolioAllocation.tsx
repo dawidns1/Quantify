@@ -197,7 +197,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Up" 
+              title={t('common.move_up', 'Move Up')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -208,7 +208,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Down" 
+              title={t('common.move_down', 'Move Down')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -219,7 +219,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
             <button 
               onClick={(e) => { e.stopPropagation(); onClose(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Hide Card" 
+              title={t('common.hide_card', 'Hide Card')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -272,7 +272,7 @@ export const PortfolioAllocation = memo(function PortfolioAllocation({
               {renderDoughnut()}
               {/* Inner label */}
               <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Assets</span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('holdings.total_assets_count', 'Assets')}</span>
                 <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white' }}>{holdings.length}</span>
               </div>
             </div>

@@ -192,7 +192,7 @@ export function DividendForecast({
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} 
-              title="Hide Card"
+              title={t('common.hide_card', 'Hide Card')}
               onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -299,7 +299,7 @@ export function DividendForecast({
             type="button"
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
             style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} 
-            title="Hide Card"
+            title={t('common.hide_card', 'Hide Card')}
             onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
             onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
           >

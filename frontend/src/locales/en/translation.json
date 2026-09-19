@@ -94,7 +94,8 @@
     "subtitleForgot": "Enter your email to receive a password reset link",
     "subtitleRecovery": "Set your new secure password below",
     "subtitleSignIn": "Sign in to access your portfolios across devices",
-    "subtitleSignUp": "Create a secure account to track portfolios"
+    "subtitleSignUp": "Create a secure account to track portfolios",
+    "placeholder_email": "you@example.com"
   },
   "calendar": {
     "btn_add_div": "Add Virtual Dividend",
@@ -155,7 +156,9 @@
     "toggle_columns": "Customize Columns",
     "reset": "Reset",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "default": "Default",
+    "all": "All"
   },
   "dashboard": {
     "account_filter_all": "All Accounts",
@@ -272,7 +275,9 @@
     "yield_on_cost": "Yield on Cost",
     "tab_forecast": "Forecast",
     "tab_calendar": "Calendar",
-    "tab_ledger": "Payouts"
+    "tab_ledger": "Payouts",
+    "est_short": "est.",
+    "placeholder_ticker": "e.g. AAPL"
   },
   "events": {
     "earnings_release": "Earnings Release",
@@ -429,7 +434,8 @@
     "new_account_option": "Create New Account...",
     "placeholder_account": "Enter account name (e.g. XTB Broker)",
     "selected_count": "Selected:",
-    "supported_title": "Auto-Detected Formats"
+    "supported_title": "Auto-Detected Formats",
+    "generic_tip_columns": "Using another broker? Make sure headers contain standard columns: Date, Ticker, Type (Buy/Sell), Shares, Price."
   },
   "ledger": {
     "action_delete": "Delete",
@@ -688,7 +694,11 @@
       "tab_invite_friends": "Invite Friends",
       "tab_share_portfolio": "Share Portfolio",
       "title": "Share Portfolio Access",
-      "you": "(You)"
+      "you": "(You)",
+      "invite_join_success_name": "Successfully joined portfolio: {{name}}",
+      "invite_join_failed_err": "Failed to join portfolio from invite link: {{error}}",
+      "err_failed_remove_named": "Failed to remove member: {{error}}",
+      "err_failed_update_named": "Failed to update role: {{error}}"
     }
   },
   "premium": {
@@ -733,14 +743,44 @@
     "sum_ok": "Total weights: 100%",
     "title": "Target Allocation Planner",
     "trade_shares": "Shares",
-    "trades_header": "Trades Checklist to Execute"
+    "trades_header": "Trades Checklist to Execute",
+    "distribute_weights_equally": "Distribute weights equally"
   },
   "report": {
     "btn_download": "Download PDF",
     "btn_print": "Print / PDF",
     "generating": "Generating...",
     "modal_subtitle": "Print-ready snapshot & institutional risk assessment",
-    "modal_title": "Executive Portfolio Dossier"
+    "modal_title": "Executive Portfolio Dossier",
+    "executive_report": "Executive Report",
+    "master_portfolio": "Master Portfolio",
+    "account_label": "Account",
+    "base_currency_label": "Base Currency",
+    "report_generated": "Report Generated",
+    "verified_audit": "Verified Audit",
+    "sec_valuation_metrics": "Valuation & Key Metrics",
+    "net_asset_value": "Net Asset Value",
+    "total_portfolio_value": "Total Portfolio Value",
+    "total_unrealized_gain": "Total Unrealized Gain",
+    "money_weighted_return": "Money-Weighted Return",
+    "annualized_xirr": "Annualized XIRR",
+    "sharpe_ratio": "Sharpe Ratio",
+    "risk_adjusted_return": "Risk-adjusted return",
+    "sec_risk_exposure": "Risk & Benchmark Exposure",
+    "portfolio_beta": "Portfolio Beta (vs S&P 500)",
+    "max_historical_drawdown": "Max Historical Drawdown",
+    "annualized_volatility": "Annualized Volatility",
+    "sortino_ratio": "Sortino Ratio",
+    "sec_currency_exposure": "Currency Exposure",
+    "top_holdings_composition": "Top Holdings Composition ({{count}} Assets)",
+    "sec_projected_income": "12-Month Projected Passive Income",
+    "forward_yield": "Forward Yield",
+    "annual_forecast": "Annual Forecast",
+    "average_monthly": "Average Monthly",
+    "ex_div_events_tracked": "Ex-Div Events Tracked",
+    "payouts_count": "{{count}} payouts",
+    "footer_confidential": "QuantiFi Quantitative Analytics Engine © {{year}} • Confidential",
+    "footer_disclaimer": "Generated for personal portfolio tracking • End of Report"
   },
   "screener": {
     "btnClear": "Clear",
@@ -850,5 +890,21 @@
     "activity": "Activity",
     "dividends": "Dividends",
     "ledger": "Ledger"
+  },
+  "beta_modal": {
+    "build_release": "Build Release",
+    "environment": "Environment",
+    "live_beta": "Live Beta"
+  },
+  "settings": {
+    "neon_theme_title": "Current Sub-Account Neon Theme"
+  },
+  "portfolio": {
+    "err_create": "Failed to create portfolio",
+    "err_rename": "Failed to rename portfolio",
+    "err_delete": "Failed to delete portfolio",
+    "err_load_demo": "Failed to load demo transactions: {{error}}",
+    "err_delete_tx": "Failed to delete transaction",
+    "err_delete_div": "Failed to delete/skip dividend"
   }
 }

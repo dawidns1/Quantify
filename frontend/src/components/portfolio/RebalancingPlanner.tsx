@@ -198,7 +198,7 @@ export function RebalancingPlanner({
               onClick={handleResetEqual}
               className="cancel-btn"
               style={{ padding: '0.45rem 0.85rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', borderRadius: '6px', background: 'rgba(255,255,255,0.03)' }}
-              title="Distribute weights equally"
+              title={t('rebalance.distribute_weights_equally', 'Distribute weights equally')}
             >
               <RotateCcw size={12} /> {t('rebalance.btn_equal', 'Reset Equal')}
             </button>

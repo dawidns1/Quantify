@@ -651,7 +651,7 @@ export function AuthView() {
                     type="email"
                     className="input-field"
                     style={{ paddingLeft: '38px', width: '100%' }}
-                    placeholder="you@example.com"
+                    placeholder={t('auth.placeholder_email', 'you@example.com')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -697,7 +697,7 @@ export function AuthView() {
                   type="email"
                   className="input-field"
                   style={{ paddingLeft: '38px', width: '100%' }}
-                  placeholder="you@example.com"
+                  placeholder={t('auth.placeholder_email', 'you@example.com')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

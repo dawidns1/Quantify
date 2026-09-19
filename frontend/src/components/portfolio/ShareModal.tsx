@@ -289,7 +289,7 @@ export function ShareModal({
           loadSharingData(targetPortfolioId);
         } catch (err: any) {
           console.error('Error removing member:', err);
-          alert(t('modals.share.err_failed_remove', 'Failed to remove member: ') + err.message);
+          alert(t('modals.share.err_failed_remove_named', { error: err.message, defaultValue: `Failed to remove member: ${err.message}` }));
         }
       },
       true
@@ -302,7 +302,7 @@ export function ShareModal({
       loadSharingData(targetPortfolioId);
     } catch (err: any) {
       console.error('Error updating member role:', err);
-      alert(t('modals.share.err_failed_update', 'Failed to update role: ') + err.message);
+      alert(t('modals.share.err_failed_update_named', { error: err.message, defaultValue: `Failed to update role: ${err.message}` }));
     }
   };
 

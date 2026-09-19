@@ -94,7 +94,8 @@
     "subtitleForgot": "Wpisz swój e-mail, aby otrzymać link do resetowania hasła",
     "subtitleRecovery": "Ustaw swoje nowe bezpieczne hasło poniżej",
     "subtitleSignIn": "Zaloguj się, aby uzyskać dostęp do swoich portfeli na różnych urządzeniach",
-    "subtitleSignUp": "Utwórz bezpieczne konto, aby śledzić portfele"
+    "subtitleSignUp": "Utwórz bezpieczne konto, aby śledzić portfele",
+    "placeholder_email": "ty@przyklad.pl"
   },
   "calendar": {
     "btn_add_div": "Dodaj dywidendę wirtualną",
@@ -155,7 +156,9 @@
     "toggle_columns": "Dostosuj kolumny",
     "reset": "Resetuj",
     "today": "Dzisiaj",
-    "yesterday": "Wczoraj"
+    "yesterday": "Wczoraj",
+    "default": "Domyślne",
+    "all": "Wszystkie"
   },
   "dashboard": {
     "account_filter_all": "Wszystkie konta",
@@ -272,7 +275,9 @@
     "yield_on_cost": "Wskaźnik Yield on Cost (YoC)",
     "tab_forecast": "Prognoza",
     "tab_calendar": "Kalendarz",
-    "tab_ledger": "Wypłaty"
+    "tab_ledger": "Wypłaty",
+    "est_short": "szac.",
+    "placeholder_ticker": "np. AAPL"
   },
   "events": {
     "earnings_release": "Publikacja wyników",
@@ -429,7 +434,8 @@
     "new_account_option": "Utwórz nowy rachunek...",
     "placeholder_account": "Wprowadź nazwę rachunku (np. Biuro Maklerskie XTB)",
     "selected_count": "Wybrano:",
-    "supported_title": "Automatycznie wykrywane formaty"
+    "supported_title": "Automatycznie wykrywane formaty",
+    "generic_tip_columns": "Używasz innego brokera? Upewnij się, że nagłówki zawierają standardowe kolumny: Date, Ticker, Type (Kupno/Sprzedaż), Shares, Price."
   },
   "ledger": {
     "action_delete": "Usuń",
@@ -688,7 +694,11 @@
       "tab_invite_friends": "Zaproś znajomych",
       "tab_share_portfolio": "Udostępnij portfel",
       "title": "Udostępnij portfel",
-      "you": "(Ty)"
+      "you": "(Ty)",
+      "invite_join_success_name": "Pomyślnie dołączono do portfela: {{name}}",
+      "invite_join_failed_err": "Nie udało się dołączyć do portfela z linku: {{error}}",
+      "err_failed_remove_named": "Nie udało się usunąć członka: {{error}}",
+      "err_failed_update_named": "Nie udało się zaktualizować roli: {{error}}"
     }
   },
   "premium": {
@@ -733,14 +743,44 @@
     "sum_ok": "Suma wag: 100%",
     "title": "Planowanie Rebalansowania Portfolio",
     "trade_shares": "Akcje",
-    "trades_header": "Lista zleceń do wykonania"
+    "trades_header": "Lista zleceń do wykonania",
+    "distribute_weights_equally": "Rozłóż wagi po równo"
   },
   "report": {
     "btn_download": "Pobierz PDF",
     "btn_print": "Drukuj / PDF",
     "generating": "Generowanie...",
     "modal_subtitle": "Gotowy do druku przegląd wyceny i ocena ryzyka instytucjonalnego",
-    "modal_title": "Raport Wykonawczy Portfela"
+    "modal_title": "Raport Wykonawczy Portfela",
+    "executive_report": "Raport Zarządczy",
+    "master_portfolio": "Portfel Główny",
+    "account_label": "Konto",
+    "base_currency_label": "Waluta bazowa",
+    "report_generated": "Wygenerowano raport",
+    "verified_audit": "Zweryfikowany audyt",
+    "sec_valuation_metrics": "Wycena i kluczowe wskaźniki",
+    "net_asset_value": "Wartość aktywów netto (NAV)",
+    "total_portfolio_value": "Całkowita wartość portfela",
+    "total_unrealized_gain": "Niezrealizowany zysk/strata",
+    "money_weighted_return": "Zwrot ważony kapitałem (MWR)",
+    "annualized_xirr": "Zannualizowany XIRR",
+    "sharpe_ratio": "Wskaźnik Sharpe'a",
+    "risk_adjusted_return": "Zwrot skorygowany o ryzyko",
+    "sec_risk_exposure": "Ryzyko i ekspozycja na benchmark",
+    "portfolio_beta": "Beta portfela (vs S&P 500)",
+    "max_historical_drawdown": "Maksymalne obsunięcie (Drawdown)",
+    "annualized_volatility": "Zannualizowana zmienność",
+    "sortino_ratio": "Wskaźnik Sortino",
+    "sec_currency_exposure": "Ekspozycja walutowa",
+    "top_holdings_composition": "Skład głównych pozycji ({{count}} aktywów)",
+    "sec_projected_income": "Prognoza dochodu pasywnego (12 miesięcy)",
+    "forward_yield": "Stopa prognozowana (Forward Yield)",
+    "annual_forecast": "Prognoza roczna",
+    "average_monthly": "Średnia miesięczna",
+    "ex_div_events_tracked": "Monitorowane wypłaty ex-div",
+    "payouts_count": "{{count}} wypłat",
+    "footer_confidential": "Silnik Analityki Ilościowej QuantiFi © {{year}} • Poufne",
+    "footer_disclaimer": "Wygenerowano na użytek osobistego śledzenia portfela • Koniec raportu"
   },
   "screener": {
     "btnClear": "Wyczyść",
@@ -850,5 +890,21 @@
     "activity": "Transakcje",
     "dividends": "Dywidendy",
     "ledger": "Księga"
+  },
+  "beta_modal": {
+    "build_release": "Wydanie kompilacji",
+    "environment": "Środowisko",
+    "live_beta": "Aktywna Beta"
+  },
+  "settings": {
+    "neon_theme_title": "Aktualny motyw neonowy subkonta"
+  },
+  "portfolio": {
+    "err_create": "Nie udało się utworzyć portfela",
+    "err_rename": "Nie udało się zmienić nazwy portfela",
+    "err_delete": "Nie udało się usunąć portfela",
+    "err_load_demo": "Nie udało się załadować transakcji demo: {{error}}",
+    "err_delete_tx": "Nie udało się usunąć transakcji",
+    "err_delete_div": "Nie udało się usunąć/pominąć dywidendy"
   }
 }

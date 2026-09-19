@@ -312,25 +312,25 @@ export function ExecutiveReportModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
                   <img src="/favicon.png" alt="Logo" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
                   <span style={{ fontWeight: 900, fontSize: '1.4rem', letterSpacing: '0.5px', color: '#0f172a' }}>
-                    Quanti<span style={{ color: '#0284c7' }}>Fi</span> <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px', marginLeft: '0.5rem' }}>Executive Report</span>
+                    Quanti<span style={{ color: '#0284c7' }}>Fi</span> <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px', marginLeft: '0.5rem' }}>{t('report.executive_report', 'Executive Report')}</span>
                   </span>
                 </div>
                 <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 900, color: '#0f172a' }}>
-                  {portfolioName || 'Master Portfolio'}
+                  {portfolioName || t('report.master_portfolio', 'Master Portfolio')}
                 </h2>
                 <span style={{ fontSize: '0.85rem', color: '#475569', marginTop: '0.2rem', display: 'block' }}>
-                  Account: <strong>{activeAccount || 'All'}</strong> | Base Currency: <strong>{baseCurrency}</strong>
+                  {t('report.account_label', 'Account')}: <strong>{activeAccount || t('common.all', 'All')}</strong> | {t('report.base_currency_label', 'Base Currency')}: <strong>{baseCurrency}</strong>
                 </span>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', fontWeight: 600 }}>
-                  Report Generated
+                  {t('report.report_generated', 'Report Generated')}
                 </span>
                 <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', marginTop: '0.15rem' }}>
                   {todayStr}
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.35rem', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>
-                  <CheckCircle2 size={12} /> Verified Audit
+                  <CheckCircle2 size={12} /> {t('report.verified_audit', 'Verified Audit')}
                 </div>
               </div>
             </div>
@@ -338,36 +338,36 @@ export function ExecutiveReportModal({
             {/* Section 1: Executive KPI Cards */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0284c7' }}>
-                <TrendingUp size={15} /> Valuation & Key Metrics
+                <TrendingUp size={15} /> {t('report.sec_valuation_metrics', 'Valuation & Key Metrics')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.85rem' }}>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.9rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Net Asset Value</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.net_asset_value', 'Net Asset Value')}</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0f172a', marginTop: '0.2rem' }}>
                     {formatMoney(summary.total_value_base)}
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Total Portfolio Value</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t('report.total_portfolio_value', 'Total Portfolio Value')}</span>
                 </div>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.9rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Unrealized Gain</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.total_unrealized_gain', 'Total Unrealized Gain')}</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 900, color: (summary.total_gain_base || 0) >= 0 ? '#16a34a' : '#dc2626', marginTop: '0.2rem' }}>
                     {formatPercent(summary.total_gain_percent)}
                   </div>
                   <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{formatMoney(summary.total_gain_base)}</span>
                 </div>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.9rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Money-Weighted Return</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.money_weighted_return', 'Money-Weighted Return')}</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0284c7', marginTop: '0.2rem' }}>
                     {formatPercent(analytics?.mwr || 0)}
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Annualized XIRR</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{t('report.annualized_xirr', 'Annualized XIRR')}</span>
                 </div>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.9rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Sharpe Ratio</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.sharpe_ratio', 'Sharpe Ratio')}</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0f172a', marginTop: '0.2rem' }}>
                     {analytics?.sharpe_ratio ? analytics.sharpe_ratio.toFixed(2) : '1.45'}
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Risk-adjusted return</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{t('report.risk_adjusted_return', 'Risk-adjusted return')}</span>
                 </div>
               </div>
             </div>
@@ -376,23 +376,23 @@ export function ExecutiveReportModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0284c7' }}>
-                  <ShieldCheck size={15} /> Risk & Benchmark Exposure
+                  <ShieldCheck size={15} /> {t('report.sec_risk_exposure', 'Risk & Benchmark Exposure')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.82rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>Portfolio Beta (vs S&P 500):</span>
+                    <span style={{ color: '#64748b' }}>{t('report.portfolio_beta', 'Portfolio Beta (vs S&P 500)')}:</span>
                     <strong style={{ color: '#0f172a' }}>{analytics?.beta ? analytics.beta.toFixed(2) : '0.94'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>Max Historical Drawdown:</span>
+                    <span style={{ color: '#64748b' }}>{t('report.max_historical_drawdown', 'Max Historical Drawdown')}:</span>
                     <strong style={{ color: '#dc2626' }}>{formatPercent(analytics?.max_drawdown || -14.2)}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>Annualized Volatility:</span>
+                    <span style={{ color: '#64748b' }}>{t('report.annualized_volatility', 'Annualized Volatility')}:</span>
                     <strong style={{ color: '#0f172a' }}>{formatPercent(analytics?.volatility || 16.8)}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#64748b' }}>Sortino Ratio:</span>
+                    <span style={{ color: '#64748b' }}>{t('report.sortino_ratio', 'Sortino Ratio')}:</span>
                     <strong style={{ color: '#0f172a' }}>{analytics?.sortino_ratio ? analytics.sortino_ratio.toFixed(2) : '1.82'}</strong>
                   </div>
                 </div>
@@ -400,7 +400,7 @@ export function ExecutiveReportModal({
 
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0284c7' }}>
-                  <PieChart size={15} /> Currency Exposure
+                  <PieChart size={15} /> {t('report.sec_currency_exposure', 'Currency Exposure')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', fontSize: '0.82rem' }}>
                   {Object.entries(currMap).map(([curr, val]) => {
@@ -423,20 +423,20 @@ export function ExecutiveReportModal({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: '#0284c7' }}>
-                  <DollarSign size={15} /> Top Holdings Composition ({activeHoldings.length} Assets)
+                  <DollarSign size={15} /> {t('report.top_holdings_composition', { count: activeHoldings.length, defaultValue: `Top Holdings Composition (${activeHoldings.length} Assets)` })}
                 </div>
               </div>
               <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1', color: '#475569' }}>
-                      <th style={{ padding: '0.65rem 0.85rem', fontWeight: 800 }}>Asset</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Shares</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Avg Cost</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Current Price</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Market Value</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Weight</th>
-                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>Gain / Loss</th>
+                      <th style={{ padding: '0.65rem 0.85rem', fontWeight: 800 }}>{t('holdings.col_asset', 'Asset')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_shares', 'Shares')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_avg_cost', 'Avg Cost')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_price', 'Current Price')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_market_value', 'Market Value')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_weight', 'Weight')}</th>
+                      <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 800 }}>{t('holdings.col_gain_loss', 'Gain / Loss')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -470,24 +470,24 @@ export function ExecutiveReportModal({
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1.1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: '#0284c7' }}>
-                  <Calendar size={15} /> 12-Month Projected Passive Income
+                  <Calendar size={15} /> {t('report.sec_projected_income', '12-Month Projected Passive Income')}
                 </div>
                 <span style={{ fontSize: '0.82rem', color: '#475569' }}>
-                  Forward Yield: <strong style={{ color: '#16a34a' }}>{forwardYield.toFixed(2)}%</strong>
+                  {t('report.forward_yield', 'Forward Yield')}: <strong style={{ color: '#16a34a' }}>{forwardYield.toFixed(2)}%</strong>
                 </span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '0.75rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Annual Forecast</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.annual_forecast', 'Annual Forecast')}</span>
                   <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{formatMoney(totalAnnualDiv)}</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Average Monthly</span>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.average_monthly', 'Average Monthly')}</span>
                   <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{formatMoney(totalAnnualDiv / 12)}</div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Ex-Div Events Tracked</span>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{dividends.length} payouts</div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('report.ex_div_events_tracked', 'Ex-Div Events Tracked')}</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{t('report.payouts_count', { count: dividends.length, defaultValue: `${dividends.length} payouts` })}</div>
                 </div>
               </div>
             </div>
@@ -495,10 +495,10 @@ export function ExecutiveReportModal({
             {/* Section 5: Legal & Audit Footer */}
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: '#64748b', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
-                QuantiFi Quantitative Analytics Engine &copy; {new Date().getFullYear()} &bull; Confidential
+                {t('report.footer_confidential', { year: new Date().getFullYear(), defaultValue: `QuantiFi Quantitative Analytics Engine © ${new Date().getFullYear()} • Confidential` })}
               </div>
               <div>
-                Generated for personal portfolio tracking &bull; End of Report
+                {t('report.footer_disclaimer', 'Generated for personal portfolio tracking • End of Report')}
               </div>
             </div>
           </div>

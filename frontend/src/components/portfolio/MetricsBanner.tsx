@@ -51,7 +51,7 @@ export function MetricsBanner({
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveUp(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Up" 
+              title={t('common.move_up', 'Move Up')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -62,7 +62,7 @@ export function MetricsBanner({
             <button 
               onClick={(e) => { e.stopPropagation(); onMoveDown(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Move Down" 
+              title={t('common.move_down', 'Move Down')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -73,7 +73,7 @@ export function MetricsBanner({
             <button 
               onClick={(e) => { e.stopPropagation(); onClose(); }} 
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }} 
-              title="Hide Card" 
+              title={t('common.hide_card', 'Hide Card')} 
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-red)'} 
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >

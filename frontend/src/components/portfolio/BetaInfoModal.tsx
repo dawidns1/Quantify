@@ -70,14 +70,14 @@ export function BetaInfoModal({ isOpen, onClose, onOpenFeedback }: BetaInfoModal
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--panel-border)' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Build Release</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{t('beta_modal.build_release', 'Build Release')}</div>
                 <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>{APP_VERSION}</div>
               </div>
 
               <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--panel-border)' }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Environment</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{t('beta_modal.environment', 'Environment')}</div>
                 <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Cpu size={14} /> Live Beta
+                  <Cpu size={14} /> {t('beta_modal.live_beta', 'Live Beta')}
                 </div>
               </div>
             </div>

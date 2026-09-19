@@ -393,11 +393,11 @@ export function PortfolioView({
           setActivePortfolioId(result.portfolio_id);
           setActivePortfolioRole(result.role);
           
-          alert((t('modals.share.invite_join_success') || 'Successfully joined portfolio: ') + result.portfolio_name);
+          alert(t('modals.share.invite_join_success_name', { name: result.portfolio_name, defaultValue: `Successfully joined portfolio: ${result.portfolio_name}` }));
         }
       } catch (err: any) {
         console.error('Error joining portfolio via invite link:', err);
-        alert((t('modals.share.invite_join_failed') || 'Failed to join portfolio from invite link: ') + (err.message || err));
+        alert(t('modals.share.invite_join_failed_err', { error: err.message || err, defaultValue: `Failed to join portfolio from invite link: ${err.message || err}` }));
       }
     };
 
@@ -500,7 +500,7 @@ export function PortfolioView({
           localStorage.setItem('portfolio_active_id', newPortfolio.id);
         } catch (err: any) {
           console.error('Error creating portfolio:', err);
-          alert(err.message || 'Failed to create portfolio');
+          alert(err.message || t('portfolio.err_create', 'Failed to create portfolio'));
         }
       }
     );
@@ -518,7 +518,7 @@ export function PortfolioView({
         await loadPortfolios();
       } catch (err: any) {
         console.error('Error renaming portfolio:', err);
-        alert(err.message || 'Failed to rename portfolio');
+        alert(err.message || t('portfolio.err_rename', 'Failed to rename portfolio'));
       }
       return;
     }
@@ -535,7 +535,7 @@ export function PortfolioView({
           await loadPortfolios();
         } catch (err: any) {
           console.error('Error renaming portfolio:', err);
-          alert(err.message || 'Failed to rename portfolio');
+          alert(err.message || t('portfolio.err_rename', 'Failed to rename portfolio'));
         }
       }
     );
@@ -558,7 +558,7 @@ export function PortfolioView({
           await loadPortfolios();
         } catch (err: any) {
           console.error('Error deleting portfolio:', err);
-          alert(err.message || 'Failed to delete portfolio');
+          alert(err.message || t('portfolio.err_delete', 'Failed to delete portfolio'));
         }
       },
       true
@@ -625,7 +625,7 @@ export function PortfolioView({
       await fetchTransactions();
     } catch (err: any) {
       console.error('Error loading demo transactions:', err);
-      alert('Failed to load demo transactions: ' + err.message);
+      alert(t('portfolio.err_load_demo', { error: err.message, defaultValue: `Failed to load demo transactions: ${err.message}` }));
     } finally {
       setLoadingDemo(false);
     }
@@ -661,7 +661,7 @@ export function PortfolioView({
           fetchTransactions();
         } catch (err: any) {
           console.error('Error deleting transaction:', err);
-          alert(err.message || 'Failed to delete transaction');
+          alert(err.message || t('portfolio.err_delete_tx', 'Failed to delete transaction'));
         }
       },
       true
@@ -724,7 +724,7 @@ export function PortfolioView({
           fetchHistoricalPerformance(baseCurrency, selectedAccount);
         } catch (err: any) {
           console.error('Error deleting dividend:', err);
-          alert(err.message || 'Failed to delete/skip dividend');
+          alert(err.message || t('portfolio.err_delete_div', 'Failed to delete/skip dividend'));
         }
       },
       true

@@ -290,7 +290,7 @@ export function AddDividendModal({
                   type="text"
                   className="input-field"
                   disabled={!!editingDividend}
-                  placeholder="e.g. AAPL"
+                  placeholder={t('dividends.placeholder_ticker', 'e.g. AAPL')}
                   value={formSymbol}
                   onChange={(e) => {
                     setFormSymbol(e.target.value);
@@ -352,7 +352,7 @@ export function AddDividendModal({
                     <option key={acc} value={acc}>{acc}</option>
                   ))}
                   {!uniqueAccounts.includes('Default') && (
-                    <option value="Default">Default</option>
+                    <option value="Default">{t('common.default', 'Default')}</option>
                   )}
                 </select>
               )}
