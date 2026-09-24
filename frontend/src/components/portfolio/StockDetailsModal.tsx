@@ -1317,7 +1317,7 @@ export function StockDetailsModal({
                                   }}
                                   title={card.tooltip}
                                 >
-                                  <ArrowUpDown size={9} />
+                                  {card.onClick && <ArrowUpDown size={9} />}
                                   {card.badge}
                                 </span>
                               )}

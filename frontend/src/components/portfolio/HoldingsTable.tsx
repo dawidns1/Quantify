@@ -153,6 +153,9 @@ export function HoldingsTable({
   const [gainLossMode, setGainLossMode] = useState<'total' | 'pershare'>(() => {
     return (localStorage.getItem('holdings_gain_loss_mode') as 'total' | 'pershare') || 'total';
   });
+  const [returnMode, setReturnMode] = useState<'total' | 'price'>(() => {
+    return (localStorage.getItem('holdings_return_mode') as 'total' | 'price') || 'total';
+  });
 
 
 
@@ -437,19 +440,26 @@ export function HoldingsTable({
       label: t('holdings.col_gain_loss', 'Gain/Loss'),
       sortField: 'gain_base',
       align: 'right',
-      renderHeader: () => t('holdings.col_gain_loss', 'Gain/Loss'),
+      renderHeader: () => returnMode === 'price'
+        ? t('holdings.col_price_return', 'Price Return')
+        : t('holdings.col_total_return', 'Total Return'),
       renderCell: (h) => {
+        const isPrice = returnMode === 'price';
+        const gain = isPrice ? (h.current_value_base - h.cost_basis_base) : h.gain_base;
+        const gainPct = isPrice
+          ? (h.cost_basis_base > 0 ? (gain / h.cost_basis_base) * 100 : 0)
+          : h.gain_percent;
         const val = gainLossMode === 'total'
-          ? h.gain_base
-          : (h.shares > 0 ? (h.gain_base / h.shares) : 0);
-        const valIsProfit = h.gain_base >= 0;
+          ? gain
+          : (h.shares > 0 ? (gain / h.shares) : 0);
+        const valIsProfit = gain >= 0;
         return (
-          <AnimateOnChange value={val} contextId={h.symbol} style={{ display: 'block' }}>
+          <AnimateOnChange value={val} contextId={`${h.symbol}_${returnMode}`} style={{ display: 'block' }}>
             <div className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
               {valIsProfit ? '+' : ''}{formatCurrency(val, summary.base_currency)}
             </div>
             <div style={{ fontSize: '0.75rem' }} className={valIsProfit ? 'text-green' : 'text-red'}>
-              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+              {valIsProfit ? '+' : ''}{gainPct.toFixed(2)}%
             </div>
           </AnimateOnChange>
         );
@@ -459,13 +469,58 @@ export function HoldingsTable({
       label: t('holdings.col_gain_percent', 'Total Return %'),
       sortField: 'gain_percent',
       align: 'right',
-      renderHeader: () => t('holdings.col_gain_percent', 'Total Return %'),
+      renderHeader: () => returnMode === 'price'
+        ? t('holdings.col_price_return_percent', 'Price Return %')
+        : t('holdings.col_total_return_percent', 'Total Return %'),
       renderCell: (h) => {
-        const valIsProfit = h.gain_percent >= 0;
+        const isPrice = returnMode === 'price';
+        const gain = isPrice ? (h.current_value_base - h.cost_basis_base) : h.gain_base;
+        const gainPct = isPrice
+          ? (h.cost_basis_base > 0 ? (gain / h.cost_basis_base) * 100 : 0)
+          : h.gain_percent;
+        const valIsProfit = gainPct >= 0;
         return (
-          <AnimateOnChange value={h.gain_percent} contextId={h.symbol}>
+          <AnimateOnChange value={gainPct} contextId={`${h.symbol}_pct_${returnMode}`}>
             <span className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
-              {valIsProfit ? '+' : ''}{h.gain_percent.toFixed(2)}%
+              {valIsProfit ? '+' : ''}{gainPct.toFixed(2)}%
+            </span>
+          </AnimateOnChange>
+        );
+      }
+    },
+    price_return_value: {
+      label: t('holdings.col_price_gain_loss', 'Price Return (Base)'),
+      sortField: 'price_return_value',
+      align: 'right',
+      renderHeader: (baseCurrency) => `${t('holdings.col_price_return', 'Price Return')} (${baseCurrency})`,
+      renderCell: (h) => {
+        const gain = h.current_value_base - h.cost_basis_base;
+        const val = gainLossMode === 'total'
+          ? gain
+          : (h.shares > 0 ? (gain / h.shares) : 0);
+        const valIsProfit = gain >= 0;
+        return (
+          <AnimateOnChange value={val} contextId={`${h.symbol}_pr_val`}>
+            <span className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+              {valIsProfit ? '+' : ''}{formatCurrency(val, summary.base_currency)}
+            </span>
+          </AnimateOnChange>
+        );
+      }
+    },
+    price_return_percent: {
+      label: t('holdings.col_price_return_percent', 'Price Return %'),
+      sortField: 'price_return_percent',
+      align: 'right',
+      renderHeader: () => t('holdings.col_price_return_percent', 'Price Return %'),
+      renderCell: (h) => {
+        const gain = h.current_value_base - h.cost_basis_base;
+        const gainPct = h.cost_basis_base > 0 ? (gain / h.cost_basis_base) * 100 : 0;
+        const valIsProfit = gainPct >= 0;
+        return (
+          <AnimateOnChange value={gainPct} contextId={`${h.symbol}_pr_pct`}>
+            <span className={valIsProfit ? 'text-green' : 'text-red'} style={{ fontWeight: 600 }}>
+              {valIsProfit ? '+' : ''}{gainPct.toFixed(2)}%
             </span>
           </AnimateOnChange>
         );
@@ -519,6 +574,8 @@ export function HoldingsTable({
         { id: 'day_change', label: t('holdings.col_day_change', 'Day Change') },
         { id: 'gain_loss', label: t('holdings.col_gain_loss', 'Gain/Loss') },
         { id: 'gain_base_percent', label: t('holdings.col_gain_percent', 'Total Return %') },
+        { id: 'price_return_value', label: t('holdings.col_price_gain_loss', 'Price Return (Base)') },
+        { id: 'price_return_percent', label: t('holdings.col_price_return_percent', 'Price Return %') },
         { id: 'dividends', label: t('holdings.col_dividends_net', 'Net Dividends') },
         { id: 'dividends_gross', label: t('holdings.col_dividends_gross', 'Gross Dividends') }
       ]
@@ -540,9 +597,20 @@ export function HoldingsTable({
       } else if (field === 'current_value_base') {
         valA = a.current_value_base;
         valB = b.current_value_base;
-      } else if (field === 'gain_base') {
-        valA = a.gain_base;
-        valB = b.gain_base;
+      } else if (field === 'gain_base' || field === 'gain_loss') {
+        valA = returnMode === 'price' ? (a.current_value_base - a.cost_basis_base) : a.gain_base;
+        valB = returnMode === 'price' ? (b.current_value_base - b.cost_basis_base) : b.gain_base;
+      } else if (field === 'gain_base_percent' || field === 'gain_percent') {
+        const gainA = returnMode === 'price' ? (a.current_value_base - a.cost_basis_base) : a.gain_base;
+        const gainB = returnMode === 'price' ? (b.current_value_base - b.cost_basis_base) : b.gain_base;
+        valA = returnMode === 'price' ? (a.cost_basis_base > 0 ? (gainA / a.cost_basis_base) * 100 : 0) : a.gain_percent;
+        valB = returnMode === 'price' ? (b.cost_basis_base > 0 ? (gainB / b.cost_basis_base) * 100 : 0) : b.gain_percent;
+      } else if (field === 'price_return_value') {
+        valA = a.current_value_base - a.cost_basis_base;
+        valB = b.current_value_base - b.cost_basis_base;
+      } else if (field === 'price_return_percent') {
+        valA = a.cost_basis_base > 0 ? ((a.current_value_base - a.cost_basis_base) / a.cost_basis_base) * 100 : 0;
+        valB = b.cost_basis_base > 0 ? ((b.current_value_base - b.cost_basis_base) / b.cost_basis_base) * 100 : 0;
       } else if (field === 'current_value_local') {
         valA = a.shares * a.current_price_local;
         valB = b.shares * b.current_price_local;
@@ -569,7 +637,7 @@ export function HoldingsTable({
         : (valB as number) - (valA as number);
     });
     return sorted;
-  }, [holdings, holdingsSortField, holdingsSortAsc]);
+  }, [holdings, holdingsSortField, holdingsSortAsc, returnMode, gainLossMode]);
 
   const handleHoldingsSort = (field: string) => {
     if (isResizingRef.current) return;
@@ -617,6 +685,61 @@ export function HoldingsTable({
         </h3>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+          {/* Segmented Switch for Return Mode (Total Return vs Price Return) */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '20px',
+            padding: '2px',
+            position: 'relative'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setReturnMode('total');
+                localStorage.setItem('holdings_return_mode', 'total');
+              }}
+              style={{
+                background: (returnMode === 'total') ? 'var(--color-primary)' : 'transparent',
+                border: 'none',
+                color: (returnMode === 'total') ? 'white' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: '18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: (returnMode === 'total') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+              title={t('holdings.tooltip_total_return', 'Total Return (includes capital gains + net dividends)')}
+            >
+              {isMobile ? t('holdings.return_tr_short', 'TR') : t('holdings.return_total', 'Total Return')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setReturnMode('price');
+                localStorage.setItem('holdings_return_mode', 'price');
+              }}
+              style={{
+                background: (returnMode === 'price') ? 'var(--color-primary)' : 'transparent',
+                border: 'none',
+                color: (returnMode === 'price') ? 'white' : 'var(--text-muted)',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                borderRadius: '18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: (returnMode === 'price') ? '0 2px 6px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+              title={t('holdings.tooltip_price_return', 'Capital Price Return (price appreciation excluding dividends)')}
+            >
+              {isMobile ? t('holdings.return_pr_short', 'PR') : t('holdings.return_price', 'Price Return')}
+            </button>
+          </div>
+
           {/* Segmented Switch for Unit View Mode */}
           <div style={{
             display: 'flex',
@@ -966,7 +1089,7 @@ export function HoldingsTable({
                       const isMonospace = [
                         'shares', 'price', 'avg_cost', 'cost', 'dividends', 'dividends_gross', 
                         'day_change', 'weight', 'fx_rate', 'current_value', 'current_value_local', 
-                        'gain_loss', 'gain_base_percent'
+                        'gain_loss', 'gain_base_percent', 'price_return_value', 'price_return_percent'
                       ].includes(colId);
                       return (
                         <td 
@@ -974,7 +1097,7 @@ export function HoldingsTable({
                           style={{ 
                             textAlign: col.align, 
                             fontFamily: isMonospace ? 'monospace' : 'inherit',
-                            fontWeight: ['current_value', 'gain_loss'].includes(colId) ? 600 : 'inherit',
+                            fontWeight: ['current_value', 'gain_loss', 'price_return_value'].includes(colId) ? 600 : 'inherit',
                             width: colWidths[colId] ? `${colWidths[colId]}px` : undefined,
                             minWidth: colWidths[colId] ? `${colWidths[colId]}px` : undefined
                           }}

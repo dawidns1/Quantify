@@ -411,7 +411,16 @@
     "total_return": "Retorno total",
     "click_to_toggle_return": "Haz clic para alternar rendimiento diario y total",
     "exchange_rate": "Tipo de cambio",
-    "portfolio_weight": "Participación en cartera"
+    "portfolio_weight": "Participación en cartera",
+    "return_total": "Retorno total",
+    "return_price": "Retorno por precio",
+    "return_tr_short": "TR",
+    "return_pr_short": "PR",
+    "col_price_return": "Retorno por precio",
+    "col_total_return": "Retorno total",
+    "col_price_gain_loss": "Retorno por precio (base)",
+    "col_price_return_percent": "Retorno por precio %",
+    "col_total_return_percent": "Retorno total %"
   },
   "import": {
     "btn_back": "Atrás",

@@ -411,7 +411,16 @@
     "total_return": "Total Return",
     "click_to_toggle_return": "Click to toggle Daily vs Total return",
     "exchange_rate": "Exchange Rate",
-    "portfolio_weight": "Portfolio Share"
+    "portfolio_weight": "Portfolio Share",
+    "return_total": "Total Return",
+    "return_price": "Price Return",
+    "return_tr_short": "TR",
+    "return_pr_short": "PR",
+    "col_price_return": "Price Return",
+    "col_total_return": "Total Return",
+    "col_price_gain_loss": "Price Return (Base)",
+    "col_price_return_percent": "Price Return %",
+    "col_total_return_percent": "Total Return %"
   },
   "import": {
     "btn_back": "Back",

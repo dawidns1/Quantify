@@ -411,7 +411,16 @@
     "total_return": "Zwrot całkowity",
     "click_to_toggle_return": "Kliknij, aby przełączyć widok dzienny / całkowity",
     "exchange_rate": "Kurs walutowy",
-    "portfolio_weight": "Udział w portfelu"
+    "portfolio_weight": "Udział w portfelu",
+    "return_total": "Zwrot całkowity",
+    "return_price": "Zwrot cenowy",
+    "return_tr_short": "TR",
+    "return_pr_short": "PR",
+    "col_price_return": "Zwrot cenowy",
+    "col_total_return": "Zwrot całkowity",
+    "col_price_gain_loss": "Zwrot cenowy (baza)",
+    "col_price_return_percent": "Zwrot cenowy %",
+    "col_total_return_percent": "Zwrot całkowity %"
   },
   "import": {
     "btn_back": "Wstecz",
