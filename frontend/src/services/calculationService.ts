@@ -82,10 +82,6 @@ export async function fetchAuthenticatedWithRetry(
     if (tok) {
       headers.set('Authorization', `Bearer ${tok}`);
     }
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (supabaseUrl) headers.set('x-supabase-url', supabaseUrl);
-    if (supabaseAnonKey) headers.set('x-supabase-anon-key', supabaseAnonKey);
     return headers;
   };
 

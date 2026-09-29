@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import type { Portfolio, Member } from '../types/portfolio';
+import { purgePortfolioStorage } from '../utils/storage';
 
 /**
  * Proactively verifies and refreshes the Supabase auth session if expired or expiring within 60s.
@@ -111,6 +112,7 @@ export async function deletePortfolio(portfolioId: string): Promise<void> {
       .delete()
       .eq('id', portfolioId)
   );
+  purgePortfolioStorage(portfolioId);
 }
 
 export async function fetchPortfolioMembers(portfolioId: string): Promise<Member[]> {
@@ -148,13 +150,13 @@ export async function inviteMemberByEmail(
     .maybeSingle();
 
   if (profileError || !profile) {
-    throw new Error("No user found with this email. They must log in to QuantiFi at least once first.");
+    throw new Error("USER_NOT_REGISTERED");
   }
 
   // Check if user is already a member
   const isMember = existingMembers.some(m => m.user_id === profile.id);
   if (isMember) {
-    throw new Error("This user is already a member of this portfolio.");
+    throw new Error("ALREADY_MEMBER");
   }
 
   // Insert member

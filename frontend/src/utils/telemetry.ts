@@ -62,7 +62,7 @@ class TelemetryManager {
           trace.backgroundedCount = (trace.backgroundedCount || 0) + 1;
         });
         if (this.activeTraces.size > 0) {
-          this.logError('tab_switched_background', 'App switched to background during active fetch', {
+          this.logInteraction('tab_switched_background', {
             active_traces: Array.from(this.activeTraces.values()).map(t => t.actionName)
           });
         }
@@ -75,7 +75,7 @@ class TelemetryManager {
           }
         });
         if (this.activeTraces.size > 0) {
-          this.logError('tab_returned_foreground', 'App returned to foreground', {
+          this.logInteraction('tab_returned_foreground', {
             active_traces: Array.from(this.activeTraces.values()).map(t => t.actionName)
           });
         }
@@ -145,6 +145,29 @@ class TelemetryManager {
     // Asynchronously log to Supabase in background
     this.persistToSupabase(event);
 
+    return event;
+  }
+
+  /**
+   * Log an interaction event directly
+   */
+  public async logInteraction(actionName: string, metadata?: Record<string, any>): Promise<TelemetryLogEvent> {
+    const event: TelemetryLogEvent = {
+      id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      eventType: 'interaction',
+      actionName,
+      status: 'success',
+      metadata
+    };
+
+    this.localLogs.unshift(event);
+    if (this.localLogs.length > this.MAX_LOCAL_LOGS) {
+      this.localLogs.pop();
+    }
+    this.saveToStorage();
+
+    this.persistToSupabase(event);
     return event;
   }
 

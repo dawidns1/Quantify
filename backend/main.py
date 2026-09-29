@@ -6,6 +6,9 @@ import time
 import csv
 import io
 import re
+import hashlib
+import base64
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import yfinance as yf
@@ -108,7 +111,68 @@ class HoldingsRequest(BaseModel):
     transactions: List[TransactionItem]
     link_cash: bool = False
 
-app = FastAPI(title="Stock Screener API")
+def start_cache_warmer():
+    def warmer_loop():
+        print("[CACHE WARMER] Starting background cache warmer thread...")
+        time.sleep(10)  # Wait for uvicorn to settle
+        while True:
+            try:
+                from backend.cache_db import get_connection
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT symbol FROM live_prices WHERE symbol NOT LIKE 'CASH_%' AND symbol NOT LIKE '%=X'")
+                rows = cursor.fetchall()
+                symbols = [r["symbol"] for r in rows]
+                conn.close()
+                
+                if symbols:
+                    print(f"[CACHE WARMER] Warming cache for {len(symbols)} symbols: {symbols}")
+                    fx_pairs = ["USDPLN=X", "EURPLN=X", "PLNUSD=X", "PLNEUR=X", "USDEUR=X", "EURUSD=X"]
+                    
+                    # Force a refresh in portfolio manager prefetch (by passing symbols)
+                    PortfolioManager.prefetch_live_prices(symbols, fx_pairs)
+                    
+                    # Historical prefetch
+                    from datetime import date, timedelta
+                    start_dt = date.today() - timedelta(days=365)
+                    end_dt = date.today()
+                    PortfolioManager.prefetch_historical_stock_prices(symbols, start_dt, end_dt)
+                    print("[CACHE WARMER] Cache warming cycle completed successfully.")
+                else:
+                    print("[CACHE WARMER] No cached symbols found in SQLite. Cache warming skipped.")
+            except Exception as e:
+                print(f"[CACHE WARMER] Error in cache warming cycle: {e}")
+            
+            # Sleep for 1 hour
+            time.sleep(3600)
+            
+    thread = threading.Thread(target=warmer_loop, daemon=True)
+    thread.start()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_cache_warmer()
+    yield
+
+# In-memory sliding-window rate limiter
+_rate_limit_lock = threading.Lock()
+_rate_limit_store: Dict[tuple, list] = {}
+
+def check_rate_limit(action: str, identifier: str, max_calls: int, window_seconds: float):
+    now = time.time()
+    key = (action, identifier)
+    with _rate_limit_lock:
+        timestamps = _rate_limit_store.get(key, [])
+        timestamps = [t for t in timestamps if now - t < window_seconds]
+        if len(timestamps) >= max_calls:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded for {action}. Please try again later."
+            )
+        timestamps.append(now)
+        _rate_limit_store[key] = timestamps
+
+app = FastAPI(title="Stock Screener API", lifespan=lifespan)
 
 # Explicit CORS configuration for production and local environments
 origins = [
@@ -148,64 +212,6 @@ async def global_exception_handler(request: Request, exc: Exception):
             "Access-Control-Allow-Credentials": "true"
         }
     )
-
-def start_cache_warmer():
-    def warmer_loop():
-        print("[CACHE WARMER] Starting background cache warmer thread...")
-        time.sleep(10)  # Wait for uvicorn to settle
-        while True:
-            try:
-                from backend.cache_db import get_connection
-                conn = get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT symbol FROM live_prices WHERE symbol NOT LIKE 'CASH_%' AND symbol NOT LIKE '%=X'")
-                rows = cursor.fetchall()
-                symbols = [r["symbol"] for r in rows]
-                conn.close()
-                
-                if symbols:
-                    print(f"[CACHE WARMER] Warming cache for {len(symbols)} symbols: {symbols}")
-                    fx_pairs = ["USDPLN=X", "EURPLN=X", "PLNUSD=X", "PLNEUR=X", "USDEUR=X", "EURUSD=X"]
-                    
-                    # Force a refresh in portfolio manager prefetch (by passing symbols)
-                    PortfolioManager.prefetch_live_prices(symbols, fx_pairs)
-                    
-                    # Historical prefetch
-                    from datetime import date, timedelta
-                    start_dt = date.today() - timedelta(days=365)
-                    end_dt = date.today()
-                    PortfolioManager.prefetch_historical_stock_prices(symbols, start_dt, end_dt)
-                    print("[CACHE WARMER] Cache warming cycle completed successfully.")
-                else:
-                    print("[CACHE WARMER] No cached symbols found in SQLite. Cache warming skipped.")
-            except Exception as e:
-                print(f"[CACHE WARMER] Error in cache warming cycle: {e}")
-            
-            # Sleep for 1 hour
-            time.sleep(3600)
-            
-    thread = threading.Thread(target=warmer_loop, daemon=True)
-    thread.start()
-
-@app.on_event("startup")
-def startup_event():
-    # Purge any corrupted GBP cache rows for DTLA.L
-    try:
-        from backend.cache_db import get_connection
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM live_prices WHERE symbol = 'DTLA.L' AND native_currency = 'GBP'")
-        count = cursor.fetchone()[0]
-        if count > 0:
-            print("[STARTUP] Purging corrupted GBP cache rows for DTLA.L...")
-            cursor.execute("DELETE FROM live_prices WHERE symbol = 'DTLA.L'")
-            cursor.execute("DELETE FROM daily_prices WHERE symbol = 'DTLA.L'")
-            conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"[STARTUP] Error purging DTLA.L cache: {e}")
-        
-    start_cache_warmer()
 
 # If VERCEL environment is active, direct local writes to /tmp cache folder
 if os.environ.get("VERCEL") == "1":
@@ -598,8 +604,31 @@ _supabase_tx_cache_lock = threading.Lock()
 _supabase_settings_cache = {}
 _supabase_settings_cache_lock = threading.Lock()
 
+def _extract_user_id_from_jwt(jwt_token: str) -> str:
+    try:
+        clean = jwt_token.replace("Bearer ", "").strip()
+        parts = clean.split(".")
+        if len(parts) >= 2:
+            padded = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")))
+            uid = payload.get("sub")
+            if uid:
+                return str(uid)
+    except Exception:
+        pass
+    return hashlib.sha256(jwt_token.encode("utf-8")).hexdigest()[:16]
+
+def _prune_cache(cache_dict: dict, lock: threading.Lock, max_size: int = 150, max_age: float = 60.0):
+    if len(cache_dict) > max_size:
+        now = time.time()
+        with lock:
+            expired = [k for k, (ts, _) in cache_dict.items() if now - ts > max_age]
+            for k in expired:
+                cache_dict.pop(k, None)
+
 def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> list:
-    cache_key = (jwt_token, portfolio_id)
+    user_id = _extract_user_id_from_jwt(jwt_token)
+    cache_key = (user_id, portfolio_id)
     now = time.time()
     with _supabase_tx_cache_lock:
         if cache_key in _supabase_tx_cache:
@@ -632,12 +661,14 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
         data = response.json()
         with _supabase_tx_cache_lock:
             _supabase_tx_cache[cache_key] = (time.time(), data)
+        _prune_cache(_supabase_tx_cache, _supabase_tx_cache_lock)
         return data
     except requests.exceptions.RequestException as req_err:
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
 def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, supabase_url: str = None, supabase_key: str = None) -> dict:
-    cache_key = (jwt_token, portfolio_id)
+    user_id = _extract_user_id_from_jwt(jwt_token)
+    cache_key = (user_id, portfolio_id)
     now = time.time()
     with _supabase_settings_cache_lock:
         if cache_key in _supabase_settings_cache:
@@ -662,9 +693,11 @@ def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, su
             settings = data[0].get("settings") or {} if (data and len(data) > 0) else {}
             with _supabase_settings_cache_lock:
                 _supabase_settings_cache[cache_key] = (time.time(), settings)
+            _prune_cache(_supabase_settings_cache, _supabase_settings_cache_lock)
             return settings
     except Exception as e:
         print(f"[DEBUG] Error fetching portfolio settings from Supabase: {e}")
+    return {}
 @app.get("/api/portfolio/{portfolio_id}/bundle")
 def get_portfolio_bundle_jwt(
     portfolio_id: str,
@@ -673,9 +706,7 @@ def get_portfolio_bundle_jwt(
     link_cash: bool = False,
     benchmarks: str = "",
     force_refresh: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -684,8 +715,8 @@ def get_portfolio_bundle_jwt(
     try:
         t_sub_start = time.time()
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            fut_tx = executor.submit(fetch_transactions_from_supabase, authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-            fut_st = executor.submit(fetch_portfolio_settings_from_supabase, authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+            fut_tx = executor.submit(fetch_transactions_from_supabase, authorization, portfolio_id)
+            fut_st = executor.submit(fetch_portfolio_settings_from_supabase, authorization, portfolio_id)
             transactions = fut_tx.result()
             settings = fut_st.result()
         t_sub = (time.time() - t_sub_start) * 1000
@@ -719,9 +750,7 @@ def get_portfolio_holdings_jwt(
     account: str = "All",
     link_cash: bool = False,
     force_live: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -729,8 +758,8 @@ def get_portfolio_holdings_jwt(
     t_start = time.time()
     try:
         t_sub_start = time.time()
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         t_sub = (time.time() - t_sub_start) * 1000
 
         t_calc_start = time.time()
@@ -753,9 +782,7 @@ def get_historical_portfolio_nav_jwt(
     link_cash: bool = False,
     benchmarks: str = "",
     force_refresh: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -763,8 +790,8 @@ def get_historical_portfolio_nav_jwt(
     t_start = time.time()
     try:
         t_sub_start = time.time()
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         t_sub = (time.time() - t_sub_start) * 1000
 
         benchmarks_list = [b.upper().strip() for b in benchmarks.split(",") if b.strip()] if benchmarks else None
@@ -788,9 +815,7 @@ def get_portfolio_analytics_jwt(
     account: str = "All",
     link_cash: bool = False,
     force_refresh: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -798,8 +823,8 @@ def get_portfolio_analytics_jwt(
     t_start = time.time()
     try:
         t_sub_start = time.time()
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         t_sub = (time.time() - t_sub_start) * 1000
 
         t_calc_start = time.time()
@@ -820,9 +845,7 @@ def get_portfolio_dividend_forecast_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -830,8 +853,8 @@ def get_portfolio_dividend_forecast_jwt(
     t_start = time.time()
     try:
         t_sub_start = time.time()
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         t_sub = (time.time() - t_sub_start) * 1000
 
         t_calc_start = time.time()
@@ -852,17 +875,15 @@ def get_upcoming_events_jwt(
     base_currency: str = "PLN",
     account: str = "All",
     link_cash: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
     try:
         # 1. Fetch transactions and settings
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         
         # 2. Calculate holdings to get active share counts
         res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
@@ -898,7 +919,7 @@ def search_portfolio_assets(q: str):
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={clean_q}&quotesCount=8&newsCount=0"
     try:
         import requests
-        response = requests.get(url, headers=headers, verify=False)
+        response = requests.get(url, headers=headers)
         if response.status_code != 200:
             return []
         data = response.json()
@@ -929,7 +950,9 @@ class FeedbackCreate(BaseModel):
     metadata: dict = None
 
 @app.post("/api/feedback")
-def submit_feedback(fb: FeedbackCreate, authorization: str = Header(None)):
+def submit_feedback(fb: FeedbackCreate, request: Request, authorization: str = Header(None)):
+    client_id = request.client.host if request.client else "unknown"
+    check_rate_limit("feedback", client_id, max_calls=10, window_seconds=60.0)
     print(f"[FEEDBACK] Received feedback. Category: {fb.category}, Email: {fb.email}")
     print(f"[FEEDBACK] Message: {fb.message}")
     if fb.metadata:
@@ -1039,7 +1062,9 @@ class SendShareEmailRequest(BaseModel):
     is_portfolio: bool = True
 
 @app.post("/api/share/send-email")
-def send_share_email(req: SendShareEmailRequest):
+def send_share_email(req: SendShareEmailRequest, request: Request):
+    client_id = request.client.host if request.client else "unknown"
+    check_rate_limit("send_share_email", client_id, max_calls=5, window_seconds=60.0)
     resend_api_key = os.environ.get("RESEND_API_KEY")
     sender_email = os.environ.get("SENDER_EMAIL", "QuantiFi <invites@quantifi.site>")
     
@@ -1344,15 +1369,23 @@ def parse_transactions_csv(csv_content: str):
             
     return parsed_transactions, broker
 
+MAX_CSV_BYTES = 5 * 1024 * 1024  # 5 MB
+
 @app.post("/api/portfolio/{portfolio_id}/import-csv")
 async def import_portfolio_csv(portfolio_id: str, file: UploadFile = File(...)):
+    if file.filename and not file.filename.lower().endswith(('.csv', '.txt')):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .csv file.")
     try:
-        content = await file.read()
+        content = await file.read(MAX_CSV_BYTES + 1)
+        if len(content) > MAX_CSV_BYTES:
+            raise HTTPException(status_code=413, detail="File exceeds maximum allowed size of 5 MB.")
         try:
             csv_content = content.decode("utf-8")
         except Exception:
             # Fallback to latin-1 / windows-1250 if UTF-8 fails (e.g. Polish Excel CSV)
             csv_content = content.decode("latin-1")
+    except HTTPException:
+        raise
     except Exception as read_err:
         raise HTTPException(status_code=400, detail=f"Failed to read file: {str(read_err)}")
             
@@ -1370,7 +1403,8 @@ async def import_portfolio_csv(portfolio_id: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error parsing CSV file: {str(e)}")
 
 AI_CACHE_TTL = 12 * 3600  # 12 hours
-ai_insights_cache = {}    # Key: (portfolio_id, base_currency, account, link_cash, lang) -> (timestamp, response)
+MAX_AI_CACHE_SIZE = 100
+ai_insights_cache = {}    # Key: (user_id, portfolio_id, base_currency, account, link_cash, lang) -> (timestamp, response)
 
 @app.get("/api/portfolio/{portfolio_id}/ai-insights")
 def get_portfolio_ai_insights_jwt(
@@ -1380,14 +1414,15 @@ def get_portfolio_ai_insights_jwt(
     link_cash: bool = False,
     lang: str = "en",
     force_refresh: bool = False,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header missing")
         
-    cache_key = (portfolio_id, base_currency, account, link_cash, lang)
+    user_id = _extract_user_id_from_jwt(authorization)
+    check_rate_limit("ai_insights", user_id, max_calls=5, window_seconds=60.0)
+
+    cache_key = (user_id, portfolio_id, base_currency, account, link_cash, lang)
     now = time.time()
     
     if not force_refresh and cache_key in ai_insights_cache:
@@ -1398,8 +1433,8 @@ def get_portfolio_ai_insights_jwt(
             
     try:
         # 1. Fetch transactions and settings
-        transactions = fetch_transactions_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(authorization, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(authorization, portfolio_id)
         
         # 2. Run holdings calculations
         holdings_res = PortfolioManager.calculate_holdings(transactions, base_currency, account, link_cash, settings)
@@ -1472,7 +1507,12 @@ def get_portfolio_ai_insights_jwt(
         # 8. Generate insights using Gemini
         insights_text = generate_insights(portfolio_state, lang)
         
-        # 9. Save to cache
+        # 9. Save to cache with LRU eviction
+        if len(ai_insights_cache) > MAX_AI_CACHE_SIZE:
+            sorted_keys = sorted(ai_insights_cache.keys(), key=lambda k: ai_insights_cache[k][0])
+            for old_k in sorted_keys[:20]:
+                ai_insights_cache.pop(old_k, None)
+
         ai_insights_cache[cache_key] = (now, insights_text)
         
         return {"status": "ok", "insights": insights_text, "cached": False}
@@ -1486,9 +1526,7 @@ def get_portfolio_ai_insights_jwt(
 def get_portfolio_dividend_calendar_ics(
     portfolio_id: str,
     token: str = None,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     jwt_token = authorization or token
     if not jwt_token:
@@ -1498,8 +1536,8 @@ def get_portfolio_dividend_calendar_ics(
         jwt_token = f"Bearer {jwt_token}"
         
     try:
-        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
-        settings = fetch_portfolio_settings_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id)
+        settings = fetch_portfolio_settings_from_supabase(jwt_token, portfolio_id)
         
         # Calculate holdings (with USD baseline to safely compile everything)
         res = PortfolioManager.calculate_holdings(transactions, "USD", "All", False, settings)
@@ -1574,9 +1612,7 @@ def get_portfolio_dividend_calendar_ics(
 def export_portfolio_csv(
     portfolio_id: str,
     token: str = None,
-    authorization: str = Header(None),
-    x_supabase_url: str = Header(None),
-    x_supabase_anon_key: str = Header(None)
+    authorization: str = Header(None)
 ):
     jwt_token = authorization or token
     if not jwt_token:
@@ -1586,7 +1622,7 @@ def export_portfolio_csv(
         jwt_token = f"Bearer {jwt_token}"
         
     try:
-        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id, x_supabase_url, x_supabase_anon_key)
+        transactions = fetch_transactions_from_supabase(jwt_token, portfolio_id)
         
         import io, csv
         output = io.StringIO()

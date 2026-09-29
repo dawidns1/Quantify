@@ -709,6 +709,7 @@ export function PortfolioView({
                 id: 'div_ovr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                 symbol: div.symbol,
                 date: div.date,
+                currency: div.currency || 'USD',
                 account: div.account || 'Default',
                 is_manual: false,
                 is_deleted: true

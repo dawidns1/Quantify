@@ -187,10 +187,15 @@ export function ShareModal({
     try {
       // 1. Try to add directly if registered
       await inviteMemberByEmail(targetPortfolioId!, email, inviteRole, members);
-      setInviteSuccess(t('modals.share.success_msg', `Invitation sent to ${email}`));
+      setInviteSuccess(t('modals.share.invite_email_dispatched', 'Invitation email sent to {{email}}!', { email }));
       setInviteEmail('');
       loadSharingData(targetPortfolioId);
     } catch (err: any) {
+      if (err.message === 'ALREADY_MEMBER') {
+        setInviteError(t('modals.share.err_already_member', 'This user is already a member of this portfolio.'));
+        setSendingEmail(false);
+        return;
+      }
       // 2. If unregistered, generate invite link & send email via backend!
       try {
         let linkToUse = activeLink;
@@ -217,15 +222,10 @@ export function ShareModal({
           throw new Error(data.detail || data.message || 'Failed to dispatch email.');
         }
 
-        setInviteSuccess(data.message || `Invitation email sent to ${email}!`);
+        setInviteSuccess(t('modals.share.invite_email_dispatched', 'Invitation email sent to {{email}}!', { email }));
         setInviteEmail('');
       } catch (sendErr: any) {
-        console.error('Error inviting member:', sendErr);
-        if (sendErr.name === 'TypeError' || sendErr.message?.includes('fetch')) {
-          setInviteError('Network issue reaching backend email service. Please check network connection.');
-        } else {
-          setInviteError(sendErr.message || "An error occurred.");
-        }
+        setInviteError(sendErr.message || t('auth.errorDefault', 'An error occurred.'));
       }
     } finally {
       setSendingEmail(false);

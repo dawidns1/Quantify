@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { AlertCircle, Lock, Mail, UserPlus, LogIn, KeyRound, Eye, EyeOff, Check, Circle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { useTranslation } from 'react-i18next';
+import { PasswordStrengthMeter, getPasswordRules } from './common/PasswordStrengthMeter';
 
 export function AuthView() {
   const { t } = useTranslation();
@@ -30,34 +31,26 @@ export function AuthView() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const passwordRules = {
-    minLength: password.length >= 8,
-    hasUpper: /[A-Z]/.test(password),
-    hasLower: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    hasSpecial: /[@$!%*?&#]/.test(password),
-  };
-  const metRulesCount = Object.values(passwordRules).filter(Boolean).length;
-
   // Validate password strength according to rules
   const validatePasswordStrength = (pw: string): boolean => {
-    if (pw.length < 8) {
+    const rules = getPasswordRules(pw);
+    if (!rules.minLength) {
       setError(t('auth.errorPasswordLength', 'Password must be at least 8 characters long.'));
       return false;
     }
-    if (!/[A-Z]/.test(pw)) {
+    if (!rules.hasUpper) {
       setError(t('auth.errorPasswordUppercase', 'Password must contain at least one uppercase letter.'));
       return false;
     }
-    if (!/[a-z]/.test(pw)) {
+    if (!rules.hasLower) {
       setError(t('auth.errorPasswordLowercase', 'Password must contain at least one lowercase letter.'));
       return false;
     }
-    if (!/[0-9]/.test(pw)) {
+    if (!rules.hasNumber) {
       setError(t('auth.errorPasswordNumber', 'Password must contain at least one number.'));
       return false;
     }
-    if (!/[@$!%*?&#]/.test(pw)) {
+    if (!rules.hasSpecial) {
       setError(t('auth.errorPasswordSpecial', 'Password must contain at least one special character (e.g. @$!%*?&#).'));
       return false;
     }
@@ -130,10 +123,8 @@ export function AuthView() {
       });
 
       if (error) {
-        console.error('[SUPABASE AUTH SIGNUP ERROR]:', error);
         setError(formatAuthError(error));
       } else {
-        console.log('[SUPABASE AUTH SIGNUP SUCCESS]:', data);
         // Supabase returns an empty identities array if user already exists (enumeration protection)
         if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
           setError(t('auth.errorUserAlreadyExists', 'An account with this email address already exists. Please sign in instead.'));
@@ -145,16 +136,13 @@ export function AuthView() {
         }
       }
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data: _data, error } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
 
       if (error) {
-        console.error('[SUPABASE AUTH SIGNIN ERROR]:', error);
         setError(formatAuthError(error));
-      } else {
-        console.log('[SUPABASE AUTH SIGNIN SUCCESS]:', data);
       }
     }
     setSubmitting(false);
@@ -173,7 +161,6 @@ export function AuthView() {
       });
 
       if (error) {
-        console.error('[SUPABASE RESEND SIGNUP ERROR]:', error);
         setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
       } else {
         setMessage(t('auth.msgResentSignUp', 'Activation email resent! Check your inbox.'));
@@ -206,7 +193,6 @@ export function AuthView() {
       });
 
       if (error) {
-        console.error('[SUPABASE AUTH RESET ERROR]:', error);
         setError(error.code ? `${error.message} (Code: ${error.code})` : error.message);
       } else {
         setMessage(t('auth.msgRecoveryLinkSent', 'Check your email for the recovery link or 6-digit code.'));
@@ -374,69 +360,7 @@ export function AuthView() {
               </div>
 
               {/* Password Conformity Checklist - Always visible in recovery mode */}
-              <div style={{
-                marginTop: '0.6rem',
-                padding: '0.65rem 0.75rem',
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderRadius: '8px',
-                border: '1px solid var(--panel-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem',
-                fontSize: '0.75rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {t('auth.passwordStrength', 'Password Requirements')}:
-                  </span>
-                  <span style={{
-                    fontWeight: 700,
-                    color: metRulesCount === 5 ? '#10b981' : metRulesCount >= 3 ? '#06b6d4' : metRulesCount >= 1 ? '#ec4899' : 'var(--text-muted)'
-                  }}>
-                    {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : metRulesCount >= 1 ? t('auth.strengthWeak', 'Weak') : t('auth.strengthEmpty', 'Required')}
-                  </span>
-                </div>
-
-                {/* App Theme Gradient Strength meter bar */}
-                <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(metRulesCount / 5) * 100}%`,
-                    background: metRulesCount === 5 
-                      ? 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' 
-                      : 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)',
-                    boxShadow: metRulesCount > 0 ? '0 0 10px rgba(6, 182, 212, 0.4)' : 'none',
-                    transition: 'all 0.3s ease'
-                  }} />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#10b981' : 'var(--text-muted)' }}>
-                    {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
-                    <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#10b981' : 'var(--text-muted)' }}>
-                    {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
-                    <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#10b981' : 'var(--text-muted)' }}>
-                    {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
-                    <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#10b981' : 'var(--text-muted)' }}>
-                    {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
-                    <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#10b981' : 'var(--text-muted)' }}>
-                    {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
-                    <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
-                  </div>
-                </div>
-              </div>
+              <PasswordStrengthMeter password={password} />
             </div>
 
             <div className="form-group">
@@ -741,71 +665,7 @@ export function AuthView() {
               </div>
 
               {/* Live Password Conformity Checklist - Always visible when signing up */}
-              {isSignUp && (
-                <div style={{
-                  marginTop: '0.6rem',
-                  padding: '0.65rem 0.75rem',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  borderRadius: '8px',
-                  border: '1px solid var(--panel-border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.4rem',
-                  fontSize: '0.75rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                      {t('auth.passwordStrength', 'Password Requirements')}:
-                    </span>
-                    <span style={{
-                      fontWeight: 700,
-                      color: metRulesCount === 5 ? '#10b981' : metRulesCount >= 3 ? '#06b6d4' : metRulesCount >= 1 ? '#ec4899' : 'var(--text-muted)'
-                    }}>
-                      {metRulesCount === 5 ? t('auth.strengthStrong', 'Strong') : metRulesCount >= 3 ? t('auth.strengthMedium', 'Medium') : metRulesCount >= 1 ? t('auth.strengthWeak', 'Weak') : t('auth.strengthEmpty', 'Required')}
-                    </span>
-                  </div>
-
-                  {/* App Theme Gradient Strength meter bar */}
-                  <div style={{ width: '100%', height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(metRulesCount / 5) * 100}%`,
-                      background: metRulesCount === 5 
-                        ? 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)' 
-                        : 'linear-gradient(135deg, #06b6d4 0%, #ec4899 100%)',
-                      boxShadow: metRulesCount > 0 ? '0 0 10px rgba(6, 182, 212, 0.4)' : 'none',
-                      transition: 'all 0.3s ease'
-                    }} />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginTop: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.minLength ? '#10b981' : 'var(--text-muted)' }}>
-                      {passwordRules.minLength ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleMinLength', 'Min. 8 chars')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasUpper ? '#10b981' : 'var(--text-muted)' }}>
-                      {passwordRules.hasUpper ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleUppercase', 'Uppercase (A-Z)')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasLower ? '#10b981' : 'var(--text-muted)' }}>
-                      {passwordRules.hasLower ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleLowercase', 'Lowercase (a-z)')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: passwordRules.hasNumber ? '#10b981' : 'var(--text-muted)' }}>
-                      {passwordRules.hasNumber ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleNumber', 'Number (0-9)')}</span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', gridColumn: 'span 2', color: passwordRules.hasSpecial ? '#10b981' : 'var(--text-muted)' }}>
-                      {passwordRules.hasSpecial ? <Check size={12} /> : <Circle size={10} />}
-                      <span>{t('auth.ruleSpecial', 'Special char (@$!%*?&#)')}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {isSignUp && <PasswordStrengthMeter password={password} />}
             </div>
 
             {isSignUp && (

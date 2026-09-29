@@ -7,10 +7,11 @@ import {
   fetchPortfolioAnalytics as fetchPortfolioAnalyticsService,
   fetchPortfolioBundle as fetchPortfolioBundleService
 } from '../services/calculationService';
-import type { Portfolio, Transaction, Holding, Summary } from '../types/portfolio';
+import type { Portfolio, Transaction, Holding, Summary, DividendRecord } from '../types/portfolio';
 import { fetchUserPortfolios, createPortfolio, updatePortfolioSettings } from '../services/supabaseService';
 import { fetchTransactions as fetchTransactionsService } from '../services/transactionService';
 import { telemetry } from '../utils/telemetry';
+import { safeLocalStorageSet } from '../utils/storage';
 
 export type BaseCurrencyType = 'PLN' | 'USD' | 'EUR' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY';
 
@@ -61,8 +62,8 @@ interface PortfolioContextType {
   setSummary: React.Dispatch<React.SetStateAction<Summary>>;
   allTransactions: Transaction[];
   setAllTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
-  dividendsList: any[];
-  setDividendsList: React.Dispatch<React.SetStateAction<any[]>>;
+  dividendsList: DividendRecord[];
+  setDividendsList: React.Dispatch<React.SetStateAction<DividendRecord[]>>;
   chartData: { dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> } | null;
   setChartData: React.Dispatch<React.SetStateAction<{ dates: string[]; nav: number[]; cost_basis: number[]; benchmarks?: Record<string, number[]> } | null>>;
   analytics: AnalyticsData | null;
@@ -71,6 +72,7 @@ interface PortfolioContextType {
   setDividendForecast: React.Dispatch<React.SetStateAction<ForecastData | null>>;
   upcomingEvents: CorporateEvent[];
   setUpcomingEvents: React.Dispatch<React.SetStateAction<CorporateEvent[]>>;
+  lastSyncTimestamp: number | null;
   
   loadingHoldings: boolean;
   loadingTransactions: boolean;
@@ -212,7 +214,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   });
 
-  const [dividendsList, setDividendsList] = useState<any[]>(() => {
+  const [dividendsList, setDividendsList] = useState<DividendRecord[]>(() => {
     const activeId = localStorage.getItem('portfolio_active_id');
     const baseCurr = localStorage.getItem('portfolio_base_currency') || 'PLN';
     const selAcc = localStorage.getItem('portfolio_selected_account') || 'All';
@@ -225,6 +227,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   });
 
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
   const [nextCheckSeconds, setNextCheckSeconds] = useState<number>(300);
 
   const [chartData, setChartData] = useState<{ dates: string[]; nav: number[]; cost_basis: number[] } | null>(() => {
@@ -317,23 +320,23 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
   // --- State Mutator Overrides (for caching) ---
   const setActivePortfolioId = (id: string | null) => {
     setActivePortfolioIdState(id);
-    if (id) localStorage.setItem('portfolio_active_id', id);
+    if (id) safeLocalStorageSet('portfolio_active_id', id);
     else localStorage.removeItem('portfolio_active_id');
   };
 
   const setActivePortfolioRole = (role: 'owner' | 'editor' | 'viewer') => {
     setActivePortfolioRoleState(role);
-    localStorage.setItem('portfolio_active_role', role);
+    safeLocalStorageSet('portfolio_active_role', role);
   };
 
   const setBaseCurrency = (currency: BaseCurrencyType) => {
     setBaseCurrencyState(currency);
-    localStorage.setItem('portfolio_base_currency', currency);
+    safeLocalStorageSet('portfolio_base_currency', currency);
   };
 
   const setSelectedAccount = (account: string) => {
     setSelectedAccountState(account);
-    localStorage.setItem('portfolio_selected_account', account);
+    safeLocalStorageSet('portfolio_selected_account', account);
   };
 
   const setLinkCash = async (val: boolean) => {
@@ -502,37 +505,38 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         if (typeof result.holdings.next_check_seconds === 'number') {
           setNextCheckSeconds(result.holdings.next_check_seconds);
         }
-        localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.holdings || []));
-        localStorage.setItem(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
-        localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.summary));
-        localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.dividends_list || []));
+        safeLocalStorageSet(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.holdings || []));
+        safeLocalStorageSet(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
+        safeLocalStorageSet(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.summary));
+        safeLocalStorageSet(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings.dividends_list || []));
       }
 
       // 2. Historical Chart
       if (result.historical) {
         setChartData(result.historical);
-        localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.historical));
+        safeLocalStorageSet(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.historical));
       }
 
       // 3. Analytics
       if (result.analytics) {
         setAnalytics(result.analytics);
-        localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.analytics));
+        safeLocalStorageSet(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.analytics));
       }
 
       // 4. Dividend Forecast
       if (result.dividend_forecast) {
         setDividendForecast(result.dividend_forecast);
-        localStorage.setItem(`cached_dividend_forecast_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.dividend_forecast));
+        safeLocalStorageSet(`cached_dividend_forecast_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(result.dividend_forecast));
       }
 
       // 5. Upcoming Corporate Events
       if (result.upcoming_events) {
         setUpcomingEvents(result.upcoming_events);
-        localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(result.upcoming_events));
+        safeLocalStorageSet(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(result.upcoming_events));
       }
 
-      if (!silent) setSyncStatus('synced');
+      setSyncStatus('synced');
+      setLastSyncTimestamp(Date.now());
       telemetry.endTrace(traceId, 'success');
     } catch (err: any) {
       if (err?.name === 'AbortError' || err?.message === 'Tab suspended (background).' || err?.message === 'Request cancelled.') {
@@ -541,8 +545,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       if (!err?.message?.includes('timed out')) {
         console.error('Error fetching portfolio bundle:', err);
       }
+      setSyncStatus('error');
       if (!silent) {
-        setSyncStatus('error');
         setSyncError(err?.message || 'Failed to sync with live data');
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
@@ -602,10 +606,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         setNextCheckSeconds(result.next_check_seconds);
       }
       
-      localStorage.setItem(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
-      localStorage.setItem(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
-      localStorage.setItem(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
-      localStorage.setItem(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
+      safeLocalStorageSet(`cached_holdings_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.holdings));
+      safeLocalStorageSet(`cached_holdings_ts_${activePortfolioId}_${curr}_${accountFilter}`, String(Date.now()));
+      safeLocalStorageSet(`cached_summary_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.summary));
+      safeLocalStorageSet(`cached_dividends_list_${activePortfolioId}_${curr}_${accountFilter}`, JSON.stringify(result.dividends_list || []));
       
       if (!silent) setSyncStatus('synced');
     } catch (err: any) {
@@ -646,7 +650,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       
       setAllTransactions(data);
-      localStorage.setItem('cached_all_transactions', JSON.stringify(data));
+      safeLocalStorageSet('cached_all_transactions', JSON.stringify(data));
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -690,7 +694,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
 
       setChartData(data);
-      localStorage.setItem(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
+      safeLocalStorageSet(`cached_chart_data_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
     } catch (err: any) {
       if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
         console.error('Error fetching historical performance:', err);
@@ -736,7 +740,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
 
       setAnalytics(data);
-      localStorage.setItem(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
+      safeLocalStorageSet(`cached_analytics_${activePortfolioId}_${curr}_${accountFilter}_${linkCash}`, JSON.stringify(data));
     } catch (err: any) {
       if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
         console.error('Error fetching portfolio analytics:', err);
@@ -801,7 +805,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
 
       setPortfolios(formatted);
-      localStorage.setItem('cached_portfolios', JSON.stringify(formatted));
+      safeLocalStorageSet('cached_portfolios', JSON.stringify(formatted));
 
       const cachedId = localStorage.getItem('portfolio_active_id');
       if (cachedId === 'all') {
@@ -817,7 +821,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           if (formatted.length === 1) {
             setActivePortfolioId(formatted[0].id);
             setActivePortfolioRole(formatted[0].role);
-            localStorage.setItem('portfolio_active_id', formatted[0].id);
+            safeLocalStorageSet('portfolio_active_id', formatted[0].id);
           } else {
             setActivePortfolioId('all');
             setActivePortfolioRole('viewer');
@@ -828,7 +832,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
         if (formatted.length === 1) {
           setActivePortfolioId(formatted[0].id);
           setActivePortfolioRole(formatted[0].role);
-          localStorage.setItem('portfolio_active_id', formatted[0].id);
+          safeLocalStorageSet('portfolio_active_id', formatted[0].id);
         } else {
           setActivePortfolioId('all');
           setActivePortfolioRole('viewer');
@@ -929,7 +933,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (timeout) clearTimeout(timeout);
     };
-  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds, loadingHoldings, loadingTransactions, loadingChart]);
+  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds]);
 
   // Proactive server warmup on mount & keep-alive ping every 3 minutes while tab is visible
   useEffect(() => {
@@ -981,6 +985,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       
       syncStatus,
       syncError,
+      lastSyncTimestamp,
       setSyncStatus,
       setSyncError,
 

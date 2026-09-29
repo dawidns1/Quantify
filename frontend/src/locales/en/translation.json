@@ -45,7 +45,8 @@
     "twr": "Time-Weighted Return (TWR)"
   },
   "app": {
-    "establishing_connection": "Establishing secure connection..."
+    "establishing_connection": "Establishing secure connection...",
+    "loading": "Loading application..."
   },
   "auth": {
     "btnBack": "Back",
@@ -61,6 +62,12 @@
     "btnUpdating": "Updating...",
     "btnVerifyCode": "Verify Code",
     "btnVerifying": "Verifying...",
+    "btnResendEmail": "Resend Activation Email",
+    "btnResendCooldown": "Resend Email ({{seconds}}s)",
+    "checkEmailTitle": "Check your inbox",
+    "checkEmailDesc": "We sent an activation link to:",
+    "checkEmailSpamNotice": "Click the link in the email to activate your account. If you do not see it, check your spam folder.",
+    "msgResentSignUp": "Activation email resent! Check your inbox.",
     "errorDefault": "An error occurred.",
     "errorEmailNotConfirmed": "Your email address has not been activated yet. Please check your inbox for the activation link.",
     "errorEnterEmail": "Please enter your email address.",
@@ -707,7 +714,9 @@
       "invite_join_success_name": "Successfully joined portfolio: {{name}}",
       "invite_join_failed_err": "Failed to join portfolio from invite link: {{error}}",
       "err_failed_remove_named": "Failed to remove member: {{error}}",
-      "err_failed_update_named": "Failed to update role: {{error}}"
+      "err_failed_update_named": "Failed to update role: {{error}}",
+      "err_already_member": "This user is already a member of this portfolio.",
+      "invite_email_dispatched": "Invitation email sent to {{email}}!"
     }
   },
   "premium": {
@@ -915,5 +924,11 @@
     "err_load_demo": "Failed to load demo transactions: {{error}}",
     "err_delete_tx": "Failed to delete transaction",
     "err_delete_div": "Failed to delete/skip dividend"
+  },
+  "error_boundary": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred in the application. An automatic crash diagnostic has been submitted to help us fix it.",
+    "reload_app": "Reload App",
+    "version_label": "QuantiFi Beta Release ({{version}})"
   }
 }

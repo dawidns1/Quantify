@@ -1,10 +1,26 @@
+export interface DividendRecord {
+  id?: string;
+  symbol: string;
+  date: string;
+  amount?: number;
+  gross_amount?: number;
+  net_amount?: number;
+  shares?: number;
+  currency?: string;
+  account?: string;
+  withholding_tax_percent?: number;
+  is_manual?: boolean;
+  is_deleted?: boolean;
+  [key: string]: any;
+}
+
 export interface Portfolio {
   id: string;
   name: string;
   role: 'owner' | 'editor' | 'viewer';
   settings?: {
     accountTaxRates?: Record<string, number>;
-    dividends?: any[];
+    dividends?: DividendRecord[];
     [key: string]: any;
   };
 }

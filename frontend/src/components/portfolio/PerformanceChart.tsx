@@ -258,6 +258,7 @@ export const PerformanceChart = memo(function PerformanceChart({
           position: 'left' as const,
           grid: { color: 'rgba(255, 255, 255, 0.04)' },
           ticks: { 
+            count: isDual ? 6 : undefined,
             color: isDual ? '#06b6d4' : 'rgba(255, 255, 255, 0.75)', 
             font: { family: 'Outfit', size: 9, weight: isDual ? (600 as const) : (400 as const) },
             callback: function(value: any) {
@@ -271,6 +272,7 @@ export const PerformanceChart = memo(function PerformanceChart({
           display: isDual,
           grid: { display: false },
           ticks: {
+            count: 6,
             color: 'rgba(244, 63, 94, 0.9)',
             font: { family: 'Outfit', size: 9, weight: 600 as const },
             callback: function(value: any) {

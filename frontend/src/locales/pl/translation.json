@@ -45,7 +45,8 @@
     "twr": "Stopa zwrotu ważona czasem (TWR)"
   },
   "app": {
-    "establishing_connection": "Nawiązywanie bezpiecznego połączenia..."
+    "establishing_connection": "Nawiązywanie bezpiecznego połączenia...",
+    "loading": "Ładowanie aplikacji..."
   },
   "auth": {
     "btnBack": "Wstecz",
@@ -61,6 +62,12 @@
     "btnUpdating": "Aktualizacja...",
     "btnVerifyCode": "Zweryfikuj kod",
     "btnVerifying": "Weryfikacja...",
+    "btnResendEmail": "Wyślij ponownie e-mail aktywacyjny",
+    "btnResendCooldown": "Wyślij ponownie ({{seconds}}s)",
+    "checkEmailTitle": "Sprawdź skrzynkę odbiorczą",
+    "checkEmailDesc": "Wysłaliśmy link aktywacyjny na adres:",
+    "checkEmailSpamNotice": "Kliknij link w wiadomości e-mail, aby aktywować konto. Jeśli go nie widzisz, sprawdź folder spam.",
+    "msgResentSignUp": "E-mail aktywacyjny wysłany ponownie! Sprawdź skrzynkę odbiorczą.",
     "errorDefault": "Wystąpił błąd.",
     "errorEmailNotConfirmed": "Twój adres e-mail nie został jeszcze aktywowany. Sprawdź skrzynkę i kliknij link aktywacyjny.",
     "errorEnterEmail": "Wpisz swój adres e-mail.",
@@ -707,7 +714,9 @@
       "invite_join_success_name": "Pomyślnie dołączono do portfela: {{name}}",
       "invite_join_failed_err": "Nie udało się dołączyć do portfela z linku: {{error}}",
       "err_failed_remove_named": "Nie udało się usunąć członka: {{error}}",
-      "err_failed_update_named": "Nie udało się zaktualizować roli: {{error}}"
+      "err_failed_update_named": "Nie udało się zaktualizować roli: {{error}}",
+      "err_already_member": "Ten użytkownik jest już członkiem tego portfela.",
+      "invite_email_dispatched": "E-mail z zaproszeniem został wysłany do {{email}}!"
     }
   },
   "premium": {
@@ -915,5 +924,11 @@
     "err_load_demo": "Nie udało się załadować transakcji demo: {{error}}",
     "err_delete_tx": "Nie udało się usunąć transakcji",
     "err_delete_div": "Nie udało się usunąć/pominąć dywidendy"
+  },
+  "error_boundary": {
+    "title": "Coś poszło nie tak",
+    "description": "Wystąpił nieoczekiwany błąd w aplikacji. Automatyczny raport diagnostyczny został przesłany, aby pomóc nam go naprawić.",
+    "reload_app": "Odśwież aplikację",
+    "version_label": "Wersja QuantiFi Beta ({{version}})"
   }
 }

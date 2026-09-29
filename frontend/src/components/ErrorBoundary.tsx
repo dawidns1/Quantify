@@ -2,6 +2,7 @@ import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { APP_VERSION } from './portfolio/BetaInfoModal';
+import i18n from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -17,6 +18,8 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  private hasReported = false;
+
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -58,7 +61,8 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   reportErrorToBackend = async (error: Error, errorInfo?: ErrorInfo) => {
-    if (this.state.reported) return;
+    if (this.hasReported || this.state.reported) return;
+    this.hasReported = true;
     try {
       const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 
         ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -139,14 +143,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#fff' }}>
-                Something went wrong
+                {i18n.t('error_boundary.title', 'Something went wrong')}
               </h2>
               <p style={{ fontSize: '0.88rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                An unexpected error occurred in the application. An automatic crash diagnostic has been submitted to help us fix it.
+                {i18n.t('error_boundary.description', 'An unexpected error occurred in the application. An automatic crash diagnostic has been submitted to help us fix it.')}
               </p>
             </div>
 
-            {this.state.error && (
+            {!import.meta.env.PROD && this.state.error && (
               <div style={{
                 textAlign: 'left',
                 background: 'rgba(0, 0, 0, 0.4)',
@@ -183,12 +187,12 @@ export class ErrorBoundary extends Component<Props, State> {
                   gap: '0.4rem'
                 }}
               >
-                <RefreshCw size={16} /> Reload App
+                <RefreshCw size={16} /> {i18n.t('error_boundary.reload_app', 'Reload App')}
               </button>
             </div>
 
             <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
-              QuantiFi Beta Release ({APP_VERSION})
+              {i18n.t('error_boundary.version_label', 'QuantiFi Beta Release ({{version}})', { version: APP_VERSION })}
             </div>
           </div>
         </div>

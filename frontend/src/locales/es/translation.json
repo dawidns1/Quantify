@@ -45,7 +45,8 @@
     "twr": "Retorno ponderado en el tiempo (TWR)"
   },
   "app": {
-    "establishing_connection": "Estableciendo conexión segura..."
+    "establishing_connection": "Estableciendo conexión segura...",
+    "loading": "Cargando aplicación..."
   },
   "auth": {
     "btnBack": "Atrás",
@@ -61,6 +62,12 @@
     "btnUpdating": "Actualizando...",
     "btnVerifyCode": "Verificar código",
     "btnVerifying": "Verificando...",
+    "btnResendEmail": "Reenviar correo de activación",
+    "btnResendCooldown": "Reenviar correo ({{seconds}}s)",
+    "checkEmailTitle": "Revisa tu bandeja de entrada",
+    "checkEmailDesc": "Enviamos un enlace de activación a:",
+    "checkEmailSpamNotice": "Haz clic en el enlace del correo para activar tu cuenta. Si no lo ves, revisa tu carpeta de correo no deseado.",
+    "msgResentSignUp": "¡Correo de activación reenviado! Revisa tu bandeja de entrada.",
     "errorDefault": "Ha ocurrido un error.",
     "errorEmailNotConfirmed": "Su dirección de correo electrónico aún no ha sido activada. Revise su bandeja de entrada.",
     "errorEnterEmail": "Por favor, introduzca su dirección de correo electrónico.",
@@ -707,7 +714,9 @@
       "invite_join_success_name": "Te has unido exitosamente a la cartera: {{name}}",
       "invite_join_failed_err": "Error al unirse a la cartera desde el enlace: {{error}}",
       "err_failed_remove_named": "Error al eliminar al miembro: {{error}}",
-      "err_failed_update_named": "Error al actualizar el rol: {{error}}"
+      "err_failed_update_named": "Error al actualizar el rol: {{error}}",
+      "err_already_member": "Este usuario ya es miembro de esta cartera.",
+      "invite_email_dispatched": "¡Correo electrónico de invitación enviado a {{email}}!"
     }
   },
   "premium": {
@@ -915,5 +924,11 @@
     "err_load_demo": "Error al cargar transacciones de demostración: {{error}}",
     "err_delete_tx": "Error al eliminar la transacción",
     "err_delete_div": "Error al eliminar/omitir dividendo"
+  },
+  "error_boundary": {
+    "title": "Algo salió mal",
+    "description": "Ocurrió un error inesperado en la aplicación. Se ha enviado un diagnóstico automático de fallos para ayudarnos a solucionarlo.",
+    "reload_app": "Recargar aplicación",
+    "version_label": "Versión QuantiFi Beta ({{version}})"
   }
 }
