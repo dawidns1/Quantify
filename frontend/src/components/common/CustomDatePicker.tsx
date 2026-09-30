@@ -121,14 +121,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   // Formatted date displayed in input
   const displayFormattedDate = useMemo(() => {
     if (!value) return '';
-    const d = new Date(parsedValue.year, parsedValue.month, parsedValue.day);
-    const localized = d.toLocaleDateString(i18n.language || 'en', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    return `${value} (${localized})`;
-  }, [value, parsedValue, i18n.language]);
+    return value;
+  }, [value]);
 
   // Weekdays (Monday first for standard European/financial calendar)
   const weekDays = useMemo(() => {
@@ -238,15 +232,23 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
           justifyContent: 'space-between',
           cursor: disabled ? 'not-allowed' : 'pointer',
           padding: '0.45rem 0.75rem',
+          minHeight: '38px',
           textAlign: 'left',
           fontSize: '0.8rem',
           fontWeight: 500,
           background: isOpen ? 'rgba(6, 182, 212, 0.08)' : 'rgba(255, 255, 255, 0.03)',
           borderColor: isOpen ? 'var(--color-primary)' : 'var(--panel-border)',
-          transition: 'all 0.15s ease'
+          transition: 'all 0.15s ease',
+          whiteSpace: 'nowrap'
         }}
       >
-        <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-muted)', fontFamily: 'monospace' }}>
+        <span style={{ 
+          color: value ? 'var(--text-primary)' : 'var(--text-muted)', 
+          fontFamily: 'monospace',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
           {displayFormattedDate || t('modals.add_tx.label_date', 'Select date')}
         </span>
         <Calendar 

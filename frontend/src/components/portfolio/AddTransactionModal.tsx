@@ -498,8 +498,8 @@ export function AddTransactionModal({
                 required
               />
               
-              {/* Quick Cash Buttons */}
-              {(!formSymbol || formSymbol.toUpperCase().startsWith('CASH')) && (
+              {/* Quick Cash Buttons - only when Link Cash is OFF and user explicitly types CASH */}
+              {!linkCash && formSymbol.toUpperCase().startsWith('CASH') && (
                 <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
                   {['CASH_USD', 'CASH_PLN', 'CASH_EUR', 'CASH_GBP', 'CASH_CHF', 'CASH_CAD', 'CASH_AUD', 'CASH_JPY'].map((cashSym) => (
                     <button
@@ -563,7 +563,7 @@ export function AddTransactionModal({
             {/* Grid: Date, Currency, and Account */}
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group">
-                <label className="form-label" htmlFor="form-date">{t('modals.add_tx.label_date', 'Transaction Date')}</label>
+                <label className="form-label" htmlFor="form-date">{t('modals.add_tx.label_date', 'Date')}</label>
                 <CustomDatePicker
                   id="form-date"
                   value={formDate}
