@@ -280,13 +280,7 @@ export function PortfolioView({
       }
     }
 
-    if (tabType === 'overview') {
-      if (isLeftSwipe && mobileOverviewTab === 'holdings') {
-        setMobileOverviewTab('analytics');
-      } else if (isRightSwipe && mobileOverviewTab === 'analytics') {
-        setMobileOverviewTab('holdings');
-      }
-    } else if (tabType === 'dividends') {
+    if (tabType === 'dividends') {
       if (isLeftSwipe) {
         if (mobileDividendsTab === 'forecast') {
           setMobileDividendsTab('calendar');
@@ -1198,17 +1192,14 @@ export function PortfolioView({
                       <>
                         <div 
                           className="portfolio-grid" 
-                          onTouchStart={handleTouchStart}
-                          onTouchMove={handleTouchMove}
-                          onTouchEnd={() => handleTouchEnd('overview')}
                           style={{ 
                             display: 'grid', 
                             gridTemplateColumns: isMobile ? '1fr' : (isRightColumnOpen ? 'minmax(0, 2fr) 12px minmax(300px, 1fr)' : '1fr'), 
-                            gridTemplateRows: '1fr',
+                            gridTemplateRows: '1fr', 
                             gap: '0px', 
-                            marginTop: '0.25rem',
-                            flex: 1,
-                            minHeight: 0
+                            marginTop: '0.25rem', 
+                            flex: 1, 
+                            minHeight: 0 
                           }}
                         >
                           {/* Left Column: Holdings Table */}

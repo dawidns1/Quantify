@@ -933,9 +933,7 @@ export function StockDetailsModal({
       subColor: 'var(--text-secondary)',
       color: 'var(--color-primary)',
       isLive: isMarketLive,
-      badge: isMarketLive 
-        ? (isDelayed ? t('holdings.badge_live_delayed', 'LIVE (15m)') : t('holdings.badge_live_realtime', 'REAL-TIME')) 
-        : undefined,
+      badge: undefined,
       tooltip: `${t('holdings.col_price', 'Market Price')}: ${formatFinancialValue(holdingDetails.current_price_local, holdingDetails.currency)} · ${t('holdings.col_current', 'Current Value')}: ${formatFinancialValue(holdingDetails.current_value_base, baseCurrency)}${weight > 0 ? ` · ${weight.toFixed(2)}% ${t('holdings.col_allocation', 'Allocation')}` : ''}${liveTooltip ? ` · ${liveTooltip}` : ''}`
     };
 

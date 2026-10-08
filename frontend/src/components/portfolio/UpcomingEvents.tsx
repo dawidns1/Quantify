@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Calendar, Info, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { fetchUpcomingEvents } from '../../services/calculationService';
 import type { Holding } from '../../types/portfolio';
@@ -37,35 +37,53 @@ export function UpcomingEvents({
   const { upcomingEvents } = usePortfolio();
 
   const [events, setEvents] = useState<CorporateEvent[]>(() => {
-    if (upcomingEvents && upcomingEvents.length > 0) return upcomingEvents;
+    const today = new Date().toISOString().split('T')[0];
+    if (upcomingEvents && upcomingEvents.length > 0) {
+      return upcomingEvents.filter(e => e.date && e.date >= today);
+    }
     if (!activePortfolioId) return [];
     const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
-    return cached ? JSON.parse(cached) : [];
+    try {
+      const parsed = cached ? JSON.parse(cached) : [];
+      return Array.isArray(parsed) ? parsed.filter((e: any) => e.date && e.date >= today) : [];
+    } catch {
+      return [];
+    }
   });
   const [loading, setLoading] = useState(false);
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const activeEvents = useMemo(() => {
+    return (events || []).filter(e => e.date && e.date >= todayStr);
+  }, [events, todayStr]);
 
   const symbolsKey = holdings.map(h => h.symbol.toUpperCase()).sort().join(',');
 
   // Sync with context's bundled upcoming events whenever it updates
   useEffect(() => {
     if (upcomingEvents) {
-      setEvents(upcomingEvents);
+      setEvents(upcomingEvents.filter(e => e.date && e.date >= todayStr));
       setLoading(false);
     }
-  }, [upcomingEvents]);
+  }, [upcomingEvents, todayStr]);
 
   useEffect(() => {
     if (!activePortfolioId) return;
 
     if (upcomingEvents && upcomingEvents.length > 0) {
-      setEvents(upcomingEvents);
+      setEvents(upcomingEvents.filter(e => e.date && e.date >= todayStr));
       return;
     }
 
     // Load from cache synchronously first
     const cached = localStorage.getItem(`cached_upcoming_events_${activePortfolioId}`);
     if (cached) {
-      setEvents(JSON.parse(cached));
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setEvents(parsed.filter((e: any) => e.date && e.date >= todayStr));
+        }
+      } catch {}
     }
 
     if (symbolsKey === '') {
@@ -80,9 +98,10 @@ export function UpcomingEvents({
       
       fetchUpcomingEvents(apiBaseUrl, jwtToken, activePortfolioId, 'PLN', 'All', true)
         .then((data) => {
-          const eventsData = data || [];
-          localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(eventsData));
-          setEvents(eventsData);
+          const eventsData: CorporateEvent[] = data || [];
+          const cleanEvents = eventsData.filter(e => e.date && e.date >= todayStr);
+          localStorage.setItem(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(cleanEvents));
+          setEvents(cleanEvents);
         })
         .catch((err) => {
           if (err?.message !== 'Tab suspended (background).' && err?.message !== 'Request cancelled.' && !err?.message?.includes('timed out')) {
@@ -93,7 +112,7 @@ export function UpcomingEvents({
           setLoading(false);
         });
     }
-  }, [activePortfolioId, symbolsKey, apiBaseUrl, session?.access_token]);
+  }, [activePortfolioId, symbolsKey, apiBaseUrl, session?.access_token, todayStr]);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -174,7 +193,7 @@ export function UpcomingEvents({
         </div>
       </div>
 
-      {loading && events.length === 0 ? (
+      {loading && activeEvents.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
           {[1, 2, 3].map((i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0' }}>
@@ -184,7 +203,7 @@ export function UpcomingEvents({
             </div>
           ))}
         </div>
-      ) : events.length === 0 ? (
+      ) : activeEvents.length === 0 ? (
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
@@ -210,7 +229,7 @@ export function UpcomingEvents({
           paddingRight: '4px',
           marginTop: '0.25rem'
         }}>
-          {events.map((event, idx) => {
+          {activeEvents.map((event, idx) => {
             const isDividend = event.type === 'Dividend';
             return (
               <div 

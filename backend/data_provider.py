@@ -186,7 +186,7 @@ class YFinanceProvider(BaseDataProvider):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         for endpoint in ["https://query1.finance.yahoo.com", "https://query2.finance.yahoo.com"]:
-            url = f"{endpoint}/v8/finance/chart/{symbol}?range=2d&interval=1d"
+            url = f"{endpoint}/v8/finance/chart/{symbol}?range=1d&interval=1d"
             try:
                 r = YF_SESSION.get(url, headers=headers, timeout=4.0)
                 if r.status_code == 200:
@@ -195,7 +195,7 @@ class YFinanceProvider(BaseDataProvider):
                     if results:
                         meta = results[0].get("meta", {})
                         live_price = meta.get("regularMarketPrice") or 0.0
-                        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or live_price
+                        prev_close = meta.get("regularMarketPreviousClose") or meta.get("chartPreviousClose") or meta.get("previousClose") or live_price
                         company_name = meta.get("longName") or meta.get("shortName") or symbol
                         currency = meta.get("currency") or guess_native_currency(symbol)
                         timezone = meta.get("exchangeTimezoneName") or "UTC"

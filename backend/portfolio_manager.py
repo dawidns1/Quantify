@@ -693,10 +693,11 @@ class PortfolioManager:
         Loads upcoming events from SQLite cache immediately and schedules background 
         refreshes for missing or expired records to avoid blocking the API thread.
         """
-        from datetime import date, datetime
+        from datetime import date, datetime, timedelta
         
         now = time.time()
         today = date.today()
+        today_iso = today.isoformat()
         
         compiled_events = []
         symbols_to_update = []
@@ -713,7 +714,8 @@ class PortfolioManager:
                 if now - ts < cls.EVENTS_CACHE_TTL:
                     updated_events = []
                     for ev in events_list:
-                        if ev.get("date") is None:
+                        ev_date = ev.get("date")
+                        if not ev_date or str(ev_date) < today_iso:
                             continue
                         new_ev = dict(ev)
                         new_ev.setdefault("symbol", symbol)
@@ -731,7 +733,8 @@ class PortfolioManager:
                 cls._upcoming_events_cache[symbol] = (now, sqlite_events)
                 updated_events = []
                 for ev in sqlite_events:
-                    if ev.get("date") is None:
+                    ev_date = ev.get("date")
+                    if not ev_date or str(ev_date) < today_iso:
                         continue
                     new_ev = dict(ev)
                     new_ev.setdefault("symbol", symbol)
@@ -747,7 +750,8 @@ class PortfolioManager:
                 if expired_sqlite_events:
                     updated_events = []
                     for ev in expired_sqlite_events:
-                        if ev.get("date") is None:
+                        ev_date = ev.get("date")
+                        if not ev_date or str(ev_date) < today_iso:
                             continue
                         new_ev = dict(ev)
                         new_ev.setdefault("symbol", symbol)
@@ -808,11 +812,14 @@ class PortfolioManager:
                                     "currency": curr.upper().strip()
                                 })
 
-        # Filter duplicates and sort
+        # Filter duplicates, enforce strictly future/today dates, and sort
         unique_events = []
         seen = set()
         for ev in compiled_events:
-            ev_key = (ev.get("date"), ev.get("symbol"), ev.get("type"))
+            ev_date = ev.get("date")
+            if not ev_date or str(ev_date) < today_iso:
+                continue
+            ev_key = (ev_date, ev.get("symbol"), ev.get("type"))
             if ev_key not in seen:
                 seen.add(ev_key)
                 unique_events.append(ev)
@@ -1969,7 +1976,7 @@ class PortfolioManager:
                 day_change_value_base = current_value_base - previous_value_base
                 
                 day_change_native = live_price_native - prev_close_native
-                day_change_percent = (day_change_value_base / previous_value_base * 100) if previous_value_base > 0.0 else 0.0
+                day_change_percent = ((live_price_native - prev_close_native) / prev_close_native * 100) if prev_close_native > 0.0 else 0.0
                 
                 is_live = cls.is_market_open(info.get("timezone", "UTC"), info.get("exchange", ""), symbol)
                 if is_live:

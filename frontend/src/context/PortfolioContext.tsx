@@ -300,8 +300,11 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     const activeId = localStorage.getItem('portfolio_active_id');
     if (!activeId) return [];
     try {
+      const today = new Date().toISOString().split('T')[0];
       const cached = localStorage.getItem(`cached_upcoming_events_${activeId}`);
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed.filter((e: any) => e.date && e.date >= today) : [];
     } catch (e) {
       return [];
     }
@@ -531,8 +534,10 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
 
       // 5. Upcoming Corporate Events
       if (result.upcoming_events) {
-        setUpcomingEvents(result.upcoming_events);
-        safeLocalStorageSet(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(result.upcoming_events));
+        const todayStr = new Date().toISOString().split('T')[0];
+        const cleanEvents = (result.upcoming_events as CorporateEvent[]).filter(e => e.date && e.date >= todayStr);
+        setUpcomingEvents(cleanEvents);
+        safeLocalStorageSet(`cached_upcoming_events_${activePortfolioId}`, JSON.stringify(cleanEvents));
       }
 
       setSyncStatus('synced');
@@ -882,7 +887,13 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           if (cachedC) setChartData(JSON.parse(cachedC));
           if (cachedA) setAnalytics(JSON.parse(cachedA));
           if (cachedF) setDividendForecast(JSON.parse(cachedF));
-          if (cachedE) setUpcomingEvents(JSON.parse(cachedE));
+          if (cachedE) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const parsedE = JSON.parse(cachedE);
+            if (Array.isArray(parsedE)) {
+              setUpcomingEvents(parsedE.filter((e: any) => e.date && e.date >= todayStr));
+            }
+          }
         } catch (e) {}
       }
 
