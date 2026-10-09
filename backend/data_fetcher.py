@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import json
 import time
+from datetime import datetime, date, timedelta
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -184,6 +185,7 @@ class StockDataCollector:
         # Base fields
         name = info.get('longName') or info.get('shortName') or symbol
         price = info.get('currentPrice') or info.get('regularMarketPrice')
+        previous_close = info.get('previousClose') or info.get('regularMarketPreviousClose')
         market_cap = info.get('marketCap')
         shares = info.get('sharesOutstanding')
         sector = info.get('sector')
@@ -246,6 +248,7 @@ class StockDataCollector:
             "symbol": symbol,
             "name": name,
             "price": price,
+            "previous_close": float(previous_close) if (previous_close is not None and float(previous_close) > 0) else None,
             "market_cap": market_cap,
             "sector": sector,
             "industry": industry,
@@ -455,6 +458,32 @@ class StockDataCollector:
                     "sma_50": float(round(row['SMA_50'], 2)) if pd.notna(row['SMA_50']) else None,
                     "sma_200": float(round(row['SMA_200'], 2)) if pd.notna(row['SMA_200']) else None,
                 })
+
+            # If historical points are missing the previous trading session, stitch previous close
+            if historical_points:
+                try:
+                    last_hist_dt = datetime.strptime(historical_points[-1]["date"], "%Y-%m-%d").date()
+                    today_dt = date.today()
+                    offset = 3 if today_dt.weekday() == 0 else (2 if today_dt.weekday() == 6 else (1 if today_dt.weekday() == 5 else 1))
+                    prev_trading_dt = today_dt - timedelta(days=offset)
+                    if last_hist_dt < prev_trading_dt:
+                        info_obj = getattr(ticker_obj, 'info', {}) or {}
+                        prev_close = info_obj.get('previousClose') or info_obj.get('regularMarketPreviousClose')
+                        if prev_close and float(prev_close) > 0:
+                            historical_points.append({
+                                "date": prev_trading_dt.isoformat(),
+                                "price": float(round(float(prev_close), 2)),
+                                "ps": None,
+                                "forward_ps": None,
+                                "psg": None,
+                                "forward_psg": None,
+                                "pe": None,
+                                "sma_50": historical_points[-1].get("sma_50"),
+                                "sma_200": historical_points[-1].get("sma_200"),
+                            })
+                except Exception:
+                    pass
+
             return historical_points
         except Exception as e:
             print(f"[{symbol}] Error computing historical details: {e}")

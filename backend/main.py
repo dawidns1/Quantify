@@ -262,6 +262,17 @@ def get_stock_detail(ticker: str):
                 file_age = time.time() - os.path.getmtime(file_path)
                 if file_age > 86400:  # 24 hours
                     should_fetch = True
+                else:
+                    # Also invalidate if history is missing the previous trading session
+                    from datetime import date, timedelta
+                    hist = cached_data.get("history", [])
+                    if hist and file_age > 1800:
+                        last_hist_date = hist[-1].get("date", "")
+                        today_dt = date.today()
+                        offset = 3 if today_dt.weekday() == 0 else (2 if today_dt.weekday() == 6 else (1 if today_dt.weekday() == 5 else 1))
+                        prev_trading_dt = today_dt - timedelta(days=offset)
+                        if last_hist_date < prev_trading_dt.isoformat():
+                            should_fetch = True
         except Exception:
             should_fetch = True
             

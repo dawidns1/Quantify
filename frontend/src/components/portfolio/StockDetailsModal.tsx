@@ -299,7 +299,7 @@ export function StockDetailsModal({
     let hist = selectedStockDetails.history.map((pt: any) => ({ ...pt }));
     hist.sort((a: any, b: any) => a.date.localeCompare(b.date));
 
-    // Live Intraday Price Point Stitching from live holding details or overview
+    // Live Intraday Price Point & Previous Trading Session Stitching
     const livePrice = holdingDetails?.current_price_local || selectedStockDetails?.overview?.current_price;
     if (livePrice && livePrice > 0) {
       const now = new Date();
@@ -308,17 +308,51 @@ export function StockDetailsModal({
       const day = String(now.getDate()).padStart(2, '0');
       const todayStr = `${year}-${month}-${day}`;
 
+      // Calculate previous trading session date (skip weekends: Monday -> Friday, Sun -> Fri, Sat -> Fri, otherwise yesterday)
+      const dayOfWeek = now.getDay(); // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const prevTradingOffset = dayOfWeek === 1 ? 3 : (dayOfWeek === 0 ? 2 : (dayOfWeek === 6 ? 1 : 1));
+      const prevTradingDate = new Date(now);
+      prevTradingDate.setDate(now.getDate() - prevTradingOffset);
+      const prevTradingYear = prevTradingDate.getFullYear();
+      const prevTradingMonth = String(prevTradingDate.getMonth() + 1).padStart(2, '0');
+      const prevTradingDay = String(prevTradingDate.getDate()).padStart(2, '0');
+      const prevTradingDayStr = `${prevTradingYear}-${prevTradingMonth}-${prevTradingDay}`;
+
+      // Derive previous close price from holding details or overview
+      let prevClosePrice: number | null = null;
+      if (holdingDetails && holdingDetails.current_price_local > 0 && typeof holdingDetails.day_change_percent === 'number') {
+        prevClosePrice = holdingDetails.current_price_local / (1 + holdingDetails.day_change_percent / 100);
+      }
+      if (!prevClosePrice && selectedStockDetails?.overview) {
+        prevClosePrice = selectedStockDetails.overview.previous_close || selectedStockDetails.overview.regularMarketPreviousClose;
+      }
+
       if (hist.length > 0) {
         const lastEntry = hist[hist.length - 1];
-        if (lastEntry.date === todayStr) {
-          lastEntry.price = livePrice;
-          lastEntry.is_live = isMarketLive;
-        } else if (lastEntry.date < todayStr) {
+
+        // 1. If history is missing the previous trading session (e.g. Oct 8 when today is Oct 9), stitch it
+        if (prevClosePrice && prevClosePrice > 0 && lastEntry.date < prevTradingDayStr) {
           hist.push({
-            date: todayStr,
-            price: livePrice,
-            is_live: isMarketLive
+            date: prevTradingDayStr,
+            price: Number(prevClosePrice.toFixed(2)),
+            is_live: false
           });
+        }
+
+        // 2. On trading days (weekdays), stitch or update today's live price point
+        if (!isWeekend) {
+          const currentLast = hist[hist.length - 1];
+          if (currentLast.date === todayStr) {
+            currentLast.price = livePrice;
+            currentLast.is_live = isMarketLive;
+          } else if (currentLast.date < todayStr) {
+            hist.push({
+              date: todayStr,
+              price: livePrice,
+              is_live: isMarketLive
+            });
+          }
         }
       }
     }
@@ -338,7 +372,7 @@ export function StockDetailsModal({
       hist = hist.filter((pt: any) => pt.date >= cutoffStr);
     }
     return hist;
-  }, [selectedStockDetails, holdingDetails?.current_price_local, modalRange, isMarketLive]);
+  }, [selectedStockDetails, holdingDetails?.current_price_local, holdingDetails?.day_change_percent, modalRange, isMarketLive]);
 
   const modalChartFormatted = useMemo(() => {
     if (!modalChartData || modalChartData.length === 0) return null;
