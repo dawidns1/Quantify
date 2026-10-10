@@ -74,3 +74,13 @@ export async function saveTransactionsBulk(
       .insert(payloads)
   );
 }
+
+export async function deleteTransactionsByAccount(portfolioId: string, accountName: string): Promise<void> {
+  await withFreshSessionRetry(() =>
+    supabase
+      .from('transactions')
+      .delete()
+      .eq('portfolio_id', portfolioId)
+      .eq('account', accountName)
+  );
+}

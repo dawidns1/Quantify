@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { X, Upload, Check, AlertCircle, FileText, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useRef, useMemo } from 'react';
+import { X, Upload, Check, AlertCircle, AlertTriangle, FileText, Loader2, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { saveTransactionsBulk } from '../../services/transactionService';
+import { usePortfolio } from '../../context/PortfolioContext';
+import { useToast } from '../../context/ToastContext';
 
 interface ParsedTx {
   symbol: string;
@@ -32,6 +34,8 @@ export function ImportCSVModal({
   onImportComplete
 }: ImportCSVModalProps) {
   const { t } = useTranslation();
+  const { allTransactions } = usePortfolio();
+  const { showToast } = useToast();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -114,8 +118,42 @@ export function ImportCSVModal({
       if (data.transactions && data.transactions.length > 0) {
         setParsedTransactions(data.transactions);
         setDetectedBroker(data.broker);
-        setSelectedTxs(new Array(data.transactions.length).fill(true));
+
+        // Pre-fill account from detected broker if present
+        if (data.broker && data.broker !== 'generic') {
+          const brokerNormalized = data.broker.toUpperCase();
+          const matchedAcc = accounts.find(a => a.toUpperCase().includes(brokerNormalized));
+          if (matchedAcc) {
+            setSelectedAccount(matchedAcc);
+          } else {
+            // Suggest nice name for new account
+            setSelectedAccount('__new__');
+            setShowNewAccountInput(true);
+            setNewAccountName(`${data.broker} Account`);
+          }
+        }
+
+        // Check for duplicates against existing portfolio transactions
+        const currentPortfolioTxs = allTransactions.filter(tx => tx.portfolio_id === portfolioId);
+        let duplicateCount = 0;
+        const initialSelections = data.transactions.map((parsed: ParsedTx) => {
+          const isDup = currentPortfolioTxs.some(existing => 
+            existing.symbol.toUpperCase() === parsed.symbol.toUpperCase() &&
+            existing.type === parsed.type &&
+            existing.date === parsed.date &&
+            Math.abs(existing.shares - parsed.shares) < 0.0001 &&
+            Math.abs(existing.price - parsed.price) < 0.01
+          );
+          if (isDup) duplicateCount++;
+          return !isDup; // Pre-uncheck duplicates
+        });
+
+        setSelectedTxs(initialSelections);
         setStep(2);
+
+        if (duplicateCount > 0) {
+          showToast(t('import.duplicates_detected', { count: duplicateCount, defaultValue: `${duplicateCount} possible duplicate transactions detected and unselected by default.` }), 'info');
+        }
       } else {
         setError(t('import.err_no_txs', 'No valid transactions found in the CSV file. Please check column headers.'));
       }
@@ -148,6 +186,23 @@ export function ImportCSVModal({
       return next;
     });
   };
+
+  // Identify duplicate rows for preview indicators
+  const duplicateIndices = useMemo(() => {
+    const currentPortfolioTxs = allTransactions.filter(tx => tx.portfolio_id === portfolioId);
+    const duplicates = new Set<number>();
+    parsedTransactions.forEach((parsed, idx) => {
+      const isDup = currentPortfolioTxs.some(existing => 
+        existing.symbol.toUpperCase() === parsed.symbol.toUpperCase() &&
+        existing.type === parsed.type &&
+        existing.date === parsed.date &&
+        Math.abs(existing.shares - parsed.shares) < 0.0001 &&
+        Math.abs(existing.price - parsed.price) < 0.01
+      );
+      if (isDup) duplicates.add(idx);
+    });
+    return duplicates;
+  }, [parsedTransactions, allTransactions, portfolioId]);
 
   const handleImportSubmit = async () => {
     const finalAccount = showNewAccountInput ? newAccountName.trim() : selectedAccount;
@@ -194,6 +249,12 @@ export function ImportCSVModal({
 
     try {
       await saveTransactionsBulk(validPayload);
+      const skippedCount = parsedTransactions.length - validPayload.length;
+      if (skippedCount > 0) {
+        showToast(t('import.success_with_duplicates', { count: validPayload.length, skipped: skippedCount, defaultValue: `Successfully imported ${validPayload.length} transactions (${skippedCount} duplicates skipped).` }), 'success');
+      } else {
+        showToast(t('import.success_import', { count: validPayload.length, defaultValue: `Successfully imported ${validPayload.length} transactions.` }), 'success');
+      }
       onImportComplete();
       onClose();
     } catch (err: any) {
@@ -452,24 +513,49 @@ export function ImportCSVModal({
                         />
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem' }}>
-                        <input 
-                          type="text"
-                          value={tx.symbol}
-                          onChange={(e) => handleEditCell(idx, 'symbol', e.target.value.toUpperCase().trim())}
-                          style={{
-                            background: 'transparent',
-                            border: '1px solid transparent',
-                            color: 'white',
-                            fontWeight: 700,
-                            fontSize: '0.78rem',
-                            width: '80px',
-                            outline: 'none',
-                            padding: '2px 4px',
-                            borderRadius: '3px'
-                          }}
-                          onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
-                          onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <input 
+                            type="text"
+                            value={tx.symbol}
+                            onChange={(e) => handleEditCell(idx, 'symbol', e.target.value.toUpperCase().trim())}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid transparent',
+                              color: 'white',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              width: '80px',
+                              outline: 'none',
+                              padding: '2px 4px',
+                              borderRadius: '3px'
+                            }}
+                            onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'}
+                            onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                          />
+                          {duplicateIndices.has(idx) && (
+                            <span 
+                              title={t('import.badge_duplicate_tooltip', 'This transaction already exists in your ledger with identical date, ticker, type, shares, and price.')}
+                              style={{
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                color: '#f59e0b',
+                                fontSize: '0.62rem',
+                                fontWeight: 700,
+                                padding: '0.1rem 0.35rem',
+                                borderRadius: '4px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.3px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                cursor: 'help'
+                              }}
+                            >
+                              <AlertTriangle size={10} />
+                              {t('import.badge_duplicate', 'Duplicate')}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem' }}>
                         <span className={`badge ${tx.type === 'BUY' ? 'badge-green' : 'badge-red'}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.4rem' }}>

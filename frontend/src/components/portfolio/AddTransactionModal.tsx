@@ -52,6 +52,8 @@ export function AddTransactionModal({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSuggestionSelected, setIsSuggestionSelected] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [showAccountSuggestions, setShowAccountSuggestions] = useState(false);
   const [isAccountInputDirty, setIsAccountInputDirty] = useState(false);
   
@@ -116,28 +118,41 @@ export function AddTransactionModal({
   // Debounced search for suggestions
   useEffect(() => {
     if (isSuggestionSelected) {
+      setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
     if (formSymbol.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setHasSearched(false);
+      setIsSearching(false);
       return;
     }
 
+    setIsSearching(true);
     const delayDebounce = setTimeout(() => {
       searchAssets(apiBaseUrl, formSymbol)
         .then((data) => {
           if (formSymbol.trim().length < 2) {
             setSuggestions([]);
             setShowSuggestions(false);
+            setHasSearched(false);
             return;
           }
           setSuggestions(data || []);
-          setShowSuggestions(data && data.length > 0);
+          setShowSuggestions(true);
+          setHasSearched(true);
         })
         .catch((err) => {
           console.error('Error fetching suggestions:', err);
+          setShowSuggestions(true);
+          setSuggestions([]);
+          setHasSearched(true);
+        })
+        .finally(() => {
+          setIsSearching(false);
         });
     }, 300);
 
@@ -533,19 +548,30 @@ export function AddTransactionModal({
               {/* Autocomplete Dropdown List */}
               {showSuggestions && (
                 <div className="search-suggestions-dropdown">
-                  {suggestions.map((s) => (
-                    <div 
-                      key={s.symbol} 
-                      className="suggestion-item" 
-                      onClick={() => handleSelectSuggestion(s)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span className="suggestion-symbol">{s.symbol}</span>
-                        <span className="suggestion-badge">{s.exchange}</span>
+                  {suggestions.length > 0 ? (
+                    suggestions.map((s) => (
+                      <div 
+                        key={s.symbol} 
+                        className="suggestion-item" 
+                        onClick={() => handleSelectSuggestion(s)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className="suggestion-symbol">{s.symbol}</span>
+                          <span className="suggestion-badge">{s.exchange}</span>
+                        </div>
+                        <span className="suggestion-name" title={s.name}>{s.name}</span>
                       </div>
-                      <span className="suggestion-name" title={s.name}>{s.name}</span>
+                    ))
+                  ) : hasSearched && !isSearching && formSymbol.trim().length >= 2 ? (
+                    <div style={{ padding: '0.75rem 0.85rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'white', fontWeight: 600 }}>
+                        {t('modals.add_tx.no_results_found', { query: formSymbol.trim(), defaultValue: `No matching assets found for "${formSymbol.trim()}"` })}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {t('modals.add_tx.manual_entry_hint', 'Press Enter or continue filling out details for manual entry.')}
+                      </span>
                     </div>
-                  ))}
+                  ) : null}
                 </div>
               )}
               

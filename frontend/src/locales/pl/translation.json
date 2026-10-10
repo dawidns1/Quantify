@@ -163,6 +163,8 @@
     "toggle_columns": "Dostosuj kolumny",
     "reset": "Resetuj",
     "today": "Dzisiaj",
+    "offline_mode": "Tryb offline",
+    "offline_mode_desc": "Wyświetlanie danych z pamięci podręcznej. Połączenie zostanie wznowione po odzyskaniu sieci...",
     "yesterday": "Wczoraj",
     "default": "Domyślne",
     "all": "Wszystkie"
@@ -211,6 +213,12 @@
     "syncing_portfolios": "Synchronizowanie portfeli...",
     "syncing_transactions": "Pobieranie historii transakcji...",
     "toggle_cards": "Włącz/wyłącz karty pulpitu",
+    "demo_banner_badge": "Aktywny Portfel Demo",
+    "demo_banner_title": "Obecnie przeglądasz przykładowy portfel demonstracyjny.",
+    "demo_banner_desc": "Dowolnie eksploruj wykresy, analitykę i dywidendy. Chcesz śledzić własne inwestycje?",
+    "demo_banner_btn_clear": "Usuń dane demonstracyjne",
+    "demo_banner_btn_add": "Dodaj prawdziwą transakcję",
+    "demo_cleared_success": "Pomyślnie usunięto transakcje demonstracyjne.",
     "viewer_empty_warning": "Ten portfel jest pusty i masz do niego dostęp tylko do odczytu.",
     "viewer_readonly_warning": "Masz uprawnienia tylko do podglądu (Obserwator) tego portfela. Dodawanie, edycja i usuwanie transakcji jest zablokowane.",
     "viewer_readonly_tooltip": "Dostęp tylko do odczytu (Obserwator) do tego portfela"
@@ -451,7 +459,12 @@
     "placeholder_account": "Wprowadź nazwę rachunku (np. Biuro Maklerskie XTB)",
     "selected_count": "Wybrano:",
     "supported_title": "Automatycznie wykrywane formaty",
-    "generic_tip_columns": "Używasz innego brokera? Upewnij się, że nagłówki zawierają standardowe kolumny: Date, Ticker, Type (Kupno/Sprzedaż), Shares, Price."
+    "generic_tip_columns": "Używasz innego brokera? Upewnij się, że nagłówki zawierają standardowe kolumny: Date, Ticker, Type (Kupno/Sprzedaż), Shares, Price.",
+    "badge_duplicate": "Duplikat",
+    "badge_duplicate_tooltip": "Ta transakcja już istnieje w Twojej księdze z identyczną datą, symbolem, typem, liczbą akcji i ceną.",
+    "duplicates_detected": "Wykryto {{count}} potencjalnych duplikatów i domyślnie je odznaczono.",
+    "success_with_duplicates": "Pomyślnie zaimportowano {{count}} transakcji (pominięto {{skipped}} duplikatów).",
+    "success_import": "Pomyślnie zaimportowano {{count}} transakcji."
   },
   "ledger": {
     "action_delete": "Usuń",
@@ -555,6 +568,8 @@
       "price_input_mode": "Tryb wprowadzania ceny",
       "saving_adjust_desc": "Korekta salda automatycznie zarejestruje bilansującą transakcję gotówkową.",
       "suffixes_desc": "Użyj .WA dla GPW w Warszawie, .DE dla Niemiec, .L dla Londynu.",
+      "no_results_found": "Nie znaleziono aktywów pasujących do \"{{query}}\"",
+      "manual_entry_hint": "Naciśnij Enter lub uzupełnij pola poniżej, aby dodać aktywo ręcznie.",
       "target_cash_balance": "Docelowe saldo gotówki",
       "title": "Dodaj transakcję do portfela",
       "total_cash_outlay": "Całkowity wydatek gotówki",

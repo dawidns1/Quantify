@@ -163,6 +163,8 @@
     "toggle_columns": "Customize Columns",
     "reset": "Reset",
     "today": "Today",
+    "offline_mode": "Offline Mode",
+    "offline_mode_desc": "Displaying cached data. Reconnecting to market streams when online...",
     "yesterday": "Yesterday",
     "default": "Default",
     "all": "All"
@@ -211,6 +213,12 @@
     "syncing_portfolios": "Syncing portfolios...",
     "syncing_transactions": "Fetching transaction ledger...",
     "toggle_cards": "Toggle Dashboard Cards",
+    "demo_banner_badge": "Demo Portfolio Active",
+    "demo_banner_title": "You are currently viewing a simulated demo portfolio.",
+    "demo_banner_desc": "Explore charts, analytics, and dividends freely. Ready to track your own investments?",
+    "demo_banner_btn_clear": "Clear Demo Data",
+    "demo_banner_btn_add": "Add Real Transaction",
+    "demo_cleared_success": "Demo transactions successfully removed.",
     "viewer_empty_warning": "This portfolio is empty and you have read-only access.",
     "viewer_readonly_warning": "You have Read-Only (Viewer) access to this portfolio. Adding, editing, or deleting transactions is disabled.",
     "viewer_readonly_tooltip": "Read-Only (Viewer) access to this portfolio"
@@ -451,7 +459,12 @@
     "placeholder_account": "Enter account name (e.g. XTB Broker)",
     "selected_count": "Selected:",
     "supported_title": "Auto-Detected Formats",
-    "generic_tip_columns": "Using another broker? Make sure headers contain standard columns: Date, Ticker, Type (Buy/Sell), Shares, Price."
+    "generic_tip_columns": "Using another broker? Make sure headers contain standard columns: Date, Ticker, Type (Buy/Sell), Shares, Price.",
+    "badge_duplicate": "Duplicate",
+    "badge_duplicate_tooltip": "This transaction already exists in your ledger with identical date, ticker, type, shares, and price.",
+    "duplicates_detected": "{{count}} possible duplicate transactions detected and unselected by default.",
+    "success_with_duplicates": "Successfully imported {{count}} transactions ({{skipped}} duplicates skipped).",
+    "success_import": "Successfully imported {{count}} transactions."
   },
   "ledger": {
     "action_delete": "Delete",
@@ -555,6 +568,8 @@
       "price_input_mode": "Price Input Mode",
       "saving_adjust_desc": "Adjust balance will log a balancing cash transaction automatically.",
       "suffixes_desc": "Use .WA for Warsaw, .DE for Germany, .L for London.",
+      "no_results_found": "No matching assets found for \"{{query}}\"",
+      "manual_entry_hint": "Press Enter or continue filling out details for manual entry.",
       "target_cash_balance": "Target Cash Balance",
       "title": "Add Portfolio Transaction",
       "total_cash_outlay": "Total Cash Outlay",

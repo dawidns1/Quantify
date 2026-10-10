@@ -59,7 +59,8 @@ import {
   joinPortfolioViaInviteToken
 } from '../services/supabaseService';
 import { 
-  deleteTransaction as deleteTransactionService 
+  deleteTransaction as deleteTransactionService,
+  deleteTransactionsByAccount
 } from '../services/transactionService';
 
 import { usePortfolio } from '../context/PortfolioContext';
@@ -157,6 +158,18 @@ export function PortfolioView({
 
   const isAnyLoading = loadingHoldings || loadingPortfolios || loadingTransactions || syncStatus === 'syncing';
   const [showSyncedPill, setShowSyncedPill] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [errorDismissed, setErrorDismissed] = useState(false);
 
   // Synchronously derived loading message (guaranteed non-empty string with fallbacks)
@@ -562,7 +575,7 @@ export function PortfolioView({
     );
   };
 
-  // Load Demo Portfolio Transactions
+  // Load Demo Portfolio Transactions atomically
   const handleLoadDemoData = async () => {
     if (!activePortfolioId) return;
     setLoadingDemo(true);
@@ -577,7 +590,7 @@ export function PortfolioView({
         price: 175.5,
         currency: 'USD',
         fees: 1.0,
-        account: 'US Stocks'
+        account: 'Demo Portfolio'
       },
       {
         portfolio_id: activePortfolioId,
@@ -588,7 +601,7 @@ export function PortfolioView({
         price: 410.2,
         currency: 'USD',
         fees: 2.0,
-        account: 'US Stocks'
+        account: 'Demo Portfolio'
       },
       {
         portfolio_id: activePortfolioId,
@@ -599,7 +612,7 @@ export function PortfolioView({
         price: 505.0,
         currency: 'USD',
         fees: 0.0,
-        account: 'ETF Account'
+        account: 'Demo Portfolio'
       },
       {
         portfolio_id: activePortfolioId,
@@ -610,19 +623,34 @@ export function PortfolioView({
         price: 52.4,
         currency: 'PLN',
         fees: 5.5,
-        account: 'GPW Polish Stocks'
+        account: 'Demo Portfolio'
       }
     ];
 
     try {
-      const { saveTransaction } = await import('../services/transactionService');
-      for (const tx of demoTransactions) {
-        await saveTransaction(tx);
-      }
+      const { saveTransactionsBulk } = await import('../services/transactionService');
+      await saveTransactionsBulk(demoTransactions);
       await fetchTransactions();
+      showToast(t('dashboard.demo_banner_badge', 'Demo Portfolio Active'), 'success');
     } catch (err: any) {
       console.error('Error loading demo transactions:', err);
       showToast(t('portfolio.err_load_demo', { error: err.message, defaultValue: `Failed to load demo transactions: ${err.message}` }), 'error');
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
+
+  // Clear demo transactions atomically
+  const handleClearDemoData = async () => {
+    if (!activePortfolioId) return;
+    setLoadingDemo(true);
+    try {
+      await deleteTransactionsByAccount(activePortfolioId, 'Demo Portfolio');
+      await fetchTransactions();
+      showToast(t('dashboard.demo_cleared_success', 'Demo transactions successfully removed.'), 'success');
+    } catch (err: any) {
+      console.error('Error clearing demo transactions:', err);
+      showToast(err.message || 'Failed to clear demo data', 'error');
     } finally {
       setLoadingDemo(false);
     }
@@ -1190,9 +1218,98 @@ export function PortfolioView({
                   </div>
                 ) : (
                   (() => {
+                    const hasDemoTxs = portfolioTransactions.some(tx => tx.account === 'Demo Portfolio');
                     const isRightColumnOpen = showDashboardCards && (widgets.length > 0 || showWidgetManager);
                     return (
                       <>
+                        {/* Offline notification badge */}
+                        {!isOnline && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.6rem',
+                            padding: '0.6rem 1rem',
+                            marginBottom: '0.5rem',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '8px',
+                            color: '#fca5a5',
+                            fontSize: '0.8rem'
+                          }}>
+                            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600 }}>{t('common.offline_mode', 'Offline Mode')}:</span>
+                            <span>{t('common.offline_mode_desc', 'Displaying cached data. Reconnecting to market streams when online...')}</span>
+                          </div>
+                        )}
+
+                        {/* Demo Portfolio active banner with 1-click reset */}
+                        {hasDemoTxs && activePortfolioRole !== 'viewer' && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '0.75rem',
+                            padding: '0.65rem 1rem',
+                            marginBottom: '0.5rem',
+                            background: 'linear-gradient(90deg, rgba(6, 182, 212, 0.12) 0%, rgba(59, 130, 246, 0.08) 100%)',
+                            border: '1px solid rgba(6, 182, 212, 0.3)',
+                            borderRadius: '8px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{
+                                background: 'rgba(6, 182, 212, 0.25)',
+                                color: '#06b6d4',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: '4px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                              }}>
+                                {t('dashboard.demo_banner_badge', 'Demo Portfolio Active')}
+                              </span>
+                              <span style={{ fontSize: '0.82rem', color: 'white' }}>
+                                {t('dashboard.demo_banner_title', 'You are currently viewing a simulated demo portfolio.')}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                type="button"
+                                onClick={handleClearDemoData}
+                                disabled={loadingDemo}
+                                className="cancel-btn"
+                                style={{
+                                  fontSize: '0.78rem',
+                                  padding: '0.35rem 0.85rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#f87171',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('dashboard.demo_banner_btn_clear', 'Clear Demo Data')}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowAddModal(true)}
+                                className="glow-btn"
+                                style={{
+                                  fontSize: '0.78rem',
+                                  padding: '0.35rem 0.85rem',
+                                  borderRadius: '6px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {t('dashboard.demo_banner_btn_add', 'Add Real Transaction')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         <div 
                           className="portfolio-grid" 
                           style={{ 

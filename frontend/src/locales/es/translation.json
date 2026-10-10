@@ -163,6 +163,8 @@
     "toggle_columns": "Personalizar columnas",
     "reset": "Restablecer",
     "today": "Hoy",
+    "offline_mode": "Modo sin conexión",
+    "offline_mode_desc": "Mostrando datos en caché. Reconectando a las cotizaciones al volver a estar en línea...",
     "yesterday": "Ayer",
     "default": "Predeterminado",
     "all": "Todos"
@@ -211,6 +213,12 @@
     "syncing_portfolios": "Sincronizando portafolios...",
     "syncing_transactions": "Obteniendo historial de transacciones...",
     "toggle_cards": "Alternar tarjetas del panel",
+    "demo_banner_badge": "Portafolio Demo Activo",
+    "demo_banner_title": "Actualmente está viendo un portafolio de demostración simulado.",
+    "demo_banner_desc": "Explore gráficos, análisis y dividendos libremente. ¿Listo para rastrear sus propias inversiones?",
+    "demo_banner_btn_clear": "Borrar datos de demostración",
+    "demo_banner_btn_add": "Añadir transacción real",
+    "demo_cleared_success": "Transacciones de demostración eliminadas con éxito.",
     "viewer_empty_warning": "Este portafolio está vacío y tiene acceso de solo lectura.",
     "viewer_readonly_warning": "Tiene acceso de solo lectura (observador) a este portafolio. Las funciones de añadir, editar o eliminar transacciones están deshabilitadas.",
     "viewer_readonly_tooltip": "Acceso de solo lectura (observador) a este portafolio"
@@ -451,7 +459,12 @@
     "placeholder_account": "Introduzca el nombre de la cuenta (ej. Cuenta XTB)",
     "selected_count": "Seleccionado:",
     "supported_title": "Formatos detectados automáticamente",
-    "generic_tip_columns": "¿Utiliza otro broker? Asegúrese de que los encabezados incluyan columnas estándar: Date, Ticker, Type (Compra/Venta), Shares, Price."
+    "generic_tip_columns": "¿Utiliza otro broker? Asegúrese de que los encabezados incluyan columnas estándar: Date, Ticker, Type (Compra/Venta), Shares, Price.",
+    "badge_duplicate": "Duplicado",
+    "badge_duplicate_tooltip": "Esta transacción ya existe en su libro de operaciones con fecha, símbolo, tipo, acciones y precio idénticos.",
+    "duplicates_detected": "Se detectaron {{count}} posibles transacciones duplicadas y se desmarcaron de forma predeterminada.",
+    "success_with_duplicates": "Se importaron exitosamente {{count}} transacciones (se omitieron {{skipped}} duplicados).",
+    "success_import": "Se importaron exitosamente {{count}} transacciones."
   },
   "ledger": {
     "action_delete": "Eliminar",
@@ -555,6 +568,8 @@
       "price_input_mode": "Modo de ingreso de precio",
       "saving_adjust_desc": "El ajuste de saldo registrará automáticamente una transacción de cuadre.",
       "suffixes_desc": "Usa .WA para Varsovia, .DE para Alemania, .L para Londres.",
+      "no_results_found": "No se encontraron activos que coincidan con \"{{query}}\"",
+      "manual_entry_hint": "Presione Enter o complete los detalles para la entrada manual.",
       "target_cash_balance": "Saldo objetivo de efectivo",
       "title": "Añadir transacción de portafolio",
       "total_cash_outlay": "Desembolso total de efectivo",
