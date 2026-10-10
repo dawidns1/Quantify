@@ -9,3 +9,4 @@ curl_cffi
 pytz
 lxml
 python-multipart
+PyJWT

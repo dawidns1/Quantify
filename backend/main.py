@@ -9,7 +9,10 @@ import re
 import hashlib
 import base64
 import copy
-import jwt
+try:
+    import jwt
+except ImportError:
+    jwt = None
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -654,7 +657,7 @@ def _extract_user_id_from_jwt(jwt_token: str) -> str:
 
     # 1. Zero-latency cryptographic verification if secret configured
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
-    if jwt_secret:
+    if jwt_secret and jwt is not None:
         try:
             payload = jwt.decode(clean, jwt_secret, algorithms=["HS256"], audience="authenticated")
             uid = payload.get("sub")
