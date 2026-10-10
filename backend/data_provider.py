@@ -47,7 +47,8 @@ adapter = TimeoutHTTPAdapter(timeout=4.0, max_retries=Retry(total=0, connect=0, 
 YF_SESSION.mount("https://", adapter)
 YF_SESSION.mount("http://", adapter)
 
-if IS_PRODUCTION:
+# Enable TLS verification by default; allow explicit opt-out via INSECURE_DEV_TLS=1
+if IS_PRODUCTION or os.environ.get("INSECURE_DEV_TLS") != "1":
     YF_SESSION.verify = True
 else:
     YF_SESSION.verify = False
@@ -116,12 +117,13 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as ExecTimeoutEr
 PROVIDER_EXECUTOR = ThreadPoolExecutor(max_workers=10)
 
 def safe_network_call(func, timeout_sec=4.0, default=None):
-    """Executes a network-bound task in a thread pool with a hard non-blocking timeout."""
+    """Executes a network-bound task in a thread pool with a hard non-blocking timeout and cancellation."""
     future = PROVIDER_EXECUTOR.submit(func)
     try:
         return future.result(timeout=timeout_sec)
     except ExecTimeoutError:
-        print(f"[DataProvider] Network operation exceeded hard {timeout_sec}s timeout, returning fallback.")
+        future.cancel()
+        print(f"[DataProvider] Network operation exceeded hard {timeout_sec}s timeout, cancelled worker and returning fallback.")
         return default
     except Exception as e:
         print(f"[DataProvider] Exception in network call: {e}")

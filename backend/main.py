@@ -34,11 +34,11 @@ for path in ['.env', '../.env', 'backend/.env', '../frontend/.env.local', 'front
                     k, v = line.split('=', 1)
                     os.environ.setdefault(k.strip(), v.strip())
 
-# Enforce SSL verification in production environments (like Vercel)
-IS_PRODUCTION = os.environ.get("PRODUCTION") == "true" or os.environ.get("VERCEL") == "1" or os.environ.get("ENV") == "production"
+# Enforce SSL verification by default unless explicitly disabled with INSECURE_DEV_TLS=1
+INSECURE_DEV_TLS = os.environ.get("INSECURE_DEV_TLS") == "1"
 
-if not IS_PRODUCTION:
-    # Globally disable SSL verification warnings and certificate checks to prevent local machine errors
+if INSECURE_DEV_TLS:
+    # Globally disable SSL verification warnings and certificate checks for local proxying if explicitly requested
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     try:
         ssl._create_default_https_context = ssl._create_unverified_context
@@ -46,12 +46,11 @@ if not IS_PRODUCTION:
         pass
 
 # Globally patch requests.Session.request to default timeout to 5.0 seconds
-# and conditionally disable SSL verification (only in development/local).
 _original_session_request = requests.Session.request
 def _patched_session_request(self, method, url, *args, **kwargs):
     if 'timeout' not in kwargs:
         kwargs['timeout'] = 5.0
-    if not IS_PRODUCTION:
+    if INSECURE_DEV_TLS:
         self.verify = False
         if 'verify' in kwargs:
             kwargs['verify'] = False
@@ -156,14 +155,27 @@ async def lifespan(app: FastAPI):
     start_cache_warmer()
     yield
 
-# In-memory sliding-window rate limiter
+# In-memory sliding-window rate limiter with automatic sweep
 _rate_limit_lock = threading.Lock()
 _rate_limit_store: Dict[tuple, list] = {}
+_rate_limit_ops_count = 0
 
 def check_rate_limit(action: str, identifier: str, max_calls: int, window_seconds: float):
+    global _rate_limit_ops_count
     now = time.time()
     key = (action, identifier)
     with _rate_limit_lock:
+        _rate_limit_ops_count += 1
+        # Sweep expired keys every 150 operations or when store exceeds 1000 items
+        if _rate_limit_ops_count >= 150 or len(_rate_limit_store) > 1000:
+            _rate_limit_ops_count = 0
+            expired_keys = [
+                k for k, ts_list in _rate_limit_store.items()
+                if not ts_list or (now - ts_list[-1] > 3600.0)
+            ]
+            for k in expired_keys:
+                _rate_limit_store.pop(k, None)
+
         timestamps = _rate_limit_store.get(key, [])
         timestamps = [t for t in timestamps if now - t < window_seconds]
         if len(timestamps) >= max_calls:
@@ -230,6 +242,32 @@ DETAILS_DIR = os.path.join(DATA_DIR, 'details')
 os.makedirs(DETAILS_DIR, exist_ok=True)
 
 
+# Subclass to cache preloaded fields in a thread-safe local instance
+class SnappyTicker(yf.Ticker):
+    def __init__(self, symbol, info_val, hist_val, fin_val, est_val, session=None):
+        super().__init__(symbol, session=session)
+        self._preloaded_info = info_val
+        self._preloaded_hist = hist_val
+        self._preloaded_fin = fin_val
+        self._preloaded_est = est_val
+    
+    @property
+    def info(self):
+        return self._preloaded_info if self._preloaded_info is not None else super().info
+    
+    def history(self, *args, **kwargs):
+        if kwargs.get('period') == '3y' or (len(args) > 0 and args[0] == '3y'):
+            return self._preloaded_hist if self._preloaded_hist is not None else super().history(*args, **kwargs)
+        return super().history(*args, **kwargs)
+    
+    @property
+    def financials(self):
+        return self._preloaded_fin if self._preloaded_fin is not None else super().financials
+    
+    @property
+    def revenue_estimate(self):
+        return self._preloaded_est if self._preloaded_est is not None else super().revenue_estimate
+
 # In-memory lock to prevent concurrent refreshes
 refresh_lock = threading.Lock()
 
@@ -292,34 +330,7 @@ def get_stock_detail(ticker: str, request: Request):
             print(f"[{clean_ticker}] Detail cache missing or stale. Fetching on-demand...")
             collector = StockDataCollector()
             
-            # Subclass to cache preloaded fields in a thread-safe local instance
             from backend.data_provider import YF_SESSION
-            # Subclass to cache preloaded fields in a thread-safe local instance
-            class SnappyTicker(yf.Ticker):
-                def __init__(self, symbol, info_val, hist_val, fin_val, est_val, session=None):
-                    super().__init__(symbol, session=session)
-                    self._preloaded_info = info_val
-                    self._preloaded_hist = hist_val
-                    self._preloaded_fin = fin_val
-                    self._preloaded_est = est_val
-                
-                @property
-                def info(self):
-                    return self._preloaded_info if self._preloaded_info is not None else super().info
-                
-                def history(self, *args, **kwargs):
-                    if kwargs.get('period') == '3y' or (len(args) > 0 and args[0] == '3y'):
-                        return self._preloaded_hist if self._preloaded_hist is not None else super().history(*args, **kwargs)
-                    return super().history(*args, **kwargs)
-                
-                @property
-                def financials(self):
-                    return self._preloaded_fin if self._preloaded_fin is not None else super().financials
-                
-                @property
-                def revenue_estimate(self):
-                    return self._preloaded_est if self._preloaded_est is not None else super().revenue_estimate
-
             raw_ticker = yf.Ticker(clean_ticker, session=YF_SESSION)
             
             # Parallel preloading of yfinance data

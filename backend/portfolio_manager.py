@@ -1606,7 +1606,7 @@ class PortfolioManager:
                     tx_dt = datetime.strptime(tx_date_str, "%Y-%m-%d").date()
                     if tx_dt < earliest_date:
                         earliest_date = tx_dt
-                except:
+                except (ValueError, TypeError):
                     pass
         # Cap earliest_date to 365 days ago to prevent downloading multi-year history on fast holdings fetch
         earliest_date = max(earliest_date, date.today() - timedelta(days=365))

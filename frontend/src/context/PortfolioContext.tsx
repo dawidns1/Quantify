@@ -647,8 +647,9 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       
       const cachedTxStr = localStorage.getItem('cached_all_transactions');
       if (cachedTxStr && JSON.stringify(data) !== cachedTxStr) {
+        const staleCachePattern = /^cached_(holdings|summary|dividends_list|chart_data|analytics|dividend_forecast)_/;
         Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('cached_chart_data_') || key.startsWith('cached_analytics_')) {
+          if (staleCachePattern.test(key)) {
             localStorage.removeItem(key);
           }
         });
