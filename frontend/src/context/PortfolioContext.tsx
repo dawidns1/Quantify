@@ -627,8 +627,8 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
       }
       telemetry.endTrace(traceId, 'error', err?.message || String(err));
     } finally {
-      isFetchingHoldingsRef.current = false;
       if (requestId === holdingsRequestIdRef.current) {
+        isFetchingHoldingsRef.current = false;
         setLoadingHoldings(false);
       }
     }
@@ -855,7 +855,7 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     if (user?.id) {
       loadPortfolios();
     }
-  }, [user?.id, session?.access_token]);
+  }, [user?.id]);
 
   // --- Fetch triggers ---
   
@@ -907,10 +907,34 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     }
   }, [baseCurrency, selectedAccount, activePortfolioId, linkCash]);
 
+  const fetchBundleRef = useRef(fetchPortfolioBundle);
+  fetchBundleRef.current = fetchPortfolioBundle;
+
+  const nextCheckSecondsRef = useRef(nextCheckSeconds);
+  nextCheckSecondsRef.current = nextCheckSeconds;
+
   // Set up live polling & debounced tab visibility handler for real-time price updates
   useEffect(() => {
     if (!activePortfolioId || portfolios.length === 0) return;
     
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
+
+    const tick = async () => {
+      if (isCancelled) return;
+      if (document.visibilityState === 'visible') {
+        try {
+          await fetchBundleRef.current(baseCurrency, selectedAccount, true, false);
+        } catch (e) {
+          console.error('[Polling] Background sync error:', e);
+        }
+      }
+      if (!isCancelled) {
+        const delay = nextCheckSecondsRef.current > 0 ? nextCheckSecondsRef.current : 300;
+        timerId = setTimeout(tick, delay * 1000);
+      }
+    };
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         const now = Date.now();
@@ -924,27 +948,21 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
           setLoadingAnalytics(false);
         }
 
-        fetchPortfolioBundle(baseCurrency, selectedAccount, true, false);
+        fetchBundleRef.current(baseCurrency, selectedAccount, true, false);
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    let timeout: any;
-    if (document.visibilityState === 'visible') {
-      const delay = nextCheckSeconds > 0 ? nextCheckSeconds : 300;
-      timeout = setTimeout(() => {
-        if (document.visibilityState === 'visible') {
-          fetchPortfolioBundle(baseCurrency, selectedAccount, true, false);
-        }
-      }, delay * 1000);
-    }
+    const initialDelay = nextCheckSecondsRef.current > 0 ? nextCheckSecondsRef.current : 300;
+    timerId = setTimeout(tick, initialDelay * 1000);
     
     return () => {
+      isCancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (timeout) clearTimeout(timeout);
+      if (timerId) clearTimeout(timerId);
     };
-  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios, nextCheckSeconds]);
+  }, [activePortfolioId, baseCurrency, selectedAccount, linkCash, portfolios.length]);
 
   // Proactive server warmup on mount & keep-alive ping every 3 minutes while tab is visible
   useEffect(() => {
@@ -958,68 +976,100 @@ export function PortfolioProvider({ apiBaseUrl, children }: { apiBaseUrl: string
     return () => clearInterval(interval);
   }, [apiBaseUrl]);
 
-  return (
-    <PortfolioContext.Provider value={{
-      apiBaseUrl,
-      portfolios,
-      setPortfolios,
-      activePortfolioId,
-      setActivePortfolioId,
-      activePortfolioRole,
-      setActivePortfolioRole,
-      baseCurrency,
-      setBaseCurrency,
-      selectedAccount,
-      setSelectedAccount,
-      holdings,
-      setHoldings,
-      summary,
-      setSummary,
-      allTransactions,
-      setAllTransactions,
-      dividendsList,
-      setDividendsList,
-      chartData,
-      setChartData,
-      analytics,
-      setAnalytics,
-      dividendForecast,
-      setDividendForecast,
-      upcomingEvents,
-      setUpcomingEvents,
-      
-      loadingHoldings,
-      loadingTransactions,
-      loadingPortfolios,
-      loadingChart,
-      loadingAnalytics,
-      
-      syncStatus,
-      syncError,
-      lastSyncTimestamp,
-      setSyncStatus,
-      setSyncError,
+  const contextValue = useMemo(() => ({
+    apiBaseUrl,
+    portfolios,
+    setPortfolios,
+    activePortfolioId,
+    setActivePortfolioId,
+    activePortfolioRole,
+    setActivePortfolioRole,
+    baseCurrency,
+    setBaseCurrency,
+    selectedAccount,
+    setSelectedAccount,
+    holdings,
+    setHoldings,
+    summary,
+    setSummary,
+    allTransactions,
+    setAllTransactions,
+    dividendsList,
+    setDividendsList,
+    chartData,
+    setChartData,
+    analytics,
+    setAnalytics,
+    dividendForecast,
+    setDividendForecast,
+    upcomingEvents,
+    setUpcomingEvents,
+    
+    loadingHoldings,
+    loadingTransactions,
+    loadingPortfolios,
+    loadingChart,
+    loadingAnalytics,
+    
+    syncStatus,
+    syncError,
+    lastSyncTimestamp,
+    setSyncStatus,
+    setSyncError,
 
-      widgets,
-      setWidgets,
-      showWidgetManager,
-      setShowWidgetManager,
-      linkCash,
-      setLinkCash,
-      
-      portfolioAccountsMap,
-      uniqueAccounts,
-      portfolioTransactions,
-      transactions,
-      
-      loadPortfolios,
-      fetchPortfolioBundle,
-      fetchHoldings,
-      fetchTransactions,
-      fetchHistoricalPerformance,
-      fetchPortfolioAnalytics,
-      refreshPortfolioData
-    }}>
+    widgets,
+    setWidgets,
+    showWidgetManager,
+    setShowWidgetManager,
+    linkCash,
+    setLinkCash,
+    
+    portfolioAccountsMap,
+    uniqueAccounts,
+    portfolioTransactions,
+    transactions,
+    
+    loadPortfolios,
+    fetchPortfolioBundle,
+    fetchHoldings,
+    fetchTransactions,
+    fetchHistoricalPerformance,
+    fetchPortfolioAnalytics,
+    refreshPortfolioData
+  }), [
+    apiBaseUrl,
+    portfolios,
+    activePortfolioId,
+    activePortfolioRole,
+    baseCurrency,
+    selectedAccount,
+    holdings,
+    summary,
+    allTransactions,
+    dividendsList,
+    chartData,
+    analytics,
+    dividendForecast,
+    upcomingEvents,
+    loadingHoldings,
+    loadingTransactions,
+    loadingPortfolios,
+    loadingChart,
+    loadingAnalytics,
+    syncStatus,
+    syncError,
+    lastSyncTimestamp,
+    widgets,
+    showWidgetManager,
+    linkCash,
+    portfolioAccountsMap,
+    uniqueAccounts,
+    portfolioTransactions,
+    transactions
+  ]);
+
+  return (
+    <PortfolioContext.Provider value={contextValue}>
       {children}
     </PortfolioContext.Provider>
   );

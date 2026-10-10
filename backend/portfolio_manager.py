@@ -56,8 +56,18 @@ class PortfolioManager:
     _historical_perf_cache_lock = threading.Lock()
     _portfolio_analytics_cache = {}  # key -> (timestamp, result)
     _portfolio_analytics_cache_lock = threading.Lock()
-    _historical_calc_locks = {}
-    _historical_calc_locks_mutex = threading.Lock()
+    _historical_calc_locks_pool = [threading.Lock() for _ in range(64)]
+
+    @staticmethod
+    def _prune_cache_dict(cache_dict: dict, max_size: int = 128, max_age: float = 300.0):
+        now = time.time()
+        expired = [k for k, (ts, _) in cache_dict.items() if now - ts > max_age]
+        for k in expired:
+            cache_dict.pop(k, None)
+        if len(cache_dict) > max_size:
+            sorted_keys = sorted(cache_dict.keys(), key=lambda k: cache_dict[k][0])
+            for k in sorted_keys[:max(1, len(sorted_keys) // 4)]:
+                cache_dict.pop(k, None)
     
     STOCK_CACHE_TTL = 60  # 1 minute
     FX_CACHE_TTL = 60     # 1 minute (fresh live FX on refresh)
@@ -137,10 +147,7 @@ class PortfolioManager:
 
     @classmethod
     def get_historical_calc_lock(cls, key) -> threading.Lock:
-        with cls._historical_calc_locks_mutex:
-            if key not in cls._historical_calc_locks:
-                cls._historical_calc_locks[key] = threading.Lock()
-            return cls._historical_calc_locks[key]
+        return cls._historical_calc_locks_pool[abs(hash(str(key))) % 64]
 
     @staticmethod
     def _get_transactions_hash(transactions: list) -> str:
@@ -670,20 +677,23 @@ class PortfolioManager:
             except Exception as db_err:
                 print(f"[FX FALLBACK] Failed to read expired L2 cache for {pair}: {db_err}")
 
+        is_fallback_rate = False
         if rate is None or rate == 1.0:
             base_pair = pair.replace("=X", "")
             rate = FALLBACK_RATES.get(base_pair, 1.0)
+            is_fallback_rate = True
             print(f"[FX FALLBACK] Using hardcoded fallback rate for {pair}: {rate}")
             
         cls._live_fx_cache[pair] = (now, float(rate))
         
-        # Save to SQLite Cache
-        save_cached_live_price(pair, {
-            "live_price": float(rate),
-            "previous_close": float(rate),
-            "company_name": pair,
-            "native_currency": "USD"
-        })
+        # Save to SQLite Cache only if rate was genuine (not hardcoded fallback)
+        if not is_fallback_rate:
+            save_cached_live_price(pair, {
+                "live_price": float(rate),
+                "previous_close": float(rate),
+                "company_name": pair,
+                "native_currency": "USD"
+            })
         
         return float(rate)
 
@@ -835,7 +845,7 @@ class PortfolioManager:
         from datetime import date, datetime
         
         session = requests.Session()
-        session.verify = False
+        session.verify = (os.environ.get("INSECURE_DEV_TLS") == "1") is False
         session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         })
@@ -2130,6 +2140,7 @@ class PortfolioManager:
             "next_check_seconds": next_check_seconds
         }
         with cls._calculation_cache_lock:
+            cls._prune_cache_dict(cls._calculation_cache)
             cls._calculation_cache[cache_key] = (time.time(), res_dict)
         return res_dict
 
@@ -2167,6 +2178,7 @@ class PortfolioManager:
             result = cls._calculate_historical_performance_impl(transactions, base_currency, account, link_cash, portfolio_settings, benchmarks, force_refresh)
             
             with cls._historical_perf_cache_lock:
+                cls._prune_cache_dict(cls._historical_perf_cache)
                 cls._historical_perf_cache[cache_key] = (time.time(), result)
             return result
 
@@ -2636,6 +2648,7 @@ class PortfolioManager:
         result = cls._calculate_portfolio_analytics_impl(transactions, base_currency, account, link_cash, portfolio_settings, force_refresh, historical_performance_data)
         
         with cls._portfolio_analytics_cache_lock:
+            cls._prune_cache_dict(cls._portfolio_analytics_cache)
             cls._portfolio_analytics_cache[cache_key] = (time.time(), result)
         return result
 
@@ -3008,13 +3021,18 @@ class PortfolioManager:
             force_refresh=False
         )
 
-        # 3. Guarantee EXACT 0.00 PLN NAV alignment on date.today() / latest point
+        # 3. Guarantee EXACT 0.00 PLN NAV alignment on date.today() / latest point (copy-on-write)
         if hist_perf.get("dates") and holdings_res.get("summary"):
             summary_val = holdings_res["summary"].get("total_value_base", 0.0)
             summary_cost = holdings_res["summary"].get("total_cost_base", 0.0)
-            if hist_perf.get("nav") and len(hist_perf["nav"]) > 0:
+            hist_perf = {
+                **hist_perf,
+                "nav": list(hist_perf.get("nav") or []),
+                "cost_basis": list(hist_perf.get("cost_basis") or [])
+            }
+            if len(hist_perf["nav"]) > 0:
                 hist_perf["nav"][-1] = round(summary_val, 2)
-            if hist_perf.get("cost_basis") and len(hist_perf["cost_basis"]) > 0:
+            if len(hist_perf["cost_basis"]) > 0:
                 hist_perf["cost_basis"][-1] = round(summary_cost, 2)
 
         # 4. Compute Portfolio Analytics (reuses in-memory cached historical curve)

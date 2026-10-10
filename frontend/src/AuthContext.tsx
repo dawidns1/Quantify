@@ -14,6 +14,22 @@ interface AuthContextType {
   setTier: (val: 'free' | 'premium') => Promise<void>;
 }
 
+export const purgeStoredPortfolioData = () => {
+  try {
+    const prefixes = ['cached_', 'portfolio_'];
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && prefixes.some(p => k.startsWith(p))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.error('Error purging local storage on logout:', e);
+  }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -81,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
       }
+      if (event === 'SIGNED_OUT') {
+        purgeStoredPortfolioData();
+      }
     });
 
     return () => {
@@ -110,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    purgeStoredPortfolioData();
     await supabase.auth.signOut();
     setRecoveryMode(false);
     setTierState('free');

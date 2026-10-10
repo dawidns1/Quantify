@@ -8,6 +8,8 @@ import io
 import re
 import hashlib
 import base64
+import copy
+import jwt
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -203,12 +205,17 @@ def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    origin = request.headers.get("origin", "https://quantifi.site")
+    err_id = hashlib.sha256(f"{time.time()}:{str(exc)}".encode()).hexdigest()[:8]
+    print(f"[ERROR] [{err_id}] Unhandled exception on {request.method} {request.url.path}: {exc}")
+    origin = request.headers.get("origin")
+    allowed_origin = "https://quantifi.site"
+    if origin and (origin in origins or re.match(r"^https://.*\.quantifi\.site$|^https://.*\.vercel\.app$|^http://localhost:.*$", origin)):
+        allowed_origin = origin
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal Server Error: {str(exc)}"},
+        content={"detail": "An unexpected server error occurred.", "error_id": err_id},
         headers={
-            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Origin": allowed_origin,
             "Access-Control-Allow-Credentials": "true"
         }
     )
@@ -244,9 +251,13 @@ def get_stocks():
     }
 
 @app.get("/api/stocks/{ticker}")
-def get_stock_detail(ticker: str):
+def get_stock_detail(ticker: str, request: Request):
     # Normalize ticker (e.g. AAPL)
     clean_ticker = ticker.upper().strip()
+    if not re.match(r"^[A-Z0-9.\-^=]{1,15}$", clean_ticker):
+        raise HTTPException(status_code=422, detail="Invalid ticker symbol format")
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    check_rate_limit("stock_detail", client_ip, max_calls=45, window_seconds=60.0)
     file_path = os.path.join(DETAILS_DIR, f"{clean_ticker}.json")
     
     # Check if we need to fetch/regenerate details (missing, >24 hours old, or missing financials key)
@@ -615,19 +626,60 @@ _supabase_tx_cache_lock = threading.Lock()
 _supabase_settings_cache = {}
 _supabase_settings_cache_lock = threading.Lock()
 
+_verified_user_cache = {}  # token_hash -> (expiry_ts, user_id)
+_verified_user_lock = threading.Lock()
+
 def _extract_user_id_from_jwt(jwt_token: str) -> str:
-    try:
-        clean = jwt_token.replace("Bearer ", "").strip()
-        parts = clean.split(".")
-        if len(parts) >= 2:
-            padded = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
-            payload = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")))
+    clean = jwt_token.replace("Bearer ", "").strip()
+    if not clean:
+        raise HTTPException(status_code=401, detail="Authorization token missing")
+
+    token_hash = hashlib.sha256(clean.encode("utf-8")).hexdigest()
+    now = time.time()
+    with _verified_user_lock:
+        cached = _verified_user_cache.get(token_hash)
+        if cached and now < cached[0]:
+            return cached[1]
+
+    # 1. Zero-latency cryptographic verification if secret configured
+    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+    if jwt_secret:
+        try:
+            payload = jwt.decode(clean, jwt_secret, algorithms=["HS256"], audience="authenticated")
             uid = payload.get("sub")
             if uid:
+                exp = payload.get("exp", now + 3600)
+                with _verified_user_lock:
+                    _verified_user_cache[token_hash] = (exp, str(uid))
                 return str(uid)
-    except Exception:
-        pass
-    return hashlib.sha256(jwt_token.encode("utf-8")).hexdigest()[:16]
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Invalid or expired JWT: {str(e)}")
+
+    # 2. Hybrid fallback: Verify token against Supabase Auth API
+    supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+    if supabase_url and supabase_key:
+        try:
+            r = requests.get(
+                f"{supabase_url}/auth/v1/user",
+                headers={"apikey": supabase_key, "Authorization": f"Bearer {clean}"},
+                timeout=5.0
+            )
+            if r.status_code == 200:
+                user_data = r.json()
+                uid = user_data.get("id")
+                if uid:
+                    with _verified_user_lock:
+                        _verified_user_cache[token_hash] = (now + 60.0, str(uid))
+                    return str(uid)
+            raise HTTPException(status_code=401, detail="Invalid authorization token")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[AUTH] Error verifying token with Supabase: {e}")
+            raise HTTPException(status_code=401, detail="Authentication verification failed")
+
+    raise HTTPException(status_code=401, detail="Authentication verification failed: Supabase unconfigured")
 
 def _prune_cache(cache_dict: dict, lock: threading.Lock, max_size: int = 150, max_age: float = 60.0):
     if len(cache_dict) > max_size:
@@ -645,7 +697,7 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
         if cache_key in _supabase_tx_cache:
             ts, cached_txs = _supabase_tx_cache[cache_key]
             if now - ts < 10.0:  # 10 second fast RAM cache
-                return cached_txs
+                return copy.deepcopy(cached_txs)
 
     url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
@@ -654,8 +706,12 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
         raise HTTPException(status_code=500, detail="Supabase environment variables not configured on backend.")
         
     url = f"{url_val}/rest/v1/transactions"
+    params = {}
     if portfolio_id != 'all':
-        url += f"?portfolio_id=eq.{portfolio_id}"
+        clean_pid = portfolio_id.strip()
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", clean_pid):
+            raise HTTPException(status_code=400, detail="Invalid portfolio ID format")
+        params["portfolio_id"] = f"eq.{clean_pid}"
         
     headers = {
         "apikey": key_val,
@@ -663,7 +719,7 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
     }
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
         if response.status_code != 200:
             raise HTTPException(
                 status_code=response.status_code, 
@@ -673,7 +729,7 @@ def fetch_transactions_from_supabase(jwt_token: str, portfolio_id: str, supabase
         with _supabase_tx_cache_lock:
             _supabase_tx_cache[cache_key] = (time.time(), data)
         _prune_cache(_supabase_tx_cache, _supabase_tx_cache_lock)
-        return data
+        return copy.deepcopy(data)
     except requests.exceptions.RequestException as req_err:
         raise HTTPException(status_code=500, detail=f"Network error contacting Supabase: {str(req_err)}")
 
@@ -685,27 +741,35 @@ def fetch_portfolio_settings_from_supabase(jwt_token: str, portfolio_id: str, su
         if cache_key in _supabase_settings_cache:
             ts, cached_settings = _supabase_settings_cache[cache_key]
             if now - ts < 10.0:
-                return cached_settings
+                return copy.deepcopy(cached_settings)
 
     url_val = supabase_url or os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     key_val = supabase_key or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
     if not url_val or not key_val or portfolio_id == 'all':
         return {}
         
-    url = f"{url_val}/rest/v1/portfolios?id=eq.{portfolio_id}&select=settings"
+    clean_pid = portfolio_id.strip()
+    if not re.match(r"^[a-zA-Z0-9_\-]+$", clean_pid):
+        return {}
+        
+    url = f"{url_val}/rest/v1/portfolios"
+    params = {
+        "id": f"eq.{clean_pid}",
+        "select": "settings"
+    }
     headers = {
         "apikey": key_val,
         "Authorization": jwt_token
     }
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, params=params, timeout=10)
         if response.status_code == 200:
             data = response.json()
             settings = data[0].get("settings") or {} if (data and len(data) > 0) else {}
             with _supabase_settings_cache_lock:
                 _supabase_settings_cache[cache_key] = (time.time(), settings)
             _prune_cache(_supabase_settings_cache, _supabase_settings_cache_lock)
-            return settings
+            return copy.deepcopy(settings)
     except Exception as e:
         print(f"[DEBUG] Error fetching portfolio settings from Supabase: {e}")
     return {}

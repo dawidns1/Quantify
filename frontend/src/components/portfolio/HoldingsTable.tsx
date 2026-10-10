@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Briefcase, SlidersHorizontal } from 'lucide-react';
 import type { Holding, Summary } from '../../types/portfolio';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,35 @@ export function HoldingsTable({
   const startX = useRef<number>(0);
   const startWidth = useRef<number>(0);
   const isResizingRef = useRef<boolean>(false);
+  const colWidthsRef = useRef(colWidths);
+  colWidthsRef.current = colWidths;
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!activeDragCol.current) return;
+    isResizingRef.current = true;
+    const deltaX = e.clientX - startX.current;
+    const newWidth = Math.max(50, startWidth.current + deltaX);
+    const colId = activeDragCol.current;
+    setColWidths((prev) => {
+      const next = { ...prev, [colId]: newWidth };
+      colWidthsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    activeDragCol.current = null;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    try {
+      localStorage.setItem('portfolio_holdings_col_widths', JSON.stringify(colWidthsRef.current));
+    } catch (e) {
+      // ignore storage quota errors
+    }
+    setTimeout(() => {
+      isResizingRef.current = false;
+    }, 50);
+  }, [handleMouseMove]);
 
   const handleMouseDown = (e: React.MouseEvent, colId: string) => {
     e.preventDefault();
@@ -54,34 +83,12 @@ export function HoldingsTable({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!activeDragCol.current) return;
-    isResizingRef.current = true;
-    const deltaX = e.clientX - startX.current;
-    const newWidth = Math.max(50, startWidth.current + deltaX);
-    setColWidths((prev) => {
-      const next = { ...prev, [activeDragCol.current!]: newWidth };
-      localStorage.setItem('portfolio_holdings_col_widths', JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleMouseUp = () => {
-    activeDragCol.current = null;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    // Delay resetting to prevent the click event from triggering a sort
-    setTimeout(() => {
-      isResizingRef.current = false;
-    }, 50);
-  };
-
   useEffect(() => {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [handleMouseMove, handleMouseUp]);
 
   // Sorting states
   const [holdingsSortField, setHoldingsSortField] = useState<string>(() => {

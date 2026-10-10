@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from './AuthContext';
 import { AuthView } from './components/AuthView';
 import { PortfolioProvider } from './context/PortfolioContext';
+import { ToastProvider } from './context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
@@ -134,18 +135,20 @@ function App() {
   }
 
   return (
-    <PortfolioProvider apiBaseUrl={API_BASE_URL}>
-      <Suspense fallback={
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>
-          <div className="pulse" style={{ fontSize: '1.2rem' }}>{t('app.loading', 'Loading application...')}</div>
-        </div>
-      }>
-        <PortfolioView 
-          apiBaseUrl={API_BASE_URL} 
-          signOut={signOut}
-        />
-      </Suspense>
-    </PortfolioProvider>
+    <ToastProvider>
+      <PortfolioProvider apiBaseUrl={API_BASE_URL}>
+        <Suspense fallback={
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>
+            <div className="pulse" style={{ fontSize: '1.2rem' }}>{t('app.loading', 'Loading application...')}</div>
+          </div>
+        }>
+          <PortfolioView 
+            apiBaseUrl={API_BASE_URL} 
+            signOut={signOut}
+          />
+        </Suspense>
+      </PortfolioProvider>
+    </ToastProvider>
   );
 }
 

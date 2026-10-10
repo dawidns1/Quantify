@@ -3,6 +3,7 @@ import { Share2, X, AlertCircle, Users, Shield, UserPlus, Link, Copy, Check } fr
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../AuthContext';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { useToast } from '../../context/ToastContext';
 import type { Member } from '../../types/portfolio';
 import { 
   fetchPortfolioMembers, 
@@ -36,6 +37,7 @@ export function ShareModal({
 }: ShareModalProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'share' | 'referral'>('share');
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(activePortfolioId);
@@ -276,7 +278,7 @@ export function ShareModal({
   // Remove member from portfolio
   const handleRemoveMember = (userId: string) => {
     if (userId === user?.id) {
-      alert(t('modals.share.err_remove_self', 'You cannot remove yourself from your own portfolio.'));
+      showToast(t('modals.share.err_remove_self', 'You cannot remove yourself from your own portfolio.'), 'warning');
       return;
     }
     
@@ -289,7 +291,7 @@ export function ShareModal({
           loadSharingData(targetPortfolioId);
         } catch (err: any) {
           console.error('Error removing member:', err);
-          alert(t('modals.share.err_failed_remove_named', { error: err.message, defaultValue: `Failed to remove member: ${err.message}` }));
+          showToast(t('modals.share.err_failed_remove_named', { error: err.message, defaultValue: `Failed to remove member: ${err.message}` }), 'error');
         }
       },
       true
@@ -302,7 +304,7 @@ export function ShareModal({
       loadSharingData(targetPortfolioId);
     } catch (err: any) {
       console.error('Error updating member role:', err);
-      alert(t('modals.share.err_failed_update_named', { error: err.message, defaultValue: `Failed to update role: ${err.message}` }));
+      showToast(t('modals.share.err_failed_update_named', { error: err.message, defaultValue: `Failed to update role: ${err.message}` }), 'error');
     }
   };
 
